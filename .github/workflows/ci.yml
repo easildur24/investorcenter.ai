@@ -36,7 +36,7 @@ jobs:
     
     - name: Run tests
       run: |
-        pytest tests/ -v --cov=us_tickers --cov-report=xml
+        pytest scripts/us_tickers/tests/ -v --cov=us_tickers --cov-report=xml
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -62,13 +62,13 @@ jobs:
     
     - name: Run linting
       run: |
-        flake8 us_tickers/ tests/
-        mypy us_tickers/
-        black --check us_tickers/ tests/
+        flake8 scripts/us_tickers/ scripts/us_tickers/tests/
+        mypy scripts/us_tickers/
+        black --check scripts/us_tickers/ scripts/us_tickers/tests/
     
     - name: Check formatting
       run: |
-        black --check us_tickers/ tests/
+        black --check scripts/us_tickers/ scripts/us_tickers/tests/
 
   security:
     runs-on: ubuntu-latest
@@ -88,7 +88,7 @@ jobs:
     
     - name: Run security checks
       run: |
-        bandit -r us_tickers/
+        bandit -r scripts/us_tickers/
         safety check
 
   build:
