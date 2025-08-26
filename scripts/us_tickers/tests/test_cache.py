@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from us_tickers.cache import SimpleCache
 
 

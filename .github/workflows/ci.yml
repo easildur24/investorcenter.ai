@@ -62,13 +62,12 @@ jobs:
 
     - name: Run linting
       run: |
-        flake8 scripts/us_tickers/ scripts/us_tickers/tests/
+        flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79
         mypy scripts/us_tickers/
-        black --check scripts/us_tickers/ scripts/us_tickers/tests/
+        black --check scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
+        isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
 
-    - name: Check formatting
-      run: |
-        black --check scripts/us_tickers/ scripts/us_tickers/tests/
+
 
   security:
     runs-on: ubuntu-latest
@@ -84,12 +83,13 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install bandit safety
+        pip install bandit safety isort
 
     - name: Run security checks
       run: |
         bandit -r scripts/us_tickers/ --skip B101
         safety check
+        isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
 
   build:
     runs-on: ubuntu-latest

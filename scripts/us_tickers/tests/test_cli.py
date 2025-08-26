@@ -8,7 +8,6 @@ from unittest.mock import patch
 
 import pandas as pd
 import pytest
-
 from us_tickers.cli import parse_exchanges, save_output, setup_logging
 
 

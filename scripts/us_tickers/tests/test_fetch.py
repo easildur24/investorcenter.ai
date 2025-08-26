@@ -6,10 +6,14 @@ from unittest.mock import patch
 import pandas as pd
 import pytest
 import requests
-
-from us_tickers.fetch import (EXCHANGE_CODES, _create_session_with_retries,
-                              _filter_and_clean_data, _parse_nasdaq_listed,
-                              _parse_other_listed, get_exchange_listed_tickers)
+from us_tickers.fetch import (
+    EXCHANGE_CODES,
+    _create_session_with_retries,
+    _filter_and_clean_data,
+    _parse_nasdaq_listed,
+    _parse_other_listed,
+    get_exchange_listed_tickers,
+)
 
 
 class TestExchangeCodes:
