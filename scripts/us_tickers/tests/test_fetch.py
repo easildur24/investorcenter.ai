@@ -10,9 +10,9 @@ import requests
 from us_tickers.fetch import (
     EXCHANGE_CODES,
     _create_session_with_retries,
-    _filter_and_clean_data,
     _parse_nasdaq_listed,
     _parse_other_listed,
+    _filter_and_clean_data,
     get_exchange_listed_tickers,
 )
 
@@ -351,8 +351,8 @@ class TestErrorHandling:
     @patch("us_tickers.fetch._download_file")
     def test_download_failure(self, mock_download: Any) -> None:
         """Test handling of download failures."""
-        mock_download.side_effect = requests.exceptions.RequestException(
-            "Network error"
+        mock_download.side_effect = (
+            requests.exceptions.RequestException("Network error")
         )
 
         with pytest.raises(
