@@ -79,6 +79,7 @@ coverage.xml
 # IDE and Editors
 .vscode/
 .idea/
+.cursorrules
 *.swp
 *.swo
 *~
