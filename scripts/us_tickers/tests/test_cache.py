@@ -2,6 +2,7 @@
 
 import tempfile
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -11,14 +12,14 @@ from us_tickers.cache import SimpleCache
 class TestSimpleCache:
     """Test SimpleCache functionality."""
 
-    def test_cache_initialization(self):
+    def test_cache_initialization(self) -> None:
         """Test cache initialization creates directory."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
             assert cache.cache_dir.exists()
             assert cache.cache_dir == Path(temp_dir)
 
-    def test_cache_set_and_get(self):
+    def test_cache_set_and_get(self) -> None:
         """Test basic cache set and get operations."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
@@ -31,14 +32,14 @@ class TestSimpleCache:
             result = cache.get("test_key")
             assert result == test_data
 
-    def test_cache_get_nonexistent(self):
+    def test_cache_get_nonexistent(self) -> None:
         """Test getting non-existent cache key."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
             result = cache.get("nonexistent_key")
             assert result is None
 
-    def test_cache_ttl_expiration(self):
+    def test_cache_ttl_expiration(self) -> None:
         """Test TTL-based cache expiration."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
@@ -55,7 +56,7 @@ class TestSimpleCache:
             result = cache.get("test_key")
             assert result == test_data
 
-    def test_cache_no_ttl(self):
+    def test_cache_no_ttl(self) -> None:
         """Test cache without TTL (never expires)."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
@@ -68,7 +69,7 @@ class TestSimpleCache:
             result = cache.get("test_key")
             assert result == test_data
 
-    def test_cache_key_sanitization(self):
+    def test_cache_key_sanitization(self) -> None:
         """Test that cache keys are properly sanitized for filenames."""
         with tempfile.TemporaryDirectory() as temp_dir:
             cache = SimpleCache(temp_dir)
@@ -162,7 +163,7 @@ class TestSimpleCache:
 
             # Test setting cache with non-serializable data
             # This should not crash but log a warning
-            def non_serializable(x):
+            def non_serializable(x: Any) -> Any:
                 return x  # Functions can't be serialized
 
             # Should not raise exception

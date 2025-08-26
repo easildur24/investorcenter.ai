@@ -64,8 +64,7 @@ def _create_session_with_retries() -> requests.Session:
     session.mount("http://", adapter)
     session.mount("https://", adapter)
 
-    # Set timeout
-    session.timeout = config.timeout_seconds
+    # Note: timeout is set per request, not on session
 
     return session
 
@@ -263,7 +262,7 @@ def get_exchange_listed_tickers(
     """
     # Use configuration defaults if not specified
     if exchanges is None:
-        exchanges = tuple(config.default_exchanges)
+        exchanges = tuple(config.default_exchanges or ["Q", "N"])
     if include_etfs is None:
         include_etfs = config.default_include_etfs
     if include_test_issues is None:

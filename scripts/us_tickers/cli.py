@@ -97,10 +97,10 @@ Examples:
     fetch_parser.add_argument(
         "--exchanges",
         type=str,
-        default=",".join(config.default_exchanges),
+        default=",".join(config.default_exchanges or ["Q", "N"]),
         help=(
             f"Comma-separated exchange codes "
-            f"(default: {','.join(config.default_exchanges)})"
+            f"(default: {','.join(config.default_exchanges or ['Q', 'N'])})"
         ),
     )
 

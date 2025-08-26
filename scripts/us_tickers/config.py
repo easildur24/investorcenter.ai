@@ -2,7 +2,7 @@
 
 import os
 from dataclasses import dataclass
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -24,7 +24,7 @@ class Config:
     cache_dir: str = ".cache"
 
     # Data processing
-    default_exchanges: List[str] = None
+    default_exchanges: Optional[List[str]] = None
     default_include_etfs: bool = False
     default_include_test_issues: bool = False
 

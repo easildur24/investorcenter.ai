@@ -3,6 +3,7 @@
 import logging
 import os
 import tempfile
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -14,22 +15,22 @@ from us_tickers.cli import parse_exchanges, save_output, setup_logging
 class TestExchangeParsing:
     """Test exchange code parsing."""
 
-    def test_parse_exchanges_default(self):
+    def test_parse_exchanges_default(self) -> None:
         """Test default exchange parsing."""
         exchanges = parse_exchanges("")
         assert exchanges == ["Q", "N"]
 
-    def test_parse_exchanges_single(self):
+    def test_parse_exchanges_single(self) -> None:
         """Test single exchange parsing."""
         exchanges = parse_exchanges("Q")
         assert exchanges == ["Q"]
 
-    def test_parse_exchanges_multiple(self):
+    def test_parse_exchanges_multiple(self) -> None:
         """Test multiple exchange parsing."""
         exchanges = parse_exchanges("Q,N,A")
         assert exchanges == ["Q", "N", "A"]
 
-    def test_parse_exchanges_with_spaces(self):
+    def test_parse_exchanges_with_spaces(self) -> None:
         """Test exchange parsing with spaces."""
         exchanges = parse_exchanges(" Q , N , A ")
         assert exchanges == ["Q", "N", "A"]
@@ -38,7 +39,7 @@ class TestExchangeParsing:
 class TestOutputSaving:
     """Test output file saving."""
 
-    def test_save_csv_output(self):
+    def test_save_csv_output(self) -> None:
         """Test saving CSV output."""
         df = pd.DataFrame(
             {
@@ -62,7 +63,7 @@ class TestOutputSaving:
                 assert "AAPL" in content
                 assert "MSFT" in content
 
-    def test_save_json_output(self):
+    def test_save_json_output(self) -> None:
         """Test saving JSON output."""
         df = pd.DataFrame(
             {
@@ -85,14 +86,14 @@ class TestOutputSaving:
                 assert "AAPL" in content
                 assert "MSFT" in content
 
-    def test_save_output_invalid_format(self):
+    def test_save_output_invalid_format(self) -> None:
         """Test error handling for invalid output format."""
         df = pd.DataFrame({"Ticker": ["AAPL"]})
 
         with pytest.raises(ValueError, match="Unsupported output format"):
             save_output(df, "test.txt", "txt")
 
-    def test_save_output_create_directory(self):
+    def test_save_output_create_directory(self) -> None:
         """Test that output directory is created if it doesn't exist."""
         df = pd.DataFrame({"Ticker": ["AAPL"]})
 
@@ -108,13 +109,13 @@ class TestOutputSaving:
 class TestLoggingSetup:
     """Test logging configuration."""
 
-    def test_setup_logging_info_level(self):
+    def test_setup_logging_info_level(self) -> None:
         """Test logging setup with INFO level."""
         setup_logging(verbose=False)
         # Check that the root logger has INFO level
         assert logging.getLogger().level == logging.INFO
 
-    def test_setup_logging_debug_level(self):
+    def test_setup_logging_debug_level(self) -> None:
         """Test logging setup with DEBUG level."""
         setup_logging(verbose=True)
         # Check that the root logger has DEBUG level
@@ -126,7 +127,7 @@ class TestCLIArgumentParsing:
 
     @patch("us_tickers.cli.get_exchange_listed_tickers")
     @patch("us_tickers.cli.save_output")
-    def test_cli_fetch_command_defaults(self, mock_save, mock_fetch):
+    def test_cli_fetch_command_defaults(self, mock_save: Any, mock_fetch: Any) -> None:
         """Test CLI fetch command with default arguments."""
         from us_tickers.cli import main
 
@@ -147,7 +148,7 @@ class TestCLIArgumentParsing:
 
     @patch("us_tickers.cli.get_exchange_listed_tickers")
     @patch("us_tickers.cli.save_output")
-    def test_cli_fetch_command_with_options(self, mock_save, mock_fetch):
+    def test_cli_fetch_command_with_options(self, mock_save: Any, mock_fetch: Any) -> None:
         """Test CLI fetch command with all options."""
         from us_tickers.cli import main
 
@@ -181,7 +182,7 @@ class TestCLIArgumentParsing:
         # Verify save was called with JSON format
         mock_save.assert_called_once()
 
-    def test_cli_no_command(self):
+    def test_cli_no_command(self) -> None:
         """Test CLI with no command specified."""
         from us_tickers.cli import main
 

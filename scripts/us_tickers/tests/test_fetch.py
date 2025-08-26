@@ -1,5 +1,6 @@
 """Unit tests for the fetch module."""
 
+from typing import Any
 from unittest.mock import patch
 
 import pandas as pd
@@ -19,7 +20,7 @@ from us_tickers.fetch import (
 class TestExchangeCodes:
     """Test exchange codes constants."""
 
-    def test_exchange_codes_exist(self):
+    def test_exchange_codes_exist(self) -> None:
         """Test that expected exchange codes are defined."""
         assert "Q" in EXCHANGE_CODES
         assert "N" in EXCHANGE_CODES
@@ -27,7 +28,7 @@ class TestExchangeCodes:
         assert "P" in EXCHANGE_CODES
         assert "Z" in EXCHANGE_CODES
 
-    def test_exchange_codes_values(self):
+    def test_exchange_codes_values(self) -> None:
         """Test exchange code descriptions."""
         assert EXCHANGE_CODES["Q"] == "Nasdaq"
         assert EXCHANGE_CODES["N"] == "NYSE"
@@ -37,17 +38,17 @@ class TestExchangeCodes:
 class TestSessionCreation:
     """Test session creation with retries."""
 
-    def test_create_session_with_retries(self):
+    def test_create_session_with_retries(self) -> None:
         """Test session creation returns valid session."""
         session = _create_session_with_retries()
         assert isinstance(session, requests.Session)
-        assert session.timeout == 20
+        # Note: timeout is set per request, not on session
 
 
 class TestNasdaqListedParsing:
     """Test parsing of nasdaqlisted.txt content."""
 
-    def test_parse_nasdaq_listed_normal(self):
+    def test_parse_nasdaq_listed_normal(self) -> None:
         """Test normal parsing of nasdaqlisted.txt."""
         content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -66,7 +67,7 @@ class TestNasdaqListedParsing:
         assert df.iloc[0]["Exchange"] == "Q"
         assert df.iloc[0]["ETF"] == "N"
 
-    def test_parse_nasdaq_listed_with_footer(self):
+    def test_parse_nasdaq_listed_with_footer(self) -> None:
         """Test parsing with footer row that should be removed."""
         content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -80,12 +81,12 @@ class TestNasdaqListedParsing:
         assert len(df) == 1
         assert df.iloc[0]["Ticker"] == "AAPL"
 
-    def test_parse_nasdaq_listed_empty_content(self):
+    def test_parse_nasdaq_listed_empty_content(self) -> None:
         """Test parsing empty content."""
         df = _parse_nasdaq_listed("")
         assert len(df) == 0
 
-    def test_parse_nasdaq_listed_malformed(self):
+    def test_parse_nasdaq_listed_malformed(self) -> None:
         """Test parsing malformed content."""
         content = """Invalid line without pipes
 Another invalid line"""
@@ -93,7 +94,7 @@ Another invalid line"""
         df = _parse_nasdaq_listed(content)
         assert len(df) == 0
 
-    def test_parse_nasdaq_listed_normalization(self):
+    def test_parse_nasdaq_listed_normalization(self) -> None:
         """Test string normalization."""
         content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -110,7 +111,7 @@ Another invalid line"""
 class TestOtherListedParsing:
     """Test parsing of otherlisted.txt content."""
 
-    def test_parse_other_listed_normal(self):
+    def test_parse_other_listed_normal(self) -> None:
         """Test normal parsing of otherlisted.txt."""
         content = (
             "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
@@ -126,7 +127,7 @@ class TestOtherListedParsing:
         assert df.iloc[0]["Ticker"] == "HIMS"
         assert df.iloc[0]["Exchange"] == "N"
 
-    def test_parse_other_listed_with_footer(self):
+    def test_parse_other_listed_with_footer(self) -> None:
         """Test parsing with footer row that should be removed."""
         content = (
             "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
@@ -140,7 +141,7 @@ class TestOtherListedParsing:
         assert len(df) == 1
         assert df.iloc[0]["Ticker"] == "HIMS"
 
-    def test_parse_other_listed_empty_content(self):
+    def test_parse_other_listed_empty_content(self) -> None:
         """Test parsing empty content."""
         df = _parse_other_listed("")
         assert len(df) == 0
@@ -149,7 +150,7 @@ class TestOtherListedParsing:
 class TestDataFiltering:
     """Test data filtering and cleaning."""
 
-    def test_filter_by_exchanges(self):
+    def test_filter_by_exchanges(self) -> None:
         """Test filtering by exchange codes."""
         df = pd.DataFrame(
             {
@@ -167,7 +168,7 @@ class TestDataFiltering:
         assert "HIMS" in result["Ticker"].values
         assert "SPY" not in result["Ticker"].values
 
-    def test_filter_etfs(self):
+    def test_filter_etfs(self) -> None:
         """Test ETF filtering."""
         df = pd.DataFrame(
             {
@@ -187,7 +188,7 @@ class TestDataFiltering:
         result = _filter_and_clean_data(df, ("Q", "P"), True, False)
         assert len(result) == 3
 
-    def test_filter_test_issues(self):
+    def test_filter_test_issues(self) -> None:
         """Test test issue filtering."""
         df = pd.DataFrame(
             {
@@ -207,7 +208,7 @@ class TestDataFiltering:
         result = _filter_and_clean_data(df, ("Q", "N"), False, True)
         assert len(result) == 3
 
-    def test_deduplication_and_sorting(self):
+    def test_deduplication_and_sorting(self) -> None:
         """Test deduplication and sorting."""
         df = pd.DataFrame(
             {
@@ -230,7 +231,7 @@ class TestMainFunction:
     """Test the main get_exchange_listed_tickers function."""
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_success(self, mock_download):
+    def test_get_exchange_listed_tickers_success(self, mock_download: Any) -> None:
         """Test successful ticker fetching."""
         # Mock download responses
         nasdaq_content = (
@@ -256,13 +257,13 @@ class TestMainFunction:
         assert "HIMS" in tickers
         assert len(df) == 3
 
-    def test_get_exchange_listed_tickers_invalid_exchanges(self):
+    def test_get_exchange_listed_tickers_invalid_exchanges(self) -> None:
         """Test error handling for invalid exchange codes."""
         with pytest.raises(ValueError, match="Invalid exchange codes"):
             get_exchange_listed_tickers(exchanges=("INVALID",))
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_defaults(self, mock_download):
+    def test_get_exchange_listed_tickers_defaults(self, mock_download: Any) -> None:
         """Test default behavior (Q, N exchanges, no ETFs, no test issues)."""
         nasdaq_content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -290,7 +291,7 @@ class TestMainFunction:
         assert "TEST" not in tickers
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_include_etfs(self, mock_download):
+    def test_get_exchange_listed_tickers_include_etfs(self, mock_download: Any) -> None:
         """Test including ETFs."""
         nasdaq_content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -314,8 +315,8 @@ class TestMainFunction:
 
     @patch("us_tickers.fetch._download_file")
     def test_get_exchange_listed_tickers_include_test_issues(
-        self, mock_download
-    ):
+        self, mock_download: Any
+    ) -> None:
         """Test including test issues."""
         nasdaq_content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -342,7 +343,7 @@ class TestErrorHandling:
     """Test error handling scenarios."""
 
     @patch("us_tickers.fetch._download_file")
-    def test_download_failure(self, mock_download):
+    def test_download_failure(self, mock_download: Any) -> None:
         """Test handling of download failures."""
         mock_download.side_effect = (
             requests.exceptions.RequestException("Network error")
@@ -353,7 +354,7 @@ class TestErrorHandling:
         ):
             get_exchange_listed_tickers()
 
-    def test_empty_data_handling(self):
+    def test_empty_data_handling(self) -> None:
         """Test handling of empty data."""
         df = pd.DataFrame()
         result = _filter_and_clean_data(df, ("Q", "N"), False, False)
