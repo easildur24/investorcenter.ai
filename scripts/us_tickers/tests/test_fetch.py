@@ -10,9 +10,9 @@ import requests
 from us_tickers.fetch import (
     EXCHANGE_CODES,
     _create_session_with_retries,
+    _filter_and_clean_data,
     _parse_nasdaq_listed,
     _parse_other_listed,
-    _filter_and_clean_data,
     get_exchange_listed_tickers,
 )
 
@@ -114,8 +114,8 @@ class TestOtherListedParsing:
     def test_parse_other_listed_normal(self) -> None:
         """Test normal parsing of otherlisted.txt."""
         content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares\n"
             "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N\n"
             "BRK.A|BERKSHIRE HATHAWAY INC|N|BRK.A|N|1|N|BRK.A|N"
         )
@@ -130,8 +130,8 @@ class TestOtherListedParsing:
     def test_parse_other_listed_with_footer(self) -> None:
         """Test parsing with footer row that should be removed."""
         content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares\n"
             "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N\n"
             "File Creation Time: 01/01/2024 09:00:00"
         )
@@ -231,7 +231,9 @@ class TestMainFunction:
     """Test the main get_exchange_listed_tickers function."""
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_success(self, mock_download: Any) -> None:
+    def test_get_exchange_listed_tickers_success(
+        self, mock_download: Any
+    ) -> None:
         """Test successful ticker fetching."""
         # Mock download responses
         nasdaq_content = (
@@ -242,8 +244,8 @@ class TestMainFunction:
         )
 
         other_content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares\n"
             "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"
         )
 
@@ -263,7 +265,9 @@ class TestMainFunction:
             get_exchange_listed_tickers(exchanges=("INVALID",))
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_defaults(self, mock_download: Any) -> None:
+    def test_get_exchange_listed_tickers_defaults(
+        self, mock_download: Any
+    ) -> None:
         """Test default behavior (Q, N exchanges, no ETFs, no test issues)."""
         nasdaq_content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -274,8 +278,8 @@ class TestMainFunction:
         )
 
         other_content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares\n"
             "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"
         )
 
@@ -291,7 +295,9 @@ class TestMainFunction:
         assert "TEST" not in tickers
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_include_etfs(self, mock_download: Any) -> None:
+    def test_get_exchange_listed_tickers_include_etfs(
+        self, mock_download: Any
+    ) -> None:
         """Test including ETFs."""
         nasdaq_content = (
             "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
@@ -301,8 +307,8 @@ class TestMainFunction:
         )
 
         other_content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares"
         )
 
         mock_download.side_effect = [nasdaq_content, other_content]
@@ -326,8 +332,8 @@ class TestMainFunction:
         )
 
         other_content = (
-            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
-            "Test Issue|NASDAQ Symbol|NextShares"
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|"
+            "Round Lot Size|Test Issue|NASDAQ Symbol|NextShares"
         )
 
         mock_download.side_effect = [nasdaq_content, other_content]
@@ -345,8 +351,8 @@ class TestErrorHandling:
     @patch("us_tickers.fetch._download_file")
     def test_download_failure(self, mock_download: Any) -> None:
         """Test handling of download failures."""
-        mock_download.side_effect = (
-            requests.exceptions.RequestException("Network error")
+        mock_download.side_effect = requests.exceptions.RequestException(
+            "Network error"
         )
 
         with pytest.raises(

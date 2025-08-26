@@ -127,7 +127,9 @@ class TestCLIArgumentParsing:
 
     @patch("us_tickers.cli.get_exchange_listed_tickers")
     @patch("us_tickers.cli.save_output")
-    def test_cli_fetch_command_defaults(self, mock_save: Any, mock_fetch: Any) -> None:
+    def test_cli_fetch_command_defaults(
+        self, mock_save: Any, mock_fetch: Any
+    ) -> None:
         """Test CLI fetch command with default arguments."""
         from us_tickers.cli import main
 
@@ -140,7 +142,9 @@ class TestCLIArgumentParsing:
 
         # Verify fetch was called with defaults
         mock_fetch.assert_called_once_with(
-            exchanges=("Q", "N"), include_etfs=False, include_test_issues=False
+            exchanges=("Q", "N"),
+            include_etfs=False,
+            include_test_issues=False,
         )
 
         # Verify save was called
@@ -148,7 +152,9 @@ class TestCLIArgumentParsing:
 
     @patch("us_tickers.cli.get_exchange_listed_tickers")
     @patch("us_tickers.cli.save_output")
-    def test_cli_fetch_command_with_options(self, mock_save: Any, mock_fetch: Any) -> None:
+    def test_cli_fetch_command_with_options(
+        self, mock_save: Any, mock_fetch: Any
+    ) -> None:
         """Test CLI fetch command with all options."""
         from us_tickers.cli import main
 
@@ -176,7 +182,9 @@ class TestCLIArgumentParsing:
 
         # Verify fetch was called with options
         mock_fetch.assert_called_once_with(
-            exchanges=("Q", "P"), include_etfs=True, include_test_issues=True
+            exchanges=("Q", "P"),
+            include_etfs=True,
+            include_test_issues=True,
         )
 
         # Verify save was called with JSON format
