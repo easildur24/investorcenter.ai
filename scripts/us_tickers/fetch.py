@@ -71,8 +71,7 @@ def _create_session_with_retries() -> requests.Session:
 
 
 def _download_file(
-    url: str,
-    session: Optional[requests.Session] = None
+    url: str, session: Optional[requests.Session] = None
 ) -> str:
     """Download file content from URL with retries."""
     if session is None:
@@ -238,15 +237,19 @@ def get_exchange_listed_tickers(
     session: Optional[requests.Session] = None,
 ) -> Tuple[list[str], pd.DataFrame]:
     """
-    Download and merge Nasdaq + NYSE tickers from Nasdaq Trader symbol directories.
+    Download and merge Nasdaq + NYSE tickers from Nasdaq Trader symbol
+    directories.
 
     Args:
         exchanges: Tuple of exchange codes to include. Default: ("Q", "N")
-                  Q = Nasdaq, N = NYSE, A = NYSE American, P = NYSE Arca, Z = Cboe
+                  Q = Nasdaq, N = NYSE, A = NYSE American, P = NYSE Arca,
+                  Z = Cboe
         include_etfs: Whether to include ETFs. Default: False
         include_test_issues: Whether to include test issues. Default: False
-        cache_ttl_hours: Cache TTL in hours (not implemented in this version). Default: 24
-        session: Optional requests.Session for custom HTTP configuration
+        cache_ttl_hours: Cache TTL in hours (not implemented in this version).
+                         Default: 24
+        session: Optional requests.Session for custom HTTP
+                 configuration
 
     Returns:
         Tuple of (ticker_list, dataframe) where:

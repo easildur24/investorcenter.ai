@@ -41,9 +41,7 @@ def parse_exchanges(exchange_arg: str) -> List[str]:
 
 
 def save_output(
-    df: pd.DataFrame,
-    output_path: str,
-    output_format: str
+    df: pd.DataFrame, output_path: str, output_format: str
 ) -> None:
     """Save DataFrame to output file in specified format."""
     output_file = Path(output_path)
@@ -80,20 +78,20 @@ Exchange Codes:
 
 Examples:
   tickers fetch --exchanges Q,N --format csv --out tickers.csv
-  tickers fetch --exchanges Q --include-etfs --format json --out nasdaq_etfs.json
-  tickers fetch --exchanges N,A --include-test-issues --format csv --out nyse_plus_amex.csv
+  tickers fetch --exchanges Q --include-etfs --format json
+    --out nasdaq_etfs.json
+  tickers fetch --exchanges N,A --include-test-issues --format csv
+    --out nyse_plus_amex.csv
         """,
     )
 
     subparsers = parser.add_subparsers(
-        dest="command",
-        help="Available commands"
+        dest="command", help="Available commands"
     )
 
     # Fetch command
     fetch_parser = subparsers.add_parser(
-        "fetch",
-        help="Fetch tickers from exchanges"
+        "fetch", help="Fetch tickers from exchanges"
     )
 
     fetch_parser.add_argument(
@@ -109,7 +107,7 @@ Examples:
     fetch_parser.add_argument(
         "--include-etfs",
         action="store_true",
-        help="Include ETFs in the output"
+        help="Include ETFs in the output",
     )
 
     fetch_parser.add_argument(
@@ -126,16 +124,11 @@ Examples:
     )
 
     fetch_parser.add_argument(
-        "--out",
-        type=str,
-        required=True,
-        help="Output file path"
+        "--out", type=str, required=True, help="Output file path"
     )
 
     fetch_parser.add_argument(
-        "--verbose",
-        action="store_true",
-        help="Enable verbose logging"
+        "--verbose", action="store_true", help="Enable verbose logging"
     )
 
     # Parse arguments

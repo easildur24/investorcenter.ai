@@ -36,13 +36,13 @@ class Config:
     @property
     def nasdaq_listed_url(self) -> str:
         """Get full Nasdaq listed URL."""
-        base = self.nasdaq_base_url.rstrip('/')
+        base = self.nasdaq_base_url.rstrip("/")
         return f"{base}/{self.nasdaq_listed_filename}"
 
     @property
     def other_listed_url(self) -> str:
         """Get full other listed URL."""
-        base = self.nasdaq_base_url.rstrip('/')
+        base = self.nasdaq_base_url.rstrip("/")
         return f"{base}/{self.other_listed_filename}"
 
     @classmethod
@@ -51,7 +51,7 @@ class Config:
         return cls(
             nasdaq_base_url=os.getenv(
                 "NASDAQ_BASE_URL",
-                "https://www.nasdaqtrader.com/dynamic/symdir/"
+                "https://www.nasdaqtrader.com/dynamic/symdir/",
             ),
             timeout_seconds=int(os.getenv("TIMEOUT_SECONDS", "20")),
             max_retries=int(os.getenv("MAX_RETRIES", "3")),
@@ -62,8 +62,8 @@ class Config:
                 os.getenv("DEFAULT_INCLUDE_ETFS", "false").lower() == "true"
             ),
             default_include_test_issues=(
-                os.getenv("DEFAULT_INCLUDE_TEST_ISSUES", "false")
-                .lower() == "true"
+                os.getenv("DEFAULT_INCLUDE_TEST_ISSUES", "false").lower()
+                == "true"
             ),
         )
 

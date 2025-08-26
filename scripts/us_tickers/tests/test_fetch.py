@@ -1,21 +1,19 @@
 """Unit tests for the fetch module."""
 
-import os
-import sys
-from unittest.mock import Mock, mock_open, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
 import requests
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-# Import RuntimeError for error handling tests
-from builtins import RuntimeError
-
-from us_tickers.fetch import (EXCHANGE_CODES, _create_session_with_retries,
-                              _filter_and_clean_data, _parse_nasdaq_listed,
-                              _parse_other_listed, get_exchange_listed_tickers)
+from us_tickers.fetch import (
+    EXCHANGE_CODES,
+    _create_session_with_retries,
+    _parse_nasdaq_listed,
+    _parse_other_listed,
+    _filter_and_clean_data,
+    get_exchange_listed_tickers,
+)
 
 
 class TestExchangeCodes:
@@ -51,10 +49,13 @@ class TestNasdaqListedParsing:
 
     def test_parse_nasdaq_listed_normal(self):
         """Test normal parsing of nasdaqlisted.txt."""
-        content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-MSFT|MICROSOFT CORP|Q|N|N|100|N|N
-QQQ|INVESCO QQQ TRUST|Q|N|N|100|Y|N"""
+        content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "MSFT|MICROSOFT CORP|Q|N|N|100|N|N\n"
+            "QQQ|INVESCO QQQ TRUST|Q|N|N|100|Y|N"
+        )
 
         df = _parse_nasdaq_listed(content)
 
@@ -67,9 +68,12 @@ QQQ|INVESCO QQQ TRUST|Q|N|N|100|Y|N"""
 
     def test_parse_nasdaq_listed_with_footer(self):
         """Test parsing with footer row that should be removed."""
-        content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-File Creation Time: 01/01/2024 09:00:00"""
+        content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "File Creation Time: 01/01/2024 09:00:00"
+        )
 
         df = _parse_nasdaq_listed(content)
 
@@ -91,8 +95,11 @@ Another invalid line"""
 
     def test_parse_nasdaq_listed_normalization(self):
         """Test string normalization."""
-        content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-  aapl  |  APPLE INC  |Q|N|N|100|N|N"""
+        content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "  aapl  |  APPLE INC  |Q|N|N|100|N|N"
+        )
 
         df = _parse_nasdaq_listed(content)
 
@@ -105,9 +112,12 @@ class TestOtherListedParsing:
 
     def test_parse_other_listed_normal(self):
         """Test normal parsing of otherlisted.txt."""
-        content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares
-HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N
-BRK.A|BERKSHIRE HATHAWAY INC|N|BRK.A|N|1|N|BRK.A|N"""
+        content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N\n"
+            "BRK.A|BERKSHIRE HATHAWAY INC|N|BRK.A|N|1|N|BRK.A|N"
+        )
 
         df = _parse_other_listed(content)
 
@@ -118,9 +128,12 @@ BRK.A|BERKSHIRE HATHAWAY INC|N|BRK.A|N|1|N|BRK.A|N"""
 
     def test_parse_other_listed_with_footer(self):
         """Test parsing with footer row that should be removed."""
-        content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares
-HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N
-File Creation Time: 01/01/2024 09:00:00"""
+        content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N\n"
+            "File Creation Time: 01/01/2024 09:00:00"
+        )
 
         df = _parse_other_listed(content)
 
@@ -220,12 +233,18 @@ class TestMainFunction:
     def test_get_exchange_listed_tickers_success(self, mock_download):
         """Test successful ticker fetching."""
         # Mock download responses
-        nasdaq_content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-MSFT|MICROSOFT CORP|Q|N|N|100|N|N"""
+        nasdaq_content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "MSFT|MICROSOFT CORP|Q|N|N|100|N|N"
+        )
 
-        other_content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares
-HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"""
+        other_content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"
+        )
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
@@ -245,13 +264,19 @@ HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"""
     @patch("us_tickers.fetch._download_file")
     def test_get_exchange_listed_tickers_defaults(self, mock_download):
         """Test default behavior (Q, N exchanges, no ETFs, no test issues)."""
-        nasdaq_content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-SPY|SPDR S&P 500 ETF|Q|N|N|100|Y|N
-TEST|TEST ISSUE|Q|Y|N|100|N|N"""
+        nasdaq_content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "SPY|SPDR S&P 500 ETF|Q|N|N|100|Y|N\n"
+            "TEST|TEST ISSUE|Q|Y|N|100|N|N"
+        )
 
-        other_content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares
-HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"""
+        other_content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares\n"
+            "HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"
+        )
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
@@ -267,11 +292,17 @@ HIMS|HIMS & HERS HEALTH INC|N|HIMS|N|100|N|HIMS|N"""
     @patch("us_tickers.fetch._download_file")
     def test_get_exchange_listed_tickers_include_etfs(self, mock_download):
         """Test including ETFs."""
-        nasdaq_content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-SPY|SPDR S&P 500 ETF|Q|N|N|100|Y|N"""
+        nasdaq_content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "SPY|SPDR S&P 500 ETF|Q|N|N|100|Y|N"
+        )
 
-        other_content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares"""
+        other_content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares"
+        )
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
@@ -282,13 +313,21 @@ SPY|SPDR S&P 500 ETF|Q|N|N|100|Y|N"""
         assert "SPY" in tickers
 
     @patch("us_tickers.fetch._download_file")
-    def test_get_exchange_listed_tickers_include_test_issues(self, mock_download):
+    def test_get_exchange_listed_tickers_include_test_issues(
+        self, mock_download
+    ):
         """Test including test issues."""
-        nasdaq_content = """Symbol|Security Name|Market Category|Test Issue|Financial Status|Round Lot Size|ETF|NextShares
-AAPL|APPLE INC|Q|N|N|100|N|N
-TEST|TEST ISSUE|Q|Y|N|100|N|N"""
+        nasdaq_content = (
+            "Symbol|Security Name|Market Category|Test Issue|Financial Status|"
+            "Round Lot Size|ETF|NextShares\n"
+            "AAPL|APPLE INC|Q|N|N|100|N|N\n"
+            "TEST|TEST ISSUE|Q|Y|N|100|N|N"
+        )
 
-        other_content = """ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|Test Issue|NASDAQ Symbol|NextShares"""
+        other_content = (
+            "ACT Symbol|Security Name|Exchange|CQS Symbol|ETF|Round Lot Size|"
+            "Test Issue|NASDAQ Symbol|NextShares"
+        )
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
@@ -305,11 +344,13 @@ class TestErrorHandling:
     @patch("us_tickers.fetch._download_file")
     def test_download_failure(self, mock_download):
         """Test handling of download failures."""
-        mock_download.side_effect = requests.exceptions.RequestException(
-            "Network error"
+        mock_download.side_effect = (
+            requests.exceptions.RequestException("Network error")
         )
 
-        with pytest.raises(RuntimeError, match="Failed to fetch data from all sources"):
+        with pytest.raises(
+            RuntimeError, match="Failed to fetch data from all sources"
+        ):
             get_exchange_listed_tickers()
 
     def test_empty_data_handling(self):

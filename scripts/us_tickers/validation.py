@@ -63,9 +63,7 @@ class TickerData(BaseModel):
 
 
 def validate_exchange_config(
-    exchanges: Tuple[str, ...],
-    include_etfs: bool,
-    include_test_issues: bool
+    exchanges: Tuple[str, ...], include_etfs: bool, include_test_issues: bool
 ) -> ExchangeConfig:
     """Validate exchange configuration."""
     return ExchangeConfig(

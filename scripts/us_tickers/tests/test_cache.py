@@ -1,14 +1,9 @@
 """Unit tests for the cache module."""
 
-import os
-import sys
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
 
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from us_tickers.cache import SimpleCache
 

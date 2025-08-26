@@ -81,8 +81,10 @@ class SimpleCache:
 
         try:
             # Handle pandas DataFrames specially
-            if (hasattr(value, "__class__") and
-                    value.__class__.__name__ == "DataFrame"):
+            if (
+                hasattr(value, "__class__")
+                and value.__class__.__name__ == "DataFrame"
+            ):
                 # Convert DataFrame to dict for JSON serialization
                 serializable_value = {
                     "type": "DataFrame",

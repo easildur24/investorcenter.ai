@@ -2,15 +2,11 @@
 
 import logging
 import os
-import sys
 import tempfile
-from pathlib import Path
-from unittest.mock import mock_open, patch
+from unittest.mock import patch
 
 import pandas as pd
 import pytest
-
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from us_tickers.cli import parse_exchanges, save_output, setup_logging
 
@@ -45,7 +41,11 @@ class TestOutputSaving:
     def test_save_csv_output(self):
         """Test saving CSV output."""
         df = pd.DataFrame(
-            {"Ticker": ["AAPL", "MSFT"], "Exchange": ["Q", "Q"], "ETF": ["N", "N"]}
+            {
+                "Ticker": ["AAPL", "MSFT"],
+                "Exchange": ["Q", "Q"],
+                "ETF": ["N", "N"],
+            }
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -65,7 +65,11 @@ class TestOutputSaving:
     def test_save_json_output(self):
         """Test saving JSON output."""
         df = pd.DataFrame(
-            {"Ticker": ["AAPL", "MSFT"], "Exchange": ["Q", "Q"], "ETF": ["N", "N"]}
+            {
+                "Ticker": ["AAPL", "MSFT"],
+                "Exchange": ["Q", "Q"],
+                "ETF": ["N", "N"],
+            }
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
