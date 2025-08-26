@@ -1,0 +1,179 @@
+# US Tickers
+
+A Python package for downloading and merging Nasdaq + NYSE tickers using Nasdaq Trader symbol directories. The package provides both a Python API and command-line interface for fetching, cleaning, and exporting US exchange ticker data.
+
+## Features
+
+- **Multi-Exchange Support**: Download tickers from Nasdaq, NYSE, NYSE American, NYSE Arca, and Cboe
+- **Smart Filtering**: Exclude ETFs and test issues by default (configurable)
+- **Data Cleaning**: Automatic normalization, deduplication, and sorting
+- **Multiple Output Formats**: CSV and JSON export options
+- **Robust Error Handling**: Retry logic with exponential backoff
+- **Comprehensive Testing**: Full test coverage with pytest
+- **CLI Interface**: Easy-to-use command-line tool
+
+## Installation
+
+### From Source
+
+```bash
+cd scripts/us_tickers
+pip install -e .
+```
+
+### Development Installation
+
+```bash
+cd scripts/us_tickers
+pip install -e ".[dev]"
+```
+
+## Quick Start
+
+### Python API
+
+```python
+from us_tickers import get_exchange_listed_tickers
+
+# Get default tickers (Nasdaq + NYSE, no ETFs, no test issues)
+tickers, df = get_exchange_listed_tickers()
+
+print(f"Found {len(tickers)} tickers")
+print(f"First 10: {tickers[:10]}")
+
+# Get tickers including ETFs
+tickers_with_etfs, df_with_etfs = get_exchange_listed_tickers(include_etfs=True)
+
+# Get tickers from specific exchanges
+nasdaq_only, nasdaq_df = get_exchange_listed_tickers(exchanges=("Q",))
+nyse_plus_amex, combined_df = get_exchange_listed_tickers(exchanges=("N", "A"))
+```
+
+### Command Line
+
+```bash
+# Basic usage - fetch Nasdaq + NYSE tickers
+tickers fetch --out tickers.csv
+
+# Include ETFs and test issues
+tickers fetch --include-etfs --include-test-issues --out all_tickers.csv
+
+# Specific exchanges with JSON output
+tickers fetch --exchanges Q,N,A --format json --out tickers.json
+
+# Verbose logging
+tickers fetch --exchanges Q,N --verbose --out tickers.csv
+```
+
+## Exchange Codes
+
+| Code | Exchange |
+|------|----------|
+| `Q`  | Nasdaq |
+| `N`  | NYSE |
+| `A`  | NYSE American |
+| `P`  | NYSE Arca |
+| `Z`  | Cboe |
+
+## API Reference
+
+### `get_exchange_listed_tickers()`
+
+Main function for fetching ticker data.
+
+**Parameters:**
+- `exchanges` (tuple[str, ...]): Exchange codes to include. Default: `("Q", "N")`
+- `include_etfs` (bool): Whether to include ETFs. Default: `False`
+- `include_test_issues` (bool): Whether to include test issues. Default: `False`
+- `cache_ttl_hours` (int | None): Cache TTL in hours. Default: `24`
+- `session` (requests.Session | None): Optional custom HTTP session
+
+**Returns:**
+- `tuple[list[str], pd.DataFrame]`: (ticker_list, dataframe)
+
+## Data Processing
+
+### Input Sources
+
+The package downloads data from two Nasdaq Trader endpoints:
+- **Nasdaq Listed**: `https://www.nasdaqtrader.com/dynamic/symdir/nasdaqlisted.txt`
+- **Other Listed**: `https://www.nasdaqtrader.com/dynamic/symdir/otherlisted.txt`
+
+### Data Cleaning
+
+1. **Footer Removal**: Automatically removes "File Creation Time" footer rows
+2. **String Normalization**: Strips whitespace and converts to uppercase
+3. **Column Standardization**: Maps different file formats to common schema
+4. **Filtering**: Applies ETF and test issue filters based on flags
+5. **Deduplication**: Removes duplicate tickers, keeping first occurrence
+6. **Sorting**: Sorts tickers alphabetically
+
+## Examples
+
+### Example 1: Basic Usage
+
+```python
+from us_tickers import get_exchange_listed_tickers
+
+# Get default tickers
+tickers, df = get_exchange_listed_tickers()
+
+print(f"Total tickers: {len(tickers)}")
+print(f"Sample tickers: {tickers[:5]}")
+
+# Filter for specific companies
+apple_data = df[df['Ticker'] == 'AAPL']
+print(f"AAPL exchange: {apple_data.iloc[0]['Exchange']}")
+print(f"AAPL name: {apple_data.iloc[0]['Security Name']}")
+```
+
+### Example 2: Exchange-Specific Analysis
+
+```python
+# Get only NYSE tickers
+nyse_tickers, nyse_df = get_exchange_listed_tickers(exchanges=("N",))
+
+print(f"NYSE tickers: {len(nyse_tickers)}")
+
+# Check if HIMS is on NYSE
+hims_on_nyse = "HIMS" in nyse_tickers
+print(f"HIMS on NYSE: {hims_on_nyse}")
+```
+
+## Testing
+
+Run the test suite:
+
+```bash
+cd scripts/us_tickers
+pytest tests/ -v
+
+# Run with coverage
+pytest tests/ -v --cov=us_tickers --cov-report=term-missing
+```
+
+## Development
+
+### Project Structure
+
+```
+scripts/us_tickers/
+├── __init__.py          # Package initialization
+├── fetch.py             # Core ticker fetching logic
+├── cli.py               # Command-line interface
+├── cache.py             # Optional caching functionality
+├── tests/               # Unit tests
+├── pyproject.toml       # Package configuration
+└── README.md           # This file
+```
+
+## License
+
+MIT License - see LICENSE file for details.
+
+## Support
+
+For issues and questions:
+1. Check the existing issues
+2. Create a new issue with detailed description
+3. Include error messages and system information

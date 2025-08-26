@@ -1,0 +1,2 @@
+[console_scripts]
+tickers = us_tickers.cli:main
