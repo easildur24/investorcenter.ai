@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: investorcenter-app
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/app:latest
+        image: investorcenter/app:latest
         ports:
         - containerPort: 3000
         env:

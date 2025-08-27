@@ -13,7 +13,7 @@ variable "cluster_version" {
 variable "domain_name" {
   description = "Domain name for the application"
   type        = string
-  default     = "investorcenter.com"
+  default     = "investorcenter.ai"
 }
 
 variable "environment" {

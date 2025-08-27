@@ -7,12 +7,12 @@ metadata:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:ACCOUNT_ID:certificate/CERTIFICATE_ID
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:us-east-1:360358043271:certificate/2ad9333d-8234-4232-b412-8b9af8ebd225
     alb.ingress.kubernetes.io/ssl-redirect: '443'
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
 spec:
   rules:
-  - host: investorcenter.com
+  - host: investorcenter.ai
     http:
       paths:
       - path: /api
@@ -29,7 +29,7 @@ spec:
             name: investorcenter-service
             port:
               number: 80
-  - host: www.investorcenter.com
+  - host: www.investorcenter.ai
     http:
       paths:
       - path: /api

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
-import { TrendingUpIcon, TrendingDownIcon } from '@heroicons/react/24/outline';
+import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
 
 interface MarketIndex {
   symbol: string;
@@ -100,9 +100,9 @@ export default function MarketOverview() {
                 index.change >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
                 {index.change >= 0 ? (
-                  <TrendingUpIcon className="h-4 w-4 mr-1" />
+                  <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
                 ) : (
-                  <TrendingDownIcon className="h-4 w-4 mr-1" />
+                  <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
                 )}
                 <span>
                   {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)} 

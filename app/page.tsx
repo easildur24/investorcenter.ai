@@ -1,4 +1,4 @@
-import { ChartBarIcon, TrendingUpIcon, DocumentChartBarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
+import { ChartBarIcon, ArrowTrendingUpIcon, DocumentChartBarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import MarketOverview from '@/components/MarketOverview'
 
 export default function Home() {
@@ -59,7 +59,7 @@ export default function Home() {
         <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
           <div className="h-56 w-full bg-gradient-to-r from-primary-400 to-primary-600 sm:h-72 md:h-96 lg:w-full lg:h-full flex items-center justify-center">
             <div className="text-white text-center">
-              <TrendingUpIcon className="h-24 w-24 mx-auto mb-4 opacity-80" />
+              <ArrowTrendingUpIcon className="h-24 w-24 mx-auto mb-4 opacity-80" />
               <p className="text-lg font-medium">Interactive Charts & Analytics</p>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function Home() {
 
               <div className="relative">
                 <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-primary-500 text-white">
-                  <TrendingUpIcon className="h-6 w-6" />
+                  <ArrowTrendingUpIcon className="h-6 w-6" />
                 </div>
                 <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Market Analytics</p>
                 <p className="mt-2 ml-16 text-base text-gray-500">

@@ -1,0 +1,29 @@
+{
+  "Comment": "Create A records for investorcenter.ai",
+  "Changes": [
+    {
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "investorcenter.ai",
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": "k8s-investor-investor-b2b6f2137e-957095343.us-east-1.elb.amazonaws.com",
+          "EvaluateTargetHealth": true,
+          "HostedZoneId": "Z35SXDOTRQ7X7K"
+        }
+      }
+    },
+    {
+      "Action": "CREATE", 
+      "ResourceRecordSet": {
+        "Name": "www.investorcenter.ai",
+        "Type": "A",
+        "AliasTarget": {
+          "DNSName": "k8s-investor-investor-b2b6f2137e-957095343.us-east-1.elb.amazonaws.com",
+          "EvaluateTargetHealth": true,
+          "HostedZoneId": "Z35SXDOTRQ7X7K"
+        }
+      }
+    }
+  ]
+}
