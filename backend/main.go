@@ -9,6 +9,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"investorcenter-api/handlers"
 )
 
 func main() {
@@ -56,6 +57,20 @@ func main() {
 			markets.GET("/stocks/:symbol", getStockData)
 			markets.GET("/stocks/:symbol/chart", getStockChart)
 			markets.GET("/search", searchSecurities)
+		}
+
+		// Ticker page endpoints
+		tickers := v1.Group("/tickers")
+		{
+			tickers.GET("/:symbol", handlers.GetTickerOverview)
+			tickers.GET("/:symbol/chart", handlers.GetTickerChart)
+			tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
+			tickers.GET("/:symbol/news", handlers.GetTickerNews)
+			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
+			tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
+			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
+			tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
+			tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
 
 		// Portfolio endpoints
