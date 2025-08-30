@@ -149,11 +149,14 @@ Examples:
             logger.info(f"Fetching tickers for exchanges: {exchanges}")
 
             # Fetch tickers
-            ticker_list, df = get_exchange_listed_tickers(
+            df = get_exchange_listed_tickers(
                 exchanges=tuple(exchanges),
                 include_etfs=args.include_etfs,
                 include_test_issues=args.include_test_issues,
             )
+
+            # Extract ticker list for display
+            ticker_list = df["Ticker"].tolist()
 
             # Display summary
             print(f"Fetched {len(ticker_list)} tickers:")

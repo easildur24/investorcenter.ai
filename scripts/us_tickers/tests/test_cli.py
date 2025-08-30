@@ -133,7 +133,8 @@ class TestCLIArgumentParsing:
         from us_tickers.cli import main
 
         # Mock the fetch function
-        mock_fetch.return_value = (["AAPL", "MSFT"], pd.DataFrame())
+        mock_df = pd.DataFrame({"Ticker": ["AAPL", "MSFT"]})
+        mock_fetch.return_value = mock_df
 
         # Mock command line arguments
         with patch("sys.argv", ["tickers", "fetch", "--out", "test.csv"]):
@@ -158,7 +159,8 @@ class TestCLIArgumentParsing:
         from us_tickers.cli import main
 
         # Mock the fetch function
-        mock_fetch.return_value = (["AAPL", "SPY"], pd.DataFrame())
+        mock_df = pd.DataFrame({"Ticker": ["AAPL", "SPY"]})
+        mock_fetch.return_value = mock_df
 
         # Mock command line arguments
         with patch(

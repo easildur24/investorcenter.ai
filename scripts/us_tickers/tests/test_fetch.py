@@ -250,8 +250,11 @@ class TestMainFunction:
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
-        tickers, df = get_exchange_listed_tickers(exchanges=("Q", "N"))
+        df = get_exchange_listed_tickers(
+            exchanges=("Q", "N"), cache_ttl_hours=0
+        )
 
+        tickers = df["Ticker"].tolist()
         assert len(tickers) == 3
         assert "AAPL" in tickers
         assert "MSFT" in tickers
@@ -284,8 +287,9 @@ class TestMainFunction:
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
-        tickers, df = get_exchange_listed_tickers()
+        df = get_exchange_listed_tickers(cache_ttl_hours=0)
 
+        tickers = df["Ticker"].tolist()
         # Should only include AAPL and HIMS (exclude SPY=ETF, TEST=test issue)
         assert len(tickers) == 2
         assert "AAPL" in tickers
@@ -312,8 +316,9 @@ class TestMainFunction:
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
-        tickers, df = get_exchange_listed_tickers(include_etfs=True)
+        df = get_exchange_listed_tickers(include_etfs=True, cache_ttl_hours=0)
 
+        tickers = df["Ticker"].tolist()
         assert len(tickers) == 2
         assert "AAPL" in tickers
         assert "SPY" in tickers
@@ -337,8 +342,11 @@ class TestMainFunction:
 
         mock_download.side_effect = [nasdaq_content, other_content]
 
-        tickers, df = get_exchange_listed_tickers(include_test_issues=True)
+        df = get_exchange_listed_tickers(
+            include_test_issues=True, cache_ttl_hours=0
+        )
 
+        tickers = df["Ticker"].tolist()
         assert len(tickers) == 2
         assert "AAPL" in tickers
         assert "TEST" in tickers
@@ -357,7 +365,7 @@ class TestErrorHandling:
         with pytest.raises(
             RuntimeError, match="Failed to fetch data from all sources"
         ):
-            get_exchange_listed_tickers()
+            get_exchange_listed_tickers(cache_ttl_hours=0)
 
     def test_empty_data_handling(self) -> None:
         """Test handling of empty data."""
