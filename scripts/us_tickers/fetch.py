@@ -43,7 +43,6 @@ OTHER_COLUMNS = [
     "Round Lot Size",
     "Test Issue",
     "NASDAQ Symbol",
-    "NextShares",
 ]
 
 
@@ -167,10 +166,16 @@ def _parse_other_listed(content: str) -> pd.DataFrame:
     for i, line in enumerate(lines):
         if "|" in line:
             fields = line.split("|")
-            if len(fields) >= len(OTHER_COLUMNS):
+            # Check if we have enough fields (should be exactly 8 for NYSE
+            # data)
+            if len(fields) == 8:
                 # Skip header row (first line)
                 if i > 0:
-                    data.append(fields[: len(OTHER_COLUMNS)])
+                    data.append(fields)
+            elif len(fields) > 8:
+                # Some lines might have extra fields, take first 8
+                if i > 0:
+                    data.append(fields[:8])
 
     if not data:
         logger.warning("No valid data rows found in otherlisted.txt")
@@ -234,7 +239,7 @@ def get_exchange_listed_tickers(
     include_test_issues: Optional[bool] = None,
     cache_ttl_hours: Optional[int] = None,
     session: Optional[requests.Session] = None,
-) -> Tuple[list[str], pd.DataFrame]:
+) -> pd.DataFrame:
     """
     Download and merge Nasdaq + NYSE tickers from Nasdaq Trader symbol
     directories.
@@ -299,8 +304,7 @@ def get_exchange_listed_tickers(
         cached_result = cache.get(cache_key, cache_ttl_hours)
         if cached_result is not None:
             logger.info("Using cached ticker data")
-            ticker_list, result_df = cached_result
-            return ticker_list, result_df
+            return cached_result  # type: ignore[no-any-return]
 
     # Download data with fallback - continue if one source fails
     nasdaq_df = pd.DataFrame()
@@ -318,6 +322,7 @@ def get_exchange_listed_tickers(
         other_df = _parse_other_listed(other_content)
     except Exception as e:
         logger.error(f"Failed to fetch other exchanges data: {e}")
+        other_df = pd.DataFrame()
 
     # Check if we have any data
     if nasdaq_df.empty and other_df.empty:
@@ -346,8 +351,8 @@ def get_exchange_listed_tickers(
         combined_df, exchanges, include_etfs, include_test_issues
     )
 
-    # Extract ticker list
-    ticker_list = result_df["Ticker"].tolist()
+    # Note: ticker_list extraction removed as function now returns
+    # DataFrame only
 
     # Cache the result if caching is enabled
     if cache_ttl_hours and cache_ttl_hours > 0:
@@ -357,10 +362,10 @@ def get_exchange_listed_tickers(
                 f"tickers_{','.join(exchanges)}_"
                 f"{include_etfs}_{include_test_issues}"
             )
-            cache.set(cache_key, (ticker_list, result_df))
+            cache.set(cache_key, result_df)
             logger.info("Cached ticker data for future use")
         except Exception as e:
             logger.warning(f"Failed to cache data: {e}")
             # Continue without caching - this is not critical
 
-    return ticker_list, result_df
+    return result_df

@@ -26,5 +26,21 @@ repos:
     hooks:
       - id: mypy
         args: [--ignore-missing-imports]
-        additional_dependencies: [types-requests, pandas-stubs]
+        additional_dependencies: [types-requests, pandas-stubs, pydantic]
         files: ^scripts/us_tickers/
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.10
+    hooks:
+      - id: bandit
+        args: [--skip, B101]
+        files: ^scripts/us_tickers/
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: python -m pytest scripts/us_tickers/tests/ -v
+        language: system
+        pass_filenames: false
+        always_run: true
