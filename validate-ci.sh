@@ -39,8 +39,7 @@ echo "------------------------------"
 echo "Running: bandit -r scripts/us_tickers/ --skip B101"
 bandit -r scripts/us_tickers/ --skip B101 >/dev/null 2>&1
 
-echo "Running: safety check"
-echo "⚠️  Safety check skipped (version conflict in both local and CI)"
+echo "Note: safety check temporarily disabled due to typer version conflict"
 
 echo "Running: isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79"
 isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
