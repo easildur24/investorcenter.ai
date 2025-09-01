@@ -26,6 +26,12 @@ help:
 	@echo "  make db-import       - Import/update ticker data"
 	@echo "  make db-status       - Check database status"
 	@echo ""
+	@echo "Kubernetes:"
+	@echo "  make k8s-setup       - Deploy PostgreSQL to Kubernetes"
+	@echo "  make k8s-deploy-cron - Deploy ticker update CronJob"
+	@echo "  make k8s-cron-status - Check CronJob status and recent runs"
+	@echo "  make k8s-cron-logs   - View recent CronJob logs"
+	@echo ""
 	@echo "Quality:"
 	@echo "  make format          - Format all code"
 	@echo "  make lint            - Run linting checks"
@@ -119,6 +125,26 @@ k8s-setup:
 	kubectl apply -f k8s/namespace.yaml
 	kubectl create secret generic postgres-secret --from-literal=username=$(DB_USER) --from-literal=password=prod_investorcenter_456 -n investorcenter || true
 	kubectl apply -f k8s/postgres-deployment.yaml
+
+k8s-deploy-cron:
+	@echo "Building and deploying ticker update CronJob..."
+	./scripts/build-ticker-updater.sh
+	kubectl apply -f k8s/ticker-update-cronjob.yaml
+	@echo "✅ CronJob deployed! Check status with: kubectl get cronjobs -n investorcenter"
+
+k8s-cron-status:
+	@echo "Ticker Update CronJob Status:"
+	@echo "=============================="
+	kubectl get cronjobs -n investorcenter
+	@echo ""
+	@echo "Recent Jobs:"
+	kubectl get jobs -n investorcenter -l app=ticker-update --sort-by=.metadata.creationTimestamp
+	@echo ""
+	@echo "To trigger manual run: kubectl create job --from=cronjob/ticker-update manual-ticker-update -n investorcenter"
+
+k8s-cron-logs:
+	@echo "Recent ticker update logs:"
+	@kubectl logs -n investorcenter -l app=ticker-update --tail=50
 
 db-import-prod:
 	@echo "Setting up production database access..."
