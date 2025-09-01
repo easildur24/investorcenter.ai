@@ -21,8 +21,12 @@ from pathlib import Path
 # Add the us_tickers module to Python path
 sys.path.append(str(Path(__file__).parent))
 
-from us_tickers import (get_exchange_listed_tickers, import_stocks_to_database,
-                        test_database_connection, transform_for_database)
+from us_tickers import (
+    get_exchange_listed_tickers,
+    import_stocks_to_database,
+    test_database_connection,
+    transform_for_database,
+)
 from us_tickers.database import get_database_stats
 
 

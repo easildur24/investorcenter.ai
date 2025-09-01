@@ -5,335 +5,102 @@ A professional financial data and analytics platform similar to YCharts, built w
 ## Features
 
 - **Modern Frontend**: Next.js 14 with React 18, TypeScript, and Tailwind CSS
-- **High-Performance Backend**: Go API server with Gin framework
+- **High-Performance Backend**: Go API server with Gin framework  
+- **Financial Database**: PostgreSQL with 4,600+ US stocks and 9 financial data tables
 - **Real-time Data**: Live market data and financial analytics
-- **Database**: PostgreSQL for persistent data, Redis for caching
 - **Professional UI**: Clean, responsive design similar to YCharts
 - **Cloud-Native**: Containerized with Docker and deployed on AWS EKS
-- **Scalable Infrastructure**: Auto-scaling Kubernetes deployment
-- **SSL/TLS**: Secure HTTPS with AWS Certificate Manager
-- **Domain Integration**: Custom domain routing with Route53
-- **Automated Data**: Direct ticker import from exchanges with periodic updates
-
-## 🏗️ Architecture
-
-```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────────────────────┐
-│   Route53       │    │  Application     │    │         EKS Cluster             │
-│   DNS           │───▶│  Load Balancer   │───▶│  ┌─────────────┐ ┌─────────────┐ │
-│                 │    │  (ALB)           │    │  │  Next.js    │ │   Go API    │ │
-└─────────────────┘    └──────────────────┘    │  │  Frontend   │ │   Backend   │ │
-                                               │  └─────────────┘ └─────────────┘ │
-                                               │  ┌─────────────┐ ┌─────────────┐ │
-                                               │  │ PostgreSQL  │ │   Redis     │ │
-                                               │  │  Database   │ │   Cache     │ │
-                                               │  └─────────────┘ └─────────────┘ │
-                                               └─────────────────────────────────┘
-                                                         │
-                                                         ▼
-                                               ┌─────────────────┐
-                                               │  ECR Registry   │
-                                               │  (Docker Images)│
-                                               └─────────────────┘
-```
-
-## 📋 Prerequisites
-
-Before you begin, ensure you have the following installed:
-
-- [Node.js](https://nodejs.org/) (v18 or later)
-- [Docker](https://www.docker.com/)
-- [AWS CLI](https://aws.amazon.com/cli/) (configured with appropriate permissions)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/)
-- [Terraform](https://www.terraform.io/) (v1.0 or later)
-
-### AWS Permissions Required
-
-Your AWS user/role needs the following permissions:
-- EKS full access
-- EC2 full access
-- VPC full access
-- IAM full access
-- Route53 full access
-- Certificate Manager full access
-- Elastic Load Balancing full access
-- ECR full access
 
 ## Quick Start
 
-### 1. Clone and Setup
-
 ```bash
-git clone <your-repo>
+# Complete setup in one command
+git clone <repository-url> investorcenter.ai
 cd investorcenter.ai
-npm install
+make setup
+
+# Start development
+make dev
 ```
 
-### 2. Configure Domain
+This will:
+1. Install all dependencies (Node.js, Go, Python, PostgreSQL)
+2. Setup database with migrations and import 4,600+ stock tickers
+3. Configure development environment
+4. Start both backend (port 8080) and frontend (port 3000)
 
-Update the domain configuration in `terraform/variables.tf`:
-
-```hcl
-variable "domain_name" {
-  description = "Domain name for the application"
-  type        = string
-  default     = "investorcenter.com"  # Change to your domain
-}
-```
-
-### 3. Setup AWS Infrastructure
+## Development Commands
 
 ```bash
-# Make scripts executable
-chmod +x scripts/*.sh
-
-# Setup infrastructure
-./scripts/setup-infrastructure.sh
+make dev            # Start full development environment
+make test           # Run all tests and linting  
+make build          # Build backend and frontend
+make check          # Validate code quality before push
+make db-import      # Update stock ticker data
 ```
 
-This will create:
-- EKS cluster with worker nodes
-- VPC with public/private subnets
-- Application Load Balancer
-- ECR repository
-- Route53 records
-- SSL certificate
+See `make help` for all available commands.
 
-### 4. Build and Deploy Application
+## Architecture
 
-```bash
-# Build and push Docker image
-./scripts/build-and-push.sh
+- **Frontend**: Next.js with TypeScript and Tailwind CSS
+- **Backend**: Go API with Gin framework and PostgreSQL
+- **Database**: PostgreSQL with financial data tables and stock tickers
+- **Deployment**: Kubernetes on AWS EKS with Terraform
 
-# Deploy to Kubernetes
-./scripts/deploy.sh
-```
+## Documentation
 
-### 5. Update Kubernetes Deployment
+- **[SETUP.md](SETUP.md)** - Complete setup guide and development workflow
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment to AWS EKS
 
-After the ECR image is pushed, update the deployment to use your specific image:
+## API Endpoints
 
-```bash
-# Get your ECR URI
-AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-ECR_URI="${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com/investorcenter/app:latest"
+- **GET /api/v1/tickers** - List stocks with pagination and search
+- **GET /api/v1/tickers/:symbol** - Stock overview and fundamentals
+- **GET /api/v1/tickers/:symbol/chart** - Historical price data
+- **GET /api/v1/market/indices** - Market indices overview
+- **GET /health** - Application health status
 
-# Update the deployment
-kubectl set image deployment/investorcenter-app investorcenter-app=${ECR_URI} -n investorcenter
-```
+## Database Schema
 
-## 📁 Project Structure
+9 comprehensive financial tables:
+- **stocks** - Company information and metadata
+- **stock_prices** - Historical OHLCV price data
+- **fundamentals** - Financial metrics (PE, ROE, revenue, etc.)
+- **earnings** - Quarterly earnings data
+- **dividends** - Dividend payment history
+- **insider_trades** - Insider trading activity
+- **analyst_ratings** - Analyst recommendations
+- **financial_statements** - Income statements, balance sheets
+- **market_data** - Real-time market information
 
-```
-investorcenter.ai/
-├── app/                    # Next.js app directory
-│   ├── globals.css        # Global styles
-│   ├── layout.tsx         # Root layout
-│   └── page.tsx           # Home page
-├── backend/               # Go API backend
-│   ├── main.go           # Main API server
-│   ├── go.mod            # Go dependencies
-│   ├── Dockerfile        # Backend container
-│   └── env.example       # Environment variables
-├── components/            # React components
-│   └── MarketOverview.tsx # Market data component
-├── lib/                   # Utility libraries
-│   └── api.ts            # API client
-├── k8s/                   # Kubernetes manifests
-│   ├── namespace.yaml     # Namespace definition
-│   ├── deployment.yaml    # Frontend deployment
-│   ├── service.yaml       # Frontend service
-│   ├── backend-deployment.yaml # Backend deployment
-│   ├── backend-service.yaml    # Backend service
-│   ├── postgres-deployment.yaml # Database
-│   ├── redis-deployment.yaml   # Cache
-│   ├── secrets.yaml       # Kubernetes secrets
-│   └── ingress.yaml       # ALB ingress
-├── scripts/               # Deployment scripts
-│   ├── setup-infrastructure.sh
-│   ├── build-and-push.sh
-│   ├── build-and-push-backend.sh
-│   ├── deploy.sh
-│   └── complete-setup.sh
-├── terraform/             # Infrastructure as Code
-│   ├── main.tf           # Main configuration
-│   ├── variables.tf      # Variables
-│   ├── vpc.tf           # VPC resources
-│   ├── eks.tf           # EKS cluster
-│   ├── alb-controller.tf # Load balancer controller
-│   ├── ecr.tf           # Container registry
-│   ├── route53.tf       # DNS and certificates
-│   └── outputs.tf       # Output values
-├── Dockerfile            # Frontend container
-├── next.config.js       # Next.js configuration
-└── package.json         # Frontend dependencies
-```
+## Tech Stack
 
-## 🔧 Configuration
+### Frontend
+- Next.js 14 with App Router
+- React 18 with TypeScript
+- Tailwind CSS for styling
+- Recharts for financial charts
 
-### Environment Variables
+### Backend  
+- Go 1.19+ with Gin web framework
+- PostgreSQL 15 for data persistence
+- Redis for caching (production)
+- Docker containerization
 
-The application supports the following environment variables:
+### Infrastructure
+- AWS EKS for Kubernetes orchestration
+- Terraform for infrastructure as code
+- GitHub Actions for CI/CD
+- Route53 for DNS and SSL certificates
 
-- `NODE_ENV`: Environment (production/development)
-- `PORT`: Application port (default: 3000)
+## Contributing
 
-### Kubernetes Configuration
+1. Run `make check` before committing to ensure code quality
+2. All code is automatically formatted and linted
+3. Tests are required for new functionality
+4. Database changes require migrations
 
-Key configurations in `k8s/deployment.yaml`:
+## License
 
-```yaml
-resources:
-  requests:
-    memory: "256Mi"
-    cpu: "250m"
-  limits:
-    memory: "512Mi"
-    cpu: "500m"
-```
-
-### Terraform Variables
-
-Customize your infrastructure in `terraform/variables.tf`:
-
-- `aws_region`: AWS region (default: us-east-1)
-- `cluster_version`: Kubernetes version (default: 1.28)
-- `node_instance_type`: EC2 instance type (default: t3.medium)
-- `min_size`: Minimum nodes (default: 1)
-- `max_size`: Maximum nodes (default: 3)
-- `desired_size`: Desired nodes (default: 2)
-
-## 🚀 Deployment Process
-
-### Manual Deployment Steps
-
-1. **Infrastructure Setup**:
-   ```bash
-   cd terraform
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-2. **Build Application**:
-   ```bash
-   docker build -t investorcenter/app:latest .
-   ```
-
-3. **Push to ECR**:
-   ```bash
-   aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <account-id>.dkr.ecr.us-east-1.amazonaws.com
-   docker tag investorcenter/app:latest <account-id>.dkr.ecr.us-east-1.amazonaws.com/investorcenter/app:latest
-   docker push <account-id>.dkr.ecr.us-east-1.amazonaws.com/investorcenter/app:latest
-   ```
-
-4. **Deploy to Kubernetes**:
-   ```bash
-   kubectl apply -f k8s/
-   ```
-
-### Automated Deployment
-
-Use the provided scripts for automated deployment:
-
-```bash
-./scripts/setup-infrastructure.sh  # One-time setup
-./scripts/build-and-push.sh       # Build and push image
-./scripts/deploy.sh               # Deploy to Kubernetes
-```
-
-## 🔍 Monitoring and Troubleshooting
-
-### Check Deployment Status
-
-```bash
-# Check pods
-kubectl get pods -n investorcenter
-
-# Check services
-kubectl get services -n investorcenter
-
-# Check ingress
-kubectl get ingress -n investorcenter
-
-# View logs
-kubectl logs -f deployment/investorcenter-app -n investorcenter
-```
-
-### Common Issues
-
-1. **Domain not resolving**: Check Route53 records and DNS propagation
-2. **SSL certificate issues**: Verify ACM certificate validation
-3. **Pod startup issues**: Check ECR image URI in deployment
-4. **Load balancer not ready**: Wait for ALB controller to provision resources
-
-## 🔒 Security Considerations
-
-- SSL/TLS encryption with AWS Certificate Manager
-- Private subnets for worker nodes
-- Security groups with minimal required access
-- ECR image scanning enabled
-- Kubernetes RBAC (can be enhanced)
-
-## 💰 Cost Optimization
-
-Current setup costs approximately:
-- EKS cluster: ~$73/month
-- EC2 instances (2x t3.medium): ~$60/month
-- ALB: ~$20/month
-- NAT Gateway: ~$45/month
-- **Total: ~$200/month**
-
-To reduce costs:
-- Use t3.small instances for development
-- Implement cluster autoscaling
-- Use Spot instances for non-production workloads
-
-## 🔄 Updates and Maintenance
-
-### Updating the Application
-
-1. Make changes to your code
-2. Run `./scripts/build-and-push.sh`
-3. Run `./scripts/deploy.sh`
-
-### Updating Infrastructure
-
-1. Modify Terraform files
-2. Run `terraform plan` to review changes
-3. Run `terraform apply` to apply changes
-
-### Scaling
-
-To scale the application:
-
-```bash
-# Scale deployment
-kubectl scale deployment investorcenter-app --replicas=5 -n investorcenter
-
-# Or update the deployment YAML and apply
-kubectl apply -f k8s/deployment.yaml
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
-
-## 🆘 Support
-
-For support and questions:
-- Create an issue in the repository
-- Check the troubleshooting section above
-- Review AWS EKS documentation
-
----
-
-**Note**: Remember to update the certificate ARN in `k8s/ingress.yaml` after the ACM certificate is created, and ensure your domain is properly configured in Route53.
+MIT License - see LICENSE file for details.
