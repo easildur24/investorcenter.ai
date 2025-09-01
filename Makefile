@@ -38,8 +38,10 @@ help:
 	@echo ""
 	@echo "Code Quality Commands:"
 	@echo "  make lint            - Run all linting checks"
+	@echo "  make lint-ci         - Run EXACT same commands as CI"
 	@echo "  make format          - Format all code automatically"
 	@echo "  make check-all       - Run format + lint + safety + test"
+	@echo "  make check-ci        - Run EXACT same validation as CI"
 	@echo "  make safety-check    - Run security vulnerability checks"
 	@echo ""
 	@echo "Environment Commands:"
@@ -129,7 +131,7 @@ lint:
 
 lint-python:
 	@echo "Linting Python code (exact CI match)..."
-	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79 --extend-ignore=E203,W503
+	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79
 	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
 	. $(VENV_PATH)/bin/activate && black --check scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
 	. $(VENV_PATH)/bin/activate && isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
@@ -162,6 +164,27 @@ pre-commit-run:
 check-all: format lint-no-format safety-check test
 	@echo "✅ All checks passed!"
 
+# CI-exact validation - runs identical commands to GitHub Actions
+lint-ci:
+	@echo "Running EXACT CI lint commands..."
+	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79
+	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
+	. $(VENV_PATH)/bin/activate && black --check scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
+	. $(VENV_PATH)/bin/activate && isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
+
+test-ci:
+	@echo "Running EXACT CI test commands..."
+	. $(VENV_PATH)/bin/activate && pytest scripts/us_tickers/tests/ -v --cov=us_tickers --cov-report=xml
+
+security-ci:
+	@echo "Running EXACT CI security commands..."
+	. $(VENV_PATH)/bin/activate && bandit -r scripts/us_tickers/ --skip B101
+	. $(VENV_PATH)/bin/activate && safety check
+	. $(VENV_PATH)/bin/activate && isort --check-only scripts/us_tickers/ scripts/us_tickers/tests/ --line-length=79
+
+check-ci: lint-ci test-ci
+	@echo "✅ All CI checks passed locally! Safe to push."
+
 lint-no-format:
 	@echo "Running linting checks (skipping format check)..."
 	@$(MAKE) lint-python-no-format
@@ -169,7 +192,7 @@ lint-no-format:
 
 lint-python-no-format:
 	@echo "Linting Python code (no format check, exact CI match)..."
-	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79 --extend-ignore=E203,W503
+	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ scripts/us_tickers/tests/ --max-line-length=79
 	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
 	. $(VENV_PATH)/bin/activate && bandit -r scripts/us_tickers/ --skip B101
 
