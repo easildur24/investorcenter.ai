@@ -9,13 +9,23 @@ from typing import List
 import pandas as pd
 
 from .config import config
-from .database import (
-    get_database_stats,
-    import_stocks_to_database,
-    test_database_connection,
-)
 from .fetch import get_exchange_listed_tickers
 from .transform import transform_for_database
+
+# Optional database imports - only available if psycopg2 is installed
+try:
+    from .database import (
+        get_database_stats,
+        import_stocks_to_database,
+        test_database_connection,
+    )
+
+    _database_available = True
+except ImportError:
+    _database_available = False
+    get_database_stats = None  # type: ignore
+    import_stocks_to_database = None  # type: ignore
+    test_database_connection = None  # type: ignore
 
 
 def setup_logging(verbose: bool) -> None:
@@ -233,6 +243,16 @@ Examples:
             sys.exit(1)
 
     elif args.command == "import":
+        # Check if database functionality is available
+        if not _database_available:
+            print(
+                "❌ Database functionality not available. "
+                "Install database dependencies: "
+                "pip install psycopg2-binary python-dotenv",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+
         # Setup logging
         setup_logging(args.verbose)
         logger = logging.getLogger(__name__)
