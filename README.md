@@ -50,8 +50,9 @@ See `make help` for all available commands.
 
 ## Documentation
 
-- **[SETUP.md](SETUP.md)** - Complete setup guide and development workflow
-- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Production deployment to AWS EKS
+- **[SETUP.md](SETUP.md)** - Local development setup and workflow
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - AWS EKS infrastructure deployment
+- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Production database and CronJob setup
 
 ## API Endpoints
 

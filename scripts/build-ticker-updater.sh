@@ -34,10 +34,16 @@ echo "  - investorcenter/ticker-updater:latest"
 echo "  - investorcenter/ticker-updater:$TIMESTAMP"
 echo ""
 
-# Optional: Push to registry (uncomment when ready)
-echo "To push to registry:"
-echo "  docker push investorcenter/ticker-updater:latest"
-echo "  docker push investorcenter/ticker-updater:$TIMESTAMP"
+# Production deployment requires pushing to registry
+echo "PRODUCTION DEPLOYMENT STEPS:"
+echo "1. Push to your container registry:"
+echo "   docker tag investorcenter/ticker-updater:latest YOUR_REGISTRY/investorcenter/ticker-updater:latest"
+echo "   docker push YOUR_REGISTRY/investorcenter/ticker-updater:latest"
+echo ""
+echo "2. Update k8s/ticker-update-cronjob.yaml image field to use your registry"
+echo ""
+echo "3. Deploy to production cluster:"
+echo "   kubectl apply -f k8s/ticker-update-cronjob.yaml"
 echo ""
 
 # Clean up build context

@@ -9,14 +9,14 @@ metadata:
 spec:
   # Run weekly on Sunday at 2 AM UTC
   schedule: "0 2 * * 0"
-  
+
   # Keep last 3 successful and 1 failed job for debugging
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
-  
+
   # Don't start new job if previous is still running
   concurrencyPolicy: Forbid
-  
+
   jobTemplate:
     metadata:
       labels:
@@ -25,10 +25,10 @@ spec:
     spec:
       # Retry failed jobs up to 3 times
       backoffLimit: 3
-      
+
       # Clean up completed jobs after 1 hour
       ttlSecondsAfterFinished: 3600
-      
+
       template:
         metadata:
           labels:
@@ -36,12 +36,12 @@ spec:
             component: data-pipeline
         spec:
           restartPolicy: OnFailure
-          
+
           containers:
           - name: ticker-updater
             image: investorcenter/ticker-updater:latest
-            imagePullPolicy: Never  # Use local image, don't pull from registry
-            
+            imagePullPolicy: IfNotPresent  # Pull from registry in production
+
             env:
             # Database connection configuration
             - name: DB_HOST
@@ -62,7 +62,7 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: password
-            
+
             # Resource limits
             resources:
               requests:
@@ -71,16 +71,16 @@ spec:
               limits:
                 memory: "512Mi"
                 cpu: "500m"
-            
+
             # Logging configuration
             volumeMounts:
             - name: tmp
               mountPath: /tmp
-              
+
           volumes:
           - name: tmp
             emptyDir: {}
-          
+
           # Security context
           securityContext:
             runAsNonRoot: true
