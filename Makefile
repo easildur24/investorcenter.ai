@@ -1,71 +1,150 @@
-.PHONY: help install install-dev test test-cov lint format clean build check
+# InvestorCenter.ai Makefile
 
-help:  ## Show this help message
-	@echo "US Tickers - Development Commands"
-	@echo "=================================="
+.PHONY: help setup-local setup-prod install-deps build test dev clean
+
+# Configuration
+POSTGRES_VERSION = 15
+DB_NAME = investorcenter_db
+DB_USER = investorcenter
+LOCAL_DB_PASSWORD = investorcenter123
+VENV_PATH = path/to/venv
+BACKEND_BINARY = backend/investorcenter-api
+
+# Environment detection
+ENVIRONMENT ?= local
+
+help:
+	@echo "InvestorCenter.ai Development & Deployment"
+	@echo "=========================================="
 	@echo ""
-	@echo "Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "Setup Commands:"
+	@echo "  make setup-local      - Complete local development setup"
+	@echo "  make setup-prod       - Deploy production infrastructure"
+	@echo "  make install-deps     - Install all dependencies"
+	@echo ""
+	@echo "Database Commands:"
+	@echo "  make db-setup-local   - Setup local PostgreSQL database"
+	@echo "  make db-setup-prod    - Setup production PostgreSQL in K8s"
+	@echo "  make db-import        - Import ticker data to current environment"
+	@echo "  make db-update        - Update ticker data (incremental)"
+	@echo "  make db-migrate       - Run database migrations"
+	@echo ""
+	@echo "Development Commands:"
+	@echo "  make dev             - Start full development environment"
+	@echo "  make dev-backend     - Start Go API server only"
+	@echo "  make dev-frontend    - Start Next.js frontend only"
+	@echo "  make build           - Build all components"
+	@echo "  make test            - Run all tests"
+	@echo ""
+	@echo "Environment Commands:"
+	@echo "  make local <target>  - Run target in local environment"
+	@echo "  make prod <target>   - Run target in production environment"
+	@echo "  make verify          - Verify setup and database status"
+	@echo "  make status          - Show environment status"
 
-install:  ## Install package in development mode
-	pip install -e .
+setup-local: install-deps db-setup-local db-migrate
+	@echo "Local development environment ready"
+	@echo "Start development with: make dev"
 
-install-dev:  ## Install package with development dependencies
-	pip install -e ".[dev]"
+install-deps:
+	@echo "Installing dependencies..."
+	@command -v brew >/dev/null 2>&1 || { echo "Homebrew required"; exit 1; }
+	npm install
+	cd backend && go mod tidy
+	python3 -m venv $(VENV_PATH) || true
+	. $(VENV_PATH)/bin/activate && pip install -r requirements.txt psycopg2-binary python-dotenv
 
-test:  ## Run tests
-	pytest scripts/us_tickers/tests/ -v
+db-setup-local:
+	@echo "Setting up local PostgreSQL..."
+	@if ! command -v psql >/dev/null 2>&1; then \
+		brew install postgresql@$(POSTGRES_VERSION); \
+	fi
+	@export PATH="/opt/homebrew/opt/postgresql@$(POSTGRES_VERSION)/bin:$$PATH" && \
+	brew services start postgresql@$(POSTGRES_VERSION) || true && \
+	sleep 2 && \
+	createdb $(DB_NAME) || true && \
+	psql $(DB_NAME) -c "CREATE USER $(DB_USER) WITH PASSWORD '$(LOCAL_DB_PASSWORD)';" || true && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);" && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON SCHEMA public TO $(DB_USER);"
 
-test-cov:  ## Run tests with coverage
-	pytest scripts/us_tickers/tests/ -v --cov=us_tickers --cov-report=term-missing --cov-report=html
+db-migrate:
+	@echo "Running database migrations..."
+	@export PATH="/opt/homebrew/opt/postgresql@$(POSTGRES_VERSION)/bin:$$PATH" && \
+	psql $(DB_NAME) -f backend/migrations/001_create_stock_tables.sql && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $(DB_USER);" && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO $(DB_USER);"
 
-lint:  ## Run linting checks
-	flake8 scripts/us_tickers/ scripts/us_tickers/tests/
-	mypy scripts/us_tickers/
+build: build-backend build-frontend
 
-format:  ## Format code with black
-	black scripts/us_tickers/ scripts/us_tickers/tests/
+build-backend:
+	@echo "Building Go backend..."
+	cd backend && go build -o investorcenter-api .
 
-check: format lint test  ## Run all checks (format, lint, test)
+build-frontend:
+	@echo "Building Next.js frontend..."
+	npm run build
 
-clean:  ## Clean up generated files
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info/
-	rm -rf .pytest_cache/
-	rm -rf htmlcov/
-	rm -rf .coverage
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
+dev:
+	@echo "Starting development environment..."
+	@$(MAKE) dev-backend &
+	@$(MAKE) dev-frontend
 
-build:  ## Build package distribution
-	python -m build
+dev-backend:
+	@echo "Starting Go API server..."
+	@export PATH="/opt/homebrew/opt/postgresql@$(POSTGRES_VERSION)/bin:$$PATH" && \
+	cd backend && \
+	DB_HOST=localhost DB_PORT=5432 DB_USER=$(DB_USER) DB_PASSWORD=$(LOCAL_DB_PASSWORD) \
+	DB_NAME=$(DB_NAME) DB_SSLMODE=disable ./investorcenter-api
 
-demo:  ## Run a quick demo
-	@echo "Running US Tickers demo..."
-	@python -c "from us_tickers import get_exchange_listed_tickers; tickers, df = get_exchange_listed_tickers(exchanges=('Q', 'N'), include_etfs=False, include_test_issues=False); print(f'Found {len(tickers)} tickers'); print(f'Sample: {tickers[:10]}'); print(f'DataFrame shape: {df.shape}')"
+dev-frontend:
+	@echo "Starting Next.js development server..."
+	npm run dev
 
-demo-cli:  ## Run CLI demo
-	@echo "Running CLI demo..."
-	@cd scripts/us_tickers && python -m us_tickers.cli fetch --exchanges Q,N --out demo_tickers.csv --format csv
-	@echo "Demo complete! Check demo/us_tickers/demo_tickers.csv"
+test:
+	@echo "Running tests..."
+	. $(VENV_PATH)/bin/activate && python scripts/test_ticker_db_importer.py
+	cd backend && go test ./...
 
-install-hooks:  ## Install pre-commit hooks
-	pre-commit install
+verify:
+	@./scripts/verify-setup.sh
 
-run-hooks:  ## Run pre-commit hooks on all files
-	pre-commit run --all-files
+status:
+	@python scripts/env-manager.py status
 
-docs:  ## Generate documentation
-	@echo "Documentation is in README.md"
-	@echo "For API docs, run: python -c 'import us_tickers; help(us_tickers)'"
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -f $(BACKEND_BINARY)
+	rm -rf .next/
+	cd backend && go clean# Database-specific Makefile targets
 
-release: check build  ## Prepare release (run checks and build)
-	@echo "Release preparation complete!"
-	@echo "Next steps:"
-	@echo "1. Update version in pyproject.toml"
-	@echo "2. Tag the release: git tag v0.1.0"
-	@echo "3. Push tags: git push --tags"
-	@echo "4. Upload to PyPI: python -m twine upload dist/*"
+db-import:
+	@echo "Importing ticker data..."
+	@. $(VENV_PATH)/bin/activate && python scripts/env-manager.py set $(ENVIRONMENT) >/dev/null && \
+	python scripts/ticker_import_to_db.py
 
-.PHONY: help install install-dev test test-cov lint format clean build check demo demo-cli install-hooks run-hooks docs release
+db-update:
+	@echo "Updating ticker data (incremental)..."
+	@. $(VENV_PATH)/bin/activate && python scripts/env-manager.py set $(ENVIRONMENT) >/dev/null && \
+	python scripts/update_tickers_cron.py
+
+db-import-prod:
+	@$(MAKE) ENVIRONMENT=prod db-import
+
+db-import-local:
+	@$(MAKE) ENVIRONMENT=local db-import
+
+db-setup-prod:
+	kubectl apply -f k8s/namespace.yaml
+	kubectl create secret generic postgres-secret \
+		--from-literal=username=$(DB_USER) \
+		--from-literal=password=prod_investorcenter_456 \
+		-n investorcenter || true
+	kubectl apply -f k8s/postgres-deployment.yaml
+	kubectl wait --for=condition=available --timeout=300s deployment/postgres -n investorcenter
+
+k8s-deploy:
+	kubectl apply -f k8s/
+	kubectl wait --for=condition=available --timeout=300s deployment/postgres -n investorcenter
+
+k8s-cleanup:
+	kubectl delete namespace investorcenter --ignore-not-found=true
