@@ -71,8 +71,13 @@ def test_database_connection() -> bool:
             with conn.cursor() as cur:
                 # Test basic connectivity
                 cur.execute("SELECT version()")
-                version = cur.fetchone()[0]
-                logger.info(f"Connected to PostgreSQL: {version}")
+                version_result = cur.fetchone()
+                if version_result:
+                    version = version_result[0]
+                    logger.info(f"Connected to PostgreSQL: {version}")
+                else:
+                    logger.error("Failed to get PostgreSQL version")
+                    return False
 
                 # Check if stocks table exists
                 cur.execute(
@@ -83,7 +88,11 @@ def test_database_connection() -> bool:
                     )
                 """
                 )
-                table_exists = cur.fetchone()[0]
+                table_result = cur.fetchone()
+                if not table_result:
+                    logger.error("Failed to check if stocks table exists")
+                    return False
+                table_exists = table_result[0]
 
                 if not table_exists:
                     logger.warning(
@@ -97,7 +106,11 @@ def test_database_connection() -> bool:
 
                 # Check current stock count
                 cur.execute("SELECT COUNT(*) FROM stocks")
-                count = cur.fetchone()[0]
+                count_result = cur.fetchone()
+                if not count_result:
+                    logger.error("Failed to get stock count")
+                    return False
+                count = count_result[0]
                 logger.info(f"Current stocks in database: {count}")
 
                 return True
@@ -178,7 +191,10 @@ def import_stocks_to_database(
 
                     # Get initial count to calculate inserts
                     cur.execute("SELECT COUNT(*) FROM stocks")
-                    count_before = cur.fetchone()[0]
+                    count_before_result = cur.fetchone()
+                    if not count_before_result:
+                        raise Exception("Failed to get initial stock count")
+                    count_before = count_before_result[0]
 
                     # Execute batch insert
                     psycopg2.extras.execute_batch(
@@ -187,7 +203,10 @@ def import_stocks_to_database(
 
                     # Get final count
                     cur.execute("SELECT COUNT(*) FROM stocks")
-                    count_after = cur.fetchone()[0]
+                    count_after_result = cur.fetchone()
+                    if not count_after_result:
+                        raise Exception("Failed to get final stock count")
+                    count_after = count_after_result[0]
 
                     batch_inserted = count_after - count_before
                     batch_skipped = len(batch_data) - batch_inserted
@@ -240,7 +259,11 @@ def get_database_stats() -> dict:
 
                 # Total stocks
                 cur.execute("SELECT COUNT(*) FROM stocks")
-                stats["total_stocks"] = cur.fetchone()[0]
+                total_result = cur.fetchone()
+                if total_result:
+                    stats["total_stocks"] = total_result[0]
+                else:
+                    stats["total_stocks"] = 0
 
                 # Stocks by exchange
                 cur.execute(
@@ -261,7 +284,11 @@ def get_database_stats() -> dict:
                     WHERE created_at >= NOW() - INTERVAL '24 hours'
                 """
                 )
-                stats["added_last_24h"] = cur.fetchone()[0]
+                recent_result = cur.fetchone()
+                if recent_result:
+                    stats["added_last_24h"] = recent_result[0]
+                else:
+                    stats["added_last_24h"] = 0
 
                 return stats
 
