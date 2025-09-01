@@ -1,0 +1,13 @@
+symbol,name,exchange,sector,industry,country,currency,market_cap,description,website
+AAPL,APPLE INC.,Nasdaq,,,US,USD,,,
+MSFT,MICROSOFT CORPORATION,Nasdaq,,,US,USD,,,
+GOOGL,ALPHABET INC.,Nasdaq,,,US,USD,,,
+TSLA,"TESLA, INC.",Nasdaq,,,US,USD,,,
+AMZN,"AMAZON.COM, INC.",Nasdaq,,,US,USD,,,
+META,"META PLATFORMS, INC.",Nasdaq,,,US,USD,,,
+BAC,BANK OF AMERICA CORPORATION,NYSE,,,US,USD,,,
+JPM,JP MORGAN CHASE & CO,NYSE,,,US,USD,,,
+WFC,WELLS FARGO & COMPANY,NYSE,,,US,USD,,,
+C,"CITIGROUP, INC.",NYSE,,,US,USD,,,
+GS,"GOLDMAN SACHS GROUP, INC. (THE)",NYSE,,,US,USD,,,
+O'REILLY,"O'REILLY AUTOMOTIVE, INC.",Nasdaq,,,US,USD,,,
