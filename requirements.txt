@@ -1,12 +1,22 @@
-# Core dependencies
+# Core dependencies (matching pyproject.toml)
 requests>=2.28.0
 pandas>=1.5.0
 urllib3>=1.26.0
+pydantic>=2.0.0
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0
 
-# Development dependencies (optional)
-# pytest>=7.0.0
-# pytest-mock>=3.10.0
-# pytest-cov>=4.0.0
-# black>=22.0.0
-# flake8>=5.0.0
-# mypy>=1.0.0
+# Development dependencies (matching pyproject.toml + CI requirements)
+pytest>=7.0.0
+pytest-mock>=3.10.0
+pytest-cov>=4.0.0
+black>=22.0.0
+flake8>=5.0.0
+mypy>=1.0.0
+pandas-stubs>=2.0.0
+types-requests>=2.28.0
+bandit>=1.7.0
+safety>=2.3.0
+pre-commit>=3.0.0
+isort>=5.0.0
+types-psycopg2>=2.9.0

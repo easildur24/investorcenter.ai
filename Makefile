@@ -1,71 +1,140 @@
-.PHONY: help install install-dev test test-cov lint format clean build check
+# InvestorCenter.ai Makefile
 
-help:  ## Show this help message
-	@echo "US Tickers - Development Commands"
-	@echo "=================================="
+.PHONY: help setup install build dev test check clean
+
+# Configuration
+VENV_PATH = path/to/venv
+DB_NAME = investorcenter_db
+DB_USER = investorcenter
+
+help:
+	@echo "InvestorCenter.ai Development Commands"
+	@echo "====================================="
 	@echo ""
-	@echo "Available commands:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "Setup:"
+	@echo "  make setup           - Complete development environment setup"
+	@echo "  make install         - Install all dependencies"
+	@echo ""
+	@echo "Development:"
+	@echo "  make dev             - Start backend and frontend"
+	@echo "  make build           - Build all components"
+	@echo "  make test            - Run tests and linting"
+	@echo "  make check           - Complete validation before push"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-setup        - Setup database and import data"
+	@echo "  make db-import       - Import/update ticker data"
+	@echo "  make db-status       - Check database status"
+	@echo ""
+	@echo "Quality:"
+	@echo "  make format          - Format all code"
+	@echo "  make lint            - Run linting checks"
+	@echo "  make clean           - Clean build artifacts"
 
-install:  ## Install package in development mode
-	pip install -e .
+# Complete setup
+setup: install db-setup
+	@echo "✅ Development environment ready!"
+	@echo "Start development with: make dev"
 
-install-dev:  ## Install package with development dependencies
-	pip install -e ".[dev]"
+# Install all dependencies
+install:
+	@echo "Installing dependencies..."
+	@command -v brew >/dev/null 2>&1 || { echo "Homebrew required on macOS"; exit 1; }
+	npm install
+	cd backend && go mod tidy
+	python3 -m venv $(VENV_PATH) || true
+	. $(VENV_PATH)/bin/activate && pip install -r requirements.txt
+	. $(VENV_PATH)/bin/activate && pre-commit install
 
-test:  ## Run tests
-	pytest scripts/us_tickers/tests/ -v
+# Database setup and data import
+db-setup:
+	@echo "Setting up database..."
+	@if ! command -v psql >/dev/null 2>&1; then \
+		echo "Installing PostgreSQL..." && \
+		brew install postgresql@15; \
+	fi
+	@export PATH="/opt/homebrew/opt/postgresql@15/bin:$$PATH" && \
+	brew services start postgresql@15 || true && \
+	sleep 2 && \
+	createdb $(DB_NAME) || true && \
+	psql $(DB_NAME) -c "CREATE USER $(DB_USER) WITH PASSWORD 'investorcenter123';" || true && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);" && \
+	psql $(DB_NAME) -f backend/migrations/001_create_stock_tables.sql && \
+	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $(DB_USER);"
+	@echo "Importing stock data..."
+	@. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
 
-test-cov:  ## Run tests with coverage
-	pytest scripts/us_tickers/tests/ -v --cov=us_tickers --cov-report=term-missing --cov-report=html
+# Development environment
+dev:
+	@echo "Starting development environment..."
+	@echo "Backend: http://localhost:8080"
+	@echo "Frontend: http://localhost:3000" 
+	@cd backend && DB_HOST=localhost DB_PORT=5432 DB_USER=$(DB_USER) DB_PASSWORD=investorcenter123 DB_NAME=$(DB_NAME) DB_SSLMODE=disable ./investorcenter-api &
+	@npm run dev
 
-lint:  ## Run linting checks
-	flake8 scripts/us_tickers/ scripts/us_tickers/tests/
-	mypy scripts/us_tickers/
+# Build everything
+build:
+	@echo "Building application..."
+	cd backend && go build -o investorcenter-api .
+	npm run build
 
-format:  ## Format code with black
-	black scripts/us_tickers/ scripts/us_tickers/tests/
+# Complete testing and validation
+test:
+	@echo "Running tests and validation..."
+	. $(VENV_PATH)/bin/activate && pytest scripts/us_tickers/tests/ -v
+	cd backend && go test ./...
 
-check: format lint test  ## Run all checks (format, lint, test)
+# Code quality checks
+check:
+	@echo "Running complete validation..."
+	@$(MAKE) format
+	@$(MAKE) lint
+	@$(MAKE) test
+	@echo "✅ All checks passed! Safe to push."
 
-clean:  ## Clean up generated files
-	rm -rf build/
-	rm -rf dist/
-	rm -rf *.egg-info/
-	rm -rf .pytest_cache/
-	rm -rf htmlcov/
-	rm -rf .coverage
-	find . -type f -name "*.pyc" -delete
-	find . -type d -name "__pycache__" -delete
+# Format all code
+format:
+	@echo "Formatting code..."
+	. $(VENV_PATH)/bin/activate && black scripts/us_tickers/ scripts/test_*.py scripts/ticker_*.py scripts/update_*.py
+	. $(VENV_PATH)/bin/activate && isort scripts/us_tickers/ scripts/test_*.py scripts/ticker_*.py scripts/update_*.py
+	cd backend && go fmt ./...
 
-build:  ## Build package distribution
-	python -m build
+# Linting
+lint:
+	@echo "Running linting..."
+	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ --max-line-length=79
+	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
+	cd backend && go vet ./...
 
-demo:  ## Run a quick demo
-	@echo "Running US Tickers demo..."
-	@python -c "from us_tickers import get_exchange_listed_tickers; tickers, df = get_exchange_listed_tickers(exchanges=('Q', 'N'), include_etfs=False, include_test_issues=False); print(f'Found {len(tickers)} tickers'); print(f'Sample: {tickers[:10]}'); print(f'DataFrame shape: {df.shape}')"
+# Database operations  
+db-import:
+	@echo "Importing ticker data..."
+	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
 
-demo-cli:  ## Run CLI demo
-	@echo "Running CLI demo..."
-	@cd scripts/us_tickers && python -m us_tickers.cli fetch --exchanges Q,N --out demo_tickers.csv --format csv
-	@echo "Demo complete! Check demo/us_tickers/demo_tickers.csv"
+db-status:
+	@./scripts/verify-setup.sh
 
-install-hooks:  ## Install pre-commit hooks
-	pre-commit install
+# Kubernetes operations
+k8s-setup:
+	kubectl apply -f k8s/namespace.yaml
+	kubectl create secret generic postgres-secret --from-literal=username=$(DB_USER) --from-literal=password=prod_investorcenter_456 -n investorcenter || true
+	kubectl apply -f k8s/postgres-deployment.yaml
 
-run-hooks:  ## Run pre-commit hooks on all files
-	pre-commit run --all-files
+db-import-prod:
+	@echo "Setting up production database access..."
+	@kubectl port-forward -n investorcenter svc/postgres-service 5433:5432 &
+	@sleep 3
+	@export DB_HOST=localhost DB_PORT=5433 DB_USER=$(DB_USER) DB_PASSWORD="prod_investorcenter_456" DB_NAME=$(DB_NAME) DB_SSLMODE=disable && \
+	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
+	@pkill -f "kubectl port-forward.*postgres-service" || true
 
-docs:  ## Generate documentation
-	@echo "Documentation is in README.md"
-	@echo "For API docs, run: python -c 'import us_tickers; help(us_tickers)'"
+# Cleanup
+clean:
+	@echo "Cleaning build artifacts..."
+	rm -f backend/investorcenter-api
+	rm -rf .next/
+	cd backend && go clean
 
-release: check build  ## Prepare release (run checks and build)
-	@echo "Release preparation complete!"
-	@echo "Next steps:"
-	@echo "1. Update version in pyproject.toml"
-	@echo "2. Tag the release: git tag v0.1.0"
-	@echo "3. Push tags: git push --tags"
-	@echo "4. Upload to PyPI: python -m twine upload dist/*"
-
-.PHONY: help install install-dev test test-cov lint format clean build check demo demo-cli install-hooks run-hooks docs release
+# Verification
+verify:
+	@./scripts/verify-setup.sh
