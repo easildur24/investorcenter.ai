@@ -2,7 +2,7 @@
 
 A professional financial data and analytics platform similar to YCharts, built with Next.js and deployed on AWS EKS.
 
-## 🚀 Features
+## Features
 
 - **Modern Frontend**: Next.js 14 with React 18, TypeScript, and Tailwind CSS
 - **High-Performance Backend**: Go API server with Gin framework
@@ -13,6 +13,7 @@ A professional financial data and analytics platform similar to YCharts, built w
 - **Scalable Infrastructure**: Auto-scaling Kubernetes deployment
 - **SSL/TLS**: Secure HTTPS with AWS Certificate Manager
 - **Domain Integration**: Custom domain routing with Route53
+- **Automated Data**: Direct ticker import from exchanges with periodic updates
 
 ## 🏗️ Architecture
 
@@ -58,7 +59,7 @@ Your AWS user/role needs the following permissions:
 - Elastic Load Balancing full access
 - ECR full access
 
-## 🚀 Quick Start
+## Quick Start
 
 ### 1. Clone and Setup
 
