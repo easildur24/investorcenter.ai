@@ -3,7 +3,7 @@
 import logging
 import os
 from contextlib import contextmanager
-from typing import Generator, List, Optional, Tuple
+from typing import Generator, Tuple
 
 import pandas as pd
 import psycopg2
@@ -32,7 +32,8 @@ class DatabaseConfig:
         """Get PostgreSQL connection string."""
         return (
             f"host={self.host} port={self.port} user={self.user} "
-            f"password={self.password} dbname={self.database} sslmode={self.sslmode}"
+            f"password={self.password} dbname={self.database} "
+            f"sslmode={self.sslmode}"
         )
 
 
@@ -46,7 +47,8 @@ def get_db_connection() -> (
 
     try:
         logger.info(
-            f"Connecting to database: {config.user}@{config.host}:{config.port}/{config.database}"
+            f"Connecting to database: "
+            f"{config.user}@{config.host}:{config.port}/{config.database}"
         )
         conn = psycopg2.connect(config.connection_string)
         conn.autocommit = False  # Use transactions
@@ -88,7 +90,8 @@ def test_database_connection() -> bool:
                         "Stocks table does not exist. Run migrations first."
                     )
                     logger.warning(
-                        "Run: psql -d investorcenter_db -f backend/migrations/001_create_stock_tables.sql"
+                        "Run: psql -d investorcenter_db "
+                        "-f backend/migrations/001_create_stock_tables.sql"
                     )
                     return False
 
@@ -129,7 +132,10 @@ def import_stocks_to_database(
             with conn.cursor() as cur:
                 # Prepare INSERT statement with conflict handling
                 insert_query = """
-                    INSERT INTO stocks (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)
+                    INSERT INTO stocks (
+                        symbol, name, exchange, sector, industry,
+                        country, currency, market_cap, description, website
+                    )
                     VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (symbol) DO NOTHING
                 """
@@ -137,7 +143,8 @@ def import_stocks_to_database(
                 # Process in batches
                 total_records = len(stocks_df)
                 logger.info(
-                    f"Importing {total_records} stocks in batches of {batch_size}"
+                    f"Importing {total_records} stocks in batches of "
+                    f"{batch_size}"
                 )
 
                 for i in range(0, total_records, batch_size):
@@ -165,7 +172,8 @@ def import_stocks_to_database(
                         total_records + batch_size - 1
                     ) // batch_size
                     logger.info(
-                        f"Processing batch {batch_num}/{total_batches} ({len(batch_data)} records)"
+                        f"Processing batch {batch_num}/{total_batches} "
+                        f"({len(batch_data)} records)"
                     )
 
                     # Get initial count to calculate inserts
@@ -188,13 +196,15 @@ def import_stocks_to_database(
                     skipped_count += batch_skipped
 
                     logger.info(
-                        f"Batch {batch_num}: {batch_inserted} inserted, {batch_skipped} skipped"
+                        f"Batch {batch_num}: {batch_inserted} inserted, "
+                        f"{batch_skipped} skipped"
                     )
 
                 # Commit transaction
                 conn.commit()
                 logger.info(
-                    f"Import completed: {inserted_count} inserted, {skipped_count} skipped"
+                    f"Import completed: {inserted_count} inserted, "
+                    f"{skipped_count} skipped"
                 )
 
     except Exception as e:

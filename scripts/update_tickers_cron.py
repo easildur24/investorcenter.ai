@@ -27,12 +27,8 @@ from pathlib import Path
 # Add the us_tickers module to Python path
 sys.path.append(str(Path(__file__).parent))
 
-from us_tickers import (
-    get_exchange_listed_tickers,
-    transform_for_database,
-    import_stocks_to_database,
-    test_database_connection,
-)
+from us_tickers import (get_exchange_listed_tickers, import_stocks_to_database,
+                        test_database_connection, transform_for_database)
 from us_tickers.database import get_database_stats
 
 
@@ -40,10 +36,12 @@ def setup_logging() -> None:
     """Setup logging for cron execution."""
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.StreamHandler(sys.stdout),  # Output to stdout for cron logging
-        ]
+            logging.StreamHandler(
+                sys.stdout
+            ),  # Output to stdout for cron logging
+        ],
     )
 
 
@@ -63,7 +61,7 @@ def main() -> None:
 
         # Get current stats
         initial_stats = get_database_stats()
-        initial_count = initial_stats.get('total_stocks', 0)
+        initial_count = initial_stats.get("total_stocks", 0)
         logger.info(f"Current database has {initial_count} stocks")
 
         # Fetch latest ticker data (Nasdaq + NYSE only, no ETFs/test issues)
@@ -85,19 +83,27 @@ def main() -> None:
 
         # Import to database (incremental - only new ones)
         logger.info("Importing new tickers to database...")
-        inserted, skipped = import_stocks_to_database(transformed_df, batch_size=100)
+        inserted, skipped = import_stocks_to_database(
+            transformed_df, batch_size=100
+        )
 
         # Log results
         duration = datetime.now() - start_time
-        logger.info(f"Update completed in {duration.total_seconds():.1f} seconds")
-        logger.info(f"Results: {inserted} new, {skipped} existing, {inserted + skipped} total processed")
+        logger.info(
+            f"Update completed in {duration.total_seconds():.1f} seconds"
+        )
+        logger.info(
+            f"Results: {inserted} new, {skipped} existing, {inserted + skipped} total processed"
+        )
 
         if inserted > 0:
-            logger.info(f"🆕 Added {inserted} new companies to InvestorCenter database")
+            logger.info(
+                f"🆕 Added {inserted} new companies to InvestorCenter database"
+            )
 
             # Log new companies by exchange
             final_stats = get_database_stats()
-            final_count = final_stats.get('total_stocks', 0)
+            final_count = final_stats.get("total_stocks", 0)
             logger.info(f"Database now contains {final_count} total stocks")
         else:
             logger.info("📊 Database is up to date - no new stocks found")
@@ -106,7 +112,9 @@ def main() -> None:
 
     except Exception as e:
         duration = datetime.now() - start_time
-        logger.error(f"Ticker update failed after {duration.total_seconds():.1f} seconds: {e}")
+        logger.error(
+            f"Ticker update failed after {duration.total_seconds():.1f} seconds: {e}"
+        )
         logger.error("=== Ticker Update Job Failed ===")
         sys.exit(1)
 

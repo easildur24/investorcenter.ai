@@ -242,7 +242,8 @@ Examples:
             print("🔍 Testing database connection...")
             if not test_database_connection():
                 print(
-                    "❌ Database connection failed. Please check your configuration.",
+                    "❌ Database connection failed. "
+                    "Please check your configuration.",
                     file=sys.stderr,
                 )
                 sys.exit(1)
@@ -251,7 +252,7 @@ Examples:
             # Show current database stats
             stats = get_database_stats()
             if stats:
-                print(f"\n📊 Current database stats:")
+                print("\n📊 Current database stats:")
                 print(f"  Total stocks: {stats.get('total_stocks', 0)}")
                 if stats.get("by_exchange"):
                     for exchange, count in stats["by_exchange"].items():
@@ -262,7 +263,7 @@ Examples:
             exchanges = parse_exchanges(args.exchanges)
             logger.info(f"Fetching tickers for exchanges: {exchanges}")
 
-            print(f"\n🔄 Fetching ticker data...")
+            print("\n🔄 Fetching ticker data...")
             print(f"  Exchanges: {', '.join(exchanges)}")
             print(f"  Include ETFs: {args.include_etfs}")
             print(f"  Include test issues: {args.include_test_issues}")
@@ -293,12 +294,14 @@ Examples:
 
             if args.dry_run:
                 print(
-                    "\n🏃 Dry run mode - showing preview of data to be imported:"
+                    "\n🏃 Dry run mode - "
+                    "showing preview of data to be imported:"
                 )
                 preview_df = transformed_df.head(10)
                 for _, row in preview_df.iterrows():
                     print(
-                        f"  {row['symbol']:6} | {row['name']:50} | {row['exchange']}"
+                        f"  {row['symbol']:6} | {row['name']:50} | "
+                        f"{row['exchange']}"
                     )
                 if len(transformed_df) > 10:
                     print(f"  ... and {len(transformed_df) - 10} more records")
@@ -307,13 +310,14 @@ Examples:
 
             # Import to database
             print(
-                f"\n📊 Importing to database (batch size: {args.batch_size})..."
+                f"\n📊 Importing to database "
+                f"(batch size: {args.batch_size})..."
             )
             inserted, skipped = import_stocks_to_database(
                 transformed_df, args.batch_size
             )
 
-            print(f"\n🎉 Import completed!")
+            print("\n🎉 Import completed!")
             print(f"  ✅ Inserted: {inserted} new stocks")
             print(f"  ⏭️  Skipped: {skipped} existing stocks")
             print(f"  📈 Total processed: {inserted + skipped}")
@@ -321,7 +325,7 @@ Examples:
             # Show updated stats
             final_stats = get_database_stats()
             if final_stats:
-                print(f"\n📊 Updated database stats:")
+                print("\n📊 Updated database stats:")
                 print(f"  Total stocks: {final_stats.get('total_stocks', 0)}")
                 if final_stats.get("by_exchange"):
                     for exchange, count in final_stats["by_exchange"].items():

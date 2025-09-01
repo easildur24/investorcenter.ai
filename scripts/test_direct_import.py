@@ -12,8 +12,9 @@ from pathlib import Path
 # Add the us_tickers module to Python path
 sys.path.append(str(Path(__file__).parent))
 
-from us_tickers.transform import transform_for_database, clean_security_name, should_include_ticker
 import pandas as pd
+from us_tickers.transform import (clean_security_name, should_include_ticker,
+                                  transform_for_database)
 
 
 def test_transformation_logic():
@@ -28,36 +29,36 @@ def test_transformation_logic():
             "Security Name": "APPLE INC. - COMMON STOCK",
             "Exchange": "Q",
             "ETF": "N",
-            "Test Issue": "N"
+            "Test Issue": "N",
         },
         {
             "Ticker": "MSFT",
             "Security Name": "MICROSOFT CORPORATION - COMMON STOCK",
             "Exchange": "Q",
             "ETF": "N",
-            "Test Issue": "N"
+            "Test Issue": "N",
         },
         {
             "Ticker": "BAC",
             "Security Name": "BANK OF AMERICA CORPORATION COMMON STOCK",
             "Exchange": "N",
             "ETF": "N",
-            "Test Issue": "N"
+            "Test Issue": "N",
         },
         {
             "Ticker": "AAPL.W",
             "Security Name": "APPLE INC. WARRANTS",
             "Exchange": "Q",
             "ETF": "N",
-            "Test Issue": "N"
+            "Test Issue": "N",
         },
         {
             "Ticker": "BAC$A",
             "Security Name": "BANK OF AMERICA PREFERRED SERIES A",
             "Exchange": "N",
             "ETF": "N",
-            "Test Issue": "N"
-        }
+            "Test Issue": "N",
+        },
     ]
 
     df = pd.DataFrame(sample_data)
@@ -74,7 +75,7 @@ def test_transformation_logic():
     print("\n🧽 Testing name cleaning:")
     for _, row in df.iterrows():
         if should_include_ticker(row):
-            original = row['Security Name']
+            original = row["Security Name"]
             cleaned = clean_security_name(original)
             print(f"  {row['Ticker']:6} | {original} → {cleaned}")
 
@@ -90,7 +91,9 @@ def test_transformation_logic():
     if not transformed_df.empty:
         print("\n📋 Final transformed data:")
         for _, row in transformed_df.iterrows():
-            print(f"  {row['symbol']:6} | {row['name']:40} | {row['exchange']:12} | {row['country']} | {row['currency']}")
+            print(
+                f"  {row['symbol']:6} | {row['name']:40} | {row['exchange']:12} | {row['country']} | {row['currency']}"
+            )
 
     print("\n✅ Transformation logic test completed!")
     return len(transformed_df)
@@ -105,14 +108,32 @@ def test_database_import_simulation():
     existing_tickers = {"AAPL", "MSFT", "GOOGL"}  # Simulate existing in DB
 
     new_data = [
-        {"symbol": "AAPL", "name": "APPLE INC.", "exchange": "Nasdaq"},      # Existing - should skip
-        {"symbol": "MSFT", "name": "MICROSOFT CORP.", "exchange": "Nasdaq"},  # Existing - should skip
-        {"symbol": "TSLA", "name": "TESLA INC.", "exchange": "Nasdaq"},      # New - should insert
-        {"symbol": "NVDA", "name": "NVIDIA CORP.", "exchange": "Nasdaq"},    # New - should insert
+        {
+            "symbol": "AAPL",
+            "name": "APPLE INC.",
+            "exchange": "Nasdaq",
+        },  # Existing - should skip
+        {
+            "symbol": "MSFT",
+            "name": "MICROSOFT CORP.",
+            "exchange": "Nasdaq",
+        },  # Existing - should skip
+        {
+            "symbol": "TSLA",
+            "name": "TESLA INC.",
+            "exchange": "Nasdaq",
+        },  # New - should insert
+        {
+            "symbol": "NVDA",
+            "name": "NVIDIA CORP.",
+            "exchange": "Nasdaq",
+        },  # New - should insert
     ]
 
     print("📊 Simulating periodic update behavior:")
-    print(f"  Existing in DB: {len(existing_tickers)} stocks ({', '.join(sorted(existing_tickers))})")
+    print(
+        f"  Existing in DB: {len(existing_tickers)} stocks ({', '.join(sorted(existing_tickers))})"
+    )
     print(f"  New data: {len(new_data)} stocks")
 
     inserted = 0

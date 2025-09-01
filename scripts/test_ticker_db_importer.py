@@ -5,21 +5,17 @@ Tests for ticker_db_importer.py
 Comprehensive test suite to validate ticker data transformation logic.
 """
 
-import unittest
-import pandas as pd
-import tempfile
 import os
 import sys
+import tempfile
+import unittest
 from pathlib import Path
 
+import pandas as pd
 # Import the functions we want to test
-from ticker_db_importer import (
-    clean_security_name,
-    should_include_ticker,
-    transform_ticker_data,
-    generate_sql_inserts,
-    EXCHANGE_CODES
-)
+from ticker_db_importer import (EXCHANGE_CODES, clean_security_name,
+                                generate_sql_inserts, should_include_ticker,
+                                transform_ticker_data)
 
 
 class TestCleanSecurityName(unittest.TestCase):
@@ -29,14 +25,13 @@ class TestCleanSecurityName(unittest.TestCase):
         """Test basic name cleaning."""
         # Remove common suffixes
         self.assertEqual(
-            clean_security_name("APPLE INC. - COMMON STOCK"),
-            "APPLE INC."
+            clean_security_name("APPLE INC. - COMMON STOCK"), "APPLE INC."
         )
 
         # Remove quotes
         self.assertEqual(
             clean_security_name('"MICROSOFT CORPORATION"'),
-            "MICROSOFT CORPORATION"
+            "MICROSOFT CORPORATION",
         )
 
         # Handle empty/None
@@ -59,13 +54,11 @@ class TestCleanSecurityName(unittest.TestCase):
     def test_whitespace_cleanup(self) -> None:
         """Test whitespace and punctuation cleanup."""
         self.assertEqual(
-            clean_security_name("  COMPANY   NAME  .  "),
-            "COMPANY NAME"
+            clean_security_name("  COMPANY   NAME  .  "), "COMPANY NAME"
         )
 
         self.assertEqual(
-            clean_security_name("MULTIPLE    SPACES"),
-            "MULTIPLE SPACES"
+            clean_security_name("MULTIPLE    SPACES"), "MULTIPLE SPACES"
         )
 
     def test_corporate_endings(self) -> None:
@@ -90,7 +83,10 @@ class TestShouldIncludeTicker(unittest.TestCase):
         regular_stocks = [
             {"Ticker": "AAPL", "Security Name": "APPLE INC. - COMMON STOCK"},
             {"Ticker": "MSFT", "Security Name": "MICROSOFT CORPORATION"},
-            {"Ticker": "GOOGL", "Security Name": "ALPHABET INC. - CLASS A COMMON STOCK"},
+            {
+                "Ticker": "GOOGL",
+                "Security Name": "ALPHABET INC. - CLASS A COMMON STOCK",
+            },
         ]
 
         for stock in regular_stocks:
@@ -114,9 +110,15 @@ class TestShouldIncludeTicker(unittest.TestCase):
     def test_exclude_preferred_stocks(self) -> None:
         """Test that preferred stocks are excluded."""
         preferred_stocks = [
-            {"Ticker": "BACprA", "Security Name": "BANK OF AMERICA PREFERRED SERIES A"},
+            {
+                "Ticker": "BACprA",
+                "Security Name": "BANK OF AMERICA PREFERRED SERIES A",
+            },
             {"Ticker": "JPMPD", "Security Name": "JP MORGAN PREFERRED STOCK"},
-            {"Ticker": "WFCPA", "Security Name": "WELLS FARGO DEPOSITARY SHARES"},
+            {
+                "Ticker": "WFCPA",
+                "Security Name": "WELLS FARGO DEPOSITARY SHARES",
+            },
         ]
 
         for preferred in preferred_stocks:
@@ -128,7 +130,10 @@ class TestShouldIncludeTicker(unittest.TestCase):
         """Test that tickers with special characters are excluded."""
         special_tickers = [
             {"Ticker": "BRK.A", "Security Name": "BERKSHIRE HATHAWAY CLASS A"},
-            {"Ticker": "BRK$B", "Security Name": "BERKSHIRE HATHAWAY PREFERRED"},
+            {
+                "Ticker": "BRK$B",
+                "Security Name": "BERKSHIRE HATHAWAY PREFERRED",
+            },
             {"Ticker": "TEST^", "Security Name": "TEST COMPANY"},
         ]
 
@@ -143,7 +148,10 @@ class TestShouldIncludeTicker(unittest.TestCase):
             {"Ticker": "TESTX", "Security Name": "TEST COMPANY WARRANTS"},
             {"Ticker": "TESTY", "Security Name": "TEST COMPANY RIGHTS"},
             {"Ticker": "TESTZ", "Security Name": "TEST COMPANY UNITS"},
-            {"Ticker": "TESTA", "Security Name": "TEST COMPANY NOTES DUE 2030"},
+            {
+                "Ticker": "TESTA",
+                "Security Name": "TEST COMPANY NOTES DUE 2030",
+            },
         ]
 
         for derivative in derivatives:
@@ -171,25 +179,94 @@ class TestTransformTickerData(unittest.TestCase):
         """Set up test data."""
         self.test_data = [
             # Valid stocks to include
-            ["AAPL", "APPLE INC. - COMMON STOCK", "Q", "N", "N", "100", "N", "N", "Q", "", ""],
-            ["MSFT", "MICROSOFT CORPORATION", "Q", "N", "N", "100", "N", "N", "Q", "", ""],
-            ["BAC", "BANK OF AMERICA CORPORATION", "", "N", "", "100", "N", "", "N", "BAC", "BAC"],
-
+            [
+                "AAPL",
+                "APPLE INC. - COMMON STOCK",
+                "Q",
+                "N",
+                "N",
+                "100",
+                "N",
+                "N",
+                "Q",
+                "",
+                "",
+            ],
+            [
+                "MSFT",
+                "MICROSOFT CORPORATION",
+                "Q",
+                "N",
+                "N",
+                "100",
+                "N",
+                "N",
+                "Q",
+                "",
+                "",
+            ],
+            [
+                "BAC",
+                "BANK OF AMERICA CORPORATION",
+                "",
+                "N",
+                "",
+                "100",
+                "N",
+                "",
+                "N",
+                "BAC",
+                "BAC",
+            ],
             # Should be filtered out
-            ["AAPL.W", "APPLE INC. WARRANT", "Q", "N", "N", "100", "N", "N", "Q", "", ""],
-            ["BAC$A", "BANK OF AMERICA PREFERRED SERIES A", "", "N", "", "100", "N", "", "N", "BACPA", "BAC-A"],
+            [
+                "AAPL.W",
+                "APPLE INC. WARRANT",
+                "Q",
+                "N",
+                "N",
+                "100",
+                "N",
+                "N",
+                "Q",
+                "",
+                "",
+            ],
+            [
+                "BAC$A",
+                "BANK OF AMERICA PREFERRED SERIES A",
+                "",
+                "N",
+                "",
+                "100",
+                "N",
+                "",
+                "N",
+                "BACPA",
+                "BAC-A",
+            ],
         ]
 
         self.columns = [
-            "Ticker", "Security Name", "Market Category", "Test Issue",
-            "Financial Status", "Round Lot Size", "ETF", "NextShares",
-            "Exchange", "CQS Symbol", "NASDAQ Symbol"
+            "Ticker",
+            "Security Name",
+            "Market Category",
+            "Test Issue",
+            "Financial Status",
+            "Round Lot Size",
+            "ETF",
+            "NextShares",
+            "Exchange",
+            "CQS Symbol",
+            "NASDAQ Symbol",
         ]
 
     def test_transform_with_sample_data(self) -> None:
         """Test transformation with sample data."""
         # Create temporary CSV file
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".csv", delete=False
+        ) as f:
             # Write header
             f.write(",".join(self.columns) + "\n")
 
@@ -207,19 +284,25 @@ class TestTransformTickerData(unittest.TestCase):
             self.assertEqual(len(result_df), 3)
 
             # Check required columns exist
-            expected_columns = ['symbol', 'name', 'exchange', 'country', 'currency']
+            expected_columns = [
+                "symbol",
+                "name",
+                "exchange",
+                "country",
+                "currency",
+            ]
             for col in expected_columns:
                 self.assertIn(col, result_df.columns)
 
             # Check exchange mapping
-            nasdaq_count = len(result_df[result_df['exchange'] == 'Nasdaq'])
-            nyse_count = len(result_df[result_df['exchange'] == 'NYSE'])
+            nasdaq_count = len(result_df[result_df["exchange"] == "Nasdaq"])
+            nyse_count = len(result_df[result_df["exchange"] == "NYSE"])
             self.assertEqual(nasdaq_count, 2)  # AAPL, MSFT
-            self.assertEqual(nyse_count, 1)    # BAC
+            self.assertEqual(nyse_count, 1)  # BAC
 
             # Check country and currency defaults
-            self.assertTrue(all(result_df['country'] == 'US'))
-            self.assertTrue(all(result_df['currency'] == 'USD'))
+            self.assertTrue(all(result_df["country"] == "US"))
+            self.assertTrue(all(result_df["currency"] == "USD"))
 
         finally:
             # Clean up temporary file
@@ -231,32 +314,34 @@ class TestGenerateSqlInserts(unittest.TestCase):
 
     def test_sql_generation(self) -> None:
         """Test SQL generation with sample data."""
-        test_data = pd.DataFrame([
-            {
-                'symbol': 'AAPL',
-                'name': 'APPLE INC.',
-                'exchange': 'Nasdaq',
-                'sector': None,
-                'industry': None,
-                'country': 'US',
-                'currency': 'USD',
-                'market_cap': None,
-                'description': None,
-                'website': None,
-            },
-            {
-                'symbol': 'MSFT',
-                'name': "MICROSOFT CORP.",
-                'exchange': 'Nasdaq',
-                'sector': None,
-                'industry': None,
-                'country': 'US',
-                'currency': 'USD',
-                'market_cap': None,
-                'description': None,
-                'website': None,
-            }
-        ])
+        test_data = pd.DataFrame(
+            [
+                {
+                    "symbol": "AAPL",
+                    "name": "APPLE INC.",
+                    "exchange": "Nasdaq",
+                    "sector": None,
+                    "industry": None,
+                    "country": "US",
+                    "currency": "USD",
+                    "market_cap": None,
+                    "description": None,
+                    "website": None,
+                },
+                {
+                    "symbol": "MSFT",
+                    "name": "MICROSOFT CORP.",
+                    "exchange": "Nasdaq",
+                    "sector": None,
+                    "industry": None,
+                    "country": "US",
+                    "currency": "USD",
+                    "market_cap": None,
+                    "description": None,
+                    "website": None,
+                },
+            ]
+        )
 
         sql = generate_sql_inserts(test_data)
 
@@ -270,20 +355,22 @@ class TestGenerateSqlInserts(unittest.TestCase):
 
     def test_sql_escaping(self) -> None:
         """Test that single quotes are properly escaped in SQL."""
-        test_data = pd.DataFrame([
-            {
-                'symbol': 'TEST',
-                'name': "O'REILLY AUTOMOTIVE",  # Contains single quote
-                'exchange': 'NYSE',
-                'sector': None,
-                'industry': None,
-                'country': 'US',
-                'currency': 'USD',
-                'market_cap': None,
-                'description': None,
-                'website': None,
-            }
-        ])
+        test_data = pd.DataFrame(
+            [
+                {
+                    "symbol": "TEST",
+                    "name": "O'REILLY AUTOMOTIVE",  # Contains single quote
+                    "exchange": "NYSE",
+                    "sector": None,
+                    "industry": None,
+                    "country": "US",
+                    "currency": "USD",
+                    "market_cap": None,
+                    "description": None,
+                    "website": None,
+                }
+            ]
+        )
 
         sql = generate_sql_inserts(test_data)
 

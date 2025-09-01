@@ -36,14 +36,21 @@ help:
 	@echo "  make build           - Build all components"
 	@echo "  make test            - Run all tests"
 	@echo ""
+	@echo "Code Quality Commands:"
+	@echo "  make lint            - Run all linting checks"
+	@echo "  make format          - Format all code automatically"
+	@echo "  make check-all       - Run format + lint + safety + test"
+	@echo "  make safety-check    - Run security vulnerability checks"
+	@echo ""
 	@echo "Environment Commands:"
 	@echo "  make local <target>  - Run target in local environment"
 	@echo "  make prod <target>   - Run target in production environment"
 	@echo "  make verify          - Verify setup and database status"
 	@echo "  make status          - Show environment status"
 
-setup-local: install-deps db-setup-local db-migrate
+setup-local: install-deps db-setup-local db-migrate pre-commit-install
 	@echo "Local development environment ready"
+	@echo "Pre-commit hooks installed for automatic code quality checks"
 	@echo "Start development with: make dev"
 
 install-deps:
@@ -101,9 +108,58 @@ dev-frontend:
 	npm run dev
 
 test:
-	@echo "Running tests..."
+	@echo "Running all tests..."
+	@$(MAKE) lint
+	@$(MAKE) test-python
+	@$(MAKE) test-go
+
+test-python:
+	@echo "Running Python tests..."
 	. $(VENV_PATH)/bin/activate && python scripts/test_ticker_db_importer.py
+	. $(VENV_PATH)/bin/activate && pytest scripts/us_tickers/tests/ -v --cov=us_tickers
+
+test-go:
+	@echo "Running Go tests..."
 	cd backend && go test ./...
+
+lint:
+	@echo "Running linting checks..."
+	@$(MAKE) lint-python
+	@$(MAKE) lint-go
+
+lint-python:
+	@echo "Linting Python code..."
+	. $(VENV_PATH)/bin/activate && black --check scripts/us_tickers/ scripts/test_*.py scripts/ticker_*.py scripts/update_*.py || \
+		(echo "❌ Code formatting issues found. Run 'make format' to fix." && exit 1)
+	. $(VENV_PATH)/bin/activate && flake8 scripts/us_tickers/ --max-line-length=79 --ignore=E203,W503
+	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
+	. $(VENV_PATH)/bin/activate && bandit -r scripts/us_tickers/ --skip B101
+
+lint-go:
+	@echo "Linting Go code..."
+	cd backend && go fmt ./...
+	cd backend && go vet ./...
+
+format:
+	@echo "Formatting code..."
+	. $(VENV_PATH)/bin/activate && black scripts/us_tickers/ scripts/test_*.py scripts/ticker_*.py scripts/update_*.py
+	. $(VENV_PATH)/bin/activate && isort scripts/us_tickers/ scripts/test_*.py scripts/ticker_*.py scripts/update_*.py
+	cd backend && go fmt ./...
+
+safety-check:
+	@echo "Running security checks..."
+	. $(VENV_PATH)/bin/activate && safety check --ignore 52510
+
+pre-commit-install:
+	@echo "Installing pre-commit hooks..."
+	. $(VENV_PATH)/bin/activate && pre-commit install
+
+pre-commit-run:
+	@echo "Running pre-commit hooks..."
+	. $(VENV_PATH)/bin/activate && pre-commit run --all-files
+
+check-all: format lint safety-check test
+	@echo "✅ All checks passed!"
 
 verify:
 	@./scripts/verify-setup.sh

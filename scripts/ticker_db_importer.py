@@ -6,13 +6,13 @@ This script transforms the downloaded ticker CSV data to match the database sche
 and prepares it for insertion into the PostgreSQL stocks table.
 """
 
-import pandas as pd
+import argparse
 import re
 import sys
 from pathlib import Path
 from typing import Dict, List, Optional
-import argparse
 
+import pandas as pd
 
 # Exchange code mapping from fetch.py
 EXCHANGE_CODES = {
@@ -40,7 +40,7 @@ def clean_security_name(name: str) -> str:
     # Remove quotes
     name = name.strip('"')
 
-        # Remove common suffixes that don't add value (order matters - longer first)
+    # Remove common suffixes that don't add value (order matters - longer first)
     suffixes_to_remove = [
         " - CLASS A COMMON STOCK",
         " CLASS A COMMON STOCK",
@@ -60,12 +60,12 @@ def clean_security_name(name: str) -> str:
     name_upper = name.upper()
     for suffix in suffixes_to_remove:
         if name_upper.endswith(suffix.upper()):
-            name = name[:len(name) - len(suffix)]
+            name = name[: len(name) - len(suffix)]
             break
 
     # Clean up extra whitespace and trailing punctuation
-    name = re.sub(r'\s+', ' ', name.strip())
-    name = name.rstrip(' .,')
+    name = re.sub(r"\s+", " ", name.strip())
+    name = name.rstrip(" .,")
 
     # Handle special cases
     if name.endswith(" INC"):
@@ -88,26 +88,33 @@ def should_include_ticker(row: pd.Series) -> bool:
     Returns:
         True if ticker should be included
     """
-    ticker = row['Ticker']
-    security_name = row['Security Name']
+    ticker = row["Ticker"]
+    security_name = row["Security Name"]
 
     # Skip if no ticker
     if not ticker or pd.isna(ticker):
         return False
 
     # Skip tickers with special characters (warrants, rights, units, etc.)
-    if any(char in ticker for char in ['.', '$', '^', '+']):
+    if any(char in ticker for char in [".", "$", "^", "+"]):
         return False
 
     # Skip if ticker contains common warrant/rights indicators
-    warrant_indicators = ['W', 'R', 'U', 'WS', 'RT', 'WT']
+    warrant_indicators = ["W", "R", "U", "WS", "RT", "WT"]
     if any(ticker.endswith(indicator) for indicator in warrant_indicators):
         return False
 
     # Skip if security name indicates derivatives
     derivative_indicators = [
-        'WARRANT', 'RIGHTS', 'UNITS', 'PREFERRED', 'NOTES', 'TRUST',
-        'DEPOSITARY SHARES', 'SUBORDINATED', 'CUMULATIVE'
+        "WARRANT",
+        "RIGHTS",
+        "UNITS",
+        "PREFERRED",
+        "NOTES",
+        "TRUST",
+        "DEPOSITARY SHARES",
+        "SUBORDINATED",
+        "CUMULATIVE",
     ]
     security_upper = security_name.upper()
     if any(indicator in security_upper for indicator in derivative_indicators):
@@ -140,9 +147,9 @@ def transform_ticker_data(csv_path: str) -> pd.DataFrame:
     transformed_data = []
 
     for _, row in df_filtered.iterrows():
-        ticker = row['Ticker'].strip().upper()
-        raw_name = row['Security Name']
-        exchange_code = row['Exchange']
+        ticker = row["Ticker"].strip().upper()
+        raw_name = row["Security Name"]
+        exchange_code = row["Exchange"]
 
         # Clean the security name
         clean_name = clean_security_name(raw_name)
@@ -152,16 +159,16 @@ def transform_ticker_data(csv_path: str) -> pd.DataFrame:
 
         # Create the record for database insertion
         record = {
-            'symbol': ticker,
-            'name': clean_name,
-            'exchange': exchange_name,
-            'sector': None,  # To be populated later
-            'industry': None,  # To be populated later
-            'country': 'US',
-            'currency': 'USD',
-            'market_cap': None,  # To be populated later
-            'description': None,  # To be populated later
-            'website': None,  # To be populated later
+            "symbol": ticker,
+            "name": clean_name,
+            "exchange": exchange_name,
+            "sector": None,  # To be populated later
+            "industry": None,  # To be populated later
+            "country": "US",
+            "currency": "USD",
+            "market_cap": None,  # To be populated later
+            "description": None,  # To be populated later
+            "website": None,  # To be populated later
         }
 
         transformed_data.append(record)
@@ -171,12 +178,14 @@ def transform_ticker_data(csv_path: str) -> pd.DataFrame:
     print(f"\nTransformation summary:")
     print(f"- Total records: {len(result_df)}")
     print(f"- Exchange distribution:")
-    print(result_df['exchange'].value_counts())
+    print(result_df["exchange"].value_counts())
 
     return result_df
 
 
-def generate_sql_inserts(df: pd.DataFrame, output_file: Optional[str] = None) -> str:
+def generate_sql_inserts(
+    df: pd.DataFrame, output_file: Optional[str] = None
+) -> str:
     """
     Generate SQL INSERT statements for the transformed data.
 
@@ -204,13 +213,15 @@ def generate_sql_inserts(df: pd.DataFrame, output_file: Optional[str] = None) ->
         batch_df = df.iloc[start_idx:end_idx]
 
         sql_statements.append(f"-- Batch {batch_num + 1}/{total_batches}")
-        sql_statements.append("INSERT INTO stocks (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)")
+        sql_statements.append(
+            "INSERT INTO stocks (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)"
+        )
         sql_statements.append("VALUES")
 
         values = []
         for _, row in batch_df.iterrows():
             # Escape single quotes in names
-            clean_name = row['name'].replace("'", "''")
+            clean_name = row["name"].replace("'", "''")
             value = f"('{row['symbol']}', '{clean_name}', '{row['exchange']}', NULL, NULL, '{row['country']}', '{row['currency']}', NULL, NULL, NULL)"
             values.append(value)
 
@@ -221,7 +232,7 @@ def generate_sql_inserts(df: pd.DataFrame, output_file: Optional[str] = None) ->
     sql_content = "\n".join(sql_statements)
 
     if output_file:
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             f.write(sql_content)
         print(f"SQL statements saved to: {output_file}")
 
@@ -234,26 +245,38 @@ def preview_data(df: pd.DataFrame, num_samples: int = 10) -> None:
     print("-" * 80)
 
     for i, (_, row) in enumerate(df.head(num_samples).iterrows()):
-        print(f"{i+1:2d}. {row['symbol']:6s} | {row['name']:50s} | {row['exchange']}")
+        print(
+            f"{i+1:2d}. {row['symbol']:6s} | {row['name']:50s} | {row['exchange']}"
+        )
 
     print("-" * 80)
 
 
 def main():
     """Main function to run the ticker transformation."""
-    parser = argparse.ArgumentParser(description='Transform ticker CSV for database import')
-    parser.add_argument('--csv',
-                       default='scripts/us_tickers/demo_tickers.csv',
-                       help='Path to ticker CSV file')
-    parser.add_argument('--output-sql',
-                       default='scripts/ticker_import.sql',
-                       help='Output SQL file path')
-    parser.add_argument('--output-csv',
-                       default='scripts/transformed_tickers.csv',
-                       help='Output transformed CSV file path')
-    parser.add_argument('--preview-only',
-                       action='store_true',
-                       help='Only preview data without generating files')
+    parser = argparse.ArgumentParser(
+        description="Transform ticker CSV for database import"
+    )
+    parser.add_argument(
+        "--csv",
+        default="scripts/us_tickers/demo_tickers.csv",
+        help="Path to ticker CSV file",
+    )
+    parser.add_argument(
+        "--output-sql",
+        default="scripts/ticker_import.sql",
+        help="Output SQL file path",
+    )
+    parser.add_argument(
+        "--output-csv",
+        default="scripts/transformed_tickers.csv",
+        help="Output transformed CSV file path",
+    )
+    parser.add_argument(
+        "--preview-only",
+        action="store_true",
+        help="Only preview data without generating files",
+    )
 
     args = parser.parse_args()
 

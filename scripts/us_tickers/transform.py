@@ -2,7 +2,6 @@
 
 import logging
 import re
-from typing import Dict
 
 import pandas as pd
 
@@ -27,7 +26,8 @@ def clean_security_name(name: str) -> str:
     # Remove quotes
     name = name.strip('"')
 
-    # Remove common suffixes that don't add value (order matters - longer first)
+    # Remove common suffixes that don't add value
+    # (order matters - longer first)
     suffixes_to_remove = [
         " - CLASS A COMMON STOCK",
         " CLASS A COMMON STOCK",

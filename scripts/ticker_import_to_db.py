@@ -21,12 +21,8 @@ from pathlib import Path
 # Add the us_tickers module to Python path
 sys.path.append(str(Path(__file__).parent))
 
-from us_tickers import (
-    get_exchange_listed_tickers,
-    transform_for_database,
-    import_stocks_to_database,
-    test_database_connection,
-)
+from us_tickers import (get_exchange_listed_tickers, import_stocks_to_database,
+                        test_database_connection, transform_for_database)
 from us_tickers.database import get_database_stats
 
 
@@ -36,8 +32,8 @@ def setup_logging(verbose: bool = False) -> None:
 
     logging.basicConfig(
         level=level,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler(sys.stderr)]
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[logging.StreamHandler(sys.stderr)],
     )
 
 
@@ -129,7 +125,10 @@ Environment Variables Required:
         # Test database connection first
         print("🔍 Testing database connection...")
         if not test_database_connection():
-            print("❌ Database connection failed. Please check your configuration.", file=sys.stderr)
+            print(
+                "❌ Database connection failed. Please check your configuration.",
+                file=sys.stderr,
+            )
             print("\nTroubleshooting:")
             print("1. Make sure PostgreSQL is running")
             print("2. Check your .env file or environment variables:")
@@ -144,8 +143,8 @@ Environment Variables Required:
         if stats:
             print(f"\n📊 Current database stats:")
             print(f"  Total stocks: {stats.get('total_stocks', 0)}")
-            if stats.get('by_exchange'):
-                for exchange, count in stats['by_exchange'].items():
+            if stats.get("by_exchange"):
+                for exchange, count in stats["by_exchange"].items():
                     print(f"  {exchange}: {count}")
             print(f"  Added in last 24h: {stats.get('added_last_24h', 0)}")
 
@@ -178,26 +177,36 @@ Environment Variables Required:
         print(f"✨ {len(transformed_df)} tickers ready for import")
 
         # Show exchange distribution
-        exchange_counts = transformed_df['exchange'].value_counts()
+        exchange_counts = transformed_df["exchange"].value_counts()
         for exchange, count in exchange_counts.items():
             print(f"  {exchange}: {count}")
 
         if args.dry_run:
-            print("\n🏃 Dry run mode - showing preview of data to be imported:")
+            print(
+                "\n🏃 Dry run mode - showing preview of data to be imported:"
+            )
             preview_df = transformed_df.head(10)
             for _, row in preview_df.iterrows():
-                print(f"  {row['symbol']:6} | {row['name']:50} | {row['exchange']}")
+                print(
+                    f"  {row['symbol']:6} | {row['name']:50} | {row['exchange']}"
+                )
             if len(transformed_df) > 10:
                 print(f"  ... and {len(transformed_df) - 10} more records")
             print("\n💡 To actually import, run without --dry-run flag")
-            print("📝 Note: ON CONFLICT DO NOTHING - existing stocks will be skipped")
+            print(
+                "📝 Note: ON CONFLICT DO NOTHING - existing stocks will be skipped"
+            )
             sys.exit(0)
 
         # Import to database
         print(f"\n📊 Importing to database (batch size: {args.batch_size})...")
-        print("📝 Using ON CONFLICT DO NOTHING - existing stocks will be preserved")
+        print(
+            "📝 Using ON CONFLICT DO NOTHING - existing stocks will be preserved"
+        )
 
-        inserted, skipped = import_stocks_to_database(transformed_df, args.batch_size)
+        inserted, skipped = import_stocks_to_database(
+            transformed_df, args.batch_size
+        )
 
         print(f"\n🎉 Import completed!")
         print(f"  ✅ Inserted: {inserted} new stocks")
@@ -214,11 +223,13 @@ Environment Variables Required:
         if final_stats:
             print(f"\n📊 Updated database stats:")
             print(f"  Total stocks: {final_stats.get('total_stocks', 0)}")
-            if final_stats.get('by_exchange'):
-                for exchange, count in final_stats['by_exchange'].items():
+            if final_stats.get("by_exchange"):
+                for exchange, count in final_stats["by_exchange"].items():
                     print(f"  {exchange}: {count}")
 
-        print(f"\n🔄 For periodic updates, run this script again to get new listings")
+        print(
+            f"\n🔄 For periodic updates, run this script again to get new listings"
+        )
 
     except KeyboardInterrupt:
         print("\n\nOperation cancelled by user", file=sys.stderr)
