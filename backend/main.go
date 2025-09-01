@@ -6,16 +6,27 @@ import (
 	"os"
 	"time"
 
+	"investorcenter-api/database"
+	"investorcenter-api/handlers"
+
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	"investorcenter-api/handlers"
 )
 
 func main() {
 	// Load environment variables
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found")
+	}
+
+	// Initialize database connection
+	if err := database.Initialize(); err != nil {
+		log.Printf("Database connection failed: %v", err)
+		log.Println("Starting in mock mode - database features disabled")
+	} else {
+		log.Println("Database connected successfully")
+		defer database.Close()
 	}
 
 	// Set Gin mode
@@ -40,11 +51,26 @@ func main() {
 
 	// Health check endpoint
 	r.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
+		response := gin.H{
 			"status":    "healthy",
 			"timestamp": time.Now().UTC(),
 			"service":   "investorcenter-api",
-		})
+		}
+
+		// Check database health
+		if database.DB != nil {
+			if err := database.HealthCheck(); err != nil {
+				response["database"] = "unhealthy"
+				response["database_error"] = err.Error()
+				c.JSON(http.StatusServiceUnavailable, response)
+				return
+			}
+			response["database"] = "healthy"
+		} else {
+			response["database"] = "not_connected"
+		}
+
+		c.JSON(http.StatusOK, response)
 	})
 
 	// API v1 routes
@@ -62,6 +88,9 @@ func main() {
 		// Ticker page endpoints
 		tickers := v1.Group("/tickers")
 		{
+			tickers.GET("/", handlers.GetStocks)                   // List all stocks with pagination
+			tickers.POST("/", handlers.CreateStock)                // Create new stock
+			tickers.POST("/import", handlers.ImportTickersFromCSV) // Import from CSV
 			tickers.GET("/:symbol", handlers.GetTickerOverview)
 			tickers.GET("/:symbol/chart", handlers.GetTickerChart)
 			tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
@@ -119,28 +148,28 @@ func getMarketIndices(c *gin.Context) {
 	// Mock data - replace with real market data API
 	indices := []gin.H{
 		{
-			"symbol":      "^GSPC",
-			"name":        "S&P 500",
-			"price":       4567.89,
-			"change":      23.45,
+			"symbol":        "^GSPC",
+			"name":          "S&P 500",
+			"price":         4567.89,
+			"change":        23.45,
 			"changePercent": 0.52,
-			"lastUpdated": time.Now().UTC(),
+			"lastUpdated":   time.Now().UTC(),
 		},
 		{
-			"symbol":      "^DJI",
-			"name":        "Dow Jones",
-			"price":       35432.10,
-			"change":      -45.67,
+			"symbol":        "^DJI",
+			"name":          "Dow Jones",
+			"price":         35432.10,
+			"change":        -45.67,
 			"changePercent": -0.13,
-			"lastUpdated": time.Now().UTC(),
+			"lastUpdated":   time.Now().UTC(),
 		},
 		{
-			"symbol":      "^IXIC",
-			"name":        "NASDAQ",
-			"price":       14123.45,
-			"change":      67.89,
+			"symbol":        "^IXIC",
+			"name":          "NASDAQ",
+			"price":         14123.45,
+			"change":        67.89,
 			"changePercent": 0.48,
-			"lastUpdated": time.Now().UTC(),
+			"lastUpdated":   time.Now().UTC(),
 		},
 	}
 
@@ -155,7 +184,7 @@ func getMarketIndices(c *gin.Context) {
 
 func getStockData(c *gin.Context) {
 	symbol := c.Param("symbol")
-	
+
 	// Mock data - replace with real market data API
 	stock := gin.H{
 		"symbol":        symbol,
@@ -186,11 +215,11 @@ func getStockData(c *gin.Context) {
 func getStockChart(c *gin.Context) {
 	symbol := c.Param("symbol")
 	period := c.DefaultQuery("period", "1d")
-	
+
 	// Mock chart data - replace with real market data API
 	var dataPoints []gin.H
 	basePrice := 175.0
-	
+
 	for i := 0; i < 100; i++ {
 		price := basePrice + float64(i)*0.1 + float64(i%10-5)*0.5
 		dataPoints = append(dataPoints, gin.H{
@@ -218,19 +247,19 @@ func getStockChart(c *gin.Context) {
 
 func searchSecurities(c *gin.Context) {
 	query := c.Query("q")
-	
+
 	// Mock search results - replace with real search API
 	results := []gin.H{
 		{
-			"symbol": "AAPL",
-			"name":   "Apple Inc.",
-			"type":   "stock",
+			"symbol":   "AAPL",
+			"name":     "Apple Inc.",
+			"type":     "stock",
 			"exchange": "NASDAQ",
 		},
 		{
-			"symbol": "GOOGL",
-			"name":   "Alphabet Inc.",
-			"type":   "stock",
+			"symbol":   "GOOGL",
+			"name":     "Alphabet Inc.",
+			"type":     "stock",
 			"exchange": "NASDAQ",
 		},
 	}
@@ -250,13 +279,13 @@ func getPortfolios(c *gin.Context) {
 	// Mock portfolios - replace with database query
 	portfolios := []gin.H{
 		{
-			"id":          1,
-			"name":        "Growth Portfolio",
-			"description": "High growth technology stocks",
-			"value":       125000.50,
-			"change":      2345.67,
+			"id":            1,
+			"name":          "Growth Portfolio",
+			"description":   "High growth technology stocks",
+			"value":         125000.50,
+			"change":        2345.67,
 			"changePercent": 1.91,
-			"createdAt":   time.Now().Add(-30 * 24 * time.Hour).UTC(),
+			"createdAt":     time.Now().Add(-30 * 24 * time.Hour).UTC(),
 		},
 	}
 
@@ -282,13 +311,13 @@ func createPortfolio(c *gin.Context) {
 
 	// Mock creation - replace with database insert
 	portfolio := gin.H{
-		"id":          123,
-		"name":        req.Name,
-		"description": req.Description,
-		"value":       0,
-		"change":      0,
+		"id":            123,
+		"name":          req.Name,
+		"description":   req.Description,
+		"value":         0,
+		"change":        0,
 		"changePercent": 0,
-		"createdAt":   time.Now().UTC(),
+		"createdAt":     time.Now().UTC(),
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
@@ -301,24 +330,24 @@ func createPortfolio(c *gin.Context) {
 
 func getPortfolio(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	// Mock portfolio - replace with database query
 	portfolio := gin.H{
-		"id":          id,
-		"name":        "Growth Portfolio",
-		"description": "High growth technology stocks",
-		"value":       125000.50,
-		"change":      2345.67,
+		"id":            id,
+		"name":          "Growth Portfolio",
+		"description":   "High growth technology stocks",
+		"value":         125000.50,
+		"change":        2345.67,
 		"changePercent": 1.91,
 		"holdings": []gin.H{
 			{
-				"symbol":   "AAPL",
-				"name":     "Apple Inc.",
-				"shares":   100,
-				"avgPrice": 150.00,
-				"currentPrice": 175.43,
-				"value":    17543.00,
-				"change":   2543.00,
+				"symbol":        "AAPL",
+				"name":          "Apple Inc.",
+				"shares":        100,
+				"avgPrice":      150.00,
+				"currentPrice":  175.43,
+				"value":         17543.00,
+				"change":        2543.00,
 				"changePercent": 16.95,
 			},
 		},
@@ -335,7 +364,7 @@ func getPortfolio(c *gin.Context) {
 
 func updatePortfolio(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	var req struct {
 		Name        string `json:"name"`
 		Description string `json:"description"`
@@ -362,7 +391,7 @@ func updatePortfolio(c *gin.Context) {
 
 func deletePortfolio(c *gin.Context) {
 	id := c.Param("id")
-	
+
 	// Mock deletion - replace with database delete
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Portfolio deleted successfully",
@@ -378,11 +407,11 @@ func deletePortfolio(c *gin.Context) {
 func getPortfolioPerformance(c *gin.Context) {
 	id := c.Param("id")
 	period := c.DefaultQuery("period", "1m")
-	
+
 	// Mock performance data
 	var performance []gin.H
 	baseValue := 100000.0
-	
+
 	for i := 0; i < 30; i++ {
 		value := baseValue + float64(i)*1000 + float64(i%7-3)*500
 		performance = append(performance, gin.H{
