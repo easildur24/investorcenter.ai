@@ -9,7 +9,13 @@ from typing import List
 import pandas as pd
 
 from .config import config
+from .database import (
+    get_database_stats,
+    import_stocks_to_database,
+    test_database_connection,
+)
 from .fetch import get_exchange_listed_tickers
+from .transform import transform_for_database
 
 
 def setup_logging(verbose: bool) -> None:
@@ -94,6 +100,11 @@ Examples:
         "fetch", help="Fetch tickers from exchanges"
     )
 
+    # Import command
+    import_parser = subparsers.add_parser(
+        "import", help="Fetch tickers and import directly to database"
+    )
+
     fetch_parser.add_argument(
         "--exchanges",
         type=str,
@@ -128,6 +139,46 @@ Examples:
     )
 
     fetch_parser.add_argument(
+        "--verbose", action="store_true", help="Enable verbose logging"
+    )
+
+    # Import command arguments (similar to fetch but no output file)
+    import_parser.add_argument(
+        "--exchanges",
+        type=str,
+        default=",".join(config.default_exchanges or ["Q", "N"]),
+        help=(
+            f"Comma-separated exchange codes "
+            f"(default: {','.join(config.default_exchanges or ['Q', 'N'])})"
+        ),
+    )
+
+    import_parser.add_argument(
+        "--include-etfs",
+        action="store_true",
+        help="Include ETFs in the import",
+    )
+
+    import_parser.add_argument(
+        "--include-test-issues",
+        action="store_true",
+        help="Include test issues in the import",
+    )
+
+    import_parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=100,
+        help="Number of records to import per batch (default: 100)",
+    )
+
+    import_parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Preview what would be imported without actually importing",
+    )
+
+    import_parser.add_argument(
         "--verbose", action="store_true", help="Enable verbose logging"
     )
 
@@ -178,6 +229,109 @@ Examples:
             sys.exit(130)
         except Exception as e:
             logger.error(f"Error fetching tickers: {e}")
+            print(f"Error: {e}", file=sys.stderr)
+            sys.exit(1)
+
+    elif args.command == "import":
+        # Setup logging
+        setup_logging(args.verbose)
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Test database connection first
+            print("🔍 Testing database connection...")
+            if not test_database_connection():
+                print(
+                    "❌ Database connection failed. Please check your configuration.",
+                    file=sys.stderr,
+                )
+                sys.exit(1)
+            print("✅ Database connection successful!")
+
+            # Show current database stats
+            stats = get_database_stats()
+            if stats:
+                print(f"\n📊 Current database stats:")
+                print(f"  Total stocks: {stats.get('total_stocks', 0)}")
+                if stats.get("by_exchange"):
+                    for exchange, count in stats["by_exchange"].items():
+                        print(f"  {exchange}: {count}")
+                print(f"  Added in last 24h: {stats.get('added_last_24h', 0)}")
+
+            # Parse exchanges
+            exchanges = parse_exchanges(args.exchanges)
+            logger.info(f"Fetching tickers for exchanges: {exchanges}")
+
+            print(f"\n🔄 Fetching ticker data...")
+            print(f"  Exchanges: {', '.join(exchanges)}")
+            print(f"  Include ETFs: {args.include_etfs}")
+            print(f"  Include test issues: {args.include_test_issues}")
+
+            # Fetch raw ticker data
+            raw_df = get_exchange_listed_tickers(
+                exchanges=tuple(exchanges),
+                include_etfs=args.include_etfs,
+                include_test_issues=args.include_test_issues,
+            )
+
+            print(f"📥 Downloaded {len(raw_df)} raw ticker records")
+
+            # Transform for database
+            print("🔧 Transforming data for database...")
+            transformed_df = transform_for_database(raw_df)
+
+            if transformed_df.empty:
+                print("⚠️  No valid tickers found after filtering")
+                sys.exit(0)
+
+            print(f"✨ {len(transformed_df)} tickers ready for import")
+
+            # Show exchange distribution
+            exchange_counts = transformed_df["exchange"].value_counts()
+            for exchange, count in exchange_counts.items():
+                print(f"  {exchange}: {count}")
+
+            if args.dry_run:
+                print(
+                    "\n🏃 Dry run mode - showing preview of data to be imported:"
+                )
+                preview_df = transformed_df.head(10)
+                for _, row in preview_df.iterrows():
+                    print(
+                        f"  {row['symbol']:6} | {row['name']:50} | {row['exchange']}"
+                    )
+                if len(transformed_df) > 10:
+                    print(f"  ... and {len(transformed_df) - 10} more records")
+                print("\nTo actually import, run without --dry-run flag")
+                sys.exit(0)
+
+            # Import to database
+            print(
+                f"\n📊 Importing to database (batch size: {args.batch_size})..."
+            )
+            inserted, skipped = import_stocks_to_database(
+                transformed_df, args.batch_size
+            )
+
+            print(f"\n🎉 Import completed!")
+            print(f"  ✅ Inserted: {inserted} new stocks")
+            print(f"  ⏭️  Skipped: {skipped} existing stocks")
+            print(f"  📈 Total processed: {inserted + skipped}")
+
+            # Show updated stats
+            final_stats = get_database_stats()
+            if final_stats:
+                print(f"\n📊 Updated database stats:")
+                print(f"  Total stocks: {final_stats.get('total_stocks', 0)}")
+                if final_stats.get("by_exchange"):
+                    for exchange, count in final_stats["by_exchange"].items():
+                        print(f"  {exchange}: {count}")
+
+        except KeyboardInterrupt:
+            print("\nOperation cancelled by user", file=sys.stderr)
+            sys.exit(130)
+        except Exception as e:
+            logger.error(f"Error importing tickers: {e}")
             print(f"Error: {e}", file=sys.stderr)
             sys.exit(1)
 
