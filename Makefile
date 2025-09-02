@@ -26,6 +26,12 @@ help:
 	@echo "  make db-import       - Import/update ticker data"
 	@echo "  make db-status       - Check database status"
 	@echo ""
+	@echo "Production:"
+	@echo "  make prod-k8s-setup  - Deploy PostgreSQL to PRODUCTION cluster"
+	@echo "  make prod-deploy-cron - Deploy ticker CronJob to PRODUCTION"
+	@echo "  make prod-cron-status - Check production CronJob status"
+	@echo "  make prod-cron-logs   - View production CronJob logs"
+	@echo ""
 	@echo "Quality:"
 	@echo "  make format          - Format all code"
 	@echo "  make lint            - Run linting checks"
@@ -68,7 +74,7 @@ db-setup:
 dev:
 	@echo "Starting development environment..."
 	@echo "Backend: http://localhost:8080"
-	@echo "Frontend: http://localhost:3000" 
+	@echo "Frontend: http://localhost:3000"
 	@cd backend && DB_HOST=localhost DB_PORT=5432 DB_USER=$(DB_USER) DB_PASSWORD=investorcenter123 DB_NAME=$(DB_NAME) DB_SSLMODE=disable ./investorcenter-api &
 	@npm run dev
 
@@ -106,7 +112,7 @@ lint:
 	. $(VENV_PATH)/bin/activate && mypy scripts/us_tickers/
 	cd backend && go vet ./...
 
-# Database operations  
+# Database operations
 db-import:
 	@echo "Importing ticker data..."
 	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
@@ -114,11 +120,34 @@ db-import:
 db-status:
 	@./scripts/verify-setup.sh
 
-# Kubernetes operations
-k8s-setup:
+# Production Kubernetes operations (DO NOT RUN LOCALLY)
+prod-k8s-setup:
+	@echo "⚠️  PRODUCTION DEPLOYMENT - Ensure you're connected to production cluster!"
+	@echo "Current context: $$(kubectl config current-context)"
+	@read -p "Continue with production deployment? (y/N): " confirm && [ "$$confirm" = "y" ]
 	kubectl apply -f k8s/namespace.yaml
 	kubectl create secret generic postgres-secret --from-literal=username=$(DB_USER) --from-literal=password=prod_investorcenter_456 -n investorcenter || true
 	kubectl apply -f k8s/postgres-deployment.yaml
+
+prod-deploy-cron:
+	@echo "⚠️  PRODUCTION CRON DEPLOYMENT"
+	@echo "This will deploy ticker update automation to AWS EKS"
+	@./scripts/deploy-to-production.sh
+
+prod-cron-status:
+	@echo "Production Ticker Update CronJob Status:"
+	@echo "========================================"
+	@echo "Cluster: $$(kubectl config current-context)"
+	kubectl get cronjobs -n investorcenter
+	@echo ""
+	@echo "Recent Jobs:"
+	kubectl get jobs -n investorcenter -l app=ticker-update --sort-by=.metadata.creationTimestamp
+	@echo ""
+	@echo "To trigger manual run: kubectl create job --from=cronjob/ticker-update manual-ticker-update -n investorcenter"
+
+prod-cron-logs:
+	@echo "Production ticker update logs:"
+	@kubectl logs -n investorcenter -l app=ticker-update --tail=50
 
 db-import-prod:
 	@echo "Setting up production database access..."

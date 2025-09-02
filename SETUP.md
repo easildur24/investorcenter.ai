@@ -50,10 +50,12 @@ This automatically:
 4. Runs all migrations (9 financial tables)
 5. Imports 4,600+ US stock tickers from exchanges
 
-### Production PostgreSQL (Kubernetes)
+### Production PostgreSQL (Cloud Kubernetes)
 ```bash
-make k8s-setup      # Deploy PostgreSQL to Kubernetes
-make db-import-prod # Import data to production database
+# ⚠️  PRODUCTION ONLY - Do not run on local development
+# See PRODUCTION_DEPLOYMENT.md for complete production setup
+make prod-k8s-setup      # Deploy PostgreSQL to production cluster
+make db-import-prod      # Import data to production database
 ```
 
 ## Development Workflow
