@@ -131,13 +131,8 @@ prod-k8s-setup:
 
 prod-deploy-cron:
 	@echo "⚠️  PRODUCTION CRON DEPLOYMENT"
-	@echo "Current context: $$(kubectl config current-context)"
-	@read -p "Deploy ticker update CronJob to production? (y/N): " confirm && [ "$$confirm" = "y" ]
-	@echo "Building and pushing Docker image..."
-	./scripts/build-ticker-updater.sh
-	@echo "⚠️  MANUAL STEP REQUIRED: Push image to your container registry"
-	@echo "Run: docker push investorcenter/ticker-updater:latest"
-	@echo "Then apply CronJob: kubectl apply -f k8s/ticker-update-cronjob.yaml"
+	@echo "This will deploy ticker update automation to AWS EKS"
+	@./scripts/deploy-to-production.sh
 
 prod-cron-status:
 	@echo "Production Ticker Update CronJob Status:"

@@ -48,6 +48,20 @@ resource "aws_ecr_lifecycle_policy" "app" {
   })
 }
 
+# ECR Repository for Ticker Updater CronJob
+resource "aws_ecr_repository" "ticker_updater" {
+  name                 = "investorcenter/ticker-updater"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "investorcenter-ticker-updater"
+  }
+}
+
 resource "aws_ecr_lifecycle_policy" "backend" {
   repository = aws_ecr_repository.backend.name
 
@@ -61,6 +75,28 @@ resource "aws_ecr_lifecycle_policy" "backend" {
           tagPrefixList = ["v"]
           countType     = "imageCountMoreThan"
           countNumber   = 30
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_ecr_lifecycle_policy" "ticker_updater" {
+  repository = aws_ecr_repository.ticker_updater.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 10 images"
+        selection = {
+          tagStatus     = "tagged"
+          tagPrefixList = ["v"]
+          countType     = "imageCountMoreThan"
+          countNumber   = 10
         }
         action = {
           type = "expire"

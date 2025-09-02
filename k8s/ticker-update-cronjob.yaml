@@ -7,8 +7,8 @@ metadata:
     app: ticker-update
     component: data-pipeline
 spec:
-  # Run weekly on Sunday at 2 AM UTC
-  schedule: "0 2 * * 0"
+  # Run daily at 11:00 AM UTC
+  schedule: "0 11 * * *"
 
   # Keep last 3 successful and 1 failed job for debugging
   successfulJobsHistoryLimit: 3
@@ -39,7 +39,7 @@ spec:
 
           containers:
           - name: ticker-updater
-            image: investorcenter/ticker-updater:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ticker-updater:latest
             imagePullPolicy: IfNotPresent  # Pull from registry in production
 
             env:
