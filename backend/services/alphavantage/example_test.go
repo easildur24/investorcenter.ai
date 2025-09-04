@@ -18,7 +18,7 @@ func TestIntegrationAlphaVantage(t *testing.T) {
 
 	apiKey := os.Getenv("ALPHA_VANTAGE_API_KEY")
 	if apiKey == "" {
-		apiKey = "6MVGMJ4FCAGF2ONU" // Fallback to provided key for testing
+		t.Skip("ALPHA_VANTAGE_API_KEY environment variable not set")
 	}
 
 	client := NewClient(apiKey)

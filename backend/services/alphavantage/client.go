@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -12,37 +13,143 @@ import (
 )
 
 const (
-	baseURL = "https://www.alphavantage.co/query"
+	defaultBaseURL = "https://www.alphavantage.co/query"
 
 	// Endpoints
 	functionGlobalQuote = "GLOBAL_QUOTE"
 	functionBatchQuotes = "BATCH_STOCK_QUOTES"
 
-	// Rate limits for free tier
-	maxRequestsPerMinute = 5
-	maxRequestsPerDay    = 500
+	// Default rate limits for free tier
+	defaultMaxRequestsPerMinute = 5
+	defaultMaxRequestsPerDay    = 500
+	defaultTimeout              = 30 * time.Second
 )
+
+// Logger interface for structured logging
+type Logger interface {
+	Debug(msg string, keysAndValues ...interface{})
+	Info(msg string, keysAndValues ...interface{})
+	Warn(msg string, keysAndValues ...interface{})
+	Error(msg string, keysAndValues ...interface{})
+}
+
+// defaultLogger is a simple implementation using standard library
+type defaultLogger struct{}
+
+func (l *defaultLogger) Debug(msg string, keysAndValues ...interface{}) {
+	log.Printf("DEBUG: %s %v", msg, keysAndValues)
+}
+
+func (l *defaultLogger) Info(msg string, keysAndValues ...interface{}) {
+	log.Printf("INFO: %s %v", msg, keysAndValues)
+}
+
+func (l *defaultLogger) Warn(msg string, keysAndValues ...interface{}) {
+	log.Printf("WARN: %s %v", msg, keysAndValues)
+}
+
+func (l *defaultLogger) Error(msg string, keysAndValues ...interface{}) {
+	log.Printf("ERROR: %s %v", msg, keysAndValues)
+}
+
+// AlphaVantageClient defines the interface for Alpha Vantage API operations
+type AlphaVantageClient interface {
+	GetGlobalQuote(ctx context.Context, symbol string) (*LiveQuote, error)
+	GetBatchQuotes(ctx context.Context, symbols []string) ([]*LiveQuote, error)
+}
+
+// ClientConfig holds configuration for the Alpha Vantage client
+type ClientConfig struct {
+	APIKey               string
+	BaseURL              string
+	MaxRequestsPerMinute int
+	MaxRequestsPerDay    int
+	Timeout              time.Duration
+	HTTPClient           *http.Client
+	Logger               Logger
+	EnableCircuitBreaker bool
+	CircuitBreakerConfig *CircuitBreakerConfig
+}
+
+// CircuitBreakerConfig holds circuit breaker configuration
+type CircuitBreakerConfig struct {
+	MaxFailures  int
+	ResetTimeout time.Duration
+}
 
 // Client represents the Alpha Vantage API client
 type Client struct {
-	apiKey     string
-	httpClient *http.Client
-	baseURL    string
-
-	// Rate limiting
-	rateLimiter *RateLimiter
+	apiKey         string
+	httpClient     *http.Client
+	baseURL        string
+	logger         Logger
+	rateLimiter    *RateLimiter
+	circuitBreaker *CircuitBreaker
 }
 
-// NewClient creates a new Alpha Vantage API client
+// Ensure Client implements AlphaVantageClient interface
+var _ AlphaVantageClient = (*Client)(nil)
+
+// NewClient creates a new Alpha Vantage API client with default configuration
 func NewClient(apiKey string) *Client {
-	return &Client{
-		apiKey: apiKey,
-		httpClient: &http.Client{
-			Timeout: 30 * time.Second,
-		},
-		baseURL:     baseURL,
-		rateLimiter: NewRateLimiter(maxRequestsPerMinute, maxRequestsPerDay),
+	config := &ClientConfig{
+		APIKey:               apiKey,
+		BaseURL:              defaultBaseURL,
+		MaxRequestsPerMinute: defaultMaxRequestsPerMinute,
+		MaxRequestsPerDay:    defaultMaxRequestsPerDay,
+		Timeout:              defaultTimeout,
 	}
+	return NewClientWithConfig(config)
+}
+
+// NewClientWithConfig creates a new Alpha Vantage API client with custom configuration
+func NewClientWithConfig(config *ClientConfig) *Client {
+	// Apply defaults for missing values
+	if config.BaseURL == "" {
+		config.BaseURL = defaultBaseURL
+	}
+	if config.MaxRequestsPerMinute <= 0 {
+		config.MaxRequestsPerMinute = defaultMaxRequestsPerMinute
+	}
+	if config.MaxRequestsPerDay <= 0 {
+		config.MaxRequestsPerDay = defaultMaxRequestsPerDay
+	}
+	if config.Timeout <= 0 {
+		config.Timeout = defaultTimeout
+	}
+	if config.Logger == nil {
+		config.Logger = &defaultLogger{}
+	}
+
+	httpClient := config.HTTPClient
+	if httpClient == nil {
+		httpClient = &http.Client{
+			Timeout: config.Timeout,
+		}
+	}
+
+	client := &Client{
+		apiKey:      config.APIKey,
+		httpClient:  httpClient,
+		baseURL:     config.BaseURL,
+		logger:      config.Logger,
+		rateLimiter: NewRateLimiterWithOptions(config.MaxRequestsPerMinute, config.MaxRequestsPerDay, config.Logger, nil),
+	}
+
+	// Setup circuit breaker if enabled
+	if config.EnableCircuitBreaker {
+		cbConfig := config.CircuitBreakerConfig
+		if cbConfig == nil {
+			// Default circuit breaker configuration
+			cbConfig = &CircuitBreakerConfig{
+				MaxFailures:  5,
+				ResetTimeout: 60 * time.Second,
+			}
+		}
+		client.circuitBreaker = NewCircuitBreaker(cbConfig.MaxFailures, cbConfig.ResetTimeout, config.Logger)
+	}
+
+	return client
 }
 
 // GlobalQuote represents the response from GLOBAL_QUOTE endpoint
@@ -118,6 +225,9 @@ func (c *Client) GetGlobalQuote(ctx context.Context, symbol string) (*LiveQuote,
 	// Make request with retry logic
 	resp, err := c.doRequestWithRetry(ctx, requestURL)
 	if err != nil {
+		if c.circuitBreaker != nil {
+			c.circuitBreaker.RecordFailure()
+		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -137,6 +247,11 @@ func (c *Client) GetGlobalQuote(ctx context.Context, symbol string) (*LiveQuote,
 	quote, err := c.parseGlobalQuote(result.GlobalQuote)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse quote: %w", err)
+	}
+
+	// Record success for circuit breaker
+	if c.circuitBreaker != nil {
+		c.circuitBreaker.RecordSuccess()
 	}
 
 	return quote, nil
@@ -168,6 +283,9 @@ func (c *Client) GetBatchQuotes(ctx context.Context, symbols []string) ([]*LiveQ
 	// Make request with retry logic
 	resp, err := c.doRequestWithRetry(ctx, requestURL)
 	if err != nil {
+		if c.circuitBreaker != nil {
+			c.circuitBreaker.RecordFailure()
+		}
 		return nil, fmt.Errorf("request failed: %w", err)
 	}
 	defer resp.Body.Close()
@@ -184,10 +302,15 @@ func (c *Client) GetBatchQuotes(ctx context.Context, symbols []string) ([]*LiveQ
 		quote, err := c.parseBatchQuote(sq)
 		if err != nil {
 			// Log error but continue processing other quotes
-			fmt.Printf("Warning: failed to parse quote for %s: %v\n", sq.Symbol, err)
+			c.logger.Warn("failed to parse quote", "symbol", sq.Symbol, "error", err)
 			continue
 		}
 		quotes = append(quotes, quote)
+	}
+
+	// Record success for circuit breaker
+	if c.circuitBreaker != nil {
+		c.circuitBreaker.RecordSuccess()
 	}
 
 	return quotes, nil
