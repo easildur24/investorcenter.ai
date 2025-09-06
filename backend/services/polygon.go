@@ -1,0 +1,622 @@
+package services
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"strings"
+	"time"
+
+	"github.com/shopspring/decimal"
+	"investorcenter-api/models"
+)
+
+const (
+	PolygonBaseURL = "https://api.polygon.io"
+)
+
+// PolygonClient handles Polygon.io API requests
+type PolygonClient struct {
+	APIKey string
+	Client *http.Client
+}
+
+// NewPolygonClient creates a new Polygon.io client
+func NewPolygonClient() *PolygonClient {
+	apiKey := os.Getenv("POLYGON_API_KEY")
+	if apiKey == "" {
+		apiKey = "demo" // Use demo key for testing
+	}
+
+	return &PolygonClient{
+		APIKey: apiKey,
+		Client: &http.Client{
+			Timeout: 30 * time.Second,
+		},
+	}
+}
+
+// QuoteResponse represents Polygon.io quote response
+type PolygonQuoteResponse struct {
+	Status       string `json:"status"`
+	RequestID    string `json:"request_id"`
+	Count        int    `json:"count"`
+	Results      []struct {
+		Value             float64 `json:"value"`
+		LastQuote         struct {
+			Timestamp int64   `json:"timestamp"`
+			Bid       float64 `json:"bid"`
+			Ask       float64 `json:"ask"`
+			Exchange  int     `json:"exchange"`
+			BidSize   int     `json:"bid_size"`
+			AskSize   int     `json:"ask_size"`
+		} `json:"last_quote"`
+		LastTrade struct {
+			Timestamp   int64   `json:"timestamp"`
+			Price       float64 `json:"price"`
+			Size        int     `json:"size"`
+			Exchange    int     `json:"exchange"`
+			Conditions  []int   `json:"conditions"`
+		} `json:"last_trade"`
+		Min struct {
+			Value     float64 `json:"value"`
+			Timestamp int64   `json:"timestamp"`
+		} `json:"min"`
+		Max struct {
+			Value     float64 `json:"value"`
+			Timestamp int64   `json:"timestamp"`
+		} `json:"max"`
+	} `json:"results"`
+}
+
+// PreviousCloseResponse represents previous close data
+type PreviousCloseResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	Results   []struct {
+		Ticker       string  `json:"T"`
+		Volume       float64 `json:"v"`
+		VolumeWeight float64 `json:"vw"`
+		Open         float64 `json:"o"`
+		Close        float64 `json:"c"`
+		High         float64 `json:"h"`
+		Low          float64 `json:"l"`
+		Timestamp    int64   `json:"t"`
+		Transactions int     `json:"n"`
+	} `json:"results"`
+}
+
+// GetQuote fetches real-time quote for a symbol using Polygon.io
+func (p *PolygonClient) GetQuote(symbol string) (*models.StockPrice, error) {
+	// First get previous close data for OHLC
+	prevCloseURL := fmt.Sprintf("%s/v2/aggs/ticker/%s/prev?adjusted=true&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
+
+	resp, err := p.Client.Get(prevCloseURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch previous close: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+	}
+
+	var prevCloseResp PreviousCloseResponse
+	if err := json.NewDecoder(resp.Body).Decode(&prevCloseResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if prevCloseResp.Status != "OK" || len(prevCloseResp.Results) == 0 {
+		return nil, fmt.Errorf("no data returned for symbol: %s", symbol)
+	}
+
+	result := prevCloseResp.Results[0]
+	
+	// Calculate change from previous close
+	change := decimal.NewFromFloat(result.Close - result.Open)
+	changePercent := decimal.Zero
+	if result.Open != 0 {
+		changePercent = change.Div(decimal.NewFromFloat(result.Open))
+	}
+
+	// Convert timestamp to time
+	timestamp := time.Unix(result.Timestamp/1000, 0)
+
+	return &models.StockPrice{
+		Symbol:        symbol,
+		Price:         decimal.NewFromFloat(result.Close),
+		Open:          decimal.NewFromFloat(result.Open),
+		High:          decimal.NewFromFloat(result.High),
+		Low:           decimal.NewFromFloat(result.Low),
+		Close:         decimal.NewFromFloat(result.Close),
+		Volume:        int64(result.Volume),
+		Change:        change,
+		ChangePercent: changePercent,
+		Timestamp:     timestamp,
+	}, nil
+}
+
+// AggregatesResponse represents aggregates/bars data
+type AggregatesResponse struct {
+	Status       string `json:"status"`
+	RequestID    string `json:"request_id"`
+	Count        int    `json:"count"`
+	ResultsCount int    `json:"resultsCount"`
+	Adjusted     bool   `json:"adjusted"`
+	Results      []struct {
+		Ticker       string  `json:"T"`
+		Volume       float64 `json:"v"`
+		VolumeWeight float64 `json:"vw"`
+		Open         float64 `json:"o"`
+		Close        float64 `json:"c"`
+		High         float64 `json:"h"`
+		Low          float64 `json:"l"`
+		Timestamp    int64   `json:"t"`
+		Transactions int     `json:"n"`
+	} `json:"results"`
+	NextURL string `json:"next_url"`
+}
+
+// GetHistoricalData fetches historical price data
+func (p *PolygonClient) GetHistoricalData(symbol string, timespan string, from string, to string) ([]models.ChartDataPoint, error) {
+	url := fmt.Sprintf("%s/v2/aggs/ticker/%s/range/1/%s/%s/%s?adjusted=true&sort=asc&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), timespan, from, to, p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch historical data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var aggResp AggregatesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&aggResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if aggResp.Status != "OK" && aggResp.Status != "DELAYED" {
+		return nil, fmt.Errorf("API error: %s", aggResp.Status)
+	}
+
+	var dataPoints []models.ChartDataPoint
+	for _, bar := range aggResp.Results {
+		timestamp := time.Unix(bar.Timestamp/1000, 0)
+
+		dataPoints = append(dataPoints, models.ChartDataPoint{
+			Timestamp: timestamp,
+			Open:      decimal.NewFromFloat(bar.Open),
+			High:      decimal.NewFromFloat(bar.High),
+			Low:       decimal.NewFromFloat(bar.Low),
+			Close:     decimal.NewFromFloat(bar.Close),
+			Volume:    int64(bar.Volume),
+		})
+	}
+
+	return dataPoints, nil
+}
+
+// GetIntradayData fetches intraday data (1-minute bars)
+func (p *PolygonClient) GetIntradayData(symbol string) ([]models.ChartDataPoint, error) {
+	// Get the most recent trading day (not weekend)
+	now := time.Now()
+	var tradingDay time.Time
+	
+	// If it's weekend, go back to Friday
+	switch now.Weekday() {
+	case time.Saturday:
+		tradingDay = now.AddDate(0, 0, -1) // Friday
+	case time.Sunday:
+		tradingDay = now.AddDate(0, 0, -2) // Friday
+	default:
+		tradingDay = now // Weekday
+	}
+	
+	tradingDayStr := tradingDay.Format("2006-01-02")
+	
+	// Use 5-minute bars for better performance and smoother charts
+	url := fmt.Sprintf("%s/v2/aggs/ticker/%s/range/5/minute/%s/%s?adjusted=true&sort=asc&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), tradingDayStr, tradingDayStr, p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch intraday data: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var aggResp AggregatesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&aggResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if aggResp.Status != "OK" && aggResp.Status != "DELAYED" {
+		return nil, fmt.Errorf("API error: %s", aggResp.Status)
+	}
+
+	var dataPoints []models.ChartDataPoint
+	for _, bar := range aggResp.Results {
+		timestamp := time.Unix(bar.Timestamp/1000, 0)
+
+		dataPoints = append(dataPoints, models.ChartDataPoint{
+			Timestamp: timestamp,
+			Open:      decimal.NewFromFloat(bar.Open),
+			High:      decimal.NewFromFloat(bar.High),
+			Low:       decimal.NewFromFloat(bar.Low),
+			Close:     decimal.NewFromFloat(bar.Close),
+			Volume:    int64(bar.Volume),
+		})
+	}
+
+	return dataPoints, nil
+}
+
+// GetDailyData fetches daily data for a period
+func (p *PolygonClient) GetDailyData(symbol string, days int) ([]models.ChartDataPoint, error) {
+	to := time.Now()
+	from := to.AddDate(0, 0, -days)
+	
+	return p.GetHistoricalData(symbol, "day", from.Format("2006-01-02"), to.Format("2006-01-02"))
+}
+
+// TickerDetailsResponse represents ticker details
+type TickerDetailsResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Results   struct {
+		Ticker      string `json:"ticker"`
+		Name        string `json:"name"`
+		Market      string `json:"market"`
+		Locale      string `json:"locale"`
+		PrimaryExch string `json:"primary_exchange"`
+		Type        string `json:"type"`
+		Active      bool   `json:"active"`
+		CurrencyName string `json:"currency_name"`
+		CIK         string `json:"cik"`
+		Composite   string `json:"composite_figi"`
+		ShareClass  string `json:"share_class_figi"`
+		Description string `json:"description"`
+		HomepageURL string `json:"homepage_url"`
+		TotalEmployees int `json:"total_employees"`
+		ListDate    string `json:"list_date"`
+		LogoURL     string `json:"branding.logo_url"`
+		IconURL     string `json:"branding.icon_url"`
+	} `json:"results"`
+}
+
+// GetTickerDetails fetches detailed information about a ticker
+func (p *PolygonClient) GetTickerDetails(symbol string) (*TickerDetailsResponse, error) {
+	url := fmt.Sprintf("%s/v3/reference/tickers/%s?apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch ticker details: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var detailsResp TickerDetailsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&detailsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if detailsResp.Status != "OK" {
+		return nil, fmt.Errorf("API error: %s", detailsResp.Status)
+	}
+
+	return &detailsResp, nil
+}
+
+// IsMarketOpen checks if the US market is currently open
+func (p *PolygonClient) IsMarketOpen() bool {
+	now := time.Now()
+	
+	// Convert to Eastern Time (US market timezone)
+	est, _ := time.LoadLocation("America/New_York")
+	estTime := now.In(est)
+	
+	// Check if it's a weekday
+	if estTime.Weekday() == time.Saturday || estTime.Weekday() == time.Sunday {
+		return false
+	}
+	
+	// Market hours: 9:30 AM - 4:00 PM EST
+	marketOpen := time.Date(estTime.Year(), estTime.Month(), estTime.Day(), 9, 30, 0, 0, est)
+	marketClose := time.Date(estTime.Year(), estTime.Month(), estTime.Day(), 16, 0, 0, 0, est)
+	
+	return estTime.After(marketOpen) && estTime.Before(marketClose)
+}
+
+// FinancialsResponse represents comprehensive financial statements response
+type FinancialsResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	Results   []struct {
+		StartDate    string `json:"start_date"`
+		EndDate      string `json:"end_date"`
+		Timeframe    string `json:"timeframe"`
+		FiscalPeriod string `json:"fiscal_period"`
+		FiscalYear   string `json:"fiscal_year"`
+		CIK          string `json:"cik"`
+		CompanyName  string `json:"company_name"`
+		Financials   struct {
+			BalanceSheet struct {
+				// Assets
+				CurrentAssets struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"current_assets"`
+				TotalAssets struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"assets"`
+				Inventory struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"inventory"`
+				// Liabilities
+				CurrentLiabilities struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"current_liabilities"`
+				TotalLiabilities struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"liabilities"`
+				LongTermDebt struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"long_term_debt"`
+				// Equity
+				TotalEquity struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"equity"`
+			} `json:"balance_sheet"`
+			IncomeStatement struct {
+				// Revenue & Profit
+				Revenues struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"revenues"`
+				CostOfRevenue struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"cost_of_revenue"`
+				GrossProfit struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"gross_profit"`
+				OperatingIncome struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"operating_income_loss"`
+				NetIncome struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"net_income_loss"`
+				// EPS & Shares
+				BasicEPS struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"basic_earnings_per_share"`
+				DilutedEPS struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"diluted_earnings_per_share"`
+				BasicShares struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"basic_average_shares"`
+				DilutedShares struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"diluted_average_shares"`
+				// Expenses
+				OperatingExpenses struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"operating_expenses"`
+				RnD struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"research_and_development"`
+			} `json:"income_statement"`
+			CashFlowStatement struct {
+				OperatingCashFlow struct {
+					Value float64 `json:"value"`
+					Unit  string  `json:"unit"`
+					Label string  `json:"label"`
+				} `json:"net_cash_flow_from_operating_activities"`
+			} `json:"cash_flow_statement"`
+		} `json:"financials"`
+	} `json:"results"`
+}
+
+// GetFundamentals fetches comprehensive financial statements and calculates key ratios
+func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, error) {
+	url := fmt.Sprintf("%s/vX/reference/financials?ticker=%s&timeframe=ttm&limit=1&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch fundamentals: %w", err)
+	}
+	defer resp.Body.Close()
+
+	var finResp FinancialsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&finResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	if finResp.Status != "OK" || len(finResp.Results) == 0 {
+		return nil, fmt.Errorf("no fundamental data for symbol: %s", symbol)
+	}
+
+	result := finResp.Results[0]
+	fin := result.Financials
+
+	// Get current price for ratio calculations
+	priceData, err := p.GetQuote(symbol)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get price for ratio calculations: %w", err)
+	}
+
+	price := priceData.Price.InexactFloat64()
+	
+	// Extract raw financial data
+	revenue := fin.IncomeStatement.Revenues.Value
+	netIncome := fin.IncomeStatement.NetIncome.Value
+	grossProfit := fin.IncomeStatement.GrossProfit.Value
+	operatingIncome := fin.IncomeStatement.OperatingIncome.Value
+	basicEPS := fin.IncomeStatement.BasicEPS.Value
+	dilutedEPS := fin.IncomeStatement.DilutedEPS.Value
+	basicShares := fin.IncomeStatement.BasicShares.Value
+	
+	// Balance sheet data
+	totalAssets := fin.BalanceSheet.TotalAssets.Value
+	currentAssets := fin.BalanceSheet.CurrentAssets.Value
+	totalLiabilities := fin.BalanceSheet.TotalLiabilities.Value
+	currentLiabilities := fin.BalanceSheet.CurrentLiabilities.Value
+	longTermDebt := fin.BalanceSheet.LongTermDebt.Value
+	totalEquity := fin.BalanceSheet.TotalEquity.Value
+	inventory := fin.BalanceSheet.Inventory.Value
+	
+	// Cash flow data
+	operatingCashFlow := fin.CashFlowStatement.OperatingCashFlow.Value
+	
+	// Calculate key ratios with null safety
+	var pe, pb, ps, roe, roa, grossMargin, operatingMargin, netMargin, currentRatio, quickRatio, debtToEquity *decimal.Decimal
+	
+	// 1. P/E Ratio (MOST IMPORTANT) - Price / EPS
+	if basicEPS > 0 && price > 0 {
+		pe = decimalPtr(price / basicEPS)
+	}
+	
+	// 2. Margins (profitability)
+	if revenue > 0 {
+		if grossProfit > 0 {
+			grossMargin = decimalPtr(grossProfit / revenue)
+		}
+		if operatingIncome > 0 {
+			operatingMargin = decimalPtr(operatingIncome / revenue)
+		}
+		if netIncome > 0 {
+			netMargin = decimalPtr(netIncome / revenue)
+		}
+		// P/S ratio
+		if price > 0 && basicShares > 0 {
+			marketCap := price * basicShares
+			ps = decimalPtr(marketCap / revenue)
+		}
+	}
+	
+	// 3. Return ratios
+	if totalEquity > 0 && netIncome > 0 {
+		roe = decimalPtr(netIncome / totalEquity)
+	}
+	if totalAssets > 0 && netIncome > 0 {
+		roa = decimalPtr(netIncome / totalAssets)
+	}
+	
+	// 4. P/B ratio
+	if totalEquity > 0 && price > 0 && basicShares > 0 {
+		bookValuePerShare := totalEquity / basicShares
+		pb = decimalPtr(price / bookValuePerShare)
+	}
+	
+	// 5. Liquidity ratios
+	if currentLiabilities > 0 {
+		if currentAssets > 0 {
+			currentRatio = decimalPtr(currentAssets / currentLiabilities)
+		}
+		// Quick ratio (without inventory)
+		if currentAssets > 0 && inventory >= 0 {
+			quickAssets := currentAssets - inventory
+			if quickAssets > 0 {
+				quickRatio = decimalPtr(quickAssets / currentLiabilities)
+			}
+		}
+	}
+	
+	// 6. Debt ratio
+	if totalEquity > 0 && totalLiabilities > 0 {
+		debtToEquity = decimalPtr(totalLiabilities / totalEquity)
+	}
+
+	return &models.Fundamentals{
+		Symbol:           symbol,
+		Period:           "TTM",
+		Year:             2024,
+		PE:               pe,  // NOW CALCULATED!
+		PB:               pb,
+		PS:               ps,
+		Revenue:          decimalPtr(revenue),
+		GrossProfit:      decimalPtr(grossProfit),
+		OperatingIncome:  decimalPtr(operatingIncome),
+		NetIncome:        decimalPtr(netIncome),
+		EPS:              decimalPtr(basicEPS),      // REAL EPS!
+		EPSDiluted:       decimalPtr(dilutedEPS),
+		GrossMargin:      grossMargin,
+		OperatingMargin:  operatingMargin,
+		NetMargin:        netMargin,
+		ROE:              roe,
+		ROA:              roa,
+		TotalAssets:      decimalPtr(totalAssets),
+		TotalLiabilities: decimalPtr(totalLiabilities),
+		TotalEquity:      decimalPtr(totalEquity),
+		TotalDebt:        decimalPtr(longTermDebt),
+		DebtToEquity:     debtToEquity,
+		CurrentRatio:     currentRatio,
+		QuickRatio:       quickRatio,
+		OperatingCashFlow: decimalPtr(operatingCashFlow),
+		UpdatedAt:        time.Now(),
+	}, nil
+}
+
+// Helper function to create decimal pointer
+func decimalPtr(f float64) *decimal.Decimal {
+	d := decimal.NewFromFloat(f)
+	return &d
+}
+
+// Helper function to convert period to days
+func GetDaysFromPeriod(period string) int {
+	switch strings.ToUpper(period) {
+	case "1D":
+		return 1
+	case "5D":
+		return 5
+	case "1M":
+		return 30
+	case "3M":
+		return 90
+	case "6M":
+		return 180
+	case "1Y":
+		return 365
+	case "5Y":
+		return 1825
+	default:
+		return 365
+	}
+}

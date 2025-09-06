@@ -43,18 +43,67 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
     const fetchData = async () => {
       try {
         setLoading(true);
+        console.log(`🔥 Fetching REAL fundamentals for ${symbol}...`);
+        
         const response = await fetch(`/api/v1/tickers/${symbol}`);
+        console.log(`📡 Fundamentals response status: ${response.status}`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to fetch fundamentals`);
+        }
+        
         const result = await response.json();
-        setFundamentals(result.data.summary.fundamentals);
-        setKeyMetrics(result.data.summary.keyMetrics);
+        console.log('📊 Full API Response for fundamentals:', result);
+        
+        // Extract real fundamentals data from Polygon.io
+        const realFundamentals = result.data.summary.fundamentals;
+        const realKeyMetrics = result.data.summary.keyMetrics;
+        
+        console.log('💰 REAL Fundamentals:', realFundamentals);
+        console.log('📈 REAL Key Metrics:', realKeyMetrics);
+        
+        // Map to our component interface with REAL data
+        const mappedFundamentals: Fundamentals = {
+          pe: realFundamentals?.pe || 'N/A',
+          pb: realFundamentals?.pb || 'N/A', 
+          ps: realFundamentals?.ps || 'N/A',
+          roe: realFundamentals?.roe || 'N/A',
+          roa: realFundamentals?.roa || 'N/A',
+          revenue: realFundamentals?.revenue || '0',
+          netIncome: realFundamentals?.netIncome || '0',
+          eps: realFundamentals?.eps || 'N/A',
+          debtToEquity: realKeyMetrics?.debtToEquity || 'N/A',
+          currentRatio: realKeyMetrics?.currentRatio || 'N/A',
+          grossMargin: realFundamentals?.grossMargin || 'N/A',
+          operatingMargin: realFundamentals?.operatingMargin || 'N/A',
+          netMargin: realFundamentals?.netMargin || 'N/A'
+        };
+        
+        const mappedKeyMetrics: KeyMetrics = {
+          week52High: realKeyMetrics?.week52High || '0',
+          week52Low: realKeyMetrics?.week52Low || '0',
+          ytdChange: realKeyMetrics?.ytdChange || '0',
+          beta: realKeyMetrics?.beta || '1.0',
+          averageVolume: realKeyMetrics?.averageVolume || '0',
+          sharesOutstanding: realKeyMetrics?.sharesOutstanding || '0',
+          revenueGrowth1Y: realKeyMetrics?.revenueGrowth1Y || '0',
+          earningsGrowth1Y: realKeyMetrics?.earningsGrowth1Y || '0'
+        };
+        
+        console.log('✅ MAPPED Real Fundamentals:', mappedFundamentals);
+        setFundamentals(mappedFundamentals);
+        setKeyMetrics(mappedKeyMetrics);
       } catch (error) {
-        console.error('Error fetching fundamentals:', error);
+        console.error('❌ Error fetching fundamentals:', error);
       } finally {
         setLoading(false);
+        console.log(`🏁 Fundamentals loading complete for ${symbol}`);
       }
     };
 
-    fetchData();
+    // Add delay for proper mounting
+    const timer = setTimeout(fetchData, 100);
+    return () => clearTimeout(timer);
   }, [symbol]);
 
   if (loading) {

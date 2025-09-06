@@ -26,7 +26,7 @@ spec:
         - name: GIN_MODE
           value: "release"
         - name: DB_HOST
-          value: "postgres-service"
+          value: "postgres-simple-service"
         - name: DB_PORT
           value: "5432"
         - name: DB_USER
@@ -42,16 +42,17 @@ spec:
         - name: DB_NAME
           value: "investorcenter_db"
         - name: DB_SSLMODE
-          value: "require"
-        - name: REDIS_HOST
-          value: "redis-service"
-        - name: REDIS_PORT
-          value: "6379"
+          value: "disable"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: polygon-api-key
         resources:
           requests:
             memory: "128Mi"

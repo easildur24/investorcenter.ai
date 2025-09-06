@@ -3,13 +3,14 @@
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
+import { safeToFixed, safeParseNumber } from '@/lib/utils';
 
 interface MarketIndex {
   symbol: string;
   name: string;
-  price: number;
-  change: number;
-  changePercent: number;
+  price: number | string;
+  change: number | string;
+  changePercent: number | string;
   lastUpdated: string;
 }
 
@@ -90,23 +91,23 @@ export default function MarketOverview() {
             
             <div className="text-right">
               <div className="font-semibold text-gray-900">
-                ${index.price.toLocaleString('en-US', { 
+                ${safeParseNumber(index.price).toLocaleString('en-US', { 
                   minimumFractionDigits: 2, 
                   maximumFractionDigits: 2 
                 })}
               </div>
               
               <div className={`flex items-center text-sm ${
-                index.change >= 0 ? 'text-green-600' : 'text-red-600'
+                safeParseNumber(index.change) >= 0 ? 'text-green-600' : 'text-red-600'
               }`}>
-                {index.change >= 0 ? (
+                {safeParseNumber(index.change) >= 0 ? (
                   <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
                 ) : (
                   <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
                 )}
                 <span>
-                  {index.change >= 0 ? '+' : ''}{index.change.toFixed(2)} 
-                  ({index.changePercent >= 0 ? '+' : ''}{index.changePercent.toFixed(2)}%)
+                  {safeParseNumber(index.change) >= 0 ? '+' : ''}{safeToFixed(index.change, 2)} 
+                  ({safeParseNumber(index.changePercent) >= 0 ? '+' : ''}{safeToFixed(index.changePercent, 2)}%)
                 </span>
               </div>
             </div>

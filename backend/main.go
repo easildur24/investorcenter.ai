@@ -41,8 +41,8 @@ func main() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{
 		"http://localhost:3000",
-		"https://investorcenter.com",
-		"https://www.investorcenter.com",
+		"https://investorcenter.ai",
+		"https://www.investorcenter.ai",
 	}
 	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
@@ -247,21 +247,52 @@ func getStockChart(c *gin.Context) {
 
 func searchSecurities(c *gin.Context) {
 	query := c.Query("q")
-
-	// Mock search results - replace with real search API
-	results := []gin.H{
-		{
-			"symbol":   "AAPL",
-			"name":     "Apple Inc.",
+	
+	if query == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'q' is required"})
+		return
+	}
+	
+	// Search in database
+	stocks, err := database.SearchStocks(query, 10)
+	if err != nil {
+		log.Printf("Database search failed: %v", err)
+		// Fall back to mock data
+		results := []gin.H{
+			{
+				"symbol":   "AAPL",
+				"name":     "Apple Inc.",
+				"type":     "stock",
+				"exchange": "NASDAQ",
+			},
+			{
+				"symbol":   "GOOGL",
+				"name":     "Alphabet Inc.",
+				"type":     "stock",
+				"exchange": "NASDAQ",
+			},
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"data": results,
+			"meta": gin.H{
+				"query":     query,
+				"count":     len(results),
+				"timestamp": time.Now().UTC(),
+				"source":    "mock",
+			},
+		})
+		return
+	}
+	
+	// Convert to API format
+	results := make([]gin.H, len(stocks))
+	for i, stock := range stocks {
+		results[i] = gin.H{
+			"symbol":   stock.Symbol,
+			"name":     stock.Name,
 			"type":     "stock",
-			"exchange": "NASDAQ",
-		},
-		{
-			"symbol":   "GOOGL",
-			"name":     "Alphabet Inc.",
-			"type":     "stock",
-			"exchange": "NASDAQ",
-		},
+			"exchange": stock.Exchange,
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -270,6 +301,7 @@ func searchSecurities(c *gin.Context) {
 			"query":     query,
 			"count":     len(results),
 			"timestamp": time.Now().UTC(),
+			"source":    "database",
 		},
 	})
 }

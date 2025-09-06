@@ -99,10 +99,10 @@ export default function TickerChart({ symbol }: TickerChartProps) {
         
         {/* Price Labels */}
         <div className="absolute top-4 left-4 text-sm text-gray-600">
-          ${maxPrice.toFixed(2)}
+          ${safeToFixed(maxPrice, 2)}
         </div>
         <div className="absolute bottom-4 left-4 text-sm text-gray-600">
-          ${minPrice.toFixed(2)}
+          ${safeToFixed(minPrice, 2)}
         </div>
       </div>
     );

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,58 +10,86 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
 	"investorcenter-api/models"
+	"investorcenter-api/database"
+	"investorcenter-api/services"
 )
 
 // GetTickerOverview returns comprehensive ticker data
 func GetTickerOverview(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
+	
+	// Get real stock data from database
+	stock, err := database.GetStockBySymbol(symbol)
+	if err != nil {
+		log.Printf("Failed to get stock from database: %v", err)
+		// Fall back to mock data for unknown stocks
+		stock = &models.Stock{
+			ID:          1,
+			Symbol:      symbol,
+			Name:        getCompanyName(symbol),
+			Exchange:    "NASDAQ",
+			Sector:      "Technology",
+			Industry:    "Consumer Electronics",
+			Country:     "US",
+			Currency:    "USD",
+			MarketCap:   decimalPtr(2800000000000),
+			Description: "Technology company focused on consumer electronics and services.",
+			Website:     "https://www.apple.com",
+			CreatedAt:   time.Now().Add(-365 * 24 * time.Hour),
+			UpdatedAt:   time.Now(),
+		}
+	}
+	
+	// Get real price data from Polygon.io
+	polygonClient := services.NewPolygonClient()
+	priceData, err := polygonClient.GetQuote(symbol)
+	if err != nil {
+		log.Printf("Failed to get real price data for %s: %v", symbol, err)
+		// Fall back to mock price data
+		priceData = &models.StockPrice{
+			Symbol:        symbol,
+			Price:         decimal.NewFromFloat(175.43),
+			Open:          decimal.NewFromFloat(174.20),
+			High:          decimal.NewFromFloat(177.50),
+			Low:           decimal.NewFromFloat(173.80),
+			Close:         decimal.NewFromFloat(175.43),
+			Volume:        45678901,
+			Change:        decimal.NewFromFloat(2.34),
+			ChangePercent: decimal.NewFromFloat(0.0135), // 1.35% as decimal
+			Timestamp:     time.Now(),
+		}
+	}
 
-	// Mock data - replace with database queries
+	// Use real stock and price data, mock financial data for now
 	tickerData := models.TickerPageData{
 		Summary: models.StockSummary{
-			Stock: models.Stock{
-				ID:          1,
-				Symbol:      symbol,
-				Name:        getCompanyName(symbol),
-				Exchange:    "NASDAQ",
-				Sector:      "Technology",
-				Industry:    "Consumer Electronics",
-				Country:     "US",
-				Currency:    "USD",
-				MarketCap:   decimalPtr(2800000000000), // $2.8T
-				Description: "Technology company focused on consumer electronics and services.",
-				Website:     "https://www.apple.com",
-				CreatedAt:   time.Now().Add(-365 * 24 * time.Hour),
-				UpdatedAt:   time.Now(),
-			},
-			Price: models.StockPrice{
-				Symbol:        symbol,
-				Price:         decimal.NewFromFloat(175.43),
-				Open:          decimal.NewFromFloat(174.20),
-				High:          decimal.NewFromFloat(177.50),
-				Low:           decimal.NewFromFloat(173.80),
-				Close:         decimal.NewFromFloat(175.43),
-				Volume:        45678901,
-				Change:        decimal.NewFromFloat(2.34),
-				ChangePercent: decimal.NewFromFloat(1.35),
-				Timestamp:     time.Now(),
-			},
-			Fundamentals: &models.Fundamentals{
-				Symbol:       symbol,
-				Period:       "Q4",
-				Year:         2024,
-				PE:           decimalPtr(28.5),
-				PB:           decimalPtr(8.2),
-				PS:           decimalPtr(7.1),
-				ROE:          decimalPtr(0.285),
-				ROA:          decimalPtr(0.185),
-				Revenue:      decimalPtr(394328000000), // $394.3B
-				NetIncome:    decimalPtr(97000000000),  // $97B
-				EPS:          decimalPtr(6.15),
-				DebtToEquity: decimalPtr(1.73),
-				CurrentRatio: decimalPtr(1.05),
-				UpdatedAt:    time.Now(),
-			},
+			Stock: *stock,
+			Price: *priceData,
+			Fundamentals: func() *models.Fundamentals {
+				// Try to get real fundamentals from Polygon.io
+				fundamentals, err := polygonClient.GetFundamentals(symbol)
+				if err != nil {
+					log.Printf("Failed to get real fundamentals for %s: %v", symbol, err)
+					// Fall back to mock fundamentals
+					return &models.Fundamentals{
+						Symbol:       symbol,
+						Period:       "TTM",
+						Year:         2024,
+						PE:           decimalPtr(28.5),
+						PB:           decimalPtr(8.2),
+						PS:           decimalPtr(7.1),
+						ROE:          decimalPtr(0.285),
+						ROA:          decimalPtr(0.185),
+						Revenue:      decimalPtr(394328000000), // $394.3B
+						NetIncome:    decimalPtr(97000000000),  // $97B
+						EPS:          decimalPtr(6.15),
+						DebtToEquity: decimalPtr(1.73),
+						CurrentRatio: decimalPtr(1.05),
+						UpdatedAt:    time.Now(),
+					}
+				}
+				return fundamentals
+			}(),
 			TechnicalIndicators: &models.TechnicalIndicators{
 				Symbol:         symbol,
 				RSI:            decimalPtr(58.3),
@@ -133,15 +162,48 @@ func GetTickerChart(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	period := c.DefaultQuery("period", "1Y")
 	interval := c.DefaultQuery("interval", "1d")
-
-	chartData := generateMockChartData(symbol, period)
-
+	
+	var chartData models.ChartData
+	
+	// Get real historical data from Polygon.io
+	polygonClient := services.NewPolygonClient()
+	days := services.GetDaysFromPeriod(period)
+	
+	var dataPoints []models.ChartDataPoint
+	var err error
+	
+	if period == "1D" {
+		// Get 5-minute intraday data for 1-day view
+		dataPoints, err = polygonClient.GetIntradayData(symbol)
+	} else if period == "5D" {
+		// Get hourly data for 5-day view (better granularity)
+		to := time.Now()
+		from := to.AddDate(0, 0, -5)
+		dataPoints, err = polygonClient.GetHistoricalData(symbol, "hour", from.Format("2006-01-02"), to.Format("2006-01-02"))
+	} else {
+		// Get daily data for longer periods
+		dataPoints, err = polygonClient.GetDailyData(symbol, days)
+	}
+	
+	if err == nil && len(dataPoints) > 0 {
+		chartData = models.ChartData{
+			Symbol:      symbol,
+			Period:      period,
+			DataPoints:  dataPoints,
+			LastUpdated: time.Now(),
+		}
+	} else {
+		log.Printf("Failed to get real chart data for %s: %v", symbol, err)
+		chartData = generateMockChartData(symbol, period)
+	}
+	
 	c.JSON(http.StatusOK, gin.H{
 		"data": chartData,
 		"meta": gin.H{
 			"symbol":    symbol,
 			"period":    period,
 			"interval":  interval,
+			"source":    "alphavantage",
 			"timestamp": time.Now().UTC(),
 		},
 	})

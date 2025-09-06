@@ -42,14 +42,9 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
     fetchEarnings();
   }, [symbol]);
 
-  const formatCurrency = (amount: number) => {
-    if (amount >= 1000000000) {
-      return `$${(amount / 1000000000).toFixed(1)}B`;
-    }
-    if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`;
-    }
-    return `$${amount.toFixed(2)}`;
+  const formatCurrency = (amount: number | string) => {
+    const num = safeParseNumber(amount);
+    return formatLargeNumber(num);
   };
 
   const formatDate = (dateString: string) => {
@@ -137,7 +132,7 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
                 <div className="text-gray-500">Avg EPS Surprise</div>
                 <div className="font-medium">
                   {earnings.length > 0 
-                    ? `${(earnings.slice(0, 4).reduce((sum, e) => sum + safeParseNumber(e.epsSurprisePercent), 0) / Math.min(4, earnings.length)).toFixed(1)}%`
+                    ? `${safeToFixed((earnings.slice(0, 4).reduce((sum, e) => sum + safeParseNumber(e.epsSurprisePercent), 0) / Math.min(4, earnings.length)), 1)}%`
                     : 'N/A'
                   }
                 </div>
