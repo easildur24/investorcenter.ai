@@ -1,0 +1,57 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ticker-import-manual
+  namespace: investorcenter
+  labels:
+    app: ticker-import
+    component: data-pipeline
+spec:
+  backoffLimit: 3
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app: ticker-import
+        component: data-pipeline
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: ticker-importer
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ticker-updater:latest
+        imagePullPolicy: Always
+        command: ["python", "ticker_import_to_db.py"]
+        env:
+        # Database connection configuration
+        - name: DB_HOST
+          value: "postgres-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        # Polygon API key
+        - name: POLYGON_API_KEY
+          value: "Q9LhuSPrdj8Fqv9ejYqwXF6AKv7YAsWa"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

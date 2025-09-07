@@ -25,7 +25,7 @@ func NewStockService() *StockService {
 // CreateStock creates a new stock record
 func (s *StockService) CreateStock(ctx context.Context, stock *models.Stock) error {
 	query := `
-		INSERT INTO stocks (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)
+		INSERT INTO tickers (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)
 		VALUES (:symbol, :name, :exchange, :sector, :industry, :country, :currency, :market_cap, :description, :website)
 		RETURNING id, created_at, updated_at`
 
@@ -48,7 +48,7 @@ func (s *StockService) CreateStock(ctx context.Context, stock *models.Stock) err
 // GetStockBySymbol retrieves a stock by its symbol
 func (s *StockService) GetStockBySymbol(ctx context.Context, symbol string) (*models.Stock, error) {
 	var stock models.Stock
-	query := `SELECT * FROM stocks WHERE symbol = $1`
+	query := `SELECT * FROM tickers WHERE symbol = $1`
 
 	err := s.db.GetContext(ctx, &stock, query, symbol)
 	if err != nil {
@@ -73,7 +73,7 @@ func (s *StockService) ImportStocks(ctx context.Context, stocks []models.Stock) 
 
 	// Prepare batch insert statement
 	query := `
-		INSERT INTO stocks (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)
+		INSERT INTO tickers (symbol, name, exchange, sector, industry, country, currency, market_cap, description, website)
 		VALUES (:symbol, :name, :exchange, :sector, :industry, :country, :currency, :market_cap, :description, :website)
 		ON CONFLICT (symbol) DO NOTHING`
 
@@ -95,7 +95,7 @@ func (s *StockService) ImportStocks(ctx context.Context, stocks []models.Stock) 
 func (s *StockService) GetAllStocks(ctx context.Context, limit, offset int) ([]models.Stock, error) {
 	var stocks []models.Stock
 	query := `
-		SELECT * FROM stocks
+		SELECT * FROM tickers
 		ORDER BY symbol
 		LIMIT $1 OFFSET $2`
 
@@ -110,7 +110,7 @@ func (s *StockService) GetAllStocks(ctx context.Context, limit, offset int) ([]m
 // CountStocks returns the total number of stocks
 func (s *StockService) CountStocks(ctx context.Context) (int, error) {
 	var count int
-	query := `SELECT COUNT(*) FROM stocks`
+	query := `SELECT COUNT(*) FROM tickers`
 
 	err := s.db.GetContext(ctx, &count, query)
 	if err != nil {
@@ -126,7 +126,7 @@ func (s *StockService) SearchStocks(ctx context.Context, query string, limit int
 
 	// Search by symbol or name (case insensitive)
 	searchQuery := `
-		SELECT * FROM stocks
+		SELECT * FROM tickers
 		WHERE UPPER(symbol) LIKE UPPER($1) OR UPPER(name) LIKE UPPER($1)
 		ORDER BY
 			CASE WHEN UPPER(symbol) LIKE UPPER($1) THEN 1 ELSE 2 END,
@@ -145,7 +145,7 @@ func (s *StockService) SearchStocks(ctx context.Context, query string, limit int
 // UpdateStock updates an existing stock
 func (s *StockService) UpdateStock(ctx context.Context, stock *models.Stock) error {
 	query := `
-		UPDATE stocks
+		UPDATE tickers
 		SET name = :name, exchange = :exchange, sector = :sector, industry = :industry,
 		    country = :country, currency = :currency, market_cap = :market_cap,
 		    description = :description, website = :website, updated_at = NOW()
@@ -170,7 +170,7 @@ func (s *StockService) UpdateStock(ctx context.Context, stock *models.Stock) err
 
 // DeleteStock deletes a stock by symbol
 func (s *StockService) DeleteStock(ctx context.Context, symbol string) error {
-	query := `DELETE FROM stocks WHERE symbol = $1`
+	query := `DELETE FROM tickers WHERE symbol = $1`
 
 	result, err := s.db.ExecContext(ctx, query, symbol)
 	if err != nil {
@@ -193,7 +193,7 @@ func (s *StockService) DeleteStock(ctx context.Context, symbol string) error {
 func (s *StockService) GetStocksByExchange(ctx context.Context, exchange string, limit, offset int) ([]models.Stock, error) {
 	var stocks []models.Stock
 	query := `
-		SELECT * FROM stocks
+		SELECT * FROM tickers
 		WHERE exchange = $1
 		ORDER BY symbol
 		LIMIT $2 OFFSET $3`

@@ -16,7 +16,7 @@ import (
 // Command line flags
 var (
 	assetType  = flag.String("type", "all", "Asset type to import: stocks, etf, crypto, indices, all_equities, or all")
-	limit      = flag.Int("limit", 0, "Limit number of tickers to import (0 = no limit)")
+	limit      = flag.Int("limit", 0, "Limit number of tickers to import (0 = ALL tickers)")
 	dryRun     = flag.Bool("dry-run", false, "Preview what would be imported without actually importing")
 	verbose    = flag.Bool("verbose", false, "Enable verbose logging")
 	updateOnly = flag.Bool("update-only", false, "Only update existing tickers, don't insert new ones")
@@ -104,15 +104,16 @@ func importAllTypes(db *sql.DB, client *services.PolygonClient) {
 }
 
 func importTickers(db *sql.DB, client *services.PolygonClient, assetType string) error {
-	log.Printf("🔍 Fetching %s tickers from Polygon API...", assetType)
+	log.Printf("🔍 Fetching %s tickers from Polygon API (this will paginate automatically)...", assetType)
 	
-	// Fetch tickers from Polygon API
+	// Fetch ALL tickers from Polygon API (it will paginate automatically)
+	// Pass 0 as limit to fetch everything, or *limit to fetch specific amount
 	tickers, err := client.GetAllTickers(assetType, *limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch tickers: %w", err)
 	}
 	
-	log.Printf("📊 Found %d %s tickers", len(tickers), assetType)
+	log.Printf("📊 Successfully fetched %d %s tickers", len(tickers), assetType)
 	
 	if *dryRun {
 		log.Println("🔍 DRY RUN MODE - Not inserting into database")
@@ -128,15 +129,18 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 		return nil
 	}
 	
-	// Import tickers into database
+	// Process all tickers
+	log.Printf("📥 Processing %d tickers...", len(tickers))
+	
 	inserted := 0
 	updated := 0
 	skipped := 0
 	errors := 0
 	
 	for i, ticker := range tickers {
-		if *verbose && i%100 == 0 {
-			log.Printf("Progress: %d/%d", i, len(tickers))
+		if *verbose && i%100 == 0 && i > 0 {
+			log.Printf("Progress: %d/%d (inserted: %d, updated: %d, skipped: %d, errors: %d)", 
+				i, len(tickers), inserted, updated, skipped, errors)
 		}
 		
 		// Check if ticker exists
@@ -186,7 +190,7 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 
 func tickerExists(db *sql.DB, symbol string) (bool, error) {
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM stocks WHERE symbol = $1", symbol).Scan(&count)
+	err := db.QueryRow("SELECT COUNT(*) FROM tickers WHERE symbol = $1", symbol).Scan(&count)
 	return count > 0, err
 }
 
@@ -197,7 +201,7 @@ func shouldUpdate(ticker services.PolygonTicker) bool {
 
 func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 	query := `
-		INSERT INTO stocks (
+		INSERT INTO tickers (
 			symbol, name, exchange, sector, industry, country, currency,
 			market_cap, description, website, asset_type, cik, ipo_date,
 			logo_url, primary_exchange_code, composite_figi, share_class_figi,
@@ -291,7 +295,7 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 
 func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
 	query := `
-		UPDATE stocks SET
+		UPDATE tickers SET
 			name = $2,
 			market_cap = COALESCE($3, market_cap),
 			website = COALESCE($4, website),
@@ -344,7 +348,7 @@ func printSummary(db *sql.DB) {
 	// Query counts by asset type
 	query := `
 		SELECT asset_type, COUNT(*) as count
-		FROM stocks
+		FROM tickers
 		WHERE asset_type IS NOT NULL
 		GROUP BY asset_type
 		ORDER BY count DESC`
