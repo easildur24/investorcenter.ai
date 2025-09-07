@@ -17,11 +17,6 @@ A professional financial data and analytics platform similar to YCharts, built w
 # Complete setup in one command
 git clone <repository-url> investorcenter.ai
 cd investorcenter.ai
-
-# Setup API keys (see docs/API_KEY_MANAGEMENT.md for details)
-cp .env.example .env
-# Edit .env and add your API keys
-
 make setup
 
 # Start development
