@@ -599,6 +599,191 @@ func decimalPtr(f float64) *decimal.Decimal {
 	return &d
 }
 
+// PolygonTickersResponse represents the tickers list response
+type PolygonTickersResponse struct {
+	Status    string          `json:"status"`
+	Count     int             `json:"count"`
+	NextURL   string          `json:"next_url"`
+	RequestID string          `json:"request_id"`
+	Results   []PolygonTicker `json:"results"`
+}
+
+// PolygonTicker represents a single ticker from the API
+type PolygonTicker struct {
+	Ticker                 string  `json:"ticker"`
+	Name                   string  `json:"name"`
+	Market                 string  `json:"market"`
+	Locale                 string  `json:"locale"`
+	Type                   string  `json:"type"`
+	Active                 bool    `json:"active"`
+	CurrencyName          string  `json:"currency_name"`
+	CIK                   string  `json:"cik,omitempty"`
+	CompositeFigi         string  `json:"composite_figi,omitempty"`
+	ShareClassFigi        string  `json:"share_class_figi,omitempty"`
+	PrimaryExchange       string  `json:"primary_exchange,omitempty"`
+	LastUpdatedUTC        string  `json:"last_updated_utc,omitempty"`
+	DelistedUTC           *string `json:"delisted_utc,omitempty"`
+	ListDate              string  `json:"list_date,omitempty"`
+	HomepageURL           string  `json:"homepage_url,omitempty"`
+	MarketCap             float64 `json:"market_cap,omitempty"`
+	TotalEmployees        int     `json:"total_employees,omitempty"`
+	PhoneNumber           string  `json:"phone_number,omitempty"`
+	WeightedSharesOutstanding float64 `json:"weighted_shares_outstanding,omitempty"`
+	SICCode               string  `json:"sic_code,omitempty"`
+	SICDescription        string  `json:"sic_description,omitempty"`
+	// Crypto specific fields
+	BaseCurrencySymbol    string  `json:"base_currency_symbol,omitempty"`
+	BaseCurrencyName      string  `json:"base_currency_name,omitempty"`
+	CurrencySymbol        string  `json:"currency_symbol,omitempty"`
+	// Index specific fields
+	SourceFeed            string  `json:"source_feed,omitempty"`
+}
+
+// GetAllTickers fetches all tickers with optional filters
+func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTicker, error) {
+	var allTickers []PolygonTicker
+	baseURL := fmt.Sprintf("%s/v3/reference/tickers", PolygonBaseURL)
+	
+	// Build initial URL with filters
+	params := fmt.Sprintf("?active=true&limit=%d&apikey=%s", limit, p.APIKey)
+	
+	// Add asset type filters
+	switch assetType {
+	case "stocks":
+		params += "&market=stocks&locale=us&type=CS"
+	case "etf":
+		params += "&market=stocks&type=ETF"
+	case "crypto":
+		params += "&market=crypto"
+	case "indices":
+		params += "&market=indices"
+	case "all_equities":
+		params += "&market=stocks&locale=us"
+	default:
+		// No additional filters - get everything
+	}
+	
+	url := baseURL + params
+	
+	for {
+		resp, err := p.Client.Get(url)
+		if err != nil {
+			return nil, fmt.Errorf("failed to fetch tickers: %w", err)
+		}
+		defer resp.Body.Close()
+		
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+		}
+		
+		var tickersResp PolygonTickersResponse
+		if err := json.NewDecoder(resp.Body).Decode(&tickersResp); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+		
+		if tickersResp.Status != "OK" {
+			return nil, fmt.Errorf("API error: %s", tickersResp.Status)
+		}
+		
+		allTickers = append(allTickers, tickersResp.Results...)
+		
+		// Check if there's more data to fetch
+		if tickersResp.NextURL == "" || limit > 0 && len(allTickers) >= limit {
+			break
+		}
+		
+		// Use the next URL for pagination (it includes the API key)
+		url = tickersResp.NextURL
+		
+		// Add a small delay to avoid rate limiting
+		time.Sleep(200 * time.Millisecond)
+	}
+	
+	// Trim to requested limit if specified
+	if limit > 0 && len(allTickers) > limit {
+		allTickers = allTickers[:limit]
+	}
+	
+	return allTickers, nil
+}
+
+// GetTickersByType fetches tickers of a specific type
+func (p *PolygonClient) GetTickersByType(tickerType string) ([]PolygonTicker, error) {
+	url := fmt.Sprintf("%s/v3/reference/tickers?type=%s&active=true&limit=1000&apikey=%s",
+		PolygonBaseURL, tickerType, p.APIKey)
+	
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch tickers by type: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	var tickersResp PolygonTickersResponse
+	if err := json.NewDecoder(resp.Body).Decode(&tickersResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+	
+	if tickersResp.Status != "OK" {
+		return nil, fmt.Errorf("API error: %s", tickersResp.Status)
+	}
+	
+	return tickersResp.Results, nil
+}
+
+// MapExchangeCode maps Polygon exchange codes to readable names
+func MapExchangeCode(code string) string {
+	exchangeMap := map[string]string{
+		"XNAS": "NASDAQ",
+		"XNYS": "NYSE",
+		"ARCX": "NYSE ARCA",
+		"XASE": "NYSE MKT",
+		"BATS": "CBOE BZX",
+		"XOTC": "OTC",
+		"XCBO": "CBOE",
+		"XPHL": "PHLX",
+		"XISX": "ISE",
+	}
+	
+	if mapped, ok := exchangeMap[code]; ok {
+		return mapped
+	}
+	return code
+}
+
+// MapAssetType converts Polygon type codes to our asset types
+func MapAssetType(typeCode string) string {
+	switch typeCode {
+	case "CS":
+		return "stock"
+	case "ETF":
+		return "etf"
+	case "ETN":
+		return "etn"
+	case "FUND":
+		return "fund"
+	case "PFD":
+		return "preferred"
+	case "WARRANT":
+		return "warrant"
+	case "RIGHT":
+		return "right"
+	case "BOND":
+		return "bond"
+	case "ADRC", "ADRP", "ADRW", "ADRR":
+		return "adr"
+	case "IX":
+		return "index"
+	default:
+		if strings.HasPrefix(typeCode, "X:") {
+			return "crypto"
+		}
+		if strings.HasPrefix(typeCode, "I:") {
+			return "index"
+		}
+		return "other"
+	}
+}
+
 // Helper function to convert period to days
 func GetDaysFromPeriod(period string) int {
 	switch strings.ToUpper(period) {
