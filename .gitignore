@@ -1,3 +1,6 @@
+# Claude Code configuration (local only)
+CLAUDE.md
+
 # Dependencies
 node_modules/
 npm-debug.log*
