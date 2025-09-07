@@ -40,7 +40,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: python -m pytest scripts/us_tickers/tests/ -v
+        entry: bash -c 'PYTHONPATH=scripts venv/bin/python -m pytest scripts/us_tickers/tests/ -v'
         language: system
         pass_filenames: false
         always_run: true

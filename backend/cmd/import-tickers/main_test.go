@@ -46,7 +46,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	// Return cleanup function
 	cleanup := func() {
 		// Clean up test data
-		db.Exec("DELETE FROM stocks WHERE symbol LIKE 'TEST%'")
+		db.Exec("DELETE FROM tickers WHERE symbol LIKE 'TEST%'")
 		db.Close()
 	}
 	
@@ -54,9 +54,9 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 }
 
 func createTestSchema(db *sql.DB) error {
-	// Create stocks table if not exists (simplified version for testing)
+	// Create tickers table if not exists (simplified version for testing)
 	schema := `
-	CREATE TABLE IF NOT EXISTS stocks (
+	CREATE TABLE IF NOT EXISTS tickers (
 		id SERIAL PRIMARY KEY,
 		symbol VARCHAR(20) UNIQUE NOT NULL,
 		name VARCHAR(255) NOT NULL,
@@ -104,7 +104,7 @@ func TestTickerExists(t *testing.T) {
 	
 	// Insert test ticker
 	_, err := db.Exec(`
-		INSERT INTO stocks (symbol, name, exchange) 
+		INSERT INTO tickers (symbol, name, exchange) 
 		VALUES ('TEST1', 'Test Company 1', 'NYSE')
 	`)
 	if err != nil {
@@ -161,7 +161,7 @@ func TestInsertTicker(t *testing.T) {
 	
 	// Verify insertion
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM stocks WHERE symbol = $1", "TEST2").Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM tickers WHERE symbol = $1", "TEST2").Scan(&count)
 	if err != nil {
 		t.Fatalf("Failed to query ticker: %v", err)
 	}
@@ -174,7 +174,7 @@ func TestInsertTicker(t *testing.T) {
 	var marketCap sql.NullFloat64
 	err = db.QueryRow(`
 		SELECT name, asset_type, market_cap 
-		FROM stocks WHERE symbol = $1
+		FROM tickers WHERE symbol = $1
 	`, "TEST2").Scan(&name, &assetType, &marketCap)
 	
 	if err != nil {
@@ -220,7 +220,7 @@ func TestInsertETF(t *testing.T) {
 	// Verify ETF type
 	var assetType string
 	err = db.QueryRow(`
-		SELECT asset_type FROM stocks WHERE symbol = $1
+		SELECT asset_type FROM tickers WHERE symbol = $1
 	`, "TESTETF").Scan(&assetType)
 	
 	if err != nil {
@@ -238,7 +238,7 @@ func TestUpdateTicker(t *testing.T) {
 	
 	// Insert initial ticker
 	_, err := db.Exec(`
-		INSERT INTO stocks (symbol, name, exchange, market_cap) 
+		INSERT INTO tickers (symbol, name, exchange, market_cap) 
 		VALUES ('TEST3', 'Test Company 3', 'NYSE', 500000000)
 	`)
 	if err != nil {
@@ -267,7 +267,7 @@ func TestUpdateTicker(t *testing.T) {
 	var employees sql.NullInt64
 	err = db.QueryRow(`
 		SELECT name, market_cap, employees 
-		FROM stocks WHERE symbol = $1
+		FROM tickers WHERE symbol = $1
 	`, "TEST3").Scan(&name, &marketCap, &employees)
 	
 	if err != nil {

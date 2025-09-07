@@ -19,7 +19,7 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
 		       created_at, updated_at
-		FROM stocks 
+		FROM tickers 
 		WHERE UPPER(symbol) = UPPER($1)
 	`
 	
@@ -45,7 +45,7 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
 		       created_at, updated_at
-		FROM stocks 
+		FROM tickers 
 		WHERE UPPER(symbol) LIKE UPPER($1) 
 		   OR UPPER(name) LIKE UPPER($2)
 		ORDER BY 
@@ -91,7 +91,7 @@ func GetPopularStocks(limit int) ([]models.Stock, error) {
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
 		       created_at, updated_at
-		FROM stocks 
+		FROM tickers 
 		WHERE symbol IN ('AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'NVDA', 'META', 'NFLX', 'CRM', 'ORCL')
 		ORDER BY symbol
 		LIMIT $1
@@ -108,7 +108,7 @@ func GetPopularStocks(limit int) ([]models.Stock, error) {
 // GetStockCount returns the total number of stocks in the database
 func GetStockCount() (int, error) {
 	var count int
-	err := DB.Get(&count, "SELECT COUNT(*) FROM stocks")
+	err := DB.Get(&count, "SELECT COUNT(*) FROM tickers")
 	if err != nil {
 		return 0, fmt.Errorf("failed to get stock count: %w", err)
 	}

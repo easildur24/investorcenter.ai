@@ -3,6 +3,7 @@ package services
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -644,8 +645,15 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 	var allTickers []PolygonTicker
 	baseURL := fmt.Sprintf("%s/v3/reference/tickers", PolygonBaseURL)
 	
+	// API has a max of 1000 per request
+	const maxPerRequest = 1000
+	requestLimit := maxPerRequest
+	if limit > 0 && limit < maxPerRequest {
+		requestLimit = limit
+	}
+	
 	// Build initial URL with filters
-	params := fmt.Sprintf("?active=true&limit=%d&apikey=%s", limit, p.APIKey)
+	params := fmt.Sprintf("?active=true&limit=%d&apikey=%s", requestLimit, p.APIKey)
 	
 	// Add asset type filters
 	switch assetType {
@@ -664,39 +672,58 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 	}
 	
 	url := baseURL + params
+	pageCount := 0
 	
 	for {
+		pageCount++
+		log.Printf("Fetching page %d (already have %d tickers)...", pageCount, len(allTickers))
+		
 		resp, err := p.Client.Get(url)
 		if err != nil {
-			return nil, fmt.Errorf("failed to fetch tickers: %w", err)
+			return nil, fmt.Errorf("failed to fetch tickers on page %d: %w", pageCount, err)
 		}
 		defer resp.Body.Close()
 		
 		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+			return nil, fmt.Errorf("API request failed with status: %d on page %d", resp.StatusCode, pageCount)
 		}
 		
 		var tickersResp PolygonTickersResponse
 		if err := json.NewDecoder(resp.Body).Decode(&tickersResp); err != nil {
-			return nil, fmt.Errorf("failed to decode response: %w", err)
+			return nil, fmt.Errorf("failed to decode response on page %d: %w", pageCount, err)
 		}
 		
 		if tickersResp.Status != "OK" {
-			return nil, fmt.Errorf("API error: %s", tickersResp.Status)
+			return nil, fmt.Errorf("API error on page %d: %s", pageCount, tickersResp.Status)
 		}
 		
 		allTickers = append(allTickers, tickersResp.Results...)
+		log.Printf("Page %d: fetched %d tickers (total: %d)", pageCount, len(tickersResp.Results), len(allTickers))
 		
 		// Check if there's more data to fetch
-		if tickersResp.NextURL == "" || limit > 0 && len(allTickers) >= limit {
+		if tickersResp.NextURL == "" {
+			log.Printf("No more pages available. Total tickers fetched: %d", len(allTickers))
 			break
 		}
 		
-		// Use the next URL for pagination (it includes the API key)
+		// Check if we've reached the user-specified limit
+		if limit > 0 && len(allTickers) >= limit {
+			log.Printf("Reached user-specified limit of %d tickers", limit)
+			break
+		}
+		
+		// Use the next URL for pagination (add API key if not present)
 		url = tickersResp.NextURL
+		if !strings.Contains(url, "apikey=") {
+			if strings.Contains(url, "?") {
+				url = url + "&apikey=" + p.APIKey
+			} else {
+				url = url + "?apikey=" + p.APIKey
+			}
+		}
 		
 		// Add a small delay to avoid rate limiting
-		time.Sleep(200 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 	}
 	
 	// Trim to requested limit if specified
@@ -704,6 +731,7 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 		allTickers = allTickers[:limit]
 	}
 	
+	log.Printf("Finished fetching tickers. Total returned: %d", len(allTickers))
 	return allTickers, nil
 }
 
