@@ -199,6 +199,93 @@ class ApiClient {
     return this.request(`/analytics/screener${query}`);
   }
 
+  // Volume data methods (hybrid: database + real-time)
+  async getTickerVolume(symbol: string, realtime: boolean = false) {
+    return this.request<{
+      data: {
+        symbol: string;
+        volume: number;
+        vwap: number;
+        open: number;
+        close: number;
+        high: number;
+        low: number;
+        timestamp?: number;
+        prevClose?: number;
+        change?: number;
+        changePercent?: number;
+        avgVolume30d?: number;
+        avgVolume90d?: number;
+        week52High?: number;
+        week52Low?: number;
+        updatedAt: string;
+      };
+      source: 'database' | 'polygon';
+      realtime: boolean;
+    }>(`/tickers/${symbol}/volume${realtime ? '?realtime=true' : ''}`);
+  }
+
+  async getVolumeAggregates(symbol: string, days: number = 90) {
+    return this.request<{
+      data: {
+        symbol: string;
+        avgVolume30d: number;
+        avgVolume90d: number;
+        week52High: number;
+        week52Low: number;
+        volumeTrend: 'increasing' | 'decreasing' | 'stable';
+      };
+      source: 'database' | 'polygon';
+    }>(`/tickers/${symbol}/volume/aggregates?days=${days}`);
+  }
+
+  async getBulkVolume(symbols: string[]) {
+    return this.request<{
+      data: Array<{
+        symbol: string;
+        volume: number;
+        avgVolume30d: number;
+        avgVolume90d: number;
+        vwap: number;
+        currentPrice: number;
+        dayOpen: number;
+        dayHigh: number;
+        dayLow: number;
+        previousClose: number;
+        week52High: number;
+        week52Low: number;
+        lastUpdated: string;
+      }>;
+      source: 'database';
+      count: number;
+    }>('/volume/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ symbols }),
+    });
+  }
+
+  async getTopVolumeStocks(limit: number = 20, assetType: string = 'all') {
+    return this.request<{
+      data: Array<{
+        symbol: string;
+        volume: number;
+        avgVolume30d: number;
+        avgVolume90d: number;
+        vwap: number;
+        currentPrice: number;
+        dayOpen: number;
+        dayHigh: number;
+        dayLow: number;
+        previousClose: number;
+        week52High: number;
+        week52Low: number;
+        lastUpdated: string;
+      }>;
+      source: 'database';
+      count: number;
+    }>(`/volume/top?limit=${limit}&type=${assetType}`);
+  }
+
   // Ticker page methods
   async getTickerOverview(symbol: string) {
     return this.request(`/tickers/${symbol}`);

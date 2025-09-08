@@ -91,6 +91,11 @@ func main() {
 			tickers.POST("/", handlers.CreateStock)                // Create new stock
 			tickers.POST("/import", handlers.ImportTickersFromCSV) // Import from CSV
 			tickers.GET("/:symbol", handlers.GetTickerSimple) // Temporarily using simple handler
+			
+			// Volume endpoints (hybrid: database + real-time)
+			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)         // Get volume data (add ?realtime=true for fresh data)
+			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
+			
 			// Temporarily commented out - need to fix handlers
 			// tickers.GET("/:symbol/chart", handlers.GetTickerChart)
 			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
@@ -100,6 +105,13 @@ func main() {
 			// tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
 			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
 			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
+		}
+		
+		// Volume endpoints for bulk operations
+		volume := v1.Group("/volume")
+		{
+			volume.POST("/bulk", handlers.GetBulkVolume)  // Get volume for multiple symbols
+			volume.GET("/top", handlers.GetTopVolume)      // Get top stocks by volume
 		}
 
 		// Portfolio endpoints
