@@ -16,8 +16,8 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Set test API key
-export POLYGON_API_KEY="zapuIgaTVLJoanfEuimZYQ2xRlZmoU1m"
+# Set test API key from environment or use demo key
+export POLYGON_API_KEY="${POLYGON_API_KEY:-demo}"
 
 # Track test results
 TOTAL_TESTS=0
@@ -133,7 +133,7 @@ import (
 )
 
 func main() {
-    os.Setenv("POLYGON_API_KEY", "zapuIgaTVLJoanfEuimZYQ2xRlZmoU1m")
+    os.Setenv("POLYGON_API_KEY", os.Getenv("POLYGON_API_KEY"))
     client := services.NewPolygonClient()
     
     // Make rapid requests to test rate limiting

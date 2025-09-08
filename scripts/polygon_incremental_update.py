@@ -334,11 +334,11 @@ class PolygonIncrementalUpdater:
             logger.info(f"Statistics: {json.dumps(self.stats, indent=2)}")
             
             if self.stats['new'] > 0:
-                logger.info(f"🆕 Added {self.stats['new']} new tickers")
+                logger.info(f"Added {self.stats['new']} new tickers")
             if self.stats['updated'] > 0:
-                logger.info(f"🔄 Updated {self.stats['updated']} existing tickers")
+                logger.info(f"Updated {self.stats['updated']} existing tickers")
             if self.stats['new'] == 0 and self.stats['updated'] == 0:
-                logger.info("📊 Database is up to date - no changes found")
+                logger.info("Database is up to date - no changes found")
             
             logger.info("=== Polygon Incremental Ticker Update Completed ===")
             

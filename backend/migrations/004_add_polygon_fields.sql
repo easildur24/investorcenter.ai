@@ -1,17 +1,12 @@
 -- Add Polygon.io specific fields to tickers table
 -- These fields are needed for the incremental update from Polygon API
+-- Note: Some fields may already exist from migration 002, using IF NOT EXISTS to handle both cases
 
--- Add new columns for Polygon data
+-- Add new columns for Polygon data (only those not in migration 002)
 ALTER TABLE tickers 
-ADD COLUMN IF NOT EXISTS asset_type VARCHAR(50) DEFAULT 'CS',
 ADD COLUMN IF NOT EXISTS locale VARCHAR(10) DEFAULT 'us',
 ADD COLUMN IF NOT EXISTS market VARCHAR(50) DEFAULT 'stocks',
-ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true,
 ADD COLUMN IF NOT EXISTS currency_name VARCHAR(50),
-ADD COLUMN IF NOT EXISTS cik VARCHAR(20),
-ADD COLUMN IF NOT EXISTS composite_figi VARCHAR(50),
-ADD COLUMN IF NOT EXISTS share_class_figi VARCHAR(50),
-ADD COLUMN IF NOT EXISTS primary_exchange_code VARCHAR(10),
 ADD COLUMN IF NOT EXISTS polygon_type VARCHAR(50),
 ADD COLUMN IF NOT EXISTS last_updated_utc TIMESTAMP WITH TIME ZONE;
 
