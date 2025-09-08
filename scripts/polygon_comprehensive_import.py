@@ -1,0 +1,387 @@
+#!/usr/bin/env python3
+"""
+Comprehensive ticker import from Polygon.io API
+Imports ALL asset types: stocks, ETFs, crypto, indices, forex, options
+"""
+import os
+import sys
+import time
+import logging
+import psycopg2
+from datetime import datetime
+import requests
+from typing import List, Dict, Any
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+class PolygonImporter:
+    def __init__(self, api_key: str, db_config: dict):
+        self.api_key = api_key
+        self.db_config = db_config
+        self.base_url = "https://api.polygon.io/v3/reference/tickers"
+        self.conn = None
+        self.stats = {
+            'stock': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'etf': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'etn': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'fund': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'crypto': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'index': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'preferred': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'warrant': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'bond': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'adr': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'right': {'inserted': 0, 'updated': 0, 'failed': 0},
+            'other': {'inserted': 0, 'updated': 0, 'failed': 0}
+        }
+    
+    def connect_db(self):
+        """Connect to PostgreSQL database"""
+        try:
+            self.conn = psycopg2.connect(**self.db_config)
+            logger.info(f"Connected to database: {self.db_config['database']}")
+            return True
+        except Exception as e:
+            logger.error(f"Database connection failed: {e}")
+            return False
+    
+    def fetch_tickers_page(self, market: str, ticker_type: str = None, 
+                          cursor: str = None, limit: int = 1000) -> Dict[str, Any]:
+        """Fetch a single page of tickers from Polygon API"""
+        params = {
+            'apiKey': self.api_key,
+            'market': market,
+            'active': 'true',
+            'limit': limit,
+            'order': 'asc',
+            'sort': 'ticker'
+        }
+        
+        if ticker_type:
+            params['type'] = ticker_type
+        
+        if cursor:
+            params['cursor'] = cursor
+        
+        try:
+            response = requests.get(self.base_url, params=params)
+            response.raise_for_status()
+            return response.json()
+        except Exception as e:
+            logger.error(f"API request failed for {market}/{ticker_type}: {e}")
+            return None
+    
+    def fetch_all_tickers(self, market: str, ticker_type: str = None) -> List[Dict]:
+        """Fetch all tickers for a market/type with pagination"""
+        all_tickers = []
+        cursor = None
+        page = 1
+        
+        type_label = f"{market}/{ticker_type}" if ticker_type else market
+        logger.info(f"Fetching {type_label} tickers...")
+        
+        while True:
+            data = self.fetch_tickers_page(market, ticker_type, cursor)
+            if not data:
+                break
+            
+            results = data.get('results', [])
+            all_tickers.extend(results)
+            
+            logger.info(f"  Page {page}: fetched {len(results)} tickers (total: {len(all_tickers)})")
+            
+            # Check for next page
+            next_url = data.get('next_url')
+            if not next_url:
+                break
+            
+            # Extract cursor from next_url
+            if 'cursor=' in next_url:
+                cursor = next_url.split('cursor=')[1].split('&')[0]
+            else:
+                # Add API key if missing from next_url
+                if 'apiKey=' not in next_url:
+                    next_url = f"{next_url}&apiKey={self.api_key}" if '?' in next_url else f"{next_url}?apiKey={self.api_key}"
+                
+                # Make request with full URL
+                try:
+                    response = requests.get(next_url)
+                    response.raise_for_status()
+                    data = response.json()
+                    results = data.get('results', [])
+                    all_tickers.extend(results)
+                    logger.info(f"  Page {page+1}: fetched {len(results)} tickers (total: {len(all_tickers)})")
+                    
+                    next_url = data.get('next_url')
+                    if not next_url:
+                        break
+                    if 'cursor=' in next_url:
+                        cursor = next_url.split('cursor=')[1].split('&')[0]
+                    else:
+                        break
+                except:
+                    break
+            
+            page += 1
+            
+            # Rate limiting
+            time.sleep(0.1)
+        
+        logger.info(f"✓ Completed {type_label}: {len(all_tickers)} total tickers")
+        return all_tickers
+    
+    def determine_asset_type(self, ticker: Dict, market: str) -> str:
+        """Determine the asset_type for database"""
+        ticker_type = ticker.get('type', '').upper()
+        
+        if market == 'crypto':
+            return 'crypto'
+        elif market == 'fx':
+            return 'other'  # Map forex to 'other' since 'forex' not allowed
+        elif market == 'indices':
+            return 'index'
+        elif market == 'otc':
+            return 'stock'  # Map OTC stocks to 'stock' type
+        elif ticker_type == 'ETF':
+            return 'etf'
+        elif ticker_type == 'ETN':
+            return 'etn'
+        elif ticker_type == 'FUND' or ticker_type == 'ETV':
+            return 'fund'
+        elif ticker_type == 'WARRANT':
+            return 'warrant'
+        elif ticker_type in ['ADRC', 'ADRP', 'ADRR', 'ADRW']:
+            return 'adr'
+        elif ticker_type == 'PFD':
+            return 'preferred'
+        elif ticker_type == 'RIGHT':
+            return 'right'
+        elif ticker_type == 'BOND':
+            return 'bond'
+        elif ticker_type in ['CS', 'OS', 'SP']:
+            return 'stock'
+        else:
+            # Log unknown types for debugging
+            if ticker_type and ticker_type not in ['CS', 'OS']:
+                logger.debug(f"Unknown ticker type: {ticker_type}, defaulting to stock")
+            return 'stock'  # Default to stock
+    
+    def insert_tickers(self, tickers: List[Dict], market: str) -> None:
+        """Insert tickers into database"""
+        if not tickers:
+            return
+        
+        cur = self.conn.cursor()
+        
+        for ticker in tickers:
+            symbol = ticker.get('ticker', '')
+            if not symbol:
+                continue
+            
+            asset_type = self.determine_asset_type(ticker, market)
+            
+            try:
+                cur.execute("""
+                    INSERT INTO tickers (
+                        symbol, name, exchange, asset_type,
+                        currency, market, country,
+                        active, cik, composite_figi, share_class_figi,
+                        created_at, updated_at
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                    )
+                    ON CONFLICT (symbol) DO UPDATE SET
+                        name = EXCLUDED.name,
+                        exchange = EXCLUDED.exchange,
+                        asset_type = EXCLUDED.asset_type,
+                        market = EXCLUDED.market,
+                        active = EXCLUDED.active,
+                        updated_at = EXCLUDED.updated_at
+                    RETURNING (xmax = 0) AS inserted
+                """, (
+                    symbol,
+                    ticker.get('name', ''),
+                    ticker.get('primary_exchange', ticker.get('exchange', '')),
+                    asset_type,
+                    ticker.get('currency_name', 'USD'),
+                    ticker.get('market', market),
+                    ticker.get('locale', 'US'),
+                    ticker.get('active', True),
+                    ticker.get('cik', ''),
+                    ticker.get('composite_figi', ''),
+                    ticker.get('share_class_figi', ''),
+                    datetime.now(),
+                    datetime.now()
+                ))
+                
+                result = cur.fetchone()
+                # Ensure asset_type exists in stats
+                if asset_type not in self.stats:
+                    self.stats[asset_type] = {'inserted': 0, 'updated': 0, 'failed': 0}
+                
+                if result and result[0]:
+                    self.stats[asset_type]['inserted'] += 1
+                else:
+                    self.stats[asset_type]['updated'] += 1
+                
+            except Exception as e:
+                # Log first few errors in detail, rest as debug
+                if self.stats.get(asset_type, {}).get('failed', 0) < 3:
+                    logger.error(f"Error inserting {symbol}: {e}")
+                else:
+                    logger.debug(f"Error inserting {symbol}: {e}")
+                if asset_type not in self.stats:
+                    self.stats[asset_type] = {'inserted': 0, 'updated': 0, 'failed': 0}
+                self.stats[asset_type]['failed'] += 1
+                # Don't rollback - just skip this ticker
+                continue
+        
+        self.conn.commit()
+    
+    def import_all(self):
+        """Import all asset types from Polygon"""
+        if not self.connect_db():
+            return False
+        
+        try:
+            # Import configuration for each market/type
+            import_configs = [
+                # Stocks (including ETFs)
+                {'market': 'stocks', 'type': None, 'label': 'All Stocks & ETFs'},
+                
+                # Crypto
+                {'market': 'crypto', 'type': None, 'label': 'Cryptocurrencies'},
+                
+                # Indices
+                {'market': 'indices', 'type': None, 'label': 'Indices'},
+                
+                # Skip Forex and OTC for now - they would be mapped to 'other' and 'stock'
+                # Uncomment below if you want to import them:
+                # {'market': 'fx', 'type': None, 'label': 'Forex Pairs'},  # Maps to 'other'
+                # {'market': 'otc', 'type': None, 'label': 'OTC Stocks'},  # Maps to 'stock'
+            ]
+            
+            print("\n🚀 Starting comprehensive Polygon.io import")
+            print("=" * 60)
+            
+            for config in import_configs:
+                print(f"\n📦 Importing {config['label']}...")
+                tickers = self.fetch_all_tickers(config['market'], config['type'])
+                
+                if tickers:
+                    print(f"  Processing {len(tickers)} tickers...")
+                    self.insert_tickers(tickers, config['market'])
+                    print(f"  ✓ Completed {config['label']}")
+                else:
+                    print(f"  ⚠ No tickers found for {config['label']}")
+                
+                # Rate limiting between markets
+                time.sleep(2)
+            
+            self.print_summary()
+            return True
+            
+        except Exception as e:
+            logger.error(f"Import failed: {e}")
+            return False
+        finally:
+            if self.conn:
+                self.conn.close()
+    
+    def print_summary(self):
+        """Print import summary"""
+        print("\n" + "=" * 60)
+        print("📊 IMPORT SUMMARY")
+        print("=" * 60)
+        
+        total_inserted = 0
+        total_updated = 0
+        total_failed = 0
+        
+        for asset_type, stats in self.stats.items():
+            if stats['inserted'] > 0 or stats['updated'] > 0 or stats['failed'] > 0:
+                print(f"\n{asset_type.upper()}:")
+                print(f"  ✅ Inserted: {stats['inserted']:,}")
+                print(f"  🔄 Updated: {stats['updated']:,}")
+                if stats['failed'] > 0:
+                    print(f"  ❌ Failed: {stats['failed']:,}")
+                
+                total_inserted += stats['inserted']
+                total_updated += stats['updated']
+                total_failed += stats['failed']
+        
+        print("\n" + "-" * 60)
+        print(f"TOTAL:")
+        print(f"  ✅ Inserted: {total_inserted:,}")
+        print(f"  🔄 Updated: {total_updated:,}")
+        if total_failed > 0:
+            print(f"  ❌ Failed: {total_failed:,}")
+        print(f"  📈 Total Processed: {total_inserted + total_updated:,}")
+        
+        # Query final database counts
+        if self.conn:
+            try:
+                self.conn = psycopg2.connect(**self.db_config)
+                cur = self.conn.cursor()
+                
+                cur.execute("""
+                    SELECT asset_type, COUNT(*) 
+                    FROM tickers 
+                    WHERE asset_type IS NOT NULL
+                    GROUP BY asset_type 
+                    ORDER BY COUNT(*) DESC
+                """)
+                
+                print("\n" + "=" * 60)
+                print("📈 DATABASE TOTALS BY ASSET TYPE:")
+                print("-" * 60)
+                
+                grand_total = 0
+                for row in cur.fetchall():
+                    print(f"  {row[0]:10} {row[1]:>10,}")
+                    grand_total += row[1]
+                
+                print("-" * 60)
+                print(f"  {'TOTAL':10} {grand_total:>10,}")
+                
+                cur.close()
+                self.conn.close()
+            except Exception as e:
+                logger.error(f"Failed to get final counts: {e}")
+
+
+def main():
+    # Get configuration from environment
+    api_key = os.environ.get('POLYGON_API_KEY')
+    if not api_key:
+        print("❌ Error: POLYGON_API_KEY environment variable not set")
+        sys.exit(1)
+    
+    db_config = {
+        'host': os.environ.get('DB_HOST', 'localhost'),
+        'port': os.environ.get('DB_PORT', '5432'),
+        'database': os.environ.get('DB_NAME', 'investorcenter_db'),
+        'user': os.environ.get('DB_USER', 'investorcenter'),
+        'password': os.environ.get('DB_PASSWORD', '')
+    }
+    
+    if not db_config['password']:
+        print("❌ Error: DB_PASSWORD environment variable not set")
+        sys.exit(1)
+    
+    print(f"Database: {db_config['user']}@{db_config['host']}:{db_config['port']}/{db_config['database']}")
+    print(f"Polygon API Key: {api_key[:10]}...")
+    
+    importer = PolygonImporter(api_key, db_config)
+    success = importer.import_all()
+    
+    sys.exit(0 if success else 1)
+
+
+if __name__ == '__main__':
+    main()

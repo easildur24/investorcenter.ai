@@ -11,6 +11,16 @@ import (
 	"investorcenter-api/models"
 )
 
+// Helper functions for mock data
+func decimalPtr(f float64) *decimal.Decimal {
+	d := decimal.NewFromFloat(f)
+	return &d
+}
+
+func int64Ptr(i int64) *int64 {
+	return &i
+}
+
 // generateMockChartData creates realistic chart data
 func generateMockChartData(symbol string, period string) models.ChartData {
 	var dataPoints []models.ChartDataPoint

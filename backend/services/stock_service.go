@@ -47,15 +47,14 @@ func (s *StockService) CreateStock(ctx context.Context, stock *models.Stock) err
 
 // GetStockBySymbol retrieves a stock by its symbol
 func (s *StockService) GetStockBySymbol(ctx context.Context, symbol string) (*models.Stock, error) {
-	var stock models.Stock
-	query := `SELECT * FROM tickers WHERE symbol = $1`
+	// Use the database layer function which has better error handling
+	return database.GetStockBySymbol(symbol)
+}
 
-	err := s.db.GetContext(ctx, &stock, query, symbol)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get stock by symbol %s: %w", symbol, err)
-	}
-
-	return &stock, nil
+// SearchStocks searches for stocks by symbol or name
+func (s *StockService) SearchStocks(ctx context.Context, query string, limit int) ([]models.Stock, error) {
+	// Use the database layer function
+	return database.SearchStocks(query, limit)
 }
 
 // ImportStocks imports multiple stocks in a batch transaction
@@ -118,28 +117,6 @@ func (s *StockService) CountStocks(ctx context.Context) (int, error) {
 	}
 
 	return count, nil
-}
-
-// SearchStocks searches for stocks by symbol or name
-func (s *StockService) SearchStocks(ctx context.Context, query string, limit int) ([]models.Stock, error) {
-	var stocks []models.Stock
-
-	// Search by symbol or name (case insensitive)
-	searchQuery := `
-		SELECT * FROM tickers
-		WHERE UPPER(symbol) LIKE UPPER($1) OR UPPER(name) LIKE UPPER($1)
-		ORDER BY
-			CASE WHEN UPPER(symbol) LIKE UPPER($1) THEN 1 ELSE 2 END,
-			symbol
-		LIMIT $2`
-
-	searchTerm := "%" + query + "%"
-	err := s.db.SelectContext(ctx, &stocks, searchQuery, searchTerm, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to search stocks: %w", err)
-	}
-
-	return stocks, nil
 }
 
 // UpdateStock updates an existing stock
