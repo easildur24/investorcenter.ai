@@ -1,0 +1,102 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: polygon-volume-update
+  namespace: investorcenter
+  labels:
+    app: polygon-volume-update
+    component: data-pipeline
+    provider: polygon
+spec:
+  # Run every 4 hours during market hours (9:30 AM - 4:00 PM EST)
+  # This runs at 14:00, 18:00, 22:00 UTC (9 AM, 1 PM, 5 PM EST)
+  schedule: "0 14,18,22 * * *"
+  
+  # Keep last 2 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 1
+  
+  # Don't start new job if previous is still running
+  concurrencyPolicy: Forbid
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: polygon-volume-update
+        component: data-pipeline
+        provider: polygon
+    spec:
+      # Retry failed jobs up to 2 times
+      backoffLimit: 2
+      
+      # Clean up completed jobs after 30 minutes
+      ttlSecondsAfterFinished: 1800
+      
+      template:
+        metadata:
+          labels:
+            app: polygon-volume-update
+            component: data-pipeline
+            provider: polygon
+        spec:
+          restartPolicy: OnFailure
+          
+          containers:
+          - name: polygon-volume-updater
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/polygon-volume-updater:latest
+            imagePullPolicy: Always
+            
+            # Update top 500 tickers per run
+            args: ["500"]
+            
+            env:
+            # Polygon API Key from secret
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+                  
+            # Database connection configuration
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            
+            # Resource limits
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+            
+            # Logging configuration
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          
+          volumes:
+          - name: tmp
+            emptyDir: {}
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
