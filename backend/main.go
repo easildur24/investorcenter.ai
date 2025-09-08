@@ -8,6 +8,7 @@ import (
 
 	"investorcenter-api/database"
 	"investorcenter-api/handlers"
+	"investorcenter-api/services"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -80,8 +81,6 @@ func main() {
 		markets := v1.Group("/markets")
 		{
 			markets.GET("/indices", getMarketIndices)
-			markets.GET("/stocks/:symbol", getStockData)
-			markets.GET("/stocks/:symbol/chart", getStockChart)
 			markets.GET("/search", searchSecurities)
 		}
 
@@ -91,15 +90,16 @@ func main() {
 			tickers.GET("/", handlers.GetStocks)                   // List all stocks with pagination
 			tickers.POST("/", handlers.CreateStock)                // Create new stock
 			tickers.POST("/import", handlers.ImportTickersFromCSV) // Import from CSV
-			tickers.GET("/:symbol", handlers.GetTickerOverview)
-			tickers.GET("/:symbol/chart", handlers.GetTickerChart)
-			tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
-			tickers.GET("/:symbol/news", handlers.GetTickerNews)
-			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
-			tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
-			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
-			tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
-			tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
+			tickers.GET("/:symbol", handlers.GetTickerSimple) // Temporarily using simple handler
+			// Temporarily commented out - need to fix handlers
+			// tickers.GET("/:symbol/chart", handlers.GetTickerChart)
+			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
+			// tickers.GET("/:symbol/news", handlers.GetTickerNews)
+			// tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
+			// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
+			// tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
+			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
+			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
 
 		// Portfolio endpoints
@@ -182,69 +182,6 @@ func getMarketIndices(c *gin.Context) {
 	})
 }
 
-func getStockData(c *gin.Context) {
-	symbol := c.Param("symbol")
-
-	// Mock data - replace with real market data API
-	stock := gin.H{
-		"symbol":        symbol,
-		"name":          "Apple Inc.",
-		"price":         175.43,
-		"change":        2.34,
-		"changePercent": 1.35,
-		"volume":        45678901,
-		"marketCap":     2800000000000,
-		"pe":            28.5,
-		"eps":           6.15,
-		"dividend":      0.96,
-		"dividendYield": 0.55,
-		"52WeekHigh":    198.23,
-		"52WeekLow":     124.17,
-		"lastUpdated":   time.Now().UTC(),
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": stock,
-		"meta": gin.H{
-			"symbol":    symbol,
-			"timestamp": time.Now().UTC(),
-		},
-	})
-}
-
-func getStockChart(c *gin.Context) {
-	symbol := c.Param("symbol")
-	period := c.DefaultQuery("period", "1d")
-
-	// Mock chart data - replace with real market data API
-	var dataPoints []gin.H
-	basePrice := 175.0
-
-	for i := 0; i < 100; i++ {
-		price := basePrice + float64(i)*0.1 + float64(i%10-5)*0.5
-		dataPoints = append(dataPoints, gin.H{
-			"timestamp": time.Now().Add(-time.Duration(100-i) * time.Minute).UTC(),
-			"open":      price - 0.5,
-			"high":      price + 1.0,
-			"low":       price - 1.0,
-			"close":     price,
-			"volume":    456789 + i*1000,
-		})
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": gin.H{
-			"symbol":     symbol,
-			"period":     period,
-			"dataPoints": dataPoints,
-		},
-		"meta": gin.H{
-			"count":     len(dataPoints),
-			"timestamp": time.Now().UTC(),
-		},
-	})
-}
-
 func searchSecurities(c *gin.Context) {
 	query := c.Query("q")
 	
@@ -253,8 +190,9 @@ func searchSecurities(c *gin.Context) {
 		return
 	}
 	
-	// Search in database
-	stocks, err := database.SearchStocks(query, 10)
+	// Use service layer for database operations
+	stockService := services.NewStockService()
+	stocks, err := stockService.SearchStocks(c.Request.Context(), query, 10)
 	if err != nil {
 		log.Printf("Database search failed: %v", err)
 		// Fall back to mock data

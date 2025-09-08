@@ -117,40 +117,6 @@ class ApiClient {
     }>>('/markets/indices');
   }
 
-  async getStockData(symbol: string) {
-    return this.request<{
-      symbol: string;
-      name: string;
-      price: number;
-      change: number;
-      changePercent: number;
-      volume: number;
-      marketCap: number;
-      pe: number;
-      eps: number;
-      dividend: number;
-      dividendYield: number;
-      '52WeekHigh': number;
-      '52WeekLow': number;
-      lastUpdated: string;
-    }>(`/markets/stocks/${symbol}`);
-  }
-
-  async getStockChart(symbol: string, period: string = '1d') {
-    return this.request<{
-      symbol: string;
-      period: string;
-      dataPoints: Array<{
-        timestamp: string;
-        open: number;
-        high: number;
-        low: number;
-        close: number;
-        volume: number;
-      }>;
-    }>(`/markets/stocks/${symbol}/chart?period=${period}`);
-  }
-
   async searchSecurities(query: string) {
     return this.request<Array<{
       symbol: string;
