@@ -60,11 +60,11 @@ if [[ ! $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 echo ""
-echo "🏗️  Step 1: Building Docker image..."
-echo "====================================="
+echo "🏗️  Step 1: Building Polygon Ticker Updater image..."
+echo "===================================================="
 
-# Build the ticker updater image
-./scripts/build-ticker-updater.sh
+# Build the Polygon ticker updater image
+docker build -f docker/polygon-ticker-updater/Dockerfile -t polygon-ticker-updater:latest .
 
 echo ""
 echo "🔐 Step 2: Authenticating with ECR..."
@@ -78,39 +78,35 @@ echo "🏷️  Step 3: Tagging and pushing image..."
 echo "======================================="
 
 # Tag for ECR
-ECR_IMAGE="$ECR_REGISTRY/investorcenter/ticker-updater:latest"
-docker tag investorcenter/ticker-updater:latest $ECR_IMAGE
+ECR_IMAGE="$ECR_REGISTRY/investorcenter/polygon-ticker-updater:latest"
+docker tag polygon-ticker-updater:latest $ECR_IMAGE
 
 # Push to ECR
 echo "Pushing to: $ECR_IMAGE"
 docker push $ECR_IMAGE
 
 echo ""
-echo "⚙️  Step 4: Updating Kubernetes configuration..."
-echo "=============================================="
-
-# Create temporary CronJob file with correct ECR image
-TEMP_CRONJOB=$(mktemp)
-sed "s|image: investorcenter/ticker-updater:latest|image: $ECR_IMAGE|g" k8s/ticker-update-cronjob.yaml > $TEMP_CRONJOB
-
-echo "Updated image reference to: $ECR_IMAGE"
-
-echo ""
-echo "🚀 Step 5: Deploying to production cluster..."
+echo "⚙️  Step 4: Deploying to production cluster..."
 echo "============================================"
 
-# Deploy namespace and secrets if they don't exist
+# Deploy namespace if it doesn't exist
 kubectl apply -f k8s/namespace.yaml
+
+# Check for Polygon API secret
+if ! kubectl get secret polygon-api-secret -n investorcenter &> /dev/null; then
+    echo "❌ ERROR: Polygon API secret not found!"
+    echo "   Create it with: kubectl create secret generic polygon-api-secret --from-literal=api-key=YOUR_API_KEY -n investorcenter"
+    exit 1
+fi
+
+# Check for PostgreSQL secret
 kubectl create secret generic postgres-secret \
     --from-literal=username=investorcenter \
     --from-literal=password=prod_investorcenter_456 \
-    -n investorcenter || echo "Secret already exists"
+    -n investorcenter || echo "PostgreSQL secret already exists"
 
-# Deploy the CronJob
-kubectl apply -f $TEMP_CRONJOB
-
-# Clean up temp file
-rm $TEMP_CRONJOB
+# Deploy the Polygon CronJob
+kubectl apply -f k8s/polygon-ticker-update-cronjob.yaml
 
 echo ""
 echo "✅ Production CronJob Deployment Complete!"
@@ -121,8 +117,8 @@ kubectl get cronjobs -n investorcenter
 echo ""
 echo "🔍 Next Steps:"
 echo "1. Monitor CronJob: kubectl get cronjobs -n investorcenter"
-echo "2. Test manual run: kubectl create job --from=cronjob/ticker-update test-prod-$(date +%s) -n investorcenter"
-echo "3. View logs: kubectl logs -n investorcenter -l app=ticker-update --tail=50"
+echo "2. Test manual run: kubectl create job --from=cronjob/polygon-ticker-update test-prod-$(date +%s) -n investorcenter"
+echo "3. View logs: kubectl logs -n investorcenter -l app=polygon-ticker-update --tail=50"
 echo ""
-echo "📅 Scheduled: Weekly Sunday 2 AM UTC"
-echo "🔄 Next run: $(kubectl get cronjob ticker-update -n investorcenter -o jsonpath='{.status.lastScheduleTime}' 2>/dev/null || echo 'Not scheduled yet')"
+echo "📅 Scheduled: Daily at 6:30 AM UTC"
+echo "🔄 Next run: $(kubectl get cronjob polygon-ticker-update -n investorcenter -o jsonpath='{.status.lastScheduleTime}' 2>/dev/null || echo 'Not scheduled yet')"

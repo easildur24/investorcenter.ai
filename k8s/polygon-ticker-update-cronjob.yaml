@@ -1,0 +1,100 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: polygon-ticker-update
+  namespace: investorcenter
+  labels:
+    app: polygon-ticker-update
+    component: data-pipeline
+    provider: polygon
+spec:
+  # Run daily at 6:30 AM UTC (after market data is updated)
+  schedule: "30 6 * * *"
+  
+  # Keep last 3 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  
+  # Don't start new job if previous is still running
+  concurrencyPolicy: Forbid
+  
+  jobTemplate:
+    metadata:
+      labels:
+        app: polygon-ticker-update
+        component: data-pipeline
+        provider: polygon
+    spec:
+      # Retry failed jobs up to 3 times
+      backoffLimit: 3
+      
+      # Clean up completed jobs after 1 hour
+      ttlSecondsAfterFinished: 3600
+      
+      template:
+        metadata:
+          labels:
+            app: polygon-ticker-update
+            component: data-pipeline
+            provider: polygon
+        spec:
+          restartPolicy: OnFailure
+          
+          containers:
+          - name: polygon-ticker-updater
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/polygon-ticker-updater:latest
+            imagePullPolicy: Always  # Always pull to get latest updates
+            
+            env:
+            # Polygon API Key from secret
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+                  
+            # Database connection configuration
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            
+            # Resource limits
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+            
+            # Logging configuration
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+          
+          volumes:
+          - name: tmp
+            emptyDir: {}
+          
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
+
+# Secret is created separately via kubectl command
