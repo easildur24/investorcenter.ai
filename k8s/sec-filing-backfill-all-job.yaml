@@ -1,0 +1,40 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-filing-backfill-all
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      containers:
+      - name: sec-filing-fetcher
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-fetcher:v2
+        # No args means process ALL companies with CIK (updated in v2)
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ecr-secret
+  backoffLimit: 2
