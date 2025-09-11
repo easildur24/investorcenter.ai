@@ -1,0 +1,33 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-filing-backfill
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      containers:
+      - name: sec-filing-fetcher
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-fetcher:latest
+        args: ["100"]  # Process 100 companies for initial backfill
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+      restartPolicy: Never
+      imagePullSecrets:
+      - name: ecr-secret
+  backoffLimit: 2

@@ -1,18 +1,19 @@
 -- Migration to create SEC filing tables
 -- Stores SEC filing metadata, content, and sync status
 
--- CIK mapping table
+-- CIK mapping table (not needed - using tickers.cik instead)
+-- Kept for reference only
 CREATE TABLE IF NOT EXISTS cik_mapping (
     id SERIAL PRIMARY KEY,
     symbol VARCHAR(20) UNIQUE NOT NULL,
     cik VARCHAR(10) NOT NULL,
     company_name VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_cik_symbol (symbol),
-    INDEX idx_cik_number (cik)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_cik_symbol ON cik_mapping(symbol);
+CREATE INDEX IF NOT EXISTS idx_cik_number ON cik_mapping(cik);
 
 -- SEC Filings metadata table
 CREATE TABLE IF NOT EXISTS sec_filings (
@@ -41,15 +42,15 @@ CREATE TABLE IF NOT EXISTS sec_filings (
     processing_error TEXT,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_filings_symbol (symbol),
-    INDEX idx_filings_cik (cik),
-    INDEX idx_filings_type (filing_type),
-    INDEX idx_filings_date (filing_date DESC),
-    INDEX idx_filings_report_date (report_date DESC),
-    INDEX idx_filings_processed (is_processed)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_filings_symbol ON sec_filings(symbol);
+CREATE INDEX IF NOT EXISTS idx_filings_cik ON sec_filings(cik);
+CREATE INDEX IF NOT EXISTS idx_filings_type ON sec_filings(filing_type);
+CREATE INDEX IF NOT EXISTS idx_filings_date ON sec_filings(filing_date DESC);
+CREATE INDEX IF NOT EXISTS idx_filings_report_date ON sec_filings(report_date DESC);
+CREATE INDEX IF NOT EXISTS idx_filings_processed ON sec_filings(is_processed);
 
 -- Filing content and extracted data
 CREATE TABLE IF NOT EXISTS filing_content (
@@ -93,12 +94,12 @@ CREATE TABLE IF NOT EXISTS filing_content (
     
     -- Metadata
     word_count INTEGER,
-    extracted_at TIMESTAMP WITH TIME ZONE,
-    
-    INDEX idx_content_filing (filing_id),
-    INDEX idx_content_revenue (revenue),
-    INDEX idx_content_net_income (net_income)
+    extracted_at TIMESTAMP WITH TIME ZONE
 );
+
+CREATE INDEX IF NOT EXISTS idx_content_filing ON filing_content(filing_id);
+CREATE INDEX IF NOT EXISTS idx_content_revenue ON filing_content(revenue);
+CREATE INDEX IF NOT EXISTS idx_content_net_income ON filing_content(net_income);
 
 -- XBRL facts storage (structured data from company facts API)
 CREATE TABLE IF NOT EXISTS xbrl_facts (
@@ -127,12 +128,13 @@ CREATE TABLE IF NOT EXISTS xbrl_facts (
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
-    INDEX idx_xbrl_filing (filing_id),
-    INDEX idx_xbrl_cik (cik),
-    INDEX idx_xbrl_fact (fact_name),
-    INDEX idx_xbrl_period (fiscal_year, fiscal_period),
-    UNIQUE KEY unique_xbrl_fact (filing_id, taxonomy, fact_name, fiscal_period, segment)
+    UNIQUE(filing_id, taxonomy, fact_name, fiscal_period)
 );
+
+CREATE INDEX IF NOT EXISTS idx_xbrl_filing ON xbrl_facts(filing_id);
+CREATE INDEX IF NOT EXISTS idx_xbrl_cik ON xbrl_facts(cik);
+CREATE INDEX IF NOT EXISTS idx_xbrl_fact ON xbrl_facts(fact_name);
+CREATE INDEX IF NOT EXISTS idx_xbrl_period ON xbrl_facts(fiscal_year, fiscal_period);
 
 -- Track sync status for each company
 CREATE TABLE IF NOT EXISTS sec_sync_status (
@@ -161,13 +163,13 @@ CREATE TABLE IF NOT EXISTS sec_sync_status (
     error_count INTEGER DEFAULT 0,
     
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
-    INDEX idx_sync_symbol (symbol),
-    INDEX idx_sync_cik (cik),
-    INDEX idx_sync_enabled (sync_enabled),
-    INDEX idx_sync_priority (sync_priority DESC)
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE INDEX IF NOT EXISTS idx_sync_symbol ON sec_sync_status(symbol);
+CREATE INDEX IF NOT EXISTS idx_sync_cik ON sec_sync_status(cik);
+CREATE INDEX IF NOT EXISTS idx_sync_enabled ON sec_sync_status(sync_enabled);
+CREATE INDEX IF NOT EXISTS idx_sync_priority ON sec_sync_status(sync_priority DESC);
 
 -- Create full-text search index for filing content
 CREATE INDEX IF NOT EXISTS idx_filing_content_fulltext 
