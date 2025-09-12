@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: polygon-cik-backfill
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: polygon-cik-fetcher
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/polygon-cik-fetcher:v1
+        imagePullPolicy: Always
+        env:
+        - name: POLYGON_API_KEY
+          value: "Q9LhuSPrdj8Fqv9ejYqwXF6AKv7YAsWa"  # Paid tier API key with 100 req/sec
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

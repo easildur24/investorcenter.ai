@@ -1,0 +1,12 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir psycopg2-binary requests
+
+# Copy the fetcher script
+COPY scripts/polygon_cik_fetcher.py /app/
+
+# Run the fetcher
+CMD ["python", "polygon_cik_fetcher.py"]
