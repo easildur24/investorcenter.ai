@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-filing-download-all
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      serviceAccountName: sec-downloader-sa
+      restartPolicy: Never
+      containers:
+      - name: sec-filing-downloader
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v1
+        imagePullPolicy: Always
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: S3_BUCKET
+          value: "investorcenter-sec-filings"
+        - name: AWS_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "500m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+  backoffLimit: 2
+  activeDeadlineSeconds: 14400  # 4 hours timeout
