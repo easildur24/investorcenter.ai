@@ -11,6 +11,7 @@ import TickerEarnings from '@/components/ticker/TickerEarnings';
 import TickerAnalysts from '@/components/ticker/TickerAnalysts';
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
+import CryptoMainContent from '@/components/ticker/CryptoMainContent';
 
 interface PageProps {
   params: {
@@ -100,42 +101,51 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Chart and News */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* HYBRID Interactive Price Chart */}
-            <div className="bg-white rounded-lg shadow relative">
-              <HybridChart 
-                symbol={symbol} 
-                initialData={chartData} 
-                currentPrice={parseFloat(tickerData.summary.price.price)} 
-              />
+        {tickerData.summary.stock.isCrypto ? (
+          /* CoinMarketCap-style crypto layout */
+          <CryptoMainContent 
+            symbol={symbol} 
+            cryptoName={tickerData.summary.stock.name.split(' - ')[0]} 
+          />
+        ) : (
+          /* Traditional stock layout */
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Left Column - Chart and News */}
+            <div className="lg:col-span-2 space-y-8">
+              {/* HYBRID Interactive Price Chart */}
+              <div className="bg-white rounded-lg shadow relative">
+                <HybridChart 
+                  symbol={symbol} 
+                  initialData={chartData} 
+                  currentPrice={parseFloat(tickerData.summary.price.price)} 
+                />
+              </div>
+
+              {/* News & Analysis */}
+              <div className="bg-white rounded-lg shadow">
+                <TickerNews symbol={symbol} />
+              </div>
+
+              {/* Earnings */}
+              <div className="bg-white rounded-lg shadow">
+                <TickerEarnings symbol={symbol} />
+              </div>
             </div>
 
-            {/* News & Analysis */}
-            <div className="bg-white rounded-lg shadow">
-              <TickerNews symbol={symbol} />
-            </div>
+            {/* Right Column - Fundamentals and Analysis */}
+            <div className="space-y-8">
+              {/* Key Metrics */}
+              <div className="bg-white rounded-lg shadow">
+                <TickerFundamentalsServer data={tickerData.summary} />
+              </div>
 
-            {/* Earnings */}
-            <div className="bg-white rounded-lg shadow">
-              <TickerEarnings symbol={symbol} />
+              {/* Analyst Ratings */}
+              <div className="bg-white rounded-lg shadow">
+                <TickerAnalysts symbol={symbol} />
+              </div>
             </div>
           </div>
-
-          {/* Right Column - Fundamentals and Analysis */}
-          <div className="space-y-8">
-            {/* Key Metrics */}
-            <div className="bg-white rounded-lg shadow">
-              <TickerFundamentalsServer data={tickerData.summary} />
-            </div>
-
-            {/* Analyst Ratings */}
-            <div className="bg-white rounded-lg shadow">
-              <TickerAnalysts symbol={symbol} />
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
