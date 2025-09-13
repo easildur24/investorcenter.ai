@@ -90,14 +90,15 @@ func main() {
 			tickers.GET("/", handlers.GetStocks)                   // List all stocks with pagination
 			tickers.POST("/", handlers.CreateStock)                // Create new stock
 			tickers.POST("/import", handlers.ImportTickersFromCSV) // Import from CSV
-			tickers.GET("/:symbol", handlers.GetTickerSimple) // Temporarily using simple handler
+			tickers.GET("/:symbol", handlers.GetTicker)            // Comprehensive ticker data with real-time prices
+			tickers.GET("/:symbol/chart", handlers.GetTickerChart) // Chart data for stocks and crypto
+			tickers.GET("/:symbol/price", handlers.GetTickerRealTimePrice) // Real-time price updates only
 			
 			// Volume endpoints (hybrid: database + real-time)
 			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)         // Get volume data (add ?realtime=true for fresh data)
 			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
 			
-			// Temporarily commented out - need to fix handlers
-			// tickers.GET("/:symbol/chart", handlers.GetTickerChart)
+			// Additional ticker endpoints (to be implemented)
 			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
 			// tickers.GET("/:symbol/news", handlers.GetTickerNews)
 			// tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
