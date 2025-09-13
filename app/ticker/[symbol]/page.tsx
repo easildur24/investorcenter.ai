@@ -10,6 +10,7 @@ import TickerNews from '@/components/ticker/TickerNews';
 import TickerEarnings from '@/components/ticker/TickerEarnings';
 import TickerAnalysts from '@/components/ticker/TickerAnalysts';
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
+import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 
 interface PageProps {
   params: {
@@ -88,8 +89,12 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Ticker Overview Header with Real-time Updates */}
       <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <RealTimePriceHeader symbol={symbol} initialData={tickerData.summary} />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {tickerData.summary.stock.isCrypto ? (
+            <CryptoTickerHeader symbol={symbol} initialData={tickerData.summary} />
+          ) : (
+            <RealTimePriceHeader symbol={symbol} initialData={tickerData.summary} />
+          )}
         </div>
       </div>
 

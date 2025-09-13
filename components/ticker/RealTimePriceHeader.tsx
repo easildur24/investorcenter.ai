@@ -38,7 +38,6 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
   
   const { 
     priceData, 
-    isLoading, 
     error, 
     isMarketOpen, 
     isCrypto,
