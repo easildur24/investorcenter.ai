@@ -1,0 +1,16 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    boto3 \
+    beautifulsoup4 \
+    requests
+
+# Copy parser script
+COPY scripts/sec_filing_parser.py /app/
+
+# Run the parser
+CMD ["python", "sec_filing_parser.py"]

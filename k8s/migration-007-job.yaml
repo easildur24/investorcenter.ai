@@ -1,0 +1,45 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: migration-007-parsed-data
+  namespace: investorcenter
+spec:
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: migration
+        image: postgres:15
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Running migration 007: Adding parsed_data columns..."
+          PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME << 'EOF'
+          -- Add column for storing parsed filing data
+          ALTER TABLE sec_filings
+          ADD COLUMN IF NOT EXISTS parsed_data JSONB,
+          ADD COLUMN IF NOT EXISTS parsed_at TIMESTAMP;
+          
+          SELECT 'Migration complete. Columns added:' as status;
+          SELECT column_name, data_type 
+          FROM information_schema.columns 
+          WHERE table_name = 'sec_filings' 
+          AND column_name IN ('parsed_data', 'parsed_at');
+          EOF
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
