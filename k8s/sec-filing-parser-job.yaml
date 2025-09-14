@@ -11,8 +11,9 @@ spec:
       restartPolicy: OnFailure
       containers:
       - name: sec-filing-parser
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-parser:v1
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-parser:v3
         imagePullPolicy: Always
+        command: ["python", "sec_filing_parser.py", "100"]  # Process 100 filings at a time
         env:
         - name: DB_HOST
           value: "postgres-simple-service.investorcenter.svc.cluster.local"

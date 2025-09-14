@@ -87,6 +87,8 @@ class SECFilingParser:
         """Get filings that haven't been parsed yet"""
         try:
             with self.conn.cursor(cursor_factory=RealDictCursor) as cursor:
+                # First, get a batch of filing IDs to process
+                # This is much faster than scanning with complex WHERE conditions
                 query = """
                     SELECT 
                         f.id,
@@ -99,16 +101,22 @@ class SECFilingParser:
                     FROM sec_filings f
                     JOIN tickers t ON f.ticker_id = t.id
                     WHERE 
-                        f.s3_key IS NOT NULL
-                        AND f.parsed_at IS NULL
-                        AND f.filing_type IN ('10-K', '10-Q')
+                        f.id IN (
+                            SELECT id 
+                            FROM sec_filings 
+                            WHERE s3_key IS NOT NULL
+                                AND parsed_data IS NULL
+                                AND filing_type IN ('10-K', '10-Q')
+                            ORDER BY id DESC
+                            LIMIT %s
+                        )
                     ORDER BY f.filing_date DESC
                 """
                 
-                if limit:
-                    query += f" LIMIT {limit}"
+                # Use a reasonable default limit if not specified
+                batch_size = limit if limit else 100
                 
-                cursor.execute(query)
+                cursor.execute(query, (batch_size,))
                 filings = cursor.fetchall()
                 
                 logger.info(f"Found {len(filings)} unparsed filings")
