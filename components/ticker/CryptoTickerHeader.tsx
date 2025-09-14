@@ -37,6 +37,10 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
   const [previousPrice, setPreviousPrice] = useState<string>(initialData.price.price);
   const [flashColor, setFlashColor] = useState<'green' | 'red' | null>(null);
   
+  // Decode URL-encoded symbol for display
+  const decodedSymbol = decodeURIComponent(symbol);
+  const displaySymbol = decodedSymbol.replace('X:', '');
+  
   const { priceData } = useRealTimePrice({ 
     symbol, 
     enabled: initialData.market.shouldUpdateRealtime 
@@ -129,12 +133,12 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
     <div className="bg-white">
       {/* EXACT CoinMarketCap header */}
       <div className="flex items-center space-x-3 mb-4">
-        <span className="text-gray-600 text-lg">{symbol.replace('X:', '')}</span>
+        <span className="text-gray-600 text-lg">{displaySymbol}</span>
       </div>
       
       <div className="flex items-center space-x-4 mb-6">
         <h1 className="text-3xl font-bold text-gray-900"># {cryptoName} price</h1>
-        <span className="text-xl font-bold text-gray-700">{symbol.replace('X:', '')}</span>
+        <span className="text-xl font-bold text-gray-700">{displaySymbol}</span>
         <span className="bg-orange-500 text-white px-2 py-1 rounded text-sm font-bold">
           #1
         </span>
@@ -212,18 +216,18 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
           <div className="space-y-6">
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Total supply</span>
-              <div className="text-xl font-bold text-gray-900">19.91M {symbol.replace('X:', '')}</div>
+              <div className="text-xl font-bold text-gray-900">19.91M {displaySymbol}</div>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-gray-600 font-medium">Max. supply</span>
-              <div className="text-xl font-bold text-gray-900">21M {symbol.replace('X:', '')}</div>
+              <div className="text-xl font-bold text-gray-900">21M {displaySymbol}</div>
             </div>
             
             <div className="flex justify-between items-start">
               <span className="text-gray-600 font-medium">Circulating supply</span>
               <div className="text-right">
-                <div className="text-xl font-bold text-gray-900">19.91M {symbol.replace('X:', '')}</div>
+                <div className="text-xl font-bold text-gray-900">19.91M {displaySymbol}</div>
                 <div className="text-sm text-gray-500 font-medium">94.86%</div>
               </div>
             </div>
@@ -254,11 +258,11 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
       {/* BTC to USD converter - exact like CMC */}
       <div className="mb-8 p-6 bg-gray-50 rounded-lg">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{symbol.replace('X:', '')} to USD converter</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{displaySymbol} to USD converter</h3>
         <div className="flex items-center space-x-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 bg-white border rounded-lg p-3">
-              <span className="font-bold text-gray-700">{symbol.replace('X:', '')}</span>
+              <span className="font-bold text-gray-700">{displaySymbol}</span>
               <input 
                 type="number" 
                 defaultValue="1" 

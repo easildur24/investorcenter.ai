@@ -66,7 +66,7 @@ async function getChartData(symbol: string, period: string = '1Y') {
 }
 
 export default async function TickerPage({ params, searchParams }: PageProps) {
-  const symbol = params.symbol.toUpperCase();
+  const symbol = decodeURIComponent(params.symbol).toUpperCase();
   const period = searchParams.period || '1Y';
   
   // Fetch data server-side

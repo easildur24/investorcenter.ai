@@ -91,58 +91,13 @@ type PreviousCloseResponse struct {
 
 // GetQuote fetches quote for a symbol using Polygon.io
 func (p *PolygonClient) GetQuote(symbol string) (*models.StockPrice, error) {
-	// For crypto symbols, use the real-time trades API
+	// For crypto symbols, use the real-time snapshot API
 	if strings.HasPrefix(symbol, "X:") {
 		return p.GetCryptoRealTimePrice(symbol)
 	}
 	
-	// For stocks, use previous close data
-	prevCloseURL := fmt.Sprintf("%s/v2/aggs/ticker/%s/prev?adjusted=true&apikey=%s",
-		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
-
-	resp, err := p.Client.Get(prevCloseURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch quote: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("API request failed with status: %d", resp.StatusCode)
-	}
-
-	var prevCloseResp PreviousCloseResponse
-	if err := json.NewDecoder(resp.Body).Decode(&prevCloseResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	if prevCloseResp.Status != "OK" || len(prevCloseResp.Results) == 0 {
-		return nil, fmt.Errorf("no data returned for symbol: %s", symbol)
-	}
-
-	result := prevCloseResp.Results[0]
-	
-	// Calculate change from previous close
-	change := decimal.NewFromFloat(result.Close - result.Open)
-	changePercent := decimal.Zero
-	if result.Open != 0 {
-		changePercent = change.Div(decimal.NewFromFloat(result.Open))
-	}
-
-	// Convert timestamp to time
-	timestamp := time.Unix(result.Timestamp/1000, 0)
-
-	return &models.StockPrice{
-		Symbol:        symbol,
-		Price:         decimal.NewFromFloat(result.Close),
-		Open:          decimal.NewFromFloat(result.Open),
-		High:          decimal.NewFromFloat(result.High),
-		Low:           decimal.NewFromFloat(result.Low),
-		Close:         decimal.NewFromFloat(result.Close),
-		Volume:        int64(result.Volume),
-		Change:        change,
-		ChangePercent: changePercent,
-		Timestamp:     timestamp,
-	}, nil
+	// For stocks, use real-time snapshot API
+	return p.GetStockRealTimePrice(symbol)
 }
 
 // AggregatesResponse represents aggregates/bars data
@@ -987,7 +942,116 @@ type CryptoSnapshotResponse struct {
 	} `json:"ticker"`
 }
 
+// StockSnapshotResponse represents the stock snapshot API response
+type StockSnapshotResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Ticker    struct {
+		Ticker     string `json:"ticker"`
+		TodaysChange float64 `json:"todaysChange"`
+		TodaysChangePerc float64 `json:"todaysChangePerc"`
+		Day struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"day"`
+		LastQuote struct {
+			Timestamp int64   `json:"t"`
+			Bid       float64 `json:"b"`
+			Ask       float64 `json:"a"`
+			Exchange  int     `json:"x"`
+		} `json:"lastQuote"`
+		LastTrade struct {
+			Timestamp   int64   `json:"t"`
+			Price       float64 `json:"p"`
+			Size        float64 `json:"s"`
+			Exchange    int     `json:"x"`
+			Conditions  []int   `json:"c"`
+		} `json:"lastTrade"`
+		Min struct {
+			Timestamp int64   `json:"t"`
+			Price     float64 `json:"av"`
+		} `json:"min"`
+		PrevDay struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"prevDay"`
+	} `json:"ticker"`
+}
+
 // GetCryptoRealTimePrice fetches real-time crypto price using snapshot API
+func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice, error) {
+	// Use the real-time stock snapshot endpoint
+	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/us/markets/stocks/tickers/%s?apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
+
+	resp, err := p.Client.Get(snapshotURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch stock snapshot: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("stock snapshot API request failed with status: %d", resp.StatusCode)
+	}
+
+	var snapshotResp StockSnapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode stock snapshot response: %w", err)
+	}
+
+	if snapshotResp.Status != "OK" {
+		return nil, fmt.Errorf("stock snapshot API error for symbol %s: %s", symbol, snapshotResp.Status)
+	}
+
+	ticker := snapshotResp.Ticker
+	
+	// Use last trade price for most recent data during market hours
+	currentPrice := ticker.LastTrade.Price
+	if currentPrice == 0 {
+		// Fallback to previous close if no last trade
+		currentPrice = ticker.PrevDay.Close
+	}
+
+	// Calculate change from previous close
+	prevClose := ticker.PrevDay.Close
+	change := decimal.NewFromFloat(currentPrice - prevClose)
+	changePercent := decimal.Zero
+	if prevClose != 0 {
+		changePercent = change.Div(decimal.NewFromFloat(prevClose)).Mul(decimal.NewFromInt(100))
+	}
+
+	// Use today's day data if available, otherwise previous day
+	dayData := ticker.Day
+	if dayData.Open == 0 {
+		dayData = ticker.PrevDay
+	}
+
+	// Convert timestamp 
+	timestamp := time.Unix(ticker.LastTrade.Timestamp/1000000000, 0) // Nanoseconds to seconds
+	if ticker.LastTrade.Timestamp == 0 {
+		timestamp = time.Now() // Fallback to current time
+	}
+
+	return &models.StockPrice{
+		Symbol:        symbol,
+		Price:         decimal.NewFromFloat(currentPrice),
+		Open:          decimal.NewFromFloat(dayData.Open),
+		High:          decimal.NewFromFloat(dayData.High),
+		Low:           decimal.NewFromFloat(dayData.Low),
+		Close:         decimal.NewFromFloat(currentPrice), // Current price as close
+		Volume:        int64(dayData.Volume),
+		Change:        change,
+		ChangePercent: changePercent,
+		Timestamp:     timestamp,
+	}, nil
+}
+
 func (p *PolygonClient) GetCryptoRealTimePrice(symbol string) (*models.StockPrice, error) {
 	// Use the real-time crypto snapshot endpoint
 	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/global/markets/crypto/tickers/%s?apikey=%s",
