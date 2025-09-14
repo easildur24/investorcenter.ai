@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"log"
-	"net/http"
-	"strings"
-	"time"
+        "encoding/json"
+        "log"
+        "net/http"
+        "strings"
+        "time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/shopspring/decimal"
-	"investorcenter-api/models"
-	"investorcenter-api/services"
+        "github.com/gin-gonic/gin"
+        "github.com/shopspring/decimal"
+        "investorcenter-api/models"
+        "investorcenter-api/services"
 )
 
 
@@ -318,6 +319,102 @@ func GetTickerRealTimePrice(c *gin.Context) {
 			"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
 		},
 		"meta": gin.H{
+			"timestamp": time.Now().UTC(),
+		},
+	})
+}
+
+// GetTickerNews returns news articles for a ticker
+func GetTickerNews(c *gin.Context) {
+	symbol := strings.ToUpper(c.Param("symbol"))
+	log.Printf("GetTickerNews called for symbol: %s", symbol)
+	
+	// Try to get real news from Polygon first
+	polygonClient := services.NewPolygonClient()
+	
+	// Get raw Polygon news data with all fields
+	url := "https://api.polygon.io/v2/reference/news?ticker=" + symbol + "&limit=30&apikey=" + polygonClient.APIKey
+	resp, err := polygonClient.Client.Get(url)
+	
+	if err != nil || resp.StatusCode != 200 {
+		log.Printf("Failed to get real news for %s: %v, using mock data", symbol, err)
+		// Fallback to mock news data
+		mockArticles := generateMockNews(symbol)
+		c.JSON(http.StatusOK, gin.H{
+			"data": mockArticles,
+			"meta": gin.H{
+				"symbol":    symbol,
+				"count":     len(mockArticles),
+				"timestamp": time.Now().UTC(),
+				"source":    "mock",
+			},
+		})
+		return
+	}
+	defer resp.Body.Close()
+	
+	// Parse and return raw Polygon response with all fields
+	var polygonResp map[string]interface{}
+	if err := json.NewDecoder(resp.Body).Decode(&polygonResp); err != nil {
+		log.Printf("Failed to decode news response: %v", err)
+		mockArticles := generateMockNews(symbol)
+		c.JSON(http.StatusOK, gin.H{
+			"data": mockArticles,
+			"meta": gin.H{
+				"symbol":    symbol,
+				"count":     len(mockArticles),
+				"timestamp": time.Now().UTC(),
+				"source":    "mock",
+			},
+		})
+		return
+	}
+	
+	// Return the raw Polygon results with all fields intact
+	results := polygonResp["results"]
+	log.Printf("Successfully fetched real news for %s", symbol)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"data": results,
+		"meta": gin.H{
+			"symbol":    symbol,
+			"timestamp": time.Now().UTC(),
+			"source":    "polygon",
+		},
+	})
+}
+
+// GetTickerEarnings returns earnings data for a ticker
+func GetTickerEarnings(c *gin.Context) {
+	symbol := strings.ToUpper(c.Param("symbol"))
+	log.Printf("GetTickerEarnings called for symbol: %s", symbol)
+	
+	// Generate mock earnings data (same as in mock_data.go)
+	earnings := generateMockEarnings(symbol)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"data": earnings,
+		"meta": gin.H{
+			"symbol":    symbol,
+			"count":     len(earnings),
+			"timestamp": time.Now().UTC(),
+		},
+	})
+}
+
+// GetTickerAnalysts returns analyst ratings for a ticker
+func GetTickerAnalysts(c *gin.Context) {
+	symbol := strings.ToUpper(c.Param("symbol"))
+	log.Printf("GetTickerAnalysts called for symbol: %s", symbol)
+	
+	// Generate mock analyst data (same as in mock_data.go)
+	analysts := generateMockAnalystRatings(symbol)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"data": analysts,
+		"meta": gin.H{
+			"symbol":    symbol,
+			"count":     len(analysts),
 			"timestamp": time.Now().UTC(),
 		},
 	})

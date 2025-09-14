@@ -605,6 +605,98 @@ func decimalPtr(f float64) *decimal.Decimal {
 	return &d
 }
 
+// NewsResponse represents Polygon news API response
+type NewsResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	NextURL   string `json:"next_url"`
+	Results   []struct {
+		ID          string `json:"id"`
+		Publisher   struct {
+			Name        string `json:"name"`
+			HomepageURL string `json:"homepage_url"`
+			LogoURL     string `json:"logo_url"`
+			FaviconURL  string `json:"favicon_url"`
+		} `json:"publisher"`
+		Title        string   `json:"title"`
+		Author       string   `json:"author"`
+		PublishedUTC string   `json:"published_utc"`
+		ArticleURL   string   `json:"article_url"`
+		Tickers      []string `json:"tickers"`
+		ImageURL     string   `json:"image_url"`
+		Description  string   `json:"description"`
+		Keywords     []string `json:"keywords"`
+		Insights     []struct {
+			Ticker             string `json:"ticker"`
+			Sentiment          string `json:"sentiment"`
+			SentimentReasoning string `json:"sentiment_reasoning"`
+		} `json:"insights"`
+	} `json:"results"`
+}
+
+// GetNews fetches news articles for a symbol
+func (p *PolygonClient) GetNews(symbol string, limit int) ([]models.NewsArticle, error) {
+	if limit <= 0 {
+		limit = 30 // Default to 30 articles for pagination
+	}
+	
+	url := fmt.Sprintf("%s/v2/reference/news?ticker=%s&limit=%d&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), limit, p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch news: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("news API request failed with status: %d", resp.StatusCode)
+	}
+
+	var newsResp NewsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&newsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode news response: %w", err)
+	}
+
+	if newsResp.Status != "OK" {
+		return nil, fmt.Errorf("news API error: %s", newsResp.Status)
+	}
+
+	var articles []models.NewsArticle
+	for i, article := range newsResp.Results {
+		// Parse published date
+		publishedAt, err := time.Parse(time.RFC3339, article.PublishedUTC)
+		if err != nil {
+			publishedAt = time.Now()
+		}
+
+		// Get sentiment for this ticker
+		sentiment := "Neutral"
+		for _, insight := range article.Insights {
+			if strings.ToUpper(insight.Ticker) == strings.ToUpper(symbol) {
+				sentiment = strings.Title(insight.Sentiment)
+				break
+			}
+		}
+
+		articles = append(articles, models.NewsArticle{
+			ID:          i + 1,
+			Symbol:      symbol,
+			Title:       article.Title,
+			Summary:     article.Description,
+			Author:      article.Author,
+			Source:      article.Publisher.Name,
+			URL:         article.ArticleURL,
+			Sentiment:   sentiment,
+			PublishedAt: publishedAt,
+			CreatedAt:   time.Now(),
+		})
+	}
+
+	return articles, nil
+}
+
 // PolygonTickersResponse represents the tickers list response
 type PolygonTickersResponse struct {
 	Status    string          `json:"status"`

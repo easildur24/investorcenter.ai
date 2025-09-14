@@ -98,12 +98,12 @@ func main() {
 			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)         // Get volume data (add ?realtime=true for fresh data)
 			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
 			
-			// Additional ticker endpoints (to be implemented)
+			// Additional ticker endpoints
+			tickers.GET("/:symbol/news", handlers.GetTickerNews)
+			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
+			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
 			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
-			// tickers.GET("/:symbol/news", handlers.GetTickerNews)
-			// tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
 			// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
-			// tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
 			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
 			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
