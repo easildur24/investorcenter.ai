@@ -1,0 +1,77 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: sec-filing-daily-update
+  namespace: investorcenter
+spec:
+  # Run daily at 2 AM UTC (9 PM EST)
+  schedule: "0 2 * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: sec-downloader-sa
+          restartPolicy: Never
+          containers:
+          - name: sec-filing-fetcher
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-fetcher:v1
+            imagePullPolicy: Always
+            env:
+            - name: DB_HOST
+              value: "postgres-simple-service.investorcenter.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            # Run with a 1-day lookback for incremental updates
+            command: ["python", "sec_filing_fetcher.py", "--days", "1"]
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+          - name: sec-filing-downloader
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v1
+            imagePullPolicy: Always
+            env:
+            - name: DB_HOST
+              value: "postgres-simple-service.investorcenter.svc.cluster.local"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: S3_BUCKET
+              value: "investorcenter-sec-filings"
+            - name: AWS_REGION
+              value: "us-east-1"
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
