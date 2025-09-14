@@ -91,7 +91,7 @@ class SECFilingParser:
                     SELECT 
                         f.id,
                         f.ticker_id,
-                        f.form_type,
+                        f.filing_type as form_type,
                         f.filing_date,
                         f.s3_key,
                         t.symbol,
@@ -101,7 +101,7 @@ class SECFilingParser:
                     WHERE 
                         f.s3_key IS NOT NULL
                         AND f.parsed_at IS NULL
-                        AND f.form_type IN ('10-K', '10-Q')
+                        AND f.filing_type IN ('10-K', '10-Q')
                     ORDER BY f.filing_date DESC
                 """
                 
@@ -202,25 +202,52 @@ class SECFilingParser:
         """Extract key financial metrics from filing text"""
         metrics = {}
         
-        # Revenue patterns
+        # Revenue patterns (enhanced)
         revenue_patterns = [
-            r'(?:total\s+)?revenues?\s+(?:were|of|was)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion)?',
-            r'net\s+(?:sales|revenues?)\s+(?:were|of|was)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion)?'
+            r'(?:total\s+)?(?:net\s+)?revenues?\s+(?:were|of|was|are|is)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'net\s+(?:sales|revenues?)\s+(?:were|of|was|are|is)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'(?:total\s+)?(?:net\s+)?revenues?[:\s]+\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'revenues?\s+for\s+(?:the\s+)?(?:year|quarter)\s+(?:were|was)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?'
         ]
         
-        # Net income patterns
+        # Net income patterns (enhanced)
         income_patterns = [
-            r'net\s+(?:income|earnings?)\s+(?:were|of|was)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion)?',
-            r'net\s+(?:loss|losses)\s+(?:were|of|was)?\s*\$?\s*\(([\d,]+(?:\.\d+)?)\)\s*(?:million|billion)?'
+            r'net\s+(?:income|earnings?)\s+(?:were|of|was|are|is)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'net\s+(?:income|earnings?)[:\s]+\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'net\s+(?:loss|losses)\s+(?:were|of|was|are|is)?\s*\$?\s*\(?([\d,]+(?:\.\d+)?)\)?\s*(?:million|billion|thousand)?',
+            r'(?:net\s+)?(?:income|loss)\s+attributable\s+to\s+(?:common\s+)?(?:stockholders|shareholders)\s*[:\s]+\$?\s*\(?([\d,]+(?:\.\d+)?)\)?\s*(?:million|billion|thousand)?'
+        ]
+        
+        # EPS patterns
+        eps_patterns = [
+            r'(?:basic\s+)?earnings?\s+per\s+(?:common\s+)?share\s*[:\s]+\$?\s*([\d.]+)',
+            r'(?:basic\s+)?eps\s*[:\s]+\$?\s*([\d.]+)',
+            r'(?:diluted\s+)?earnings?\s+per\s+(?:common\s+)?share\s*[:\s]+\$?\s*([\d.]+)'
+        ]
+        
+        # Total assets patterns
+        assets_patterns = [
+            r'total\s+assets\s+(?:were|of|was|are|is)?\s*\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?',
+            r'total\s+assets[:\s]+\$?\s*([\d,]+(?:\.\d+)?)\s*(?:million|billion|thousand)?'
         ]
         
         # Extract revenue
         for pattern in revenue_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                value = match.group(1).replace(',', '')
+                value_str = match.group(1).replace(',', '')
+                unit = match.group(2) if len(match.groups()) > 1 else None
                 try:
-                    metrics['revenue'] = float(value)
+                    value = float(value_str)
+                    # Convert to actual value based on unit
+                    if unit:
+                        if 'billion' in unit.lower():
+                            value *= 1000000000
+                        elif 'million' in unit.lower():
+                            value *= 1000000
+                        elif 'thousand' in unit.lower():
+                            value *= 1000
+                    metrics['revenue'] = value
                     break
                 except:
                     pass
@@ -229,12 +256,53 @@ class SECFilingParser:
         for pattern in income_patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                value = match.group(1).replace(',', '')
+                value_str = match.group(1).replace(',', '')
+                unit = match.group(2) if len(match.groups()) > 1 else None
                 try:
-                    metrics['net_income'] = float(value)
+                    value = float(value_str)
+                    # Convert to actual value based on unit
+                    if unit:
+                        if 'billion' in unit.lower():
+                            value *= 1000000000
+                        elif 'million' in unit.lower():
+                            value *= 1000000
+                        elif 'thousand' in unit.lower():
+                            value *= 1000
                     # If it's a loss pattern, make it negative
-                    if 'loss' in pattern:
-                        metrics['net_income'] = -metrics['net_income']
+                    if 'loss' in pattern.lower():
+                        value = -value
+                    metrics['net_income'] = value
+                    break
+                except:
+                    pass
+        
+        # Extract EPS
+        for pattern in eps_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                try:
+                    metrics['eps'] = float(match.group(1))
+                    break
+                except:
+                    pass
+        
+        # Extract total assets
+        for pattern in assets_patterns:
+            match = re.search(pattern, text, re.IGNORECASE)
+            if match:
+                value_str = match.group(1).replace(',', '')
+                unit = match.group(2) if len(match.groups()) > 1 else None
+                try:
+                    value = float(value_str)
+                    # Convert to actual value based on unit
+                    if unit:
+                        if 'billion' in unit.lower():
+                            value *= 1000000000
+                        elif 'million' in unit.lower():
+                            value *= 1000000
+                        elif 'thousand' in unit.lower():
+                            value *= 1000
+                    metrics['total_assets'] = value
                     break
                 except:
                     pass
