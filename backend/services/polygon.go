@@ -91,12 +91,28 @@ type PreviousCloseResponse struct {
 
 // GetQuote fetches quote for a symbol using Polygon.io
 func (p *PolygonClient) GetQuote(symbol string) (*models.StockPrice, error) {
-	// For crypto symbols, use the real-time snapshot API
+	// For crypto symbols, try cache first
 	if strings.HasPrefix(symbol, "X:") {
+		cryptoCache := GetCryptoCache()
+		if cachedPrice, exists := cryptoCache.GetPrice(symbol); exists {
+			log.Printf("🪙 Serving %s from crypto cache", symbol)
+			return cachedPrice, nil
+		}
+		
+		// Fallback to individual API call if not in cache
+		log.Printf("⚠️ %s not in crypto cache, using individual API call", symbol)
 		return p.GetCryptoRealTimePrice(symbol)
 	}
 	
-	// For stocks, use real-time snapshot API
+	// For stocks, try cache first
+	stockCache := GetStockCache()
+	if cachedPrice, exists := stockCache.GetPrice(symbol); exists {
+		log.Printf("📊 Serving %s from stock cache", symbol)
+		return cachedPrice, nil
+	}
+	
+	// Fallback to individual API call if not in cache
+	log.Printf("⚠️ %s not in stock cache, using individual API call", symbol)
 	return p.GetStockRealTimePrice(symbol)
 }
 
@@ -985,6 +1001,146 @@ type StockSnapshotResponse struct {
 }
 
 // GetCryptoRealTimePrice fetches real-time crypto price using snapshot API
+// BulkStockSnapshotResponse represents the bulk stocks snapshot API response
+type BulkStockSnapshotResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	Tickers   []struct {
+		Ticker       string  `json:"ticker"`
+		TodaysChange float64 `json:"todaysChange"`
+		TodaysChangePerc float64 `json:"todaysChangePerc"`
+		Day struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"day"`
+		LastQuote struct {
+			Timestamp int64   `json:"t"`
+			Bid       float64 `json:"b"`
+			Ask       float64 `json:"a"`
+			Exchange  int     `json:"x"`
+		} `json:"lastQuote"`
+		LastTrade struct {
+			Timestamp   int64   `json:"t"`
+			Price       float64 `json:"p"`
+			Size        float64 `json:"s"`
+			Exchange    int     `json:"x"`
+			Conditions  []int   `json:"c"`
+		} `json:"lastTrade"`
+		Min struct {
+			Timestamp int64   `json:"t"`
+			Price     float64 `json:"av"`
+		} `json:"min"`
+		PrevDay struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"prevDay"`
+	} `json:"tickers"`
+}
+
+// GetBulkStockSnapshots fetches all US stock snapshots
+func (p *PolygonClient) GetBulkStockSnapshots() (*BulkStockSnapshotResponse, error) {
+	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/us/markets/stocks/tickers?apikey=%s",
+		PolygonBaseURL, p.APIKey)
+
+	resp, err := p.Client.Get(snapshotURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch bulk stock snapshots: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bulk snapshot API request failed with status: %d", resp.StatusCode)
+	}
+
+	var snapshotResp BulkStockSnapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode bulk snapshot response: %w", err)
+	}
+
+	if snapshotResp.Status != "OK" {
+		return nil, fmt.Errorf("bulk snapshot API error: %s", snapshotResp.Status)
+	}
+
+	return &snapshotResp, nil
+}
+
+// BulkCryptoSnapshotResponse represents the bulk crypto snapshot API response
+type BulkCryptoSnapshotResponse struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	Tickers   []struct {
+		Ticker       string  `json:"ticker"`
+		TodaysChange float64 `json:"todaysChange"`
+		TodaysChangePerc float64 `json:"todaysChangePerc"`
+		Day struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"day"`
+		LastQuote struct {
+			Timestamp int64   `json:"t"`
+			Bid       float64 `json:"b"`
+			Ask       float64 `json:"a"`
+			Exchange  int     `json:"x"`
+		} `json:"lastQuote"`
+		LastTrade struct {
+			Timestamp   int64   `json:"t"`
+			Price       float64 `json:"p"`
+			Size        float64 `json:"s"`
+			Exchange    int     `json:"x"`
+			Conditions  []int   `json:"c"`
+		} `json:"lastTrade"`
+		Min struct {
+			Timestamp int64   `json:"t"`
+			Price     float64 `json:"av"`
+		} `json:"min"`
+		PrevDay struct {
+			Open   float64 `json:"o"`
+			High   float64 `json:"h"`
+			Low    float64 `json:"l"`
+			Close  float64 `json:"c"`
+			Volume float64 `json:"v"`
+		} `json:"prevDay"`
+	} `json:"tickers"`
+}
+
+// GetBulkCryptoSnapshots fetches all crypto snapshots
+func (p *PolygonClient) GetBulkCryptoSnapshots() (*BulkCryptoSnapshotResponse, error) {
+	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/global/markets/crypto/tickers?apikey=%s",
+		PolygonBaseURL, p.APIKey)
+
+	resp, err := p.Client.Get(snapshotURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch bulk crypto snapshots: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("bulk crypto snapshot API request failed with status: %d", resp.StatusCode)
+	}
+
+	var snapshotResp BulkCryptoSnapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode bulk crypto snapshot response: %w", err)
+	}
+
+	if snapshotResp.Status != "OK" {
+		return nil, fmt.Errorf("bulk crypto snapshot API error: %s", snapshotResp.Status)
+	}
+
+	return &snapshotResp, nil
+}
+
 func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice, error) {
 	// Use the real-time stock snapshot endpoint
 	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/us/markets/stocks/tickers/%s?apikey=%s",

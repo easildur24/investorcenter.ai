@@ -108,6 +108,12 @@ func main() {
 			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
 		
+		// Crypto endpoints
+		crypto := v1.Group("/crypto")
+		{
+			crypto.GET("/", handlers.GetAllCryptos) // All crypto prices with pagination
+		}
+		
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
 		{

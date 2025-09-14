@@ -26,22 +26,10 @@ export default function Header() {
                 Home
               </Link>
               <Link 
-                href="/markets" 
+                href="/crypto" 
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
-                Markets
-              </Link>
-              <Link 
-                href="/screener" 
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Screener
-              </Link>
-              <Link 
-                href="/portfolio" 
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Portfolio
+                Crypto
               </Link>
             </div>
           </div>
