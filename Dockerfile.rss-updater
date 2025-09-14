@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir \
+    psycopg2-binary \
+    requests \
+    boto3 \
+    feedparser
+
+# Copy both scripts (RSS updater and downloader)
+COPY scripts/sec_rss_updater.py /app/
+COPY scripts/sec_filing_downloader.py /app/
+
+# Run the RSS updater in continuous mode
+CMD ["python", "sec_rss_updater.py", "--continuous", "--interval", "10"]

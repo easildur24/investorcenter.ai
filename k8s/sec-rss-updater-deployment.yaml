@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sec-rss-updater
+  namespace: investorcenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sec-rss-updater
+  template:
+    metadata:
+      labels:
+        app: sec-rss-updater
+    spec:
+      serviceAccountName: sec-downloader-sa
+      containers:
+      - name: sec-rss-updater
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-rss-updater:v2
+        imagePullPolicy: Always
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: S3_BUCKET
+          value: "investorcenter-sec-filings"
+        - name: AWS_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import psycopg2; import os; psycopg2.connect(host=os.environ['DB_HOST'], database=os.environ['DB_NAME'], user=os.environ['DB_USER'], password=os.environ['DB_PASSWORD'])"
+          initialDelaySeconds: 10
+          periodSeconds: 30
