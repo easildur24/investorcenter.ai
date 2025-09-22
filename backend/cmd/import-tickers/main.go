@@ -42,8 +42,14 @@ func main() {
 
 	// Import tickers based on type
 	if *assetType == "all" {
-		// Import all asset types
+		// Import all asset types (crypto excluded - use CoinGecko)
 		importAllTypes(db, polygonClient)
+	} else if *assetType == "crypto" {
+		// Reject crypto imports - direct to CoinGecko
+		log.Println("❌ Crypto import from Polygon is no longer supported")
+		log.Println("💡 Please use CoinGecko API for cryptocurrency data")
+		log.Println("📚 See docs/CRYPTO_MIGRATION_EXECUTION_PLAN.md for migration guide")
+		log.Fatalf("Crypto import aborted - use CoinGecko instead")
 	} else {
 		// Import specific asset type
 		if err := importTickers(db, polygonClient, *assetType); err != nil {
@@ -87,7 +93,8 @@ func setupDatabase() (*sql.DB, error) {
 }
 
 func importAllTypes(db *sql.DB, client *services.PolygonClient) {
-	types := []string{"stocks", "etf", "crypto", "indices"}
+	// Note: crypto removed - use CoinGecko for cryptocurrency data
+	types := []string{"stocks", "etf", "indices"}
 	
 	for _, assetType := range types {
 		log.Printf("\n📦 Importing %s...\n", assetType)
@@ -104,6 +111,11 @@ func importAllTypes(db *sql.DB, client *services.PolygonClient) {
 }
 
 func importTickers(db *sql.DB, client *services.PolygonClient, assetType string) error {
+	// Reject crypto imports - direct to CoinGecko
+	if assetType == "crypto" {
+		return fmt.Errorf("❌ Crypto import from Polygon is no longer supported. Please use CoinGecko API for cryptocurrency data")
+	}
+
 	log.Printf("🔍 Fetching %s tickers from Polygon API (this will paginate automatically)...", assetType)
 	
 	// Fetch ALL tickers from Polygon API (it will paginate automatically)

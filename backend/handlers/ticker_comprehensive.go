@@ -1,7 +1,9 @@
 package handlers
 
 import (
+        "context"
         "encoding/json"
+        "fmt"
         "log"
         "net/http"
         "sort"
@@ -15,7 +17,7 @@ import (
         "investorcenter-api/services"
 )
 
-
+// Use the redisClient from crypto_realtime_handlers.go
 
 // GetTicker returns comprehensive ticker data with real-time prices
 func GetTicker(c *gin.Context) {
@@ -289,20 +291,53 @@ func decimalPtrComprehensive(f float64) *decimal.Decimal {
 }
 
 // GetTickerRealTimePrice returns just the current price for real-time updates
-// Minimal test version to isolate the issue
+// Handles both stocks and crypto
 func GetTickerRealTimePrice(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerRealTimePrice called for symbol: %s", symbol)
-	
-	// Minimal test: Just call Polygon directly (we know this works)
+
+	// First, try to get from crypto (Redis) - fast check
+	ctx := context.Background()
+	priceKey := fmt.Sprintf("crypto:quote:%s", symbol)
+	cryptoData, redisErr := redisClient.Get(ctx, priceKey).Result()
+
+	if redisErr == nil {
+		// Found in crypto cache, parse and return
+		log.Printf("Symbol %s found in crypto cache, returning crypto price", symbol)
+		var price CryptoRealTimePrice
+		if err := json.Unmarshal([]byte(cryptoData), &price); err == nil {
+			c.JSON(http.StatusOK, gin.H{
+				"data": gin.H{
+					"symbol":        symbol,
+					"price":         fmt.Sprintf("%.2f", price.Price),
+					"change":        fmt.Sprintf("%.2f", price.Price * price.Change24h / 100),
+					"changePercent": fmt.Sprintf("%.2f", price.Change24h),
+					"volume":        price.Volume24h,
+					"timestamp":     time.Now().Unix(),
+					"lastUpdated":   price.LastUpdated,
+					"marketStatus":  "open", // Crypto is always open
+					"assetType":     "crypto",
+				},
+				"meta": gin.H{
+					"timestamp": time.Now().UTC(),
+					"source": "redis",
+				},
+			})
+			return
+		}
+	}
+
+	// Not crypto, use Polygon for stocks/ETFs
 	polygonClient := services.NewPolygonClient()
 	priceData, err := polygonClient.GetQuote(symbol)
-	
+
 	if err != nil {
 		log.Printf("Polygon API error for %s: %v", symbol, err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch price data",
-			"details": err.Error(),
+		// Return a more graceful error response
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "Price not available",
+			"symbol": symbol,
+			"message": "This ticker is not currently tracked",
 		})
 		return
 	}
