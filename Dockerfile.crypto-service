@@ -1,0 +1,12 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Install dependencies
+RUN pip install --no-cache-dir requests redis aiohttp
+
+# Copy the crypto service script (using the comprehensive version)
+COPY scripts/coingecko_complete_service.py ./coingecko_complete_service.py
+
+# Run the service
+CMD ["python", "-u", "coingecko_complete_service.py"]

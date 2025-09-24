@@ -35,17 +35,21 @@ func init() {
 type CryptoRealTimePrice struct {
 	Symbol           string  `json:"symbol"`
 	Name             string  `json:"name,omitempty"`
-	Price            float64 `json:"price"`
+	Price            float64 `json:"price"` // Maps to current_price from Redis
+	CurrentPrice     float64 `json:"current_price,omitempty"` // From CoinGecko
 	PriceBTC         float64 `json:"price_btc,omitempty"`
 	Rank             int     `json:"rank,omitempty"`
+	MarketCapRank    int     `json:"market_cap_rank,omitempty"` // From CoinGecko
 	Change1h         float64 `json:"change_1h,omitempty"`
 	Change24h        float64 `json:"change_24h"`
+	PriceChange24h   float64 `json:"price_change_percentage_24h,omitempty"` // From CoinGecko
 	Change7d         float64 `json:"change_7d,omitempty"`
 	Volume24h        float64 `json:"volume_24h"`
+	TotalVolume      float64 `json:"total_volume,omitempty"` // From CoinGecko
 	MarketCap        float64 `json:"market_cap,omitempty"`
 	CirculatingSupply float64 `json:"circulating_supply,omitempty"`
 	TotalSupply      float64 `json:"total_supply,omitempty"`
-	MaxSupply        float64 `json:"max_supply,omitempty"`
+	MaxSupply        *float64 `json:"max_supply,omitempty"`
 	LastUpdated      string  `json:"last_updated"`
 	UpdateInterval   int     `json:"update_interval,omitempty"`
 	Tier             string  `json:"tier,omitempty"`
@@ -83,6 +87,20 @@ func GetCryptoRealTimePrice(c *gin.Context) {
 			"error": "Invalid price data",
 		})
 		return
+	}
+
+	// Map CoinGecko fields to expected fields for backward compatibility
+	if price.CurrentPrice > 0 && price.Price == 0 {
+		price.Price = price.CurrentPrice
+	}
+	if price.PriceChange24h != 0 && price.Change24h == 0 {
+		price.Change24h = price.PriceChange24h
+	}
+	if price.TotalVolume > 0 && price.Volume24h == 0 {
+		price.Volume24h = price.TotalVolume
+	}
+	if price.MarketCapRank > 0 && price.Rank == 0 {
+		price.Rank = price.MarketCapRank
 	}
 
 	c.JSON(http.StatusOK, price)

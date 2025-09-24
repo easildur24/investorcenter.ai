@@ -21,6 +21,10 @@ COPY . .
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
 
+# Set backend URL for build time
+ENV BACKEND_URL=http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080
+ENV NEXT_PUBLIC_BACKEND_URL=http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080
+
 RUN npm run build
 
 # Production image, copy all the files and run next

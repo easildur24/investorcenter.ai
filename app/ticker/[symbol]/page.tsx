@@ -25,18 +25,59 @@ interface PageProps {
 // Fetch ticker data server-side to avoid client hydration issues
 async function getTickerData(symbol: string) {
   try {
-    // Use internal backend service URL for server-side fetching
-    const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}`, {
-      cache: 'no-store', // Always fetch fresh data
+    // Use environment variable for backend URL, with fallback for local development
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8080';
+
+    // First, try to get crypto data from the crypto endpoint
+    const cryptoResponse = await fetch(`${baseUrl}/api/v1/crypto/${symbol}/price`, {
+      cache: 'no-store',
     });
-    
+
+    if (cryptoResponse.ok) {
+      const cryptoData = await cryptoResponse.json();
+
+      // Transform crypto data to match expected format
+      return {
+        summary: {
+          stock: {
+            symbol: cryptoData.symbol,
+            name: `${cryptoData.name} - United States dollar`,
+            exchange: 'CRYPTO',
+            sector: 'Cryptocurrency',
+            assetType: 'crypto',
+            isCrypto: true
+          },
+          price: {
+            price: String(cryptoData.price),
+            change: String(cryptoData.price * cryptoData.change_24h / 100),
+            changePercent: String(cryptoData.change_24h / 100),
+            volume: cryptoData.volume_24h || 0,
+            high: String(cryptoData.price * 1.05), // Approximate if not available
+            low: String(cryptoData.price * 0.95),  // Approximate if not available
+            lastUpdated: cryptoData.last_updated || new Date().toISOString()
+          },
+          market: {
+            status: 'open', // Crypto markets are always open
+            shouldUpdateRealtime: true,
+            updateInterval: cryptoData.update_interval || 5000
+          },
+          keyMetrics: {},
+          fundamentals: {}
+        }
+      };
+    }
+
+    // If not crypto or crypto endpoint fails, fall back to regular ticker endpoint
+    const response = await fetch(`${baseUrl}/api/v1/tickers/${symbol}`, {
+      cache: 'no-store',
+    });
+
     if (!response.ok) {
       console.error(`Failed to fetch ticker data: ${response.status}`);
       return null;
     }
-    
+
     const result = await response.json();
-    console.log(`✅ Server-side fetched data for ${symbol}`);
     return result.data;
   } catch (error) {
     console.error('Error fetching ticker data server-side:', error);
@@ -47,17 +88,31 @@ async function getTickerData(symbol: string) {
 // Fetch chart data server-side
 async function getChartData(symbol: string, period: string = '1Y') {
   try {
-    const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}/chart?period=${period}`, {
+    // Use environment variable for backend URL, with fallback for local development
+    const baseUrl = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.BACKEND_URL || 'http://localhost:8080';
+
+    // For now, crypto doesn't have chart data, so return null
+    // This could be enhanced later with historical crypto data
+    const cryptoResponse = await fetch(`${baseUrl}/api/v1/crypto/${symbol}/price`, {
       cache: 'no-store',
     });
-    
+
+    if (cryptoResponse.ok) {
+      // For crypto, return null chart data for now
+      // The CryptoMainContent component handles its own chart display
+      return null;
+    }
+
+    const response = await fetch(`${baseUrl}/api/v1/tickers/${symbol}/chart?period=${period}`, {
+      cache: 'no-store',
+    });
+
     if (!response.ok) {
       console.error(`Failed to fetch chart data: ${response.status}`);
       return null;
     }
-    
+
     const result = await response.json();
-    console.log(`✅ Server-side fetched chart data for ${symbol}`);
     return result.data;
   } catch (error) {
     console.error('Error fetching chart data server-side:', error);

@@ -113,7 +113,10 @@ func main() {
 		{
 			crypto.GET("/", handlers.GetAllCryptos) // All crypto prices with pagination
 			crypto.GET("/:symbol/price", handlers.GetCryptoRealTimePrice) // Real-time crypto price from Redis
+			crypto.GET("/:symbol/quote", handlers.GetEnhancedCryptoPrice) // Enhanced quote with timestamps
 			crypto.GET("/prices", handlers.GetAllCryptoRealTimePrices) // All real-time crypto prices
+			crypto.GET("/quotes", handlers.GetAllCryptoQuotes) // All quotes with pagination
+			crypto.GET("/stats", handlers.GetCryptoStats) // Crypto data statistics
 			crypto.GET("/stream", handlers.StreamCryptoPrices) // SSE endpoint for real-time streaming
 		}
 		

@@ -1,0 +1,78 @@
+name: Deploy Crypto Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/crypto_complete_service.py'
+      - 'scripts/crypto_postgres_sync.py'
+      - 'scripts/requirements-crypto.txt'
+      - 'scripts/Dockerfile.crypto-service'
+      - '.github/workflows/deploy-crypto.yml'
+  workflow_dispatch:
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: investorcenter/crypto-service
+  EKS_CLUSTER_NAME: investorcenter-cluster
+  K8S_NAMESPACE: investorcenter
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v2
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v1
+
+    - name: Build, tag, and push image to Amazon ECR
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        cd scripts
+        docker build -f Dockerfile.crypto-service -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+
+    - name: Setup kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'v1.27.0'
+
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig --name ${{ env.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+    - name: Deploy to Kubernetes
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        # Apply Redis deployment if not exists
+        kubectl apply -f backend/k8s/redis-deployment.yaml
+        
+        # Apply crypto service deployment
+        kubectl apply -f backend/k8s/crypto-service-deployment.yaml
+        
+        # Update image
+        kubectl set image deployment/crypto-service crypto-service=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -n ${{ env.K8S_NAMESPACE }}
+        
+        # Wait for rollout
+        kubectl rollout status deployment/crypto-service -n ${{ env.K8S_NAMESPACE }} --timeout=300s
+        
+        # Show deployment status
+        kubectl get pods -n ${{ env.K8S_NAMESPACE }} -l app=crypto-service

@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: coingecko-service
+  namespace: investorcenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: coingecko-service
+  template:
+    metadata:
+      labels:
+        app: coingecko-service
+    spec:
+      containers:
+      - name: coingecko-service
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/crypto-service:latest
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"

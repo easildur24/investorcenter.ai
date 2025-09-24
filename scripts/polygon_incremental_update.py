@@ -9,7 +9,7 @@ Features:
 - Incremental updates using last_updated_utc field
 - Tracks last sync timestamp in database
 - Only fetches new/updated tickers to minimize API calls
-- Handles all asset types: stocks, ETFs, crypto, etc.
+- Handles all asset types: stocks, ETFs, indices (crypto excluded - use CoinGecko)
 - Designed for daily cron execution
 
 Environment Variables Required:
@@ -159,8 +159,13 @@ class PolygonIncrementalUpdater:
                 results = data.get('results', [])
                 
                 # Filter results by last_updated_utc if available
+                # Also exclude crypto tickers (market = 'crypto' or ticker starts with X:)
                 filtered_results = []
                 for ticker in results:
+                    # Skip crypto tickers - use CoinGecko for crypto data
+                    if ticker.get('market') == 'crypto' or ticker.get('ticker', '').startswith('X:'):
+                        continue
+
                     # Check if ticker has been updated since our last sync
                     last_updated = ticker.get('last_updated_utc')
                     if last_updated:
@@ -217,6 +222,11 @@ class PolygonIncrementalUpdater:
                     # Prepare data for upsert
                     symbol = ticker.get('ticker', '').upper()
                     if not symbol:
+                        continue
+
+                    # Skip crypto tickers - should be filtered earlier but double-check
+                    if ticker.get('market') == 'crypto' or symbol.startswith('X:'):
+                        logger.warning(f"Skipping crypto ticker {symbol} - use CoinGecko for crypto data")
                         continue
                     
                     # Map Polygon fields to our database schema
@@ -301,6 +311,7 @@ class PolygonIncrementalUpdater:
         """Main execution function"""
         start_time = datetime.now()
         logger.info("=== Polygon Incremental Ticker Update Started ===")
+        logger.info("Note: Crypto tickers are excluded - use CoinGecko for cryptocurrency data")
         
         try:
             # Connect to database

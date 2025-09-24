@@ -1,0 +1,50 @@
+{{- if .Values.crypto.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-service
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: crypto-service
+    chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+    release: {{ .Release.Name }}
+spec:
+  replicas: {{ .Values.crypto.replicaCount }}
+  selector:
+    matchLabels:
+      app: crypto-service
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: crypto-service
+        release: {{ .Release.Name }}
+    spec:
+      containers:
+      - name: crypto-service
+        image: "{{ .Values.crypto.image.repository }}:{{ .Values.crypto.image.tag }}"
+        imagePullPolicy: {{ .Values.crypto.image.pullPolicy }}
+        env:
+        - name: REDIS_HOST
+          value: {{ .Values.crypto.env.REDIS_HOST | quote }}
+        - name: REDIS_PORT
+          value: {{ .Values.crypto.env.REDIS_PORT | quote }}
+        - name: DB_HOST
+          value: {{ .Values.crypto.env.DB_HOST | quote }}
+        - name: DB_PORT
+          value: {{ .Values.crypto.env.DB_PORT | quote }}
+        - name: DB_NAME
+          value: {{ .Values.crypto.env.DB_NAME | quote }}
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.postgres.existingSecret }}
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.postgres.existingSecret }}
+              key: password
+        resources:
+          {{- toYaml .Values.crypto.resources | nindent 10 }}
+{{- end }}

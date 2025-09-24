@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crypto-service-config
+  namespace: investorcenter
+data:
+  REDIS_HOST: "redis-service"
+  REDIS_PORT: "6379"
+  DB_HOST: "postgres-simple-service"
+  DB_PORT: "5432"
+  DB_NAME: "investorcenter_db"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-service
+  namespace: investorcenter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crypto-service
+  template:
+    metadata:
+      labels:
+        app: crypto-service
+    spec:
+      containers:
+      - name: crypto-service
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/crypto-service:latest
+        envFrom:
+        - configMapRef:
+            name: crypto-service-config
+        env:
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"

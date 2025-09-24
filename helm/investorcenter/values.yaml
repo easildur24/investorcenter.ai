@@ -1,0 +1,119 @@
+# Default values for investorcenter.
+# This is a YAML-formatted file.
+
+namespace: investorcenter
+
+# Backend API Service
+backend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+  
+  ingress:
+    enabled: true
+    host: api.investorcenter.ai
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      enabled: true
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+  
+  env:
+    REDIS_ADDR: "redis-master:6379"
+    DB_HOST: "postgres-simple-service"
+    DB_PORT: "5432"
+    DB_NAME: "investorcenter_db"
+
+# Crypto Service
+crypto:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/crypto-service
+    tag: latest
+    pullPolicy: Always
+  
+  resources:
+    limits:
+      cpu: 250m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  env:
+    REDIS_HOST: "redis-master"
+    REDIS_PORT: "6379"
+    DB_HOST: "postgres-simple-service"
+    DB_PORT: "5432"
+    DB_NAME: "investorcenter_db"
+
+# PostgreSQL Sync CronJob
+cryptoSync:
+  enabled: true
+  schedule: "0 */6 * * *"  # Every 6 hours
+  image:
+    repository: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/crypto-service
+    tag: latest
+  
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Redis Configuration
+redis:
+  enabled: true
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+
+# PostgreSQL Configuration (if using Helm-managed)
+postgresql:
+  enabled: false  # Using existing RDS/managed instance
+  auth:
+    database: investorcenter_db
+    existingSecret: postgres-credentials
+
+# Secrets (managed externally)
+secrets:
+  postgres:
+    existingSecret: postgres-credentials
+  aws:
+    existingSecret: aws-credentials
+
+# Monitoring
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true
