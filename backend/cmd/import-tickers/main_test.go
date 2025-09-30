@@ -327,6 +327,9 @@ func TestShouldUpdate(t *testing.T) {
 }
 
 func TestMapSICToSector(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping TestMapSICToSector in short mode")
+	}
 	tests := []struct {
 		sicCode  string
 		sicDesc  string
