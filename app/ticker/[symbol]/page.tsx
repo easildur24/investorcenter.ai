@@ -1,9 +1,5 @@
 import { Suspense } from 'react';
 import TickerOverview from '@/components/ticker/TickerOverview';
-import TickerChart from '@/components/ticker/TickerChart';
-import InteractiveChart from '@/components/ticker/InteractiveChart';
-import ServerChart from '@/components/ticker/ServerChart';
-import ProperChart from '@/components/ticker/ProperChart';
 import HybridChart from '@/components/ticker/HybridChart';
 import TickerFundamentals from '@/components/ticker/TickerFundamentals';
 import TickerNews from '@/components/ticker/TickerNews';
