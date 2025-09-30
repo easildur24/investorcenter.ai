@@ -91,8 +91,8 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
   const formatChange = (change: string, changePercent: string) => {
     const changeNum = parseFloat(change);
-    const changePercentNum = parseFloat(changePercent) * 100;
-    
+    const changePercentNum = parseFloat(changePercent); // Backend already returns as percentage
+
     const prefix = changeNum >= 0 ? '+' : '';
     return `${prefix}${changePercentNum.toFixed(2)}%`;
   };

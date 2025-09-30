@@ -164,8 +164,8 @@ function TickerOverviewServer({ data }: { data: any }) {
           ${parseFloat(price.price).toFixed(2)}
         </div>
         <div className={`text-sm ${parseFloat(price.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {parseFloat(price.change) >= 0 ? '+' : ''}{parseFloat(price.change).toFixed(2)} 
-          ({(parseFloat(price.changePercent) * 100).toFixed(2)}%)
+          {parseFloat(price.change) >= 0 ? '+' : ''}{parseFloat(price.change).toFixed(2)}
+          ({parseFloat(price.changePercent).toFixed(2)}%)
         </div>
       </div>
     </div>
