@@ -2,9 +2,7 @@ package handlers
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
-	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -174,31 +172,6 @@ func generateMockEarnings(symbol string) []models.Earnings {
 	return earnings
 }
 
-// generateMockDividends creates mock dividend history
-func generateMockDividends(symbol string) []models.Dividend {
-	dividends := []models.Dividend{}
-
-	// Generate quarterly dividends for last 2 years
-	for i := 0; i < 8; i++ {
-		exDate := time.Now().AddDate(0, -3*i, 0)
-		payDate := exDate.AddDate(0, 0, 21)
-		amount := 0.22 + rand.Float64()*0.05
-
-		dividends = append(dividends, models.Dividend{
-			Symbol:       symbol,
-			ExDate:       exDate,
-			PayDate:      payDate,
-			Amount:       decimal.NewFromFloat(amount),
-			Frequency:    "Quarterly",
-			Type:         "Regular",
-			YieldPercent: decimalPtr(0.5 + rand.Float64()*0.3),
-			CreatedAt:    time.Now(),
-		})
-	}
-
-	return dividends
-}
-
 // generateMockAnalystRatings creates mock analyst ratings
 func generateMockAnalystRatings(symbol string) []models.AnalystRating {
 	firms := []string{"Goldman Sachs", "Morgan Stanley", "JPMorgan", "Bank of America", "Citigroup", "Wells Fargo", "Barclays", "Deutsche Bank"}
@@ -222,123 +195,6 @@ func generateMockAnalystRatings(symbol string) []models.AnalystRating {
 	}
 
 	return analystRatings
-}
-
-// generateMockInsiderActivity creates mock insider trading data
-func generateMockInsiderActivity(symbol string) []models.InsiderTrading {
-	insiders := []string{"CEO John Smith", "CFO Jane Doe", "CTO Mike Johnson", "Director Sarah Wilson"}
-
-	var activity []models.InsiderTrading
-
-	for _, insider := range insiders {
-		transactionType := "Sell"
-		if rand.Float64() > 0.7 {
-			transactionType = "Buy"
-		}
-
-		shares := int64(1000 + rand.Intn(50000))
-		price := 160.0 + rand.Float64()*30.0
-		value := float64(shares) * price
-
-		activity = append(activity, models.InsiderTrading{
-			Symbol:          symbol,
-			InsiderName:     insider,
-			Title:           strings.Split(insider, " ")[0],
-			TransactionType: transactionType,
-			Shares:          shares,
-			Price:           decimal.NewFromFloat(price),
-			Value:           decimal.NewFromFloat(value),
-			SharesOwned:     int64Ptr(int64(100000 + rand.Intn(1000000))),
-			TransactionDate: time.Now().AddDate(0, 0, -rand.Intn(90)),
-			FilingDate:      time.Now().AddDate(0, 0, -rand.Intn(90)+2),
-			CreatedAt:       time.Now(),
-		})
-	}
-
-	return activity
-}
-
-// generateMockPeerComparisons creates mock peer comparison data
-func generateMockPeerComparisons(symbol string) []models.PeerComparison {
-	peers := map[string]string{
-		"AAPL":  "Apple Inc.",
-		"GOOGL": "Alphabet Inc.",
-		"MSFT":  "Microsoft Corp.",
-		"TSLA":  "Tesla Inc.",
-		"AMZN":  "Amazon.com Inc.",
-	}
-
-	var comparisons []models.PeerComparison
-
-	for peerSymbol, name := range peers {
-		if peerSymbol == symbol {
-			continue
-		}
-
-		price := 100.0 + rand.Float64()*200.0
-		marketCap := 500000000000.0 + rand.Float64()*2000000000000.0
-
-		comparisons = append(comparisons, models.PeerComparison{
-			Symbol:        peerSymbol,
-			Name:          name,
-			Price:         decimal.NewFromFloat(price),
-			MarketCap:     decimalPtr(marketCap),
-			PE:            decimalPtr(15.0 + rand.Float64()*20.0),
-			PB:            decimalPtr(2.0 + rand.Float64()*8.0),
-			PS:            decimalPtr(3.0 + rand.Float64()*10.0),
-			ROE:           decimalPtr(0.1 + rand.Float64()*0.3),
-			DebtToEquity:  decimalPtr(0.5 + rand.Float64()*2.0),
-			DividendYield: decimalPtr(rand.Float64() * 0.05),
-			Revenue:       decimalPtr(50000000000.0 + rand.Float64()*300000000000.0),
-			NetIncome:     decimalPtr(5000000000.0 + rand.Float64()*50000000000.0),
-		})
-	}
-
-	return comparisons
-}
-
-// generateMockFundamentalsHistory creates historical fundamentals
-func generateMockFundamentalsHistory(symbol string) []models.Fundamentals {
-	var fundamentals []models.Fundamentals
-
-	for year := 2024; year >= 2020; year-- {
-		quarters := []string{"Q4", "Q3", "Q2", "Q1"}
-		for _, quarter := range quarters {
-			if year == 2024 && (quarter == "Q1" || quarter == "Q2") {
-				continue // Future quarters
-			}
-
-			baseRevenue := 80000000000.0 + rand.Float64()*20000000000.0
-			growthRate := 0.05 + rand.Float64()*0.15 // 5-20% growth
-
-			if year < 2024 {
-				baseRevenue = baseRevenue * math.Pow(1+growthRate, float64(2024-year))
-			}
-
-			fundamentals = append(fundamentals, models.Fundamentals{
-				Symbol:          symbol,
-				Period:          quarter,
-				Year:            year,
-				PE:              decimalPtr(20.0 + rand.Float64()*15.0),
-				PB:              decimalPtr(5.0 + rand.Float64()*5.0),
-				PS:              decimalPtr(4.0 + rand.Float64()*6.0),
-				Revenue:         decimalPtr(baseRevenue),
-				GrossProfit:     decimalPtr(baseRevenue * (0.35 + rand.Float64()*0.15)),
-				NetIncome:       decimalPtr(baseRevenue * (0.15 + rand.Float64()*0.10)),
-				EPS:             decimalPtr(1.0 + rand.Float64()*2.0),
-				ROE:             decimalPtr(0.15 + rand.Float64()*0.15),
-				ROA:             decimalPtr(0.08 + rand.Float64()*0.12),
-				GrossMargin:     decimalPtr(0.35 + rand.Float64()*0.15),
-				OperatingMargin: decimalPtr(0.20 + rand.Float64()*0.10),
-				NetMargin:       decimalPtr(0.15 + rand.Float64()*0.10),
-				DebtToEquity:    decimalPtr(0.5 + rand.Float64()*2.0),
-				CurrentRatio:    decimalPtr(1.0 + rand.Float64()*1.5),
-				UpdatedAt:       time.Now(),
-			})
-		}
-	}
-
-	return fundamentals
 }
 
 // getQuarterEndDate returns the end date for a given quarter

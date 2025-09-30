@@ -179,6 +179,12 @@ db.sqlite3-journal
 *.o
 *.so
 
+# Go binaries
+backend/investorcenter-api
+backend/main
+backend/test-*
+bin/
+
 # Package files
 *.7z
 *.dmg
