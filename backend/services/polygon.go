@@ -13,7 +13,7 @@ import (
 	"investorcenter-api/models"
 )
 
-const (
+var (
 	PolygonBaseURL = "https://api.polygon.io"
 )
 

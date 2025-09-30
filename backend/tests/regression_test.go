@@ -130,8 +130,8 @@ func TestBackwardCompatibility(t *testing.T) {
 	}
 	
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
-	client := services.NewPolygonClient()
-	
+	_ = services.NewPolygonClient() // Create client but don't use it yet
+
 	// Test that we can still create a client the old way
 	t.Run("ClientCreation", func(t *testing.T) {
 		// Old way should still work

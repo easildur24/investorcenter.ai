@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"testing"
-	"time"
 
 	_ "github.com/lib/pq"
 	"investorcenter-api/services"
