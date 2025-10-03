@@ -1179,7 +1179,7 @@ func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice
 	change := decimal.NewFromFloat(currentPrice - prevClose)
 	changePercent := decimal.Zero
 	if prevClose != 0 {
-		changePercent = change.Div(decimal.NewFromFloat(prevClose)).Mul(decimal.NewFromInt(100))
+		changePercent = change.Div(decimal.NewFromFloat(prevClose))
 	}
 
 	// Use today's day data if available, otherwise previous day

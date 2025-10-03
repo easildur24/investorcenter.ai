@@ -344,6 +344,9 @@ func GetTickerRealTimePrice(c *gin.Context) {
 
 	log.Printf("Success! Got price for %s: %s", symbol, priceData.Price.String())
 
+	// Check if market is currently open
+	isOpen := polygonClient.IsMarketOpen()
+
 	// Return price data directly in ApiClient format
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
@@ -354,6 +357,10 @@ func GetTickerRealTimePrice(c *gin.Context) {
 			"volume":        priceData.Volume,
 			"timestamp":     priceData.Timestamp.Unix(),
 			"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
+		},
+		"market": gin.H{
+			"isOpen":         isOpen,
+			"updateInterval": getUpdateInterval(false, map[bool]string{true: "open", false: "closed"}[isOpen]),
 		},
 		"meta": gin.H{
 			"timestamp": time.Now().UTC(),
