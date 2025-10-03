@@ -40,12 +40,12 @@ func NewPolygonClient() *PolygonClient {
 
 // QuoteResponse represents Polygon.io quote response
 type PolygonQuoteResponse struct {
-	Status       string `json:"status"`
-	RequestID    string `json:"request_id"`
-	Count        int    `json:"count"`
-	Results      []struct {
-		Value             float64 `json:"value"`
-		LastQuote         struct {
+	Status    string `json:"status"`
+	RequestID string `json:"request_id"`
+	Count     int    `json:"count"`
+	Results   []struct {
+		Value     float64 `json:"value"`
+		LastQuote struct {
 			Timestamp int64   `json:"timestamp"`
 			Bid       float64 `json:"bid"`
 			Ask       float64 `json:"ask"`
@@ -54,11 +54,11 @@ type PolygonQuoteResponse struct {
 			AskSize   int     `json:"ask_size"`
 		} `json:"last_quote"`
 		LastTrade struct {
-			Timestamp   int64   `json:"timestamp"`
-			Price       float64 `json:"price"`
-			Size        int     `json:"size"`
-			Exchange    int     `json:"exchange"`
-			Conditions  []int   `json:"conditions"`
+			Timestamp  int64   `json:"timestamp"`
+			Price      float64 `json:"price"`
+			Size       int     `json:"size"`
+			Exchange   int     `json:"exchange"`
+			Conditions []int   `json:"conditions"`
 		} `json:"last_trade"`
 		Min struct {
 			Value     float64 `json:"value"`
@@ -98,19 +98,19 @@ func (p *PolygonClient) GetQuote(symbol string) (*models.StockPrice, error) {
 			log.Printf("🪙 Serving %s from crypto cache", symbol)
 			return cachedPrice, nil
 		}
-		
+
 		// Fallback to individual API call if not in cache
 		log.Printf("⚠️ %s not in crypto cache, using individual API call", symbol)
 		return p.GetCryptoRealTimePrice(symbol)
 	}
-	
+
 	// For stocks, try cache first
 	stockCache := GetStockCache()
 	if cachedPrice, exists := stockCache.GetPrice(symbol); exists {
 		log.Printf("📊 Serving %s from stock cache", symbol)
 		return cachedPrice, nil
 	}
-	
+
 	// Fallback to individual API call if not in cache
 	log.Printf("⚠️ %s not in stock cache, using individual API call", symbol)
 	return p.GetStockRealTimePrice(symbol)
@@ -179,7 +179,7 @@ func (p *PolygonClient) GetIntradayData(symbol string) ([]models.ChartDataPoint,
 	// Get the most recent trading day (not weekend)
 	now := time.Now()
 	var tradingDay time.Time
-	
+
 	// If it's weekend, go back to Friday
 	switch now.Weekday() {
 	case time.Saturday:
@@ -189,9 +189,9 @@ func (p *PolygonClient) GetIntradayData(symbol string) ([]models.ChartDataPoint,
 	default:
 		tradingDay = now // Weekday
 	}
-	
+
 	tradingDayStr := tradingDay.Format("2006-01-02")
-	
+
 	// Use 5-minute bars for better performance and smoother charts
 	url := fmt.Sprintf("%s/v2/aggs/ticker/%s/range/5/minute/%s/%s?adjusted=true&sort=asc&apikey=%s",
 		PolygonBaseURL, strings.ToUpper(symbol), tradingDayStr, tradingDayStr, p.APIKey)
@@ -232,7 +232,7 @@ func (p *PolygonClient) GetIntradayData(symbol string) ([]models.ChartDataPoint,
 func (p *PolygonClient) GetDailyData(symbol string, days int) ([]models.ChartDataPoint, error) {
 	to := time.Now()
 	from := to.AddDate(0, 0, -days)
-	
+
 	return p.GetHistoricalData(symbol, "day", from.Format("2006-01-02"), to.Format("2006-01-02"))
 }
 
@@ -241,23 +241,23 @@ type TickerDetailsResponse struct {
 	Status    string `json:"status"`
 	RequestID string `json:"request_id"`
 	Results   struct {
-		Ticker      string `json:"ticker"`
-		Name        string `json:"name"`
-		Market      string `json:"market"`
-		Locale      string `json:"locale"`
-		PrimaryExch string `json:"primary_exchange"`
-		Type        string `json:"type"`
-		Active      bool   `json:"active"`
-		CurrencyName string `json:"currency_name"`
-		CIK         string `json:"cik"`
-		Composite   string `json:"composite_figi"`
-		ShareClass  string `json:"share_class_figi"`
-		Description string `json:"description"`
-		HomepageURL string `json:"homepage_url"`
-		TotalEmployees int `json:"total_employees"`
-		ListDate    string `json:"list_date"`
-		LogoURL     string `json:"branding.logo_url"`
-		IconURL     string `json:"branding.icon_url"`
+		Ticker         string `json:"ticker"`
+		Name           string `json:"name"`
+		Market         string `json:"market"`
+		Locale         string `json:"locale"`
+		PrimaryExch    string `json:"primary_exchange"`
+		Type           string `json:"type"`
+		Active         bool   `json:"active"`
+		CurrencyName   string `json:"currency_name"`
+		CIK            string `json:"cik"`
+		Composite      string `json:"composite_figi"`
+		ShareClass     string `json:"share_class_figi"`
+		Description    string `json:"description"`
+		HomepageURL    string `json:"homepage_url"`
+		TotalEmployees int    `json:"total_employees"`
+		ListDate       string `json:"list_date"`
+		LogoURL        string `json:"branding.logo_url"`
+		IconURL        string `json:"branding.icon_url"`
 	} `json:"results"`
 }
 
@@ -287,20 +287,20 @@ func (p *PolygonClient) GetTickerDetails(symbol string) (*TickerDetailsResponse,
 // IsMarketOpen checks if the US market is currently open
 func (p *PolygonClient) IsMarketOpen() bool {
 	now := time.Now()
-	
+
 	// Convert to Eastern Time (US market timezone)
 	est, _ := time.LoadLocation("America/New_York")
 	estTime := now.In(est)
-	
+
 	// Check if it's a weekday
 	if estTime.Weekday() == time.Saturday || estTime.Weekday() == time.Sunday {
 		return false
 	}
-	
+
 	// Market hours: 9:30 AM - 4:00 PM EST
 	marketOpen := time.Date(estTime.Year(), estTime.Month(), estTime.Day(), 9, 30, 0, 0, est)
 	marketClose := time.Date(estTime.Year(), estTime.Month(), estTime.Day(), 16, 0, 0, 0, est)
-	
+
 	return estTime.After(marketOpen) && estTime.Before(marketClose)
 }
 
@@ -459,7 +459,7 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 	}
 
 	price := priceData.Price.InexactFloat64()
-	
+
 	// Extract raw financial data
 	revenue := fin.IncomeStatement.Revenues.Value
 	netIncome := fin.IncomeStatement.NetIncome.Value
@@ -468,7 +468,7 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 	basicEPS := fin.IncomeStatement.BasicEPS.Value
 	dilutedEPS := fin.IncomeStatement.DilutedEPS.Value
 	basicShares := fin.IncomeStatement.BasicShares.Value
-	
+
 	// Balance sheet data
 	totalAssets := fin.BalanceSheet.TotalAssets.Value
 	currentAssets := fin.BalanceSheet.CurrentAssets.Value
@@ -477,18 +477,18 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 	longTermDebt := fin.BalanceSheet.LongTermDebt.Value
 	totalEquity := fin.BalanceSheet.TotalEquity.Value
 	inventory := fin.BalanceSheet.Inventory.Value
-	
+
 	// Cash flow data
 	operatingCashFlow := fin.CashFlowStatement.OperatingCashFlow.Value
-	
+
 	// Calculate key ratios with null safety
 	var pe, pb, ps, roe, roa, grossMargin, operatingMargin, netMargin, currentRatio, quickRatio, debtToEquity *decimal.Decimal
-	
+
 	// 1. P/E Ratio (MOST IMPORTANT) - Price / EPS
 	if basicEPS > 0 && price > 0 {
 		pe = decimalPtr(price / basicEPS)
 	}
-	
+
 	// 2. Margins (profitability)
 	if revenue > 0 {
 		if grossProfit > 0 {
@@ -506,7 +506,7 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 			ps = decimalPtr(marketCap / revenue)
 		}
 	}
-	
+
 	// 3. Return ratios
 	if totalEquity > 0 && netIncome > 0 {
 		roe = decimalPtr(netIncome / totalEquity)
@@ -514,13 +514,13 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 	if totalAssets > 0 && netIncome > 0 {
 		roa = decimalPtr(netIncome / totalAssets)
 	}
-	
+
 	// 4. P/B ratio
 	if totalEquity > 0 && price > 0 && basicShares > 0 {
 		bookValuePerShare := totalEquity / basicShares
 		pb = decimalPtr(price / bookValuePerShare)
 	}
-	
+
 	// 5. Liquidity ratios
 	if currentLiabilities > 0 {
 		if currentAssets > 0 {
@@ -534,39 +534,39 @@ func (p *PolygonClient) GetFundamentals(symbol string) (*models.Fundamentals, er
 			}
 		}
 	}
-	
+
 	// 6. Debt ratio
 	if totalEquity > 0 && totalLiabilities > 0 {
 		debtToEquity = decimalPtr(totalLiabilities / totalEquity)
 	}
 
 	return &models.Fundamentals{
-		Symbol:           symbol,
-		Period:           "TTM",
-		Year:             2024,
-		PE:               pe,  // NOW CALCULATED!
-		PB:               pb,
-		PS:               ps,
-		Revenue:          decimalPtr(revenue),
-		GrossProfit:      decimalPtr(grossProfit),
-		OperatingIncome:  decimalPtr(operatingIncome),
-		NetIncome:        decimalPtr(netIncome),
-		EPS:              decimalPtr(basicEPS),      // REAL EPS!
-		EPSDiluted:       decimalPtr(dilutedEPS),
-		GrossMargin:      grossMargin,
-		OperatingMargin:  operatingMargin,
-		NetMargin:        netMargin,
-		ROE:              roe,
-		ROA:              roa,
-		TotalAssets:      decimalPtr(totalAssets),
-		TotalLiabilities: decimalPtr(totalLiabilities),
-		TotalEquity:      decimalPtr(totalEquity),
-		TotalDebt:        decimalPtr(longTermDebt),
-		DebtToEquity:     debtToEquity,
-		CurrentRatio:     currentRatio,
-		QuickRatio:       quickRatio,
+		Symbol:            symbol,
+		Period:            "TTM",
+		Year:              2024,
+		PE:                pe, // NOW CALCULATED!
+		PB:                pb,
+		PS:                ps,
+		Revenue:           decimalPtr(revenue),
+		GrossProfit:       decimalPtr(grossProfit),
+		OperatingIncome:   decimalPtr(operatingIncome),
+		NetIncome:         decimalPtr(netIncome),
+		EPS:               decimalPtr(basicEPS), // REAL EPS!
+		EPSDiluted:        decimalPtr(dilutedEPS),
+		GrossMargin:       grossMargin,
+		OperatingMargin:   operatingMargin,
+		NetMargin:         netMargin,
+		ROE:               roe,
+		ROA:               roa,
+		TotalAssets:       decimalPtr(totalAssets),
+		TotalLiabilities:  decimalPtr(totalLiabilities),
+		TotalEquity:       decimalPtr(totalEquity),
+		TotalDebt:         decimalPtr(longTermDebt),
+		DebtToEquity:      debtToEquity,
+		CurrentRatio:      currentRatio,
+		QuickRatio:        quickRatio,
 		OperatingCashFlow: decimalPtr(operatingCashFlow),
-		UpdatedAt:        time.Now(),
+		UpdatedAt:         time.Now(),
 	}, nil
 }
 
@@ -583,8 +583,8 @@ type NewsResponse struct {
 	Count     int    `json:"count"`
 	NextURL   string `json:"next_url"`
 	Results   []struct {
-		ID          string `json:"id"`
-		Publisher   struct {
+		ID        string `json:"id"`
+		Publisher struct {
 			Name        string `json:"name"`
 			HomepageURL string `json:"homepage_url"`
 			LogoURL     string `json:"logo_url"`
@@ -611,7 +611,7 @@ func (p *PolygonClient) GetNews(symbol string, limit int) ([]models.NewsArticle,
 	if limit <= 0 {
 		limit = 30 // Default to 30 articles for pagination
 	}
-	
+
 	url := fmt.Sprintf("%s/v2/reference/news?ticker=%s&limit=%d&apikey=%s",
 		PolygonBaseURL, strings.ToUpper(symbol), limit, p.APIKey)
 
@@ -679,50 +679,50 @@ type PolygonTickersResponse struct {
 
 // PolygonTicker represents a single ticker from the API
 type PolygonTicker struct {
-	Ticker                 string  `json:"ticker"`
-	Name                   string  `json:"name"`
-	Market                 string  `json:"market"`
-	Locale                 string  `json:"locale"`
-	Type                   string  `json:"type"`
-	Active                 bool    `json:"active"`
-	CurrencyName          string  `json:"currency_name"`
-	CIK                   string  `json:"cik,omitempty"`
-	CompositeFigi         string  `json:"composite_figi,omitempty"`
-	ShareClassFigi        string  `json:"share_class_figi,omitempty"`
-	PrimaryExchange       string  `json:"primary_exchange,omitempty"`
-	LastUpdatedUTC        string  `json:"last_updated_utc,omitempty"`
-	DelistedUTC           *string `json:"delisted_utc,omitempty"`
-	ListDate              string  `json:"list_date,omitempty"`
-	HomepageURL           string  `json:"homepage_url,omitempty"`
-	MarketCap             float64 `json:"market_cap,omitempty"`
-	TotalEmployees        int     `json:"total_employees,omitempty"`
-	PhoneNumber           string  `json:"phone_number,omitempty"`
+	Ticker                    string  `json:"ticker"`
+	Name                      string  `json:"name"`
+	Market                    string  `json:"market"`
+	Locale                    string  `json:"locale"`
+	Type                      string  `json:"type"`
+	Active                    bool    `json:"active"`
+	CurrencyName              string  `json:"currency_name"`
+	CIK                       string  `json:"cik,omitempty"`
+	CompositeFigi             string  `json:"composite_figi,omitempty"`
+	ShareClassFigi            string  `json:"share_class_figi,omitempty"`
+	PrimaryExchange           string  `json:"primary_exchange,omitempty"`
+	LastUpdatedUTC            string  `json:"last_updated_utc,omitempty"`
+	DelistedUTC               *string `json:"delisted_utc,omitempty"`
+	ListDate                  string  `json:"list_date,omitempty"`
+	HomepageURL               string  `json:"homepage_url,omitempty"`
+	MarketCap                 float64 `json:"market_cap,omitempty"`
+	TotalEmployees            int     `json:"total_employees,omitempty"`
+	PhoneNumber               string  `json:"phone_number,omitempty"`
 	WeightedSharesOutstanding float64 `json:"weighted_shares_outstanding,omitempty"`
-	SICCode               string  `json:"sic_code,omitempty"`
-	SICDescription        string  `json:"sic_description,omitempty"`
+	SICCode                   string  `json:"sic_code,omitempty"`
+	SICDescription            string  `json:"sic_description,omitempty"`
 	// Crypto specific fields
-	BaseCurrencySymbol    string  `json:"base_currency_symbol,omitempty"`
-	BaseCurrencyName      string  `json:"base_currency_name,omitempty"`
-	CurrencySymbol        string  `json:"currency_symbol,omitempty"`
+	BaseCurrencySymbol string `json:"base_currency_symbol,omitempty"`
+	BaseCurrencyName   string `json:"base_currency_name,omitempty"`
+	CurrencySymbol     string `json:"currency_symbol,omitempty"`
 	// Index specific fields
-	SourceFeed            string  `json:"source_feed,omitempty"`
+	SourceFeed string `json:"source_feed,omitempty"`
 }
 
 // GetAllTickers fetches all tickers with optional filters
 func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTicker, error) {
 	var allTickers []PolygonTicker
 	baseURL := fmt.Sprintf("%s/v3/reference/tickers", PolygonBaseURL)
-	
+
 	// API has a max of 1000 per request
 	const maxPerRequest = 1000
 	requestLimit := maxPerRequest
 	if limit > 0 && limit < maxPerRequest {
 		requestLimit = limit
 	}
-	
+
 	// Build initial URL with filters
 	params := fmt.Sprintf("?active=true&limit=%d&apikey=%s", requestLimit, p.APIKey)
-	
+
 	// Add asset type filters
 	switch assetType {
 	case "stocks":
@@ -738,48 +738,48 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 	default:
 		// No additional filters - get everything
 	}
-	
+
 	url := baseURL + params
 	pageCount := 0
-	
+
 	for {
 		pageCount++
 		log.Printf("Fetching page %d (already have %d tickers)...", pageCount, len(allTickers))
-		
+
 		resp, err := p.Client.Get(url)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch tickers on page %d: %w", pageCount, err)
 		}
 		defer resp.Body.Close()
-		
+
 		if resp.StatusCode != http.StatusOK {
 			return nil, fmt.Errorf("API request failed with status: %d on page %d", resp.StatusCode, pageCount)
 		}
-		
+
 		var tickersResp PolygonTickersResponse
 		if err := json.NewDecoder(resp.Body).Decode(&tickersResp); err != nil {
 			return nil, fmt.Errorf("failed to decode response on page %d: %w", pageCount, err)
 		}
-		
+
 		if tickersResp.Status != "OK" {
 			return nil, fmt.Errorf("API error on page %d: %s", pageCount, tickersResp.Status)
 		}
-		
+
 		allTickers = append(allTickers, tickersResp.Results...)
 		log.Printf("Page %d: fetched %d tickers (total: %d)", pageCount, len(tickersResp.Results), len(allTickers))
-		
+
 		// Check if there's more data to fetch
 		if tickersResp.NextURL == "" {
 			log.Printf("No more pages available. Total tickers fetched: %d", len(allTickers))
 			break
 		}
-		
+
 		// Check if we've reached the user-specified limit
 		if limit > 0 && len(allTickers) >= limit {
 			log.Printf("Reached user-specified limit of %d tickers", limit)
 			break
 		}
-		
+
 		// Use the next URL for pagination (add API key if not present)
 		url = tickersResp.NextURL
 		if !strings.Contains(url, "apikey=") {
@@ -789,16 +789,16 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 				url = url + "?apikey=" + p.APIKey
 			}
 		}
-		
+
 		// Add a small delay to avoid rate limiting
 		time.Sleep(500 * time.Millisecond)
 	}
-	
+
 	// Trim to requested limit if specified
 	if limit > 0 && len(allTickers) > limit {
 		allTickers = allTickers[:limit]
 	}
-	
+
 	log.Printf("Finished fetching tickers. Total returned: %d", len(allTickers))
 	return allTickers, nil
 }
@@ -807,22 +807,22 @@ func (p *PolygonClient) GetAllTickers(assetType string, limit int) ([]PolygonTic
 func (p *PolygonClient) GetTickersByType(tickerType string) ([]PolygonTicker, error) {
 	url := fmt.Sprintf("%s/v3/reference/tickers?type=%s&active=true&limit=1000&apikey=%s",
 		PolygonBaseURL, tickerType, p.APIKey)
-	
+
 	resp, err := p.Client.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch tickers by type: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	var tickersResp PolygonTickersResponse
 	if err := json.NewDecoder(resp.Body).Decode(&tickersResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	if tickersResp.Status != "OK" {
 		return nil, fmt.Errorf("API error: %s", tickersResp.Status)
 	}
-	
+
 	return tickersResp.Results, nil
 }
 
@@ -839,7 +839,7 @@ func MapExchangeCode(code string) string {
 		"XPHL": "PHLX",
 		"XISX": "ISE",
 	}
-	
+
 	if mapped, ok := exchangeMap[code]; ok {
 		return mapped
 	}
@@ -921,10 +921,10 @@ type CryptoSnapshotResponse struct {
 	Status    string `json:"status"`
 	RequestID string `json:"request_id"`
 	Ticker    struct {
-		Ticker     string `json:"ticker"`
-		TodaysChange float64 `json:"todaysChange"`
+		Ticker           string  `json:"ticker"`
+		TodaysChange     float64 `json:"todaysChange"`
 		TodaysChangePerc float64 `json:"todaysChangePerc"`
-		Day struct {
+		Day              struct {
 			Open   float64 `json:"o"`
 			High   float64 `json:"h"`
 			Low    float64 `json:"l"`
@@ -938,11 +938,11 @@ type CryptoSnapshotResponse struct {
 			Exchange  int     `json:"x"`
 		} `json:"lastQuote"`
 		LastTrade struct {
-			Timestamp   int64   `json:"t"`
-			Price       float64 `json:"p"`
-			Size        float64 `json:"s"`
-			Exchange    int     `json:"x"`
-			Conditions  []int   `json:"c"`
+			Timestamp  int64   `json:"t"`
+			Price      float64 `json:"p"`
+			Size       float64 `json:"s"`
+			Exchange   int     `json:"x"`
+			Conditions []int   `json:"c"`
 		} `json:"lastTrade"`
 		Min struct {
 			Timestamp int64   `json:"t"`
@@ -963,10 +963,10 @@ type StockSnapshotResponse struct {
 	Status    string `json:"status"`
 	RequestID string `json:"request_id"`
 	Ticker    struct {
-		Ticker     string `json:"ticker"`
-		TodaysChange float64 `json:"todaysChange"`
+		Ticker           string  `json:"ticker"`
+		TodaysChange     float64 `json:"todaysChange"`
 		TodaysChangePerc float64 `json:"todaysChangePerc"`
-		Day struct {
+		Day              struct {
 			Open   float64 `json:"o"`
 			High   float64 `json:"h"`
 			Low    float64 `json:"l"`
@@ -980,11 +980,11 @@ type StockSnapshotResponse struct {
 			Exchange  int     `json:"x"`
 		} `json:"lastQuote"`
 		LastTrade struct {
-			Timestamp   int64   `json:"t"`
-			Price       float64 `json:"p"`
-			Size        float64 `json:"s"`
-			Exchange    int     `json:"x"`
-			Conditions  []int   `json:"c"`
+			Timestamp  int64   `json:"t"`
+			Price      float64 `json:"p"`
+			Size       float64 `json:"s"`
+			Exchange   int     `json:"x"`
+			Conditions []int   `json:"c"`
 		} `json:"lastTrade"`
 		Min struct {
 			Timestamp int64   `json:"t"`
@@ -1007,10 +1007,10 @@ type BulkStockSnapshotResponse struct {
 	RequestID string `json:"request_id"`
 	Count     int    `json:"count"`
 	Tickers   []struct {
-		Ticker       string  `json:"ticker"`
-		TodaysChange float64 `json:"todaysChange"`
+		Ticker           string  `json:"ticker"`
+		TodaysChange     float64 `json:"todaysChange"`
 		TodaysChangePerc float64 `json:"todaysChangePerc"`
-		Day struct {
+		Day              struct {
 			Open   float64 `json:"o"`
 			High   float64 `json:"h"`
 			Low    float64 `json:"l"`
@@ -1024,11 +1024,11 @@ type BulkStockSnapshotResponse struct {
 			Exchange  int     `json:"x"`
 		} `json:"lastQuote"`
 		LastTrade struct {
-			Timestamp   int64   `json:"t"`
-			Price       float64 `json:"p"`
-			Size        float64 `json:"s"`
-			Exchange    int     `json:"x"`
-			Conditions  []int   `json:"c"`
+			Timestamp  int64   `json:"t"`
+			Price      float64 `json:"p"`
+			Size       float64 `json:"s"`
+			Exchange   int     `json:"x"`
+			Conditions []int   `json:"c"`
 		} `json:"lastTrade"`
 		Min struct {
 			Timestamp int64   `json:"t"`
@@ -1077,10 +1077,10 @@ type BulkCryptoSnapshotResponse struct {
 	RequestID string `json:"request_id"`
 	Count     int    `json:"count"`
 	Tickers   []struct {
-		Ticker       string  `json:"ticker"`
-		TodaysChange float64 `json:"todaysChange"`
+		Ticker           string  `json:"ticker"`
+		TodaysChange     float64 `json:"todaysChange"`
 		TodaysChangePerc float64 `json:"todaysChangePerc"`
-		Day struct {
+		Day              struct {
 			Open   float64 `json:"o"`
 			High   float64 `json:"h"`
 			Low    float64 `json:"l"`
@@ -1094,11 +1094,11 @@ type BulkCryptoSnapshotResponse struct {
 			Exchange  int     `json:"x"`
 		} `json:"lastQuote"`
 		LastTrade struct {
-			Timestamp   int64   `json:"t"`
-			Price       float64 `json:"p"`
-			Size        float64 `json:"s"`
-			Exchange    int     `json:"x"`
-			Conditions  []int   `json:"c"`
+			Timestamp  int64   `json:"t"`
+			Price      float64 `json:"p"`
+			Size       float64 `json:"s"`
+			Exchange   int     `json:"x"`
+			Conditions []int   `json:"c"`
 		} `json:"lastTrade"`
 		Min struct {
 			Timestamp int64   `json:"t"`
@@ -1166,7 +1166,7 @@ func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice
 	}
 
 	ticker := snapshotResp.Ticker
-	
+
 	// Use last trade price for most recent data during market hours
 	currentPrice := ticker.LastTrade.Price
 	if currentPrice == 0 {
@@ -1188,7 +1188,7 @@ func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice
 		dayData = ticker.PrevDay
 	}
 
-	// Convert timestamp 
+	// Convert timestamp
 	timestamp := time.Unix(ticker.LastTrade.Timestamp/1000000000, 0) // Nanoseconds to seconds
 	if ticker.LastTrade.Timestamp == 0 {
 		timestamp = time.Now() // Fallback to current time
@@ -1233,18 +1233,18 @@ func (p *PolygonClient) GetCryptoRealTimePrice(symbol string) (*models.StockPric
 	}
 
 	ticker := snapshotResp.Ticker
-	
+
 	// Use last trade price for most recent data
 	currentPrice := ticker.LastTrade.Price
 	if currentPrice == 0 {
 		// Fallback to day close if no last trade
 		currentPrice = ticker.Day.Close
 	}
-	
+
 	// Use today's change data from the snapshot
 	change := decimal.NewFromFloat(ticker.TodaysChange)
 	changePercent := decimal.NewFromFloat(ticker.TodaysChangePerc / 100) // Convert percentage
-	
+
 	// Use last trade timestamp for real-time timestamp
 	var timestamp time.Time
 	if ticker.LastTrade.Timestamp > 0 {
@@ -1255,14 +1255,14 @@ func (p *PolygonClient) GetCryptoRealTimePrice(symbol string) (*models.StockPric
 
 	return &models.StockPrice{
 		Symbol:        symbol,
-		Price:         decimal.NewFromFloat(currentPrice),        // Real-time last trade price
-		Open:          decimal.NewFromFloat(ticker.Day.Open),     // Today's open
-		High:          decimal.NewFromFloat(ticker.Day.High),     // Today's high
-		Low:           decimal.NewFromFloat(ticker.Day.Low),      // Today's low
-		Close:         decimal.NewFromFloat(currentPrice),        // Current price
-		Volume:        int64(ticker.Day.Volume),                  // Today's volume
-		Change:        change,                                    // Today's change
-		ChangePercent: changePercent,                            // Today's change percent
-		Timestamp:     timestamp,                                // Real-time timestamp
+		Price:         decimal.NewFromFloat(currentPrice),    // Real-time last trade price
+		Open:          decimal.NewFromFloat(ticker.Day.Open), // Today's open
+		High:          decimal.NewFromFloat(ticker.Day.High), // Today's high
+		Low:           decimal.NewFromFloat(ticker.Day.Low),  // Today's low
+		Close:         decimal.NewFromFloat(currentPrice),    // Current price
+		Volume:        int64(ticker.Day.Volume),              // Today's volume
+		Change:        change,                                // Today's change
+		ChangePercent: changePercent,                         // Today's change percent
+		Timestamp:     timestamp,                             // Real-time timestamp
 	}, nil
 }

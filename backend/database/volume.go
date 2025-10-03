@@ -8,19 +8,19 @@ import (
 
 // VolumeData represents volume data from database
 type VolumeData struct {
-	Symbol         string    `json:"symbol"`
-	Volume         int64     `json:"volume"`
-	AvgVolume30D   int64     `json:"avgVolume30d"`
-	AvgVolume90D   int64     `json:"avgVolume90d"`
-	VWAP           float64   `json:"vwap"`
-	CurrentPrice   float64   `json:"currentPrice"`
-	DayOpen        float64   `json:"dayOpen"`
-	DayHigh        float64   `json:"dayHigh"`
-	DayLow         float64   `json:"dayLow"`
-	PreviousClose  float64   `json:"previousClose"`
-	Week52High     float64   `json:"week52High"`
-	Week52Low      float64   `json:"week52Low"`
-	LastUpdated    time.Time `json:"lastUpdated"`
+	Symbol        string    `json:"symbol"`
+	Volume        int64     `json:"volume"`
+	AvgVolume30D  int64     `json:"avgVolume30d"`
+	AvgVolume90D  int64     `json:"avgVolume90d"`
+	VWAP          float64   `json:"vwap"`
+	CurrentPrice  float64   `json:"currentPrice"`
+	DayOpen       float64   `json:"dayOpen"`
+	DayHigh       float64   `json:"dayHigh"`
+	DayLow        float64   `json:"dayLow"`
+	PreviousClose float64   `json:"previousClose"`
+	Week52High    float64   `json:"week52High"`
+	Week52Low     float64   `json:"week52Low"`
+	LastUpdated   time.Time `json:"lastUpdated"`
 }
 
 // GetTickerVolume retrieves volume data for a single ticker

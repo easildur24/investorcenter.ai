@@ -87,17 +87,17 @@ func main() {
 		// Ticker page endpoints
 		tickers := v1.Group("/tickers")
 		{
-			tickers.GET("/", handlers.GetStocks)                   // List all stocks with pagination
-			tickers.POST("/", handlers.CreateStock)                // Create new stock
-			tickers.POST("/import", handlers.ImportTickersFromCSV) // Import from CSV
-			tickers.GET("/:symbol", handlers.GetTicker)            // Comprehensive ticker data with real-time prices
-			tickers.GET("/:symbol/chart", handlers.GetTickerChart) // Chart data for stocks and crypto
+			tickers.GET("/", handlers.GetStocks)                           // List all stocks with pagination
+			tickers.POST("/", handlers.CreateStock)                        // Create new stock
+			tickers.POST("/import", handlers.ImportTickersFromCSV)         // Import from CSV
+			tickers.GET("/:symbol", handlers.GetTicker)                    // Comprehensive ticker data with real-time prices
+			tickers.GET("/:symbol/chart", handlers.GetTickerChart)         // Chart data for stocks and crypto
 			tickers.GET("/:symbol/price", handlers.GetTickerRealTimePrice) // Real-time price updates only
-			
+
 			// Volume endpoints (hybrid: database + real-time)
-			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)         // Get volume data (add ?realtime=true for fresh data)
+			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)                // Get volume data (add ?realtime=true for fresh data)
 			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
-			
+
 			// Additional ticker endpoints
 			tickers.GET("/:symbol/news", handlers.GetTickerNews)
 			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
@@ -107,21 +107,21 @@ func main() {
 			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
 			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
-		
+
 		// Crypto endpoints
 		crypto := v1.Group("/crypto")
 		{
-			crypto.GET("/", handlers.GetAllCryptos) // All crypto prices with pagination
+			crypto.GET("/", handlers.GetAllCryptos)                       // All crypto prices with pagination
 			crypto.GET("/:symbol/price", handlers.GetCryptoRealTimePrice) // Real-time crypto price from Redis
-			crypto.GET("/prices", handlers.GetAllCryptoRealTimePrices) // All real-time crypto prices
-			crypto.GET("/stream", handlers.StreamCryptoPrices) // SSE endpoint for real-time streaming
+			crypto.GET("/prices", handlers.GetAllCryptoRealTimePrices)    // All real-time crypto prices
+			crypto.GET("/stream", handlers.StreamCryptoPrices)            // SSE endpoint for real-time streaming
 		}
-		
+
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
 		{
-			volume.POST("/bulk", handlers.GetBulkVolume)  // Get volume for multiple symbols
-			volume.GET("/top", handlers.GetTopVolume)      // Get top stocks by volume
+			volume.POST("/bulk", handlers.GetBulkVolume) // Get volume for multiple symbols
+			volume.GET("/top", handlers.GetTopVolume)    // Get top stocks by volume
 		}
 
 		// Portfolio endpoints - TODO: implement when needed
@@ -206,12 +206,12 @@ func getMarketIndices(c *gin.Context) {
 
 func searchSecurities(c *gin.Context) {
 	query := c.Query("q")
-	
+
 	if query == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Query parameter 'q' is required"})
 		return
 	}
-	
+
 	// Use service layer for database operations
 	stockService := services.NewStockService()
 	stocks, err := stockService.SearchStocks(c.Request.Context(), query, 10)
@@ -243,7 +243,7 @@ func searchSecurities(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Convert to API format
 	results := make([]gin.H, len(stocks))
 	for i, stock := range stocks {
@@ -265,4 +265,3 @@ func searchSecurities(c *gin.Context) {
 		},
 	})
 }
-

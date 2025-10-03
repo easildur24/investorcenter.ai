@@ -33,36 +33,36 @@ func init() {
 
 // CryptoRealTimePrice represents real-time price data from CoinGecko
 type CryptoRealTimePrice struct {
-	Symbol                    string  `json:"symbol"`
-	ID                        string  `json:"id,omitempty"`
-	Name                      string  `json:"name,omitempty"`
-	Image                     string  `json:"image,omitempty"`
-	CurrentPrice              float64 `json:"current_price"`              // From CoinGecko
-	Price                     float64 `json:"price"`                      // Alias for frontend
-	MarketCap                 float64 `json:"market_cap,omitempty"`
-	MarketCapRank             int     `json:"market_cap_rank,omitempty"`
-	TotalVolume               float64 `json:"total_volume"`               // From CoinGecko
-	Volume24h                 float64 `json:"volume_24h"`                 // Alias for frontend
-	High24h                   float64 `json:"high_24h,omitempty"`
-	Low24h                    float64 `json:"low_24h,omitempty"`
-	PriceChange24h            float64 `json:"price_change_24h"`
-	Change24h                 float64 `json:"change_24h"`                 // Alias for frontend
-	PriceChangePercentage24h  float64 `json:"price_change_percentage_24h"`
-	PriceChangePercentage1h   float64 `json:"price_change_percentage_1h,omitempty"`
-	PriceChangePercentage7d   float64 `json:"price_change_percentage_7d,omitempty"`
-	PriceChangePercentage30d  float64 `json:"price_change_percentage_30d,omitempty"`
-	CirculatingSupply         float64 `json:"circulating_supply,omitempty"`
-	TotalSupply               float64 `json:"total_supply,omitempty"`
-	MaxSupply                 float64 `json:"max_supply,omitempty"`
-	ATH                       float64 `json:"ath,omitempty"`
-	ATHChangePercentage       float64 `json:"ath_change_percentage,omitempty"`
-	ATHDate                   string  `json:"ath_date,omitempty"`
-	ATL                       float64 `json:"atl,omitempty"`
-	ATLChangePercentage       float64 `json:"atl_change_percentage,omitempty"`
-	ATLDate                   string  `json:"atl_date,omitempty"`
-	LastUpdated               string  `json:"last_updated"`
-	FetchedAt                 string  `json:"fetched_at,omitempty"`
-	Source                    string  `json:"source"`
+	Symbol                   string  `json:"symbol"`
+	ID                       string  `json:"id,omitempty"`
+	Name                     string  `json:"name,omitempty"`
+	Image                    string  `json:"image,omitempty"`
+	CurrentPrice             float64 `json:"current_price"` // From CoinGecko
+	Price                    float64 `json:"price"`         // Alias for frontend
+	MarketCap                float64 `json:"market_cap,omitempty"`
+	MarketCapRank            int     `json:"market_cap_rank,omitempty"`
+	TotalVolume              float64 `json:"total_volume"` // From CoinGecko
+	Volume24h                float64 `json:"volume_24h"`   // Alias for frontend
+	High24h                  float64 `json:"high_24h,omitempty"`
+	Low24h                   float64 `json:"low_24h,omitempty"`
+	PriceChange24h           float64 `json:"price_change_24h"`
+	Change24h                float64 `json:"change_24h"` // Alias for frontend
+	PriceChangePercentage24h float64 `json:"price_change_percentage_24h"`
+	PriceChangePercentage1h  float64 `json:"price_change_percentage_1h,omitempty"`
+	PriceChangePercentage7d  float64 `json:"price_change_percentage_7d,omitempty"`
+	PriceChangePercentage30d float64 `json:"price_change_percentage_30d,omitempty"`
+	CirculatingSupply        float64 `json:"circulating_supply,omitempty"`
+	TotalSupply              float64 `json:"total_supply,omitempty"`
+	MaxSupply                float64 `json:"max_supply,omitempty"`
+	ATH                      float64 `json:"ath,omitempty"`
+	ATHChangePercentage      float64 `json:"ath_change_percentage,omitempty"`
+	ATHDate                  string  `json:"ath_date,omitempty"`
+	ATL                      float64 `json:"atl,omitempty"`
+	ATLChangePercentage      float64 `json:"atl_change_percentage,omitempty"`
+	ATLDate                  string  `json:"atl_date,omitempty"`
+	LastUpdated              string  `json:"last_updated"`
+	FetchedAt                string  `json:"fetched_at,omitempty"`
+	Source                   string  `json:"source"`
 }
 
 // GetCryptoRealTimePrice handles GET /api/v1/crypto/:symbol/price

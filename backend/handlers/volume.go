@@ -23,7 +23,7 @@ func GetTickerVolume(c *gin.Context) {
 
 	// Check if we want real-time data (query param)
 	realtime := c.Query("realtime") == "true"
-	
+
 	// For real-time requests or if database data is stale
 	if realtime {
 		// Fetch real-time data from Polygon
@@ -33,22 +33,22 @@ func GetTickerVolume(c *gin.Context) {
 			dbVolume, dbErr := database.GetTickerVolume(symbol)
 			if dbErr != nil {
 				c.JSON(http.StatusInternalServerError, gin.H{
-					"error": "Failed to fetch volume data",
+					"error":   "Failed to fetch volume data",
 					"details": err.Error(),
 				})
 				return
 			}
 			c.JSON(http.StatusOK, gin.H{
-				"data": dbVolume,
-				"source": "database",
+				"data":     dbVolume,
+				"source":   "database",
 				"realtime": false,
 			})
 			return
 		}
 
 		c.JSON(http.StatusOK, gin.H{
-			"data": volumeData,
-			"source": "polygon",
+			"data":     volumeData,
+			"source":   "polygon",
 			"realtime": true,
 		})
 		return
@@ -61,22 +61,22 @@ func GetTickerVolume(c *gin.Context) {
 		volumeData, apiErr := volumeService.GetRealTimeVolume(symbol)
 		if apiErr != nil {
 			c.JSON(http.StatusNotFound, gin.H{
-				"error": "Volume data not found",
+				"error":  "Volume data not found",
 				"symbol": symbol,
 			})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"data": volumeData,
-			"source": "polygon",
+			"data":     volumeData,
+			"source":   "polygon",
 			"realtime": true,
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": dbVolume,
-		"source": "database",
+		"data":     dbVolume,
+		"source":   "database",
 		"realtime": false,
 	})
 }
@@ -104,20 +104,20 @@ func GetVolumeAggregates(c *gin.Context) {
 		dbAggregates, dbErr := database.GetVolumeAggregates(symbol)
 		if dbErr != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to fetch volume aggregates",
+				"error":   "Failed to fetch volume aggregates",
 				"details": err.Error(),
 			})
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{
-			"data": dbAggregates,
+			"data":   dbAggregates,
 			"source": "database",
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": aggregates,
+		"data":   aggregates,
 		"source": "polygon",
 	})
 }
@@ -142,16 +142,16 @@ func GetBulkVolume(c *gin.Context) {
 	volumes, err := database.GetBulkVolumes(request.Symbols)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch bulk volume data",
+			"error":   "Failed to fetch bulk volume data",
 			"details": err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": volumes,
+		"data":   volumes,
 		"source": "database",
-		"count": len(volumes),
+		"count":  len(volumes),
 	})
 }
 
@@ -172,15 +172,15 @@ func GetTopVolume(c *gin.Context) {
 	topVolumes, err := database.GetTopVolumeStocks(limit, assetType)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to fetch top volume stocks",
+			"error":   "Failed to fetch top volume stocks",
 			"details": err.Error(),
 		})
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"data": topVolumes,
+		"data":   topVolumes,
 		"source": "database",
-		"count": len(topVolumes),
+		"count":  len(topVolumes),
 	})
 }

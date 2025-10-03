@@ -36,14 +36,14 @@ func NewStockCache() *StockCache {
 		polygon:  NewPolygonClient(),
 		stopChan: make(chan bool),
 	}
-	
+
 	// Load initial data immediately
 	log.Println("🚀 Loading initial stock cache...")
 	cache.updateCache()
-	
+
 	// Start the background updater
 	go cache.startUpdater()
-	
+
 	return cache
 }
 
@@ -51,7 +51,7 @@ func NewStockCache() *StockCache {
 func (sc *StockCache) GetPrice(symbol string) (*models.StockPrice, bool) {
 	sc.mutex.RLock()
 	defer sc.mutex.RUnlock()
-	
+
 	price, exists := sc.cache[symbol]
 	return price, exists
 }
@@ -60,15 +60,15 @@ func (sc *StockCache) GetPrice(symbol string) (*models.StockPrice, bool) {
 func (sc *StockCache) IsMarketHours() bool {
 	now := time.Now()
 	pstTime := now.In(time.FixedZone("PST", -8*60*60)) // PST is UTC-8
-	
+
 	dayOfWeek := pstTime.Weekday()
 	hour := pstTime.Hour()
-	
+
 	// Market is closed on weekends
 	if dayOfWeek == time.Sunday || dayOfWeek == time.Saturday {
 		return false
 	}
-	
+
 	// Market hours: 1am (01:00) to 5pm (17:00) PST, Monday-Friday
 	return hour >= 1 && hour < 17
 }
@@ -77,22 +77,22 @@ func (sc *StockCache) IsMarketHours() bool {
 func (sc *StockCache) startUpdater() {
 	sc.ticker = time.NewTicker(5 * time.Second)
 	defer sc.ticker.Stop()
-	
+
 	log.Println("📊 Stock cache background updater started")
 	lastMarketStatus := sc.IsMarketHours()
-	
+
 	for {
 		select {
 		case <-sc.ticker.C:
 			currentMarketStatus := sc.IsMarketHours()
-			
+
 			if currentMarketStatus {
 				sc.updateCache()
 			} else if currentMarketStatus != lastMarketStatus {
 				// Only log once when market closes
 				log.Println("💤 Market closed - cache serving previous data")
 			}
-			
+
 			lastMarketStatus = currentMarketStatus
 		case <-sc.stopChan:
 			log.Println("🛑 Stock cache updater stopped")
@@ -104,19 +104,19 @@ func (sc *StockCache) startUpdater() {
 // updateCache fetches bulk snapshot and updates cache
 func (sc *StockCache) updateCache() {
 	log.Println("🔄 Updating stock cache from bulk snapshot API...")
-	
+
 	bulkData, err := sc.polygon.GetBulkStockSnapshots()
 	if err != nil {
 		log.Printf("❌ Failed to fetch bulk snapshots: %v", err)
 		return
 	}
-	
+
 	sc.mutex.Lock()
 	defer sc.mutex.Unlock()
-	
+
 	// Clear old cache and populate with new data
 	sc.cache = make(map[string]*models.StockPrice)
-	
+
 	for _, ticker := range bulkData.Tickers {
 		// Use last trade price for most recent data
 		currentPrice := ticker.LastTrade.Price
@@ -139,7 +139,7 @@ func (sc *StockCache) updateCache() {
 			dayData = ticker.PrevDay
 		}
 
-		// Convert timestamp 
+		// Convert timestamp
 		timestamp := time.Unix(ticker.LastTrade.Timestamp/1000000000, 0)
 		if ticker.LastTrade.Timestamp == 0 {
 			timestamp = time.Now()
@@ -157,10 +157,10 @@ func (sc *StockCache) updateCache() {
 			ChangePercent: changePercent,
 			Timestamp:     timestamp,
 		}
-		
+
 		sc.cache[ticker.Ticker] = stockPrice
 	}
-	
+
 	sc.lastUpdate = time.Now()
 	log.Printf("✅ Stock cache updated with %d tickers", len(sc.cache))
 }
@@ -180,14 +180,14 @@ func NewCryptoCache() *CryptoCache {
 		polygon:  NewPolygonClient(),
 		stopChan: make(chan bool),
 	}
-	
+
 	// Load initial data immediately
 	log.Println("🚀 Loading initial crypto cache...")
 	cache.updateCache()
-	
+
 	// Start the background updater (crypto is 24/7)
 	go cache.startUpdater()
-	
+
 	return cache
 }
 
@@ -195,7 +195,7 @@ func NewCryptoCache() *CryptoCache {
 func (cc *CryptoCache) GetPrice(symbol string) (*models.StockPrice, bool) {
 	cc.mutex.RLock()
 	defer cc.mutex.RUnlock()
-	
+
 	price, exists := cc.cache[symbol]
 	return price, exists
 }
@@ -204,7 +204,7 @@ func (cc *CryptoCache) GetPrice(symbol string) (*models.StockPrice, bool) {
 func (cc *CryptoCache) GetAllPrices() []*models.StockPrice {
 	cc.mutex.RLock()
 	defer cc.mutex.RUnlock()
-	
+
 	prices := make([]*models.StockPrice, 0, len(cc.cache))
 	for _, price := range cc.cache {
 		prices = append(prices, price)
@@ -216,9 +216,9 @@ func (cc *CryptoCache) GetAllPrices() []*models.StockPrice {
 func (cc *CryptoCache) startUpdater() {
 	cc.ticker = time.NewTicker(5 * time.Second)
 	defer cc.ticker.Stop()
-	
+
 	log.Println("📊 Crypto cache background updater started (24/7)")
-	
+
 	for {
 		select {
 		case <-cc.ticker.C:
@@ -233,19 +233,19 @@ func (cc *CryptoCache) startUpdater() {
 // updateCache fetches bulk crypto snapshot and updates cache
 func (cc *CryptoCache) updateCache() {
 	log.Println("🔄 Updating crypto cache from bulk snapshot API...")
-	
+
 	bulkData, err := cc.polygon.GetBulkCryptoSnapshots()
 	if err != nil {
 		log.Printf("❌ Failed to fetch bulk crypto snapshots: %v", err)
 		return
 	}
-	
+
 	cc.mutex.Lock()
 	defer cc.mutex.Unlock()
-	
+
 	// Clear old cache and populate with new data
 	cc.cache = make(map[string]*models.StockPrice)
-	
+
 	for _, ticker := range bulkData.Tickers {
 		// Use last trade price for most recent data
 		currentPrice := ticker.LastTrade.Price
@@ -257,7 +257,7 @@ func (cc *CryptoCache) updateCache() {
 		change := decimal.NewFromFloat(ticker.TodaysChange)
 		changePercent := decimal.NewFromFloat(ticker.TodaysChangePerc)
 
-		// Convert timestamp 
+		// Convert timestamp
 		timestamp := time.Unix(ticker.LastTrade.Timestamp/1000000000, 0)
 		if ticker.LastTrade.Timestamp == 0 {
 			timestamp = time.Now()
@@ -275,10 +275,10 @@ func (cc *CryptoCache) updateCache() {
 			ChangePercent: changePercent,
 			Timestamp:     timestamp,
 		}
-		
+
 		cc.cache[ticker.Ticker] = stockPrice
 	}
-	
+
 	cc.lastUpdate = time.Now()
 	log.Printf("✅ Crypto cache updated with %d tickers", len(cc.cache))
 }

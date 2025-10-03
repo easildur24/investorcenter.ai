@@ -1,20 +1,20 @@
 package handlers
 
 import (
-        "context"
-        "encoding/json"
-        "fmt"
-        "log"
-        "net/http"
-        "strconv"
-        "strings"
-        "time"
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 
-        "github.com/gin-gonic/gin"
-        "github.com/go-redis/redis/v8"
-        "github.com/shopspring/decimal"
-        "investorcenter-api/models"
-        "investorcenter-api/services"
+	"github.com/gin-gonic/gin"
+	"github.com/go-redis/redis/v8"
+	"github.com/shopspring/decimal"
+	"investorcenter-api/models"
+	"investorcenter-api/services"
 )
 
 // Use the redisClient from crypto_realtime_handlers.go
@@ -38,15 +38,15 @@ func GetTicker(c *gin.Context) {
 
 	// Determine if this is crypto or stock
 	isCrypto := isCryptoAsset(stock.AssetType, symbol)
-	
+
 	// Get real-time price data from Polygon
 	polygonClient := services.NewPolygonClient()
 	priceData, priceErr := polygonClient.GetQuote(symbol)
-	
+
 	// Check if market is open (affects whether we show real-time data)
 	var marketStatus string
 	var shouldUpdateRealtime bool
-	
+
 	if isCrypto {
 		marketStatus = "open" // Crypto markets are always open
 		shouldUpdateRealtime = true
@@ -91,12 +91,12 @@ func GetTicker(c *gin.Context) {
 		"data": gin.H{
 			"summary": gin.H{
 				"stock": gin.H{
-					"symbol":     stock.Symbol,
-					"name":       stock.Name,
-					"exchange":   stock.Exchange,
-					"sector":     stock.Sector,
-					"assetType":  stock.AssetType,
-					"isCrypto":   isCrypto,
+					"symbol":    stock.Symbol,
+					"name":      stock.Name,
+					"exchange":  stock.Exchange,
+					"sector":    stock.Sector,
+					"assetType": stock.AssetType,
+					"isCrypto":  isCrypto,
 				},
 				"price": gin.H{
 					"price":         priceData.Price.String(),
@@ -111,11 +111,11 @@ func GetTicker(c *gin.Context) {
 					"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
 				},
 				"market": gin.H{
-					"status":              marketStatus,
+					"status":               marketStatus,
 					"shouldUpdateRealtime": shouldUpdateRealtime,
 					"updateInterval":       getUpdateInterval(isCrypto, marketStatus),
 				},
-				"keyMetrics": buildKeyMetrics(priceData, fundamentals, stock),
+				"keyMetrics":   buildKeyMetrics(priceData, fundamentals, stock),
 				"fundamentals": fundamentals,
 			},
 		},
@@ -135,17 +135,17 @@ func GetTicker(c *gin.Context) {
 func GetTickerChart(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	period := c.DefaultQuery("period", "1Y")
-	
+
 	log.Printf("GetTickerChart called for symbol: %s, period: %s", symbol, period)
 
 	polygonClient := services.NewPolygonClient()
-	
+
 	// Convert period to days for Polygon API
 	days := services.GetDaysFromPeriod(period)
-	
+
 	var chartData []models.ChartDataPoint
 	var err error
-	
+
 	if period == "1D" {
 		// For intraday, get minute-level data
 		chartData, err = polygonClient.GetIntradayData(symbol)
@@ -153,7 +153,7 @@ func GetTickerChart(c *gin.Context) {
 		// For longer periods, get daily data
 		chartData, err = polygonClient.GetDailyData(symbol, days)
 	}
-	
+
 	if err != nil {
 		log.Printf("Failed to get chart data for %s: %v", symbol, err)
 		// Fallback to mock data
@@ -188,19 +188,19 @@ func isCryptoAsset(assetType, symbol string) bool {
 	if assetType == "crypto" {
 		return true
 	}
-	
+
 	// Check symbol format (Polygon crypto symbols start with X:)
 	if strings.HasPrefix(symbol, "X:") {
 		return true
 	}
-	
+
 	// Check for common crypto symbols
 	cryptoSymbols := map[string]bool{
-		"BTC":  true, "ETH":  true, "ADA":  true, "DOT":  true,
-		"LINK": true, "XRP":  true, "LTC":  true, "BCH":  true,
-		"BNB":  true, "SOL":  true, "MATIC": true, "AVAX": true,
+		"BTC": true, "ETH": true, "ADA": true, "DOT": true,
+		"LINK": true, "XRP": true, "LTC": true, "BCH": true,
+		"BNB": true, "SOL": true, "MATIC": true, "AVAX": true,
 	}
-	
+
 	return cryptoSymbols[symbol]
 }
 
@@ -208,23 +208,23 @@ func getUpdateInterval(isCrypto bool, marketStatus string) int {
 	if isCrypto {
 		return 5 // 5 seconds for crypto
 	}
-	
+
 	if marketStatus == "open" {
 		return 5 // 5 seconds during market hours
 	}
-	
+
 	return 300 // 5 minutes when market is closed
 }
 
 func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {
 	// Generate realistic mock price based on symbol
 	basePrice := 150.0 + float64(len(symbol)*10)
-	
+
 	open := basePrice * (0.98 + 0.04*0.5) // ±2% from base
 	high := open * (1.0 + 0.03*0.8)       // Up to 3% higher
-	low := open * (1.0 - 0.03*0.6)        // Up to 3% lower  
-	close := low + (high-low)*0.7          // 70% of the range
-	
+	low := open * (1.0 - 0.03*0.6)        // Up to 3% lower
+	close := low + (high-low)*0.7         // 70% of the range
+
 	change := decimal.NewFromFloat(close - open)
 	changePercent := decimal.Zero
 	if open != 0 {
@@ -267,7 +267,7 @@ func buildKeyMetrics(price *models.StockPrice, fundamentals *models.Fundamentals
 		"volume":    price.Volume,
 		"timestamp": price.Timestamp.Unix(),
 	}
-	
+
 	// Add fundamental metrics if available
 	if fundamentals != nil {
 		if fundamentals.PE != nil {
@@ -280,7 +280,7 @@ func buildKeyMetrics(price *models.StockPrice, fundamentals *models.Fundamentals
 			metrics["revenue"] = fundamentals.Revenue.String()
 		}
 	}
-	
+
 	return metrics
 }
 
@@ -310,7 +310,7 @@ func GetTickerRealTimePrice(c *gin.Context) {
 				"data": gin.H{
 					"symbol":        symbol,
 					"price":         fmt.Sprintf("%.2f", price.Price),
-					"change":        fmt.Sprintf("%.2f", price.Price * price.Change24h / 100),
+					"change":        fmt.Sprintf("%.2f", price.Price*price.Change24h/100),
 					"changePercent": fmt.Sprintf("%.2f", price.Change24h),
 					"volume":        price.Volume24h,
 					"timestamp":     time.Now().Unix(),
@@ -320,7 +320,7 @@ func GetTickerRealTimePrice(c *gin.Context) {
 				},
 				"meta": gin.H{
 					"timestamp": time.Now().UTC(),
-					"source": "redis",
+					"source":    "redis",
 				},
 			})
 			return
@@ -335,15 +335,15 @@ func GetTickerRealTimePrice(c *gin.Context) {
 		log.Printf("Polygon API error for %s: %v", symbol, err)
 		// Return a more graceful error response
 		c.JSON(http.StatusNotFound, gin.H{
-			"error": "Price not available",
-			"symbol": symbol,
+			"error":   "Price not available",
+			"symbol":  symbol,
 			"message": "This ticker is not currently tracked",
 		})
 		return
 	}
-	
+
 	log.Printf("Success! Got price for %s: %s", symbol, priceData.Price.String())
-	
+
 	// Return price data directly in ApiClient format
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
@@ -365,14 +365,14 @@ func GetTickerRealTimePrice(c *gin.Context) {
 func GetTickerNews(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerNews called for symbol: %s", symbol)
-	
+
 	// Try to get real news from Polygon first
 	polygonClient := services.NewPolygonClient()
-	
+
 	// Get raw Polygon news data with all fields
 	url := "https://api.polygon.io/v2/reference/news?ticker=" + symbol + "&limit=30&apikey=" + polygonClient.APIKey
 	resp, err := polygonClient.Client.Get(url)
-	
+
 	if err != nil || resp.StatusCode != 200 {
 		log.Printf("Failed to get real news for %s: %v, using mock data", symbol, err)
 		// Fallback to mock news data
@@ -389,7 +389,7 @@ func GetTickerNews(c *gin.Context) {
 		return
 	}
 	defer resp.Body.Close()
-	
+
 	// Parse and return raw Polygon response with all fields
 	var polygonResp map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&polygonResp); err != nil {
@@ -406,11 +406,11 @@ func GetTickerNews(c *gin.Context) {
 		})
 		return
 	}
-	
+
 	// Return the raw Polygon results with all fields intact
 	results := polygonResp["results"]
 	log.Printf("Successfully fetched real news for %s", symbol)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": results,
 		"meta": gin.H{
@@ -425,10 +425,10 @@ func GetTickerNews(c *gin.Context) {
 func GetTickerEarnings(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerEarnings called for symbol: %s", symbol)
-	
+
 	// Generate mock earnings data (same as in mock_data.go)
 	earnings := generateMockEarnings(symbol)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": earnings,
 		"meta": gin.H{
@@ -443,10 +443,10 @@ func GetTickerEarnings(c *gin.Context) {
 func GetTickerAnalysts(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerAnalysts called for symbol: %s", symbol)
-	
+
 	// Generate mock analyst data (same as in mock_data.go)
 	analysts := generateMockAnalystRatings(symbol)
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": analysts,
 		"meta": gin.H{
@@ -460,11 +460,11 @@ func GetTickerAnalysts(c *gin.Context) {
 // calculateMarketCap estimates market cap for a crypto symbol
 func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
 	cleanSymbol := strings.Replace(symbol, "X:", "", 1)
-	
+
 	// Extract base crypto (BTC, ETH, etc.) from pairs like BTCUSD, BTCJPY, etc.
 	var supply int64
 	var usdPrice decimal.Decimal = price
-	
+
 	// Identify the base cryptocurrency
 	if strings.HasPrefix(cleanSymbol, "BTC") {
 		supply = 19_800_000 // ~19.8M BTC
@@ -506,7 +506,7 @@ func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
 			supply = 1_000_000 // 1M default
 		}
 	}
-	
+
 	return usdPrice.Mul(decimal.NewFromInt(supply))
 }
 
