@@ -96,7 +96,7 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
 
   const formatChange = (change: string, changePercent: string) => {
     const changeNum = parseFloat(change);
-    const changePercentNum = parseFloat(changePercent) * 100; // Backend returns as decimal, convert to percentage
+    const changePercentNum = parseFloat(changePercent); // Backend already returns as percentage decimal
 
     const prefix = changeNum >= 0 ? '+' : '';
     return `${prefix}${changeNum.toFixed(2)} (${prefix}${changePercentNum.toFixed(2)}%)`;

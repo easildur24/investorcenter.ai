@@ -217,18 +217,26 @@ func getUpdateInterval(isCrypto bool, marketStatus string) int {
 }
 
 func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {
-	// Generate realistic mock price based on symbol
-	basePrice := 150.0 + float64(len(symbol)*10)
+	// Generate deterministic mock price based on symbol hash
+	// Use symbol length and ASCII sum for consistent but varied prices
+	asciiSum := 0
+	for _, char := range symbol {
+		asciiSum += int(char)
+	}
 
-	open := basePrice * (0.98 + 0.04*0.5) // ±2% from base
-	high := open * (1.0 + 0.03*0.8)       // Up to 3% higher
-	low := open * (1.0 - 0.03*0.6)        // Up to 3% lower
-	close := low + (high-low)*0.7         // 70% of the range
+	// Generate consistent base price (between $50-$500)
+	basePrice := 50.0 + float64(asciiSum%450)
+
+	// Use deterministic values based on symbol
+	open := basePrice * 1.00                    // Base price as open
+	high := open * (1.0 + float64(len(symbol)%3)*0.01) // 0-2% higher
+	low := open * (1.0 - float64(asciiSum%3)*0.01)     // 0-2% lower
+	close := low + (high-low)*0.7               // 70% of the range
 
 	change := decimal.NewFromFloat(close - open)
 	changePercent := decimal.Zero
 	if open != 0 {
-		changePercent = change.Div(decimal.NewFromFloat(open))
+		changePercent = change.Div(decimal.NewFromFloat(open)).Mul(decimal.NewFromInt(100))
 	}
 
 	return &models.StockPrice{
@@ -238,7 +246,7 @@ func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {
 		High:          decimal.NewFromFloat(high),
 		Low:           decimal.NewFromFloat(low),
 		Close:         decimal.NewFromFloat(close),
-		Volume:        int64(1000000 + len(symbol)*100000),
+		Volume:        int64(1000000 + asciiSum*1000),
 		Change:        change,
 		ChangePercent: changePercent,
 		Timestamp:     time.Now(),

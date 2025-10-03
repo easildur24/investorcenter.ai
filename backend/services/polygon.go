@@ -1174,18 +1174,27 @@ func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice
 		currentPrice = ticker.PrevDay.Close
 	}
 
-	// Calculate change from previous close
-	prevClose := ticker.PrevDay.Close
-	change := decimal.NewFromFloat(currentPrice - prevClose)
-	changePercent := decimal.Zero
-	if prevClose != 0 {
-		changePercent = change.Div(decimal.NewFromFloat(prevClose))
-	}
-
 	// Use today's day data if available, otherwise previous day
 	dayData := ticker.Day
-	if dayData.Open == 0 {
+	useTodayData := dayData.Open != 0
+	if !useTodayData {
 		dayData = ticker.PrevDay
+	}
+
+	// Calculate change - use today's open if market is open, otherwise previous close
+	var basePrice float64
+	if useTodayData {
+		// Market is open - compare to today's open
+		basePrice = dayData.Open
+	} else {
+		// Market is closed - compare to previous close
+		basePrice = ticker.PrevDay.Close
+	}
+
+	change := decimal.NewFromFloat(currentPrice - basePrice)
+	changePercent := decimal.Zero
+	if basePrice != 0 {
+		changePercent = change.Div(decimal.NewFromFloat(basePrice)).Mul(decimal.NewFromInt(100))
 	}
 
 	// Convert timestamp
@@ -1243,7 +1252,7 @@ func (p *PolygonClient) GetCryptoRealTimePrice(symbol string) (*models.StockPric
 
 	// Use today's change data from the snapshot
 	change := decimal.NewFromFloat(ticker.TodaysChange)
-	changePercent := decimal.NewFromFloat(ticker.TodaysChangePerc / 100) // Convert percentage
+	changePercent := decimal.NewFromFloat(ticker.TodaysChangePerc) // Already in percentage format
 
 	// Use last trade timestamp for real-time timestamp
 	var timestamp time.Time
