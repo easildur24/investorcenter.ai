@@ -6,12 +6,12 @@ import (
         "fmt"
         "log"
         "net/http"
-        "sort"
         "strconv"
         "strings"
         "time"
 
         "github.com/gin-gonic/gin"
+        "github.com/go-redis/redis/v8"
         "github.com/shopspring/decimal"
         "investorcenter-api/models"
         "investorcenter-api/services"
@@ -513,7 +513,7 @@ func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
 // GetAllCryptos returns all cached crypto prices sorted by market cap
 func GetAllCryptos(c *gin.Context) {
 	log.Printf("GetAllCryptos called")
-	
+
 	// Get page parameter (default to 1)
 	page := 1
 	if pageParam := c.Query("page"); pageParam != "" {
@@ -521,43 +521,114 @@ func GetAllCryptos(c *gin.Context) {
 			page = p
 		}
 	}
-	
-	// Get all crypto prices from cache
-	cryptoCache := services.GetCryptoCache()
-	allCryptos := cryptoCache.GetAllPrices()
-	
-	// Sort by market cap (price * estimated circulating supply)
-	sort.Slice(allCryptos, func(i, j int) bool {
-		mcapI := calculateMarketCap(allCryptos[i].Symbol, allCryptos[i].Price)
-		mcapJ := calculateMarketCap(allCryptos[j].Symbol, allCryptos[j].Price)
-		return mcapI.GreaterThan(mcapJ)
-	})
-	
+
+	// Get crypto symbols from Redis (ranked by market cap from CoinGecko)
+	ctx := context.Background()
+	symbols, err := redisClient.ZRange(ctx, "crypto:symbols:ranked", 0, -1).Result()
+	if err != nil {
+		log.Printf("Failed to get crypto symbols from Redis: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch crypto symbols",
+		})
+		return
+	}
+
+	if len(symbols) == 0 {
+		log.Printf("No crypto symbols found in Redis")
+		c.JSON(http.StatusOK, gin.H{
+			"data": []interface{}{},
+			"meta": gin.H{
+				"page":       page,
+				"perPage":    100,
+				"total":      0,
+				"totalPages": 0,
+				"timestamp":  time.Now().UTC(),
+				"source":     "redis",
+			},
+		})
+		return
+	}
+
+	// Fetch all crypto data from Redis using pipeline
+	pipe := redisClient.Pipeline()
+	for _, symbol := range symbols {
+		pipe.Get(ctx, fmt.Sprintf("crypto:quote:%s", symbol))
+	}
+
+	results, err := pipe.Exec(ctx)
+	if err != nil && err != redis.Nil {
+		log.Printf("Pipeline error fetching crypto data: %v", err)
+	}
+
+	// Parse all crypto data
+	type CryptoData struct {
+		Symbol        string  `json:"symbol"`
+		Price         string  `json:"price"`
+		Change        string  `json:"change"`
+		ChangePercent string  `json:"changePercent"`
+		Volume        float64 `json:"volume"`
+		High          string  `json:"high"`
+		Low           string  `json:"low"`
+		Timestamp     int64   `json:"timestamp"`
+		MarketCapRank int     `json:"market_cap_rank"`
+	}
+
+	var allCryptos []CryptoData
+
+	for i, symbol := range symbols {
+		if i < len(results) {
+			if val, err := results[i].(*redis.StringCmd).Result(); err == nil {
+				var cryptoPrice CryptoRealTimePrice
+				if json.Unmarshal([]byte(val), &cryptoPrice) == nil {
+					// Populate alias fields
+					cryptoPrice.Price = cryptoPrice.CurrentPrice
+					cryptoPrice.Volume24h = cryptoPrice.TotalVolume
+					cryptoPrice.Change24h = cryptoPrice.PriceChangePercentage24h
+
+					allCryptos = append(allCryptos, CryptoData{
+						Symbol:        symbol,
+						Price:         fmt.Sprintf("%.8f", cryptoPrice.Price),
+						Change:        fmt.Sprintf("%.2f", cryptoPrice.PriceChange24h),
+						ChangePercent: fmt.Sprintf("%.2f", cryptoPrice.Change24h),
+						Volume:        cryptoPrice.Volume24h,
+						High:          fmt.Sprintf("%.8f", cryptoPrice.High24h),
+						Low:           fmt.Sprintf("%.8f", cryptoPrice.Low24h),
+						Timestamp:     time.Now().Unix(),
+						MarketCapRank: cryptoPrice.MarketCapRank,
+					})
+				}
+			}
+		}
+	}
+
+	// Cryptos are already sorted by market cap rank in Redis (crypto:symbols:ranked)
+	// No need to sort again
+
 	// Pagination
 	perPage := 100
 	totalCryptos := len(allCryptos)
 	totalPages := (totalCryptos + perPage - 1) / perPage
-	
+
 	startIdx := (page - 1) * perPage
 	endIdx := startIdx + perPage
 	if endIdx > totalCryptos {
 		endIdx = totalCryptos
 	}
-	
-	var pageData []*models.StockPrice
+
+	var pageData []CryptoData
 	if startIdx < totalCryptos {
 		pageData = allCryptos[startIdx:endIdx]
 	}
-	
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": pageData,
 		"meta": gin.H{
-			"page":        page,
-			"perPage":     perPage,
-			"total":       totalCryptos,
-			"totalPages":  totalPages,
-			"timestamp":   time.Now().UTC(),
-			"source":      "cache",
+			"page":       page,
+			"perPage":    perPage,
+			"total":      totalCryptos,
+			"totalPages": totalPages,
+			"timestamp":  time.Now().UTC(),
+			"source":     "redis",
 		},
 	})
 }
