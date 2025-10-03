@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crypto-price-updater
+  namespace: investorcenter
+  labels:
+    app: crypto-price-updater
+spec:
+  replicas: 1  # Only need one instance
+  selector:
+    matchLabels:
+      app: crypto-price-updater
+  template:
+    metadata:
+      labels:
+        app: crypto-price-updater
+    spec:
+      containers:
+      - name: crypto-price-updater
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/crypto-price-updater:latest
+        imagePullPolicy: Always
+        env:
+        - name: REDIS_HOST
+          value: "redis-service"  # Assuming you have Redis deployed
+        - name: REDIS_PORT
+          value: "6379"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - python3
+            - -c
+            - "import redis; r = redis.Redis(host='redis-service'); r.ping()"
+          initialDelaySeconds: 60
+          periodSeconds: 300  # Check every 5 minutes
+        readinessProbe:
+          exec:
+            command:
+            - python3
+            - -c
+            - "import redis; r = redis.Redis(host='redis-service'); r.exists('crypto:symbols:ranked')"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+      restartPolicy: Always
+---
+# Optional: HorizontalPodAutoscaler (if needed later)
+# apiVersion: autoscaling/v2
+# kind: HorizontalPodAutoscaler
+# metadata:
+#   name: crypto-price-updater-hpa
+#   namespace: investorcenter
+# spec:
+#   scaleTargetRef:
+#     apiVersion: apps/v1
+#     kind: Deployment
+#     name: crypto-price-updater
+#   minReplicas: 1
+#   maxReplicas: 1  # Keep at 1 to avoid duplicate updates
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       target:
+#         type: Utilization
+#         averageUtilization: 80

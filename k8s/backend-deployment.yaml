@@ -53,6 +53,10 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: polygon-api-key
+        - name: REDIS_HOST
+          value: "redis-service"
+        - name: REDIS_PORT
+          value: "6379"
         resources:
           requests:
             memory: "128Mi"
