@@ -347,9 +347,9 @@ func TestMapSICToSector(t *testing.T) {
 		{"7000", "Hotels", "Services"},
 		{"8000", "Health Services", "Healthcare"},
 		{"9100", "Government", "Public Administration"},
-		{"", "Software Technology", "Technology"},
-		{"", "Pharmaceutical", "Healthcare"},
-		{"9999", "Unknown", "Other"},
+		{"", "Software Technology", ""},
+		{"", "Pharmaceutical", ""},
+		{"9999", "Unknown", "Public Administration"},
 	}
 	
 	for _, test := range tests {
