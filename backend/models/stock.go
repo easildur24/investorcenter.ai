@@ -21,7 +21,7 @@ type Stock struct {
 	Website     string           `json:"website" db:"website"`
 	CreatedAt   time.Time        `json:"createdAt" db:"created_at"`
 	UpdatedAt   time.Time        `json:"updatedAt" db:"updated_at"`
-	
+
 	// New Polygon fields for multi-asset support
 	AssetType           string `json:"assetType,omitempty" db:"asset_type"`
 	Locale              string `json:"locale,omitempty" db:"locale"`
@@ -127,7 +127,7 @@ type Earnings struct {
 	CreatedAt          time.Time        `json:"createdAt" db:"created_at"`
 }
 
-// Dividend represents dividend data  
+// Dividend represents dividend data
 type Dividend struct {
 	Symbol       string           `json:"symbol" db:"symbol"`
 	ExDate       time.Time        `json:"exDate" db:"ex_date"`
@@ -152,17 +152,17 @@ type AnalystRating struct {
 
 // InsiderTrading represents insider trading data
 type InsiderTrading struct {
-	Symbol          string           `json:"symbol" db:"symbol"`
-	InsiderName     string           `json:"insiderName" db:"insider_name"`
-	Title           string           `json:"title" db:"title"`
-	TransactionType string           `json:"transactionType" db:"transaction_type"`
-	Shares          int64            `json:"shares" db:"shares"`
-	Price           decimal.Decimal  `json:"price" db:"price"`
-	Value           decimal.Decimal  `json:"value" db:"value"`
-	SharesOwned     *int64           `json:"sharesOwned" db:"shares_owned"`
-	TransactionDate time.Time        `json:"transactionDate" db:"transaction_date"`
-	FilingDate      time.Time        `json:"filingDate" db:"filing_date"`
-	CreatedAt       time.Time        `json:"createdAt" db:"created_at"`
+	Symbol          string          `json:"symbol" db:"symbol"`
+	InsiderName     string          `json:"insiderName" db:"insider_name"`
+	Title           string          `json:"title" db:"title"`
+	TransactionType string          `json:"transactionType" db:"transaction_type"`
+	Shares          int64           `json:"shares" db:"shares"`
+	Price           decimal.Decimal `json:"price" db:"price"`
+	Value           decimal.Decimal `json:"value" db:"value"`
+	SharesOwned     *int64          `json:"sharesOwned" db:"shares_owned"`
+	TransactionDate time.Time       `json:"transactionDate" db:"transaction_date"`
+	FilingDate      time.Time       `json:"filingDate" db:"filing_date"`
+	CreatedAt       time.Time       `json:"createdAt" db:"created_at"`
 }
 
 // PeerComparison represents peer comparison data
@@ -183,17 +183,17 @@ type PeerComparison struct {
 
 // TickerPageData represents the complete data for a ticker page
 type TickerPageData struct {
-	Summary             StockSummary         `json:"summary"`
-	ChartData           ChartData            `json:"chartData"`
-	TechnicalIndicators TechnicalIndicators  `json:"technicalIndicators"`
-	AnalystConsensus    AnalystConsensus     `json:"analystConsensus"`
-	KeyMetrics          KeyMetrics           `json:"keyMetrics"`
-	News                []NewsArticle        `json:"news"`
-	Earnings            []Earnings           `json:"earnings"`
-	Dividends           []Dividend           `json:"dividends"`
-	AnalystRatings      []AnalystRating      `json:"analystRatings"`
-	InsiderActivity     []InsiderTrading     `json:"insiderActivity"`
-	PeerComparisons     []PeerComparison     `json:"peerComparisons"`
+	Summary             StockSummary        `json:"summary"`
+	ChartData           ChartData           `json:"chartData"`
+	TechnicalIndicators TechnicalIndicators `json:"technicalIndicators"`
+	AnalystConsensus    AnalystConsensus    `json:"analystConsensus"`
+	KeyMetrics          KeyMetrics          `json:"keyMetrics"`
+	News                []NewsArticle       `json:"news"`
+	Earnings            []Earnings          `json:"earnings"`
+	Dividends           []Dividend          `json:"dividends"`
+	AnalystRatings      []AnalystRating     `json:"analystRatings"`
+	InsiderActivity     []InsiderTrading    `json:"insiderActivity"`
+	PeerComparisons     []PeerComparison    `json:"peerComparisons"`
 }
 
 // StockSummary represents summary data for a stock
@@ -225,14 +225,14 @@ type TechnicalIndicators struct {
 
 // AnalystConsensus represents analyst consensus data
 type AnalystConsensus struct {
-	Symbol          string                 `json:"symbol"`
-	ConsensusRating string                 `json:"consensusRating"`
-	PriceTarget     *decimal.Decimal       `json:"priceTarget"`
-	PriceTargetHigh *decimal.Decimal       `json:"priceTargetHigh"`
-	PriceTargetLow  *decimal.Decimal       `json:"priceTargetLow"`
-	PriceTargetMean *decimal.Decimal       `json:"priceTargetMean"`
-	Recommendations map[string]int         `json:"recommendations"`
-	LastUpdated     time.Time              `json:"lastUpdated"`
+	Symbol          string           `json:"symbol"`
+	ConsensusRating string           `json:"consensusRating"`
+	PriceTarget     *decimal.Decimal `json:"priceTarget"`
+	PriceTargetHigh *decimal.Decimal `json:"priceTargetHigh"`
+	PriceTargetLow  *decimal.Decimal `json:"priceTargetLow"`
+	PriceTargetMean *decimal.Decimal `json:"priceTargetMean"`
+	Recommendations map[string]int   `json:"recommendations"`
+	LastUpdated     time.Time        `json:"lastUpdated"`
 }
 
 // KeyMetrics represents key financial metrics

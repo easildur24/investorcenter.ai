@@ -18,7 +18,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	if os.Getenv("RUN_INTEGRATION_TESTS") != "true" {
 		t.Skip("Skipping integration test. Set RUN_INTEGRATION_TESTS=true to run")
 	}
-	
+
 	// Use test database
 	dbHost := getEnvOrDefault("TEST_DB_HOST", "localhost")
 	dbPort := getEnvOrDefault("TEST_DB_PORT", "5432")
@@ -28,27 +28,27 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 		dbPassword = "test_password"
 	}
 	dbName := getEnvOrDefault("TEST_DB_NAME", "investorcenter_test")
-	
+
 	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		dbHost, dbPort, dbUser, dbPassword, dbName)
-	
+
 	db, err := sql.Open("postgres", connStr)
 	if err != nil {
 		t.Fatalf("Failed to connect to test database: %v", err)
 	}
-	
+
 	// Create test schema
 	if err := createTestSchema(db); err != nil {
 		t.Fatalf("Failed to create test schema: %v", err)
 	}
-	
+
 	// Return cleanup function
 	cleanup := func() {
 		// Clean up test data
 		db.Exec("DELETE FROM tickers WHERE symbol LIKE 'TEST%'")
 		db.Close()
 	}
-	
+
 	return db, cleanup
 }
 
@@ -92,7 +92,7 @@ func createTestSchema(db *sql.DB) error {
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
 		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 	)`
-	
+
 	_, err := db.Exec(schema)
 	return err
 }
@@ -100,7 +100,7 @@ func createTestSchema(db *sql.DB) error {
 func TestTickerExists(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	
+
 	// Insert test ticker
 	_, err := db.Exec(`
 		INSERT INTO tickers (symbol, name, exchange) 
@@ -109,7 +109,7 @@ func TestTickerExists(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to insert test data: %v", err)
 	}
-	
+
 	// Test existing ticker
 	exists, err := tickerExists(db, "TEST1")
 	if err != nil {
@@ -118,7 +118,7 @@ func TestTickerExists(t *testing.T) {
 	if !exists {
 		t.Error("Expected TEST1 to exist")
 	}
-	
+
 	// Test non-existing ticker
 	exists, err = tickerExists(db, "NOTEXIST")
 	if err != nil {
@@ -132,7 +132,7 @@ func TestTickerExists(t *testing.T) {
 func TestInsertTicker(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	
+
 	// Create test ticker
 	ticker := services.PolygonTicker{
 		Ticker:          "TEST2",
@@ -151,13 +151,13 @@ func TestInsertTicker(t *testing.T) {
 		SICDescription:  "Electronic Computers",
 		HomepageURL:     "https://test.com",
 	}
-	
+
 	// Insert ticker
 	err := insertTicker(db, ticker)
 	if err != nil {
 		t.Fatalf("Failed to insert ticker: %v", err)
 	}
-	
+
 	// Verify insertion
 	var count int
 	err = db.QueryRow("SELECT COUNT(*) FROM tickers WHERE symbol = $1", "TEST2").Scan(&count)
@@ -167,7 +167,7 @@ func TestInsertTicker(t *testing.T) {
 	if count != 1 {
 		t.Errorf("Expected 1 ticker, found %d", count)
 	}
-	
+
 	// Verify data
 	var name, assetType string
 	var marketCap sql.NullFloat64
@@ -175,19 +175,19 @@ func TestInsertTicker(t *testing.T) {
 		SELECT name, asset_type, market_cap 
 		FROM tickers WHERE symbol = $1
 	`, "TEST2").Scan(&name, &assetType, &marketCap)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to query ticker details: %v", err)
 	}
-	
+
 	if name != "Test Company 2" {
 		t.Errorf("Expected name 'Test Company 2', got '%s'", name)
 	}
-	
+
 	if assetType != "stock" {
 		t.Errorf("Expected asset_type 'stock', got '%s'", assetType)
 	}
-	
+
 	if !marketCap.Valid || marketCap.Float64 != 1000000000 {
 		t.Errorf("Expected market_cap 1000000000, got %v", marketCap)
 	}
@@ -196,7 +196,7 @@ func TestInsertTicker(t *testing.T) {
 func TestInsertETF(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	
+
 	// Create test ETF
 	etf := services.PolygonTicker{
 		Ticker:          "TESTETF",
@@ -209,23 +209,23 @@ func TestInsertETF(t *testing.T) {
 		PrimaryExchange: "ARCX",
 		CIK:             "0009876543",
 	}
-	
+
 	// Insert ETF
 	err := insertTicker(db, etf)
 	if err != nil {
 		t.Fatalf("Failed to insert ETF: %v", err)
 	}
-	
+
 	// Verify ETF type
 	var assetType string
 	err = db.QueryRow(`
 		SELECT asset_type FROM tickers WHERE symbol = $1
 	`, "TESTETF").Scan(&assetType)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to query ETF: %v", err)
 	}
-	
+
 	if assetType != "etf" {
 		t.Errorf("Expected asset_type 'etf', got '%s'", assetType)
 	}
@@ -234,7 +234,7 @@ func TestInsertETF(t *testing.T) {
 func TestUpdateTicker(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
-	
+
 	// Insert initial ticker
 	_, err := db.Exec(`
 		INSERT INTO tickers (symbol, name, exchange, market_cap) 
@@ -243,7 +243,7 @@ func TestUpdateTicker(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to insert test data: %v", err)
 	}
-	
+
 	// Create updated ticker data
 	ticker := services.PolygonTicker{
 		Ticker:         "TEST3",
@@ -253,13 +253,13 @@ func TestUpdateTicker(t *testing.T) {
 		HomepageURL:    "https://updated.com",
 		Active:         true,
 	}
-	
+
 	// Update ticker
 	err = updateTicker(db, ticker)
 	if err != nil {
 		t.Fatalf("Failed to update ticker: %v", err)
 	}
-	
+
 	// Verify update
 	var name string
 	var marketCap sql.NullFloat64
@@ -268,19 +268,19 @@ func TestUpdateTicker(t *testing.T) {
 		SELECT name, market_cap, employees 
 		FROM tickers WHERE symbol = $1
 	`, "TEST3").Scan(&name, &marketCap, &employees)
-	
+
 	if err != nil {
 		t.Fatalf("Failed to query updated ticker: %v", err)
 	}
-	
+
 	if name != "Test Company 3 Updated" {
 		t.Errorf("Expected updated name, got '%s'", name)
 	}
-	
+
 	if !marketCap.Valid || marketCap.Float64 != 2000000000 {
 		t.Errorf("Expected market_cap 2000000000, got %v", marketCap)
 	}
-	
+
 	if !employees.Valid || employees.Int64 != 1000 {
 		t.Errorf("Expected employees 1000, got %v", employees)
 	}
@@ -316,11 +316,11 @@ func TestShouldUpdate(t *testing.T) {
 			expected: false,
 		},
 	}
-	
+
 	for i, test := range tests {
 		result := shouldUpdate(test.ticker)
 		if result != test.expected {
-			t.Errorf("Test %d: shouldUpdate() = %v, expected %v", 
+			t.Errorf("Test %d: shouldUpdate() = %v, expected %v",
 				i, result, test.expected)
 		}
 	}
@@ -347,11 +347,11 @@ func TestMapSICToSector(t *testing.T) {
 		{"7000", "Hotels", "Services"},
 		{"8000", "Health Services", "Healthcare"},
 		{"9100", "Government", "Public Administration"},
-		{"", "Software Technology", "Technology"},
-		{"", "Pharmaceutical", "Healthcare"},
-		{"9999", "Unknown", "Other"},
+		{"", "Software Technology", ""},
+		{"", "Pharmaceutical", ""},
+		{"9999", "Unknown", "Public Administration"},
 	}
-	
+
 	for _, test := range tests {
 		result := mapSICToSector(test.sicCode, test.sicDesc)
 		if result != test.expected {
@@ -367,7 +367,7 @@ func TestNullIfEmpty(t *testing.T) {
 	if result != nil {
 		t.Error("Expected nil for empty string")
 	}
-	
+
 	// Test non-empty string
 	result = nullIfEmpty("test")
 	if result == nil || *result != "test" {

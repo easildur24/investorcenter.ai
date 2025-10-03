@@ -95,13 +95,13 @@ func setupDatabase() (*sql.DB, error) {
 func importAllTypes(db *sql.DB, client *services.PolygonClient) {
 	// Note: crypto removed - use CoinGecko for cryptocurrency data
 	types := []string{"stocks", "etf", "indices"}
-	
+
 	for _, assetType := range types {
 		log.Printf("\n📦 Importing %s...\n", assetType)
 		if err := importTickers(db, client, assetType); err != nil {
 			log.Printf("Warning: Failed to import %s: %v", assetType, err)
 		}
-		
+
 		// Add delay between different asset types to avoid rate limiting
 		if assetType != types[len(types)-1] {
 			log.Println("⏳ Waiting 2 seconds before next asset type...")
@@ -117,16 +117,16 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 	}
 
 	log.Printf("🔍 Fetching %s tickers from Polygon API (this will paginate automatically)...", assetType)
-	
+
 	// Fetch ALL tickers from Polygon API (it will paginate automatically)
 	// Pass 0 as limit to fetch everything, or *limit to fetch specific amount
 	tickers, err := client.GetAllTickers(assetType, *limit)
 	if err != nil {
 		return fmt.Errorf("failed to fetch tickers: %w", err)
 	}
-	
+
 	log.Printf("📊 Successfully fetched %d %s tickers", len(tickers), assetType)
-	
+
 	if *dryRun {
 		log.Println("🔍 DRY RUN MODE - Not inserting into database")
 		// Just print first 10 for preview
@@ -140,21 +140,21 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 		}
 		return nil
 	}
-	
+
 	// Process all tickers
 	log.Printf("📥 Processing %d tickers...", len(tickers))
-	
+
 	inserted := 0
 	updated := 0
 	skipped := 0
 	errors := 0
-	
+
 	for i, ticker := range tickers {
 		if *verbose && i%100 == 0 && i > 0 {
-			log.Printf("Progress: %d/%d (inserted: %d, updated: %d, skipped: %d, errors: %d)", 
+			log.Printf("Progress: %d/%d (inserted: %d, updated: %d, skipped: %d, errors: %d)",
 				i, len(tickers), inserted, updated, skipped, errors)
 		}
-		
+
 		// Check if ticker exists
 		exists, err := tickerExists(db, ticker.Ticker)
 		if err != nil {
@@ -164,7 +164,7 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 			errors++
 			continue
 		}
-		
+
 		if exists {
 			if *updateOnly || shouldUpdate(ticker) {
 				if err := updateTicker(db, ticker); err != nil {
@@ -193,10 +193,10 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 			}
 		}
 	}
-	
+
 	log.Printf("✅ Import complete: %d inserted, %d updated, %d skipped, %d errors",
 		inserted, updated, skipped, errors)
-	
+
 	return nil
 }
 
@@ -224,7 +224,7 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
 			$16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
 		) ON CONFLICT (symbol) DO NOTHING`
-	
+
 	// Map values
 	exchange := services.MapExchangeCode(ticker.PrimaryExchange)
 	assetType := services.MapAssetType(ticker.Type)
@@ -232,7 +232,7 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 	if ticker.Locale == "global" || ticker.Market == "crypto" {
 		country = "GLOBAL"
 	}
-	
+
 	// Parse IPO date if available
 	var ipoDate *time.Time
 	if ticker.ListDate != "" {
@@ -240,24 +240,24 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 			ipoDate = &parsed
 		}
 	}
-	
+
 	// Handle nullable fields
 	var marketCap *float64
 	if ticker.MarketCap > 0 {
 		marketCap = &ticker.MarketCap
 	}
-	
+
 	var employees *int
 	if ticker.TotalEmployees > 0 {
 		employees = &ticker.TotalEmployees
 	}
-	
+
 	var sharesOutstanding *int64
 	if ticker.WeightedSharesOutstanding > 0 {
 		so := int64(ticker.WeightedSharesOutstanding)
 		sharesOutstanding = &so
 	}
-	
+
 	// Determine sector/industry from SIC description
 	sector := mapSICToSector(ticker.SICCode, ticker.SICDescription)
 	industry := ticker.SICDescription
@@ -271,7 +271,7 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 		sector = "Index"
 		industry = "Market Index"
 	}
-	
+
 	_, err := db.Exec(query,
 		ticker.Ticker,
 		ticker.Name,
@@ -301,7 +301,7 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 		nullIfEmpty(ticker.SourceFeed),
 		ticker.Active,
 	)
-	
+
 	return err
 }
 
@@ -320,23 +320,23 @@ func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
 			active = $11,
 			updated_at = NOW()
 		WHERE symbol = $1`
-	
+
 	var marketCap *float64
 	if ticker.MarketCap > 0 {
 		marketCap = &ticker.MarketCap
 	}
-	
+
 	var employees *int
 	if ticker.TotalEmployees > 0 {
 		employees = &ticker.TotalEmployees
 	}
-	
+
 	var sharesOutstanding *int64
 	if ticker.WeightedSharesOutstanding > 0 {
 		so := int64(ticker.WeightedSharesOutstanding)
 		sharesOutstanding = &so
 	}
-	
+
 	_, err := db.Exec(query,
 		ticker.Ticker,
 		ticker.Name,
@@ -350,13 +350,13 @@ func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
 		sharesOutstanding,
 		ticker.Active,
 	)
-	
+
 	return err
 }
 
 func printSummary(db *sql.DB) {
 	log.Println("\n📊 Database Summary:")
-	
+
 	// Query counts by asset type
 	query := `
 		SELECT asset_type, COUNT(*) as count
@@ -364,14 +364,14 @@ func printSummary(db *sql.DB) {
 		WHERE asset_type IS NOT NULL
 		GROUP BY asset_type
 		ORDER BY count DESC`
-	
+
 	rows, err := db.Query(query)
 	if err != nil {
 		log.Printf("Error querying summary: %v", err)
 		return
 	}
 	defer rows.Close()
-	
+
 	total := 0
 	for rows.Next() {
 		var assetType string
@@ -382,7 +382,7 @@ func printSummary(db *sql.DB) {
 		log.Printf("  %s: %d", assetType, count)
 		total += count
 	}
-	
+
 	log.Printf("  Total: %d", total)
 }
 
@@ -405,7 +405,7 @@ func mapSICToSector(sicCode, sicDesc string) string {
 	if sicCode == "" {
 		return ""
 	}
-	
+
 	// Simple mapping based on SIC code ranges
 	code := sicCode[:2] // First 2 digits determine major group
 	switch code {

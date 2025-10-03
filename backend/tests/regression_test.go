@@ -20,10 +20,10 @@ func TestExistingFunctionality(t *testing.T) {
 	if os.Getenv("RUN_REGRESSION_TESTS") != "true" {
 		t.Skip("Skipping regression test. Set RUN_REGRESSION_TESTS=true to run")
 	}
-	
+
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
 	client := services.NewPolygonClient()
-	
+
 	t.Run("GetQuote", func(t *testing.T) {
 		// Test that GetQuote still works
 		quote, err := client.GetQuote("AAPL")
@@ -36,25 +36,25 @@ func TestExistingFunctionality(t *testing.T) {
 			t.Errorf("GetQuote regression failed: %v", err)
 			return
 		}
-		
+
 		// Verify essential fields
 		if quote.Symbol != "AAPL" {
 			t.Errorf("Quote symbol mismatch: got %s, want AAPL", quote.Symbol)
 		}
-		
+
 		if quote.Price.IsZero() {
 			t.Error("Quote price is zero")
 		}
 	})
-	
+
 	// Wait to avoid rate limiting
 	time.Sleep(15 * time.Second)
-	
+
 	t.Run("GetHistoricalData", func(t *testing.T) {
 		// Test historical data fetching
 		endDate := time.Now().Format("2006-01-02")
 		startDate := time.Now().AddDate(0, -1, 0).Format("2006-01-02")
-		
+
 		data, err := client.GetHistoricalData("AAPL", "day", startDate, endDate)
 		if err != nil {
 			if isRateLimitError(err) {
@@ -64,11 +64,11 @@ func TestExistingFunctionality(t *testing.T) {
 			t.Errorf("GetHistoricalData regression failed: %v", err)
 			return
 		}
-		
+
 		if len(data) == 0 {
 			t.Error("No historical data returned")
 		}
-		
+
 		// Verify data structure
 		if len(data) > 0 {
 			point := data[0]
@@ -80,10 +80,10 @@ func TestExistingFunctionality(t *testing.T) {
 			}
 		}
 	})
-	
+
 	// Wait to avoid rate limiting
 	time.Sleep(15 * time.Second)
-	
+
 	t.Run("GetTickerDetails", func(t *testing.T) {
 		// Test ticker details fetching
 		details, err := client.GetTickerDetails("AAPL")
@@ -95,19 +95,19 @@ func TestExistingFunctionality(t *testing.T) {
 			t.Errorf("GetTickerDetails regression failed: %v", err)
 			return
 		}
-		
+
 		if details.Results.Ticker != "AAPL" {
 			t.Errorf("Ticker mismatch: got %s, want AAPL", details.Results.Ticker)
 		}
-		
+
 		if details.Results.Name == "" {
 			t.Error("Ticker name is empty")
 		}
 	})
-	
+
 	// Wait to avoid rate limiting
 	time.Sleep(15 * time.Second)
-	
+
 	t.Run("GetFundamentals", func(t *testing.T) {
 		// Test fundamentals fetching
 		fundamentals, err := client.GetFundamentals("AAPL")
@@ -116,7 +116,7 @@ func TestExistingFunctionality(t *testing.T) {
 			t.Logf("GetFundamentals returned error (may be expected): %v", err)
 			return
 		}
-		
+
 		if fundamentals.Symbol != "AAPL" {
 			t.Errorf("Fundamentals symbol mismatch: got %s, want AAPL", fundamentals.Symbol)
 		}
@@ -128,7 +128,7 @@ func TestBackwardCompatibility(t *testing.T) {
 	if os.Getenv("RUN_REGRESSION_TESTS") != "true" {
 		t.Skip("Skipping regression test. Set RUN_REGRESSION_TESTS=true to run")
 	}
-	
+
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
 	_ = services.NewPolygonClient() // Create client but don't use it yet
 
@@ -141,12 +141,12 @@ func TestBackwardCompatibility(t *testing.T) {
 				Timeout: 30 * time.Second,
 			},
 		}
-		
+
 		if oldClient.APIKey != testAPIKey {
 			t.Error("Old client creation method failed")
 		}
 	})
-	
+
 	// Test that existing structs still unmarshal correctly
 	t.Run("StructCompatibility", func(t *testing.T) {
 		// Test PreviousCloseResponse
@@ -162,13 +162,13 @@ func TestBackwardCompatibility(t *testing.T) {
 				"t": 1234567890000
 			}]
 		}`
-		
+
 		var prevClose services.PreviousCloseResponse
 		err := json.Unmarshal([]byte(prevCloseJSON), &prevClose)
 		if err != nil {
 			t.Errorf("Failed to unmarshal PreviousCloseResponse: %v", err)
 		}
-		
+
 		// Test AggregatesResponse
 		aggJSON := `{
 			"status": "OK",
@@ -182,7 +182,7 @@ func TestBackwardCompatibility(t *testing.T) {
 				"t": 1234567890000
 			}]
 		}`
-		
+
 		var agg services.AggregatesResponse
 		err = json.Unmarshal([]byte(aggJSON), &agg)
 		if err != nil {
@@ -196,10 +196,10 @@ func TestNewFunctionality(t *testing.T) {
 	if os.Getenv("RUN_REGRESSION_TESTS") != "true" {
 		t.Skip("Skipping regression test. Set RUN_REGRESSION_TESTS=true to run")
 	}
-	
+
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
 	client := services.NewPolygonClient()
-	
+
 	t.Run("GetAllTickers_Stocks", func(t *testing.T) {
 		tickers, err := client.GetAllTickers("stocks", 3)
 		if err != nil {
@@ -210,11 +210,11 @@ func TestNewFunctionality(t *testing.T) {
 			t.Errorf("GetAllTickers failed: %v", err)
 			return
 		}
-		
+
 		if len(tickers) == 0 {
 			t.Error("No stock tickers returned")
 		}
-		
+
 		// Verify all are stocks
 		for _, ticker := range tickers {
 			if ticker.Type != "CS" {
@@ -222,10 +222,10 @@ func TestNewFunctionality(t *testing.T) {
 			}
 		}
 	})
-	
+
 	// Wait to avoid rate limiting
 	time.Sleep(15 * time.Second)
-	
+
 	t.Run("GetAllTickers_ETFs", func(t *testing.T) {
 		tickers, err := client.GetAllTickers("etf", 3)
 		if err != nil {
@@ -236,11 +236,11 @@ func TestNewFunctionality(t *testing.T) {
 			t.Errorf("GetAllTickers ETF failed: %v", err)
 			return
 		}
-		
+
 		if len(tickers) == 0 {
 			t.Error("No ETF tickers returned")
 		}
-		
+
 		// Verify all are ETFs
 		for _, ticker := range tickers {
 			if ticker.Type != "ETF" {
@@ -255,10 +255,10 @@ func TestDataIntegrity(t *testing.T) {
 	if os.Getenv("RUN_REGRESSION_TESTS") != "true" {
 		t.Skip("Skipping regression test. Set RUN_REGRESSION_TESTS=true to run")
 	}
-	
+
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
 	client := services.NewPolygonClient()
-	
+
 	// Test that popular tickers still work correctly
 	popularTickers := []struct {
 		symbol       string
@@ -272,7 +272,7 @@ func TestDataIntegrity(t *testing.T) {
 		{"QQQ", "ETF", true},
 		{"IWM", "ETF", true},
 	}
-	
+
 	for _, tc := range popularTickers {
 		t.Run(tc.symbol, func(t *testing.T) {
 			details, err := client.GetTickerDetails(tc.symbol)
@@ -284,25 +284,25 @@ func TestDataIntegrity(t *testing.T) {
 				t.Errorf("Failed to get details for %s: %v", tc.symbol, err)
 				return
 			}
-			
+
 			if details.Results.Type != tc.expectedType {
-				t.Errorf("%s: expected type %s, got %s", 
+				t.Errorf("%s: expected type %s, got %s",
 					tc.symbol, tc.expectedType, details.Results.Type)
 			}
-			
+
 			// Verify asset type mapping
 			assetType := services.MapAssetType(details.Results.Type)
 			expectedAssetType := "stock"
 			if tc.isETF {
 				expectedAssetType = "etf"
 			}
-			
+
 			if assetType != expectedAssetType {
 				t.Errorf("%s: expected asset type %s, got %s",
 					tc.symbol, expectedAssetType, assetType)
 			}
 		})
-		
+
 		// Wait between requests
 		time.Sleep(15 * time.Second)
 	}
@@ -313,7 +313,7 @@ func TestPerformanceRegression(t *testing.T) {
 	if os.Getenv("RUN_REGRESSION_TESTS") != "true" {
 		t.Skip("Skipping regression test. Set RUN_REGRESSION_TESTS=true to run")
 	}
-	
+
 	// Test that mapping functions are still fast
 	t.Run("MapExchangeCode_Performance", func(t *testing.T) {
 		start := time.Now()
@@ -321,20 +321,20 @@ func TestPerformanceRegression(t *testing.T) {
 			services.MapExchangeCode("XNAS")
 		}
 		duration := time.Since(start)
-		
+
 		// Should be very fast (< 1ms for 10000 calls)
 		if duration > time.Millisecond {
 			t.Errorf("MapExchangeCode too slow: %v for 10000 calls", duration)
 		}
 	})
-	
+
 	t.Run("MapAssetType_Performance", func(t *testing.T) {
 		start := time.Now()
 		for i := 0; i < 10000; i++ {
 			services.MapAssetType("ETF")
 		}
 		duration := time.Since(start)
-		
+
 		// Should be very fast (< 1ms for 10000 calls)
 		if duration > time.Millisecond {
 			t.Errorf("MapAssetType too slow: %v for 10000 calls", duration)
@@ -348,16 +348,16 @@ func isRateLimitError(err error) bool {
 		return false
 	}
 	errStr := err.Error()
-	return contains(errStr, "rate limit") || 
-		   contains(errStr, "429") || 
-		   contains(errStr, "exceeded")
+	return contains(errStr, "rate limit") ||
+		contains(errStr, "429") ||
+		contains(errStr, "exceeded")
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		(s == substr || len(s) > 0 && len(substr) > 0 && 
-		fmt.Sprintf("%s", s) != "" && fmt.Sprintf("%s", substr) != "" &&
-		http.DetectContentType([]byte(s)) == http.DetectContentType([]byte(substr)))
+	return len(s) >= len(substr) &&
+		(s == substr || len(s) > 0 && len(substr) > 0 &&
+			fmt.Sprintf("%s", s) != "" && fmt.Sprintf("%s", substr) != "" &&
+			http.DetectContentType([]byte(s)) == http.DetectContentType([]byte(substr)))
 }
 
 // TestModelCompatibility ensures models still work with new data
@@ -368,18 +368,18 @@ func TestModelCompatibility(t *testing.T) {
 		Name:     "Test Stock",
 		Exchange: "NYSE",
 	}
-	
+
 	// Should still be able to create basic stock
 	if stock.Symbol != "TEST" {
 		t.Error("Stock model basic fields broken")
 	}
-	
+
 	// Test StockPrice model
 	price := models.StockPrice{
 		Symbol: "TEST",
 		Price:  models.DecimalFromFloat(100.0),
 	}
-	
+
 	if price.Symbol != "TEST" {
 		t.Error("StockPrice model broken")
 	}
@@ -388,13 +388,13 @@ func TestModelCompatibility(t *testing.T) {
 // Benchmark comparison tests
 func BenchmarkOldVsNewFunctions(b *testing.B) {
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
-	
+
 	b.Run("MapExchangeCode", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			services.MapExchangeCode("XNAS")
 		}
 	})
-	
+
 	b.Run("MapAssetType", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			services.MapAssetType("ETF")

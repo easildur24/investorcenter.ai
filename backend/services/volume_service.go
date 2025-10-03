@@ -28,12 +28,12 @@ type VolumeData struct {
 
 // VolumeAggregates represents historical volume aggregates
 type VolumeAggregates struct {
-	Symbol        string  `json:"symbol"`
-	AvgVolume30D  int64   `json:"avgVolume30d"`
-	AvgVolume90D  int64   `json:"avgVolume90d"`
-	Week52High    float64 `json:"week52High"`
-	Week52Low     float64 `json:"week52Low"`
-	VolumeTrend   string  `json:"volumeTrend"` // "increasing", "decreasing", "stable"
+	Symbol       string  `json:"symbol"`
+	AvgVolume30D int64   `json:"avgVolume30d"`
+	AvgVolume90D int64   `json:"avgVolume90d"`
+	Week52High   float64 `json:"week52High"`
+	Week52Low    float64 `json:"week52Low"`
+	VolumeTrend  string  `json:"volumeTrend"` // "increasing", "decreasing", "stable"
 }
 
 // VolumeService handles volume data from Polygon API
