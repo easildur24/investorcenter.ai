@@ -27,44 +27,74 @@ func GetTicker(c *gin.Context) {
 	// Use service layer for database operations
 	stockService := services.NewStockService()
 	stock, err := stockService.GetStockBySymbol(c.Request.Context(), symbol)
+
+	var isCrypto bool
+
 	if err != nil {
-		log.Printf("Stock not found in database: %v", err)
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":  "Stock not found",
-			"symbol": symbol,
-		})
-		return
+		// Not in database - check if it's a crypto in Redis
+		log.Printf("Stock not found in database: %v, checking Redis for crypto", err)
+		cryptoData, cryptoExists := getCryptoFromRedis(symbol)
+
+		if cryptoExists {
+			// Build a stock object from Redis crypto data
+			stock = &models.Stock{
+				Symbol:    symbol,
+				Name:      cryptoData.Name,
+				AssetType: "crypto",
+				Exchange:  "CRYPTO",
+			}
+			isCrypto = true
+			log.Printf("Found crypto %s in Redis: %s", symbol, cryptoData.Name)
+		} else {
+			log.Printf("Symbol %s not found in database or Redis", symbol)
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":  "Ticker not found",
+				"symbol": symbol,
+			})
+			return
+		}
+	} else {
+		// Found in database - determine if crypto or stock
+		isCrypto = isCryptoAsset(stock.AssetType, symbol)
 	}
 
-	// Determine if this is crypto or stock
-	isCrypto := isCryptoAsset(stock.AssetType, symbol)
-
-	// Get real-time price data from Polygon
-	polygonClient := services.NewPolygonClient()
-	priceData, priceErr := polygonClient.GetQuote(symbol)
-
-	// Check if market is open (affects whether we show real-time data)
+	// Get real-time price data
+	var priceData *models.StockPrice
+	var priceErr error
 	var marketStatus string
 	var shouldUpdateRealtime bool
+	polygonClient := services.NewPolygonClient() // Initialize for both crypto and stock
 
 	if isCrypto {
+		// For crypto, get price from Redis
+		cryptoData, exists := getCryptoFromRedis(symbol)
+		if exists {
+			priceData = convertCryptoPriceToStockPrice(cryptoData)
+			log.Printf("✓ Got crypto price for %s from Redis: $%.2f", symbol, cryptoData.CurrentPrice)
+		} else {
+			log.Printf("Failed to get crypto price for %s from Redis", symbol)
+			priceData = generateMockPrice(symbol, stock)
+		}
 		marketStatus = "open" // Crypto markets are always open
 		shouldUpdateRealtime = true
 	} else {
+		// For stocks, get price from Polygon
+		priceData, priceErr = polygonClient.GetQuote(symbol)
+
 		isOpen := polygonClient.IsMarketOpen()
 		if isOpen {
 			marketStatus = "open"
 			shouldUpdateRealtime = true
 		} else {
 			marketStatus = "closed"
-			shouldUpdateRealtime = false // Still get last close data, but mark as stale
+			shouldUpdateRealtime = false
 		}
-	}
 
-	// If real-time data fails, generate mock data
-	if priceErr != nil {
-		log.Printf("Failed to get real-time price data for %s: %v", symbol, priceErr)
-		priceData = generateMockPrice(symbol, stock)
+		// If real-time data fails, generate mock data
+		if priceErr != nil {
+			log.Printf("Failed to get real-time price data for %s: %v", symbol, priceErr)
+			priceData = generateMockPrice(symbol, stock)
+		}
 	}
 
 	// Get fundamentals (try real data first, fallback to mock)
@@ -646,4 +676,65 @@ func GetAllCryptos(c *gin.Context) {
 			"source":     "redis",
 		},
 	})
+}
+
+// getCryptoFromRedis checks if a symbol exists in Redis crypto data
+func getCryptoFromRedis(symbol string) (*CryptoRealTimePrice, bool) {
+	ctx := context.Background()
+	priceKey := fmt.Sprintf("crypto:quote:%s", symbol)
+
+	priceData, err := redisClient.Get(ctx, priceKey).Result()
+	if err == redis.Nil {
+		// Not found in Redis
+		return nil, false
+	} else if err != nil {
+		// Redis error
+		log.Printf("Redis error checking crypto %s: %v", symbol, err)
+		return nil, false
+	}
+
+	// Parse the crypto data
+	var crypto CryptoRealTimePrice
+	if err := json.Unmarshal([]byte(priceData), &crypto); err != nil {
+		log.Printf("Failed to parse crypto data for %s: %v", symbol, err)
+		return nil, false
+	}
+
+	// Ensure aliases are set for compatibility
+	crypto.Price = crypto.CurrentPrice
+	crypto.Volume24h = crypto.TotalVolume
+	crypto.Change24h = crypto.PriceChange24h
+
+	return &crypto, true
+}
+
+// convertCryptoPriceToStockPrice converts CryptoRealTimePrice to StockPrice format
+func convertCryptoPriceToStockPrice(crypto *CryptoRealTimePrice) *models.StockPrice {
+	// Parse timestamp
+	timestamp := time.Now()
+	if crypto.LastUpdated != "" {
+		if parsedTime, err := time.Parse(time.RFC3339, crypto.LastUpdated); err == nil {
+			timestamp = parsedTime
+		}
+	}
+
+	// Current price
+	price := decimal.NewFromFloat(crypto.CurrentPrice)
+
+	// Calculate change and change percent
+	change := decimal.NewFromFloat(crypto.PriceChange24h)
+	changePercent := decimal.NewFromFloat(crypto.PriceChangePercentage24h)
+
+	return &models.StockPrice{
+		Symbol:        crypto.Symbol,
+		Price:         price,
+		Open:          price.Sub(change), // Approximate open = current - change
+		High:          decimal.NewFromFloat(crypto.High24h),
+		Low:           decimal.NewFromFloat(crypto.Low24h),
+		Close:         price,
+		Volume:        int64(crypto.TotalVolume),
+		Change:        change,
+		ChangePercent: changePercent,
+		Timestamp:     timestamp,
+	}
 }
