@@ -18,24 +18,30 @@ interface PageProps {
   };
 }
 
+// Force dynamic rendering and disable all caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // Fetch ticker data server-side to avoid client hydration issues
 async function getTickerData(symbol: string) {
   try {
     // Use internal backend service URL for server-side fetching
     const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}`, {
       cache: 'no-store', // Always fetch fresh data
+      next: { revalidate: 0 }, // Disable Next.js caching completely
     });
-    
+
     if (!response.ok) {
-      console.error(`Failed to fetch ticker data: ${response.status}`);
+      console.error(`❌ Failed to fetch ticker data: ${response.status} for ${symbol}`);
       return null;
     }
-    
+
     const result = await response.json();
-    console.log(`✅ Server-side fetched data for ${symbol}`);
+    const price = result.data?.summary?.price?.price;
+    console.log(`✅ Server-side fetched ${symbol}: $${price || 'no price'} (${result.data?.summary?.stock?.assetType || 'unknown'})`);
     return result.data;
   } catch (error) {
-    console.error('Error fetching ticker data server-side:', error);
+    console.error(`❌ Error fetching ticker data server-side for ${symbol}:`, error);
     return null;
   }
 }
@@ -45,18 +51,19 @@ async function getChartData(symbol: string, period: string = '1Y') {
   try {
     const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}/chart?period=${period}`, {
       cache: 'no-store',
+      next: { revalidate: 0 }, // Disable Next.js caching completely
     });
-    
+
     if (!response.ok) {
-      console.error(`Failed to fetch chart data: ${response.status}`);
+      console.error(`❌ Failed to fetch chart data: ${response.status} for ${symbol}`);
       return null;
     }
-    
+
     const result = await response.json();
-    console.log(`✅ Server-side fetched chart data for ${symbol}`);
+    console.log(`✅ Server-side fetched chart data for ${symbol} (${period})`);
     return result.data;
   } catch (error) {
-    console.error('Error fetching chart data server-side:', error);
+    console.error(`❌ Error fetching chart data server-side for ${symbol}:`, error);
     return null;
   }
 }
