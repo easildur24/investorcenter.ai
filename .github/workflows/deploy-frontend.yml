@@ -9,6 +9,7 @@ on:
       - 'components/**'
       - 'lib/**'
       - 'public/**'
+      - 'middleware.ts'
       - 'package.json'
       - 'package-lock.json'
       - 'next.config.js'
