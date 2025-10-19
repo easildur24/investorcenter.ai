@@ -100,9 +100,24 @@ func GetTicker(c *gin.Context) {
 	// Get fundamentals (try real data first, fallback to mock)
 	var fundamentals *models.Fundamentals
 	if !isCrypto { // Only get fundamentals for stocks, not crypto
-		fundamentals, err = polygonClient.GetFundamentals(symbol)
-		if err != nil {
-			log.Printf("Failed to get fundamentals for %s: %v", symbol, err)
+		// Use a timeout channel to avoid hanging
+		done := make(chan bool, 1)
+		var fundamentalsErr error
+		
+		go func() {
+			fundamentals, fundamentalsErr = polygonClient.GetFundamentals(symbol)
+			done <- true
+		}()
+		
+		// Wait for fundamentals or timeout after 3 seconds
+		select {
+		case <-done:
+			if fundamentalsErr != nil {
+				log.Printf("Failed to get fundamentals for %s: %v", symbol, fundamentalsErr)
+				fundamentals = generateMockFundamentals(symbol)
+			}
+		case <-time.After(3 * time.Second):
+			log.Printf("Fundamentals request timed out for %s, using mock data", symbol)
 			fundamentals = generateMockFundamentals(symbol)
 		}
 	} else {

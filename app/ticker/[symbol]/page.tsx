@@ -2,6 +2,7 @@ import { Suspense } from 'react';
 import TickerOverview from '@/components/ticker/TickerOverview';
 import HybridChart from '@/components/ticker/HybridChart';
 import TickerFundamentals from '@/components/ticker/TickerFundamentals';
+import TickerFundamentalsComprehensive from '@/components/ticker/TickerFundamentalsComprehensive';
 import TickerNews from '@/components/ticker/TickerNews';
 import TickerEarnings from '@/components/ticker/TickerEarnings';
 import TickerAnalysts from '@/components/ticker/TickerAnalysts';
@@ -137,10 +138,8 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
 
             {/* Right Column - Fundamentals and Analysis */}
             <div className="space-y-8">
-              {/* Key Metrics */}
-              <div className="bg-white rounded-lg shadow">
-                <TickerFundamentalsServer data={tickerData.summary} />
-              </div>
+              {/* Comprehensive Key Metrics */}
+              <TickerFundamentalsComprehensive symbol={symbol} />
 
               {/* Analyst Ratings */}
               <div className="bg-white rounded-lg shadow">
