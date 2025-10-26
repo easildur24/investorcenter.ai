@@ -1,0 +1,20 @@
+# Dockerfile for Reddit Data Collector
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install dependencies
+COPY scripts/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy collector script
+COPY scripts/apewisdom_collector.py /app/apewisdom_collector.py
+
+# Make script executable
+RUN chmod +x /app/apewisdom_collector.py
+
+# Set Python to run in unbuffered mode for better logging
+ENV PYTHONUNBUFFERED=1
+
+# Default command (can be overridden)
+CMD ["python3", "/app/apewisdom_collector.py", "--limit", "100", "--calculate-metrics", "--cleanup"]
