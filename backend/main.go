@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"investorcenter-api/auth"
 	"investorcenter-api/database"
 	"investorcenter-api/handlers"
 	"investorcenter-api/services"
@@ -73,6 +74,22 @@ func main() {
 
 		c.JSON(http.StatusOK, response)
 	})
+
+	// Start rate limiter cleanup
+	auth.StartRateLimiterCleanup(auth.GetLoginLimiter())
+
+	// Auth routes (public, no middleware)
+	authRoutes := r.Group("/api/v1/auth")
+	{
+		// Rate limit on login/signup to prevent brute force
+		authRoutes.POST("/signup", auth.RateLimitMiddleware(auth.GetLoginLimiter()), handlers.Signup)
+		authRoutes.POST("/login", auth.RateLimitMiddleware(auth.GetLoginLimiter()), handlers.Login)
+		authRoutes.POST("/refresh", handlers.RefreshToken)
+		authRoutes.POST("/logout", handlers.Logout)
+		authRoutes.GET("/verify-email", handlers.VerifyEmail)
+		authRoutes.POST("/forgot-password", handlers.ForgotPassword)
+		authRoutes.POST("/reset-password", handlers.ResetPassword)
+	}
 
 	// API v1 routes
 	v1 := r.Group("/api/v1")
@@ -157,7 +174,7 @@ func main() {
 			analytics.GET("/screener", runStockScreener)
 		}
 
-		// User endpoints
+		// User endpoints (deprecated - use /auth routes instead)
 		users := v1.Group("/users")
 		{
 			users.POST("/register", registerUser)
@@ -165,6 +182,16 @@ func main() {
 			users.GET("/profile", getUserProfile)
 			users.PUT("/profile", updateUserProfile)
 		}
+	}
+
+	// Protected user routes (require authentication)
+	userRoutes := v1.Group("/user")
+	userRoutes.Use(auth.AuthMiddleware())
+	{
+		userRoutes.GET("/me", handlers.GetCurrentUser)
+		userRoutes.PUT("/me", handlers.UpdateProfile)
+		userRoutes.PUT("/password", handlers.ChangePassword)
+		userRoutes.DELETE("/me", handlers.DeleteAccount)
 	}
 
 	// Start server
