@@ -69,10 +69,10 @@ func GetRedditHeatmap(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"data": heatmapData,
 		"meta": gin.H{
-			"days":        days,
-			"limit":       limit,
-			"count":       len(heatmapData),
-			"latestDate":  latestDate,
+			"days":       days,
+			"limit":      limit,
+			"count":      len(heatmapData),
+			"latestDate": latestDate,
 		},
 	})
 }

@@ -8,37 +8,37 @@ import (
 
 // RedditHeatmapData represents aggregated daily Reddit metrics
 type RedditHeatmapData struct {
-	TickerSymbol     string    `json:"tickerSymbol"`
-	Date             time.Time `json:"date"`
-	AvgRank          float64   `json:"avgRank"`
-	MinRank          int       `json:"minRank"`
-	MaxRank          int       `json:"maxRank"`
-	TotalMentions    int       `json:"totalMentions"`
-	TotalUpvotes     int       `json:"totalUpvotes"`
-	RankVolatility   float64   `json:"rankVolatility"`
-	TrendDirection   string    `json:"trendDirection"`
-	PopularityScore  float64   `json:"popularityScore"`
-	DataSource       string    `json:"dataSource"`
+	TickerSymbol    string    `json:"tickerSymbol"`
+	Date            time.Time `json:"date"`
+	AvgRank         float64   `json:"avgRank"`
+	MinRank         int       `json:"minRank"`
+	MaxRank         int       `json:"maxRank"`
+	TotalMentions   int       `json:"totalMentions"`
+	TotalUpvotes    int       `json:"totalUpvotes"`
+	RankVolatility  float64   `json:"rankVolatility"`
+	TrendDirection  string    `json:"trendDirection"`
+	PopularityScore float64   `json:"popularityScore"`
+	DataSource      string    `json:"dataSource"`
 }
 
 // RedditTickerHistory represents a ticker's Reddit history over time
 type RedditTickerHistory struct {
-	TickerSymbol string                  `json:"tickerSymbol"`
-	History      []RedditHeatmapData     `json:"history"`
-	Summary      RedditHistorySummary    `json:"summary"`
+	TickerSymbol string               `json:"tickerSymbol"`
+	History      []RedditHeatmapData  `json:"history"`
+	Summary      RedditHistorySummary `json:"summary"`
 }
 
 // RedditHistorySummary provides aggregate statistics
 type RedditHistorySummary struct {
-	DaysAppeared    int     `json:"daysAppeared"`
-	AvgPopularity   float64 `json:"avgPopularity"`
-	AvgRank         float64 `json:"avgRank"`
-	BestRank        int     `json:"bestRank"`
-	WorstRank       int     `json:"worstRank"`
-	TotalMentions   int     `json:"totalMentions"`
-	TotalUpvotes    int     `json:"totalUpvotes"`
-	PeriodStart     time.Time `json:"periodStart"`
-	PeriodEnd       time.Time `json:"periodEnd"`
+	DaysAppeared  int       `json:"daysAppeared"`
+	AvgPopularity float64   `json:"avgPopularity"`
+	AvgRank       float64   `json:"avgRank"`
+	BestRank      int       `json:"bestRank"`
+	WorstRank     int       `json:"worstRank"`
+	TotalMentions int       `json:"totalMentions"`
+	TotalUpvotes  int       `json:"totalUpvotes"`
+	PeriodStart   time.Time `json:"periodStart"`
+	PeriodEnd     time.Time `json:"periodEnd"`
 }
 
 // GetRedditHeatmap retrieves top trending tickers for the specified number of days
