@@ -1,0 +1,94 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: reddit-tables-migration
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      containers:
+      - name: migrate
+        image: postgres:15
+        command: ["/bin/sh"]
+        args:
+        - -c
+        - |
+          echo "Creating Reddit Heatmap tables..."
+          PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME <<'EOF'
+          -- Migration 008: Create Reddit Heatmap Tables
+          -- Purpose: Store Reddit ticker ranking data from ApeWisdom API for heatmap visualization
+          -- Date: 2025-10-21
+
+          -- Reddit ranking snapshots from ApeWisdom (hourly captures)
+          CREATE TABLE IF NOT EXISTS reddit_ticker_rankings (
+              id BIGSERIAL PRIMARY KEY,
+              ticker_symbol VARCHAR(10) NOT NULL,
+              rank INT NOT NULL,
+              mentions INT NOT NULL,
+              upvotes INT DEFAULT 0,
+              rank_24h_ago INT,
+              mentions_24h_ago INT,
+              snapshot_date DATE NOT NULL,
+              snapshot_time TIMESTAMP NOT NULL,
+              data_source VARCHAR(20) DEFAULT 'apewisdom',
+              created_at TIMESTAMP DEFAULT NOW(),
+              UNIQUE(ticker_symbol, snapshot_date, data_source),
+              FOREIGN KEY (ticker_symbol) REFERENCES tickers(symbol) ON DELETE CASCADE
+          );
+
+          -- Aggregated daily metrics for heatmap visualization
+          CREATE TABLE IF NOT EXISTS reddit_heatmap_daily (
+              id BIGSERIAL PRIMARY KEY,
+              ticker_symbol VARCHAR(10) NOT NULL,
+              date DATE NOT NULL,
+              avg_rank DECIMAL(5,2),              -- Average rank for the day
+              min_rank INT,                        -- Best (lowest) rank of the day
+              max_rank INT,                        -- Worst (highest) rank of the day
+              total_mentions INT,
+              total_upvotes INT,
+              rank_volatility DECIMAL(5,2),       -- Standard deviation of rank
+              trend_direction VARCHAR(10),         -- 'rising', 'falling', 'stable'
+              popularity_score DECIMAL(8,2),      -- Calculated score for heatmap intensity
+              data_source VARCHAR(20) DEFAULT 'apewisdom',
+              calculated_at TIMESTAMP DEFAULT NOW(),
+              UNIQUE(ticker_symbol, date, data_source),
+              FOREIGN KEY (ticker_symbol) REFERENCES tickers(symbol) ON DELETE CASCADE
+          );
+
+          -- Indexes for performance
+          CREATE INDEX IF NOT EXISTS idx_reddit_rankings_ticker_date
+              ON reddit_ticker_rankings(ticker_symbol, snapshot_date DESC);
+
+          CREATE INDEX IF NOT EXISTS idx_reddit_rankings_date
+              ON reddit_ticker_rankings(snapshot_date DESC, rank);
+
+          CREATE INDEX IF NOT EXISTS idx_reddit_heatmap_date
+              ON reddit_heatmap_daily(date DESC, popularity_score DESC);
+
+          CREATE INDEX IF NOT EXISTS idx_reddit_heatmap_ticker
+              ON reddit_heatmap_daily(ticker_symbol, date DESC);
+
+          -- Add comments for documentation
+          COMMENT ON TABLE reddit_ticker_rankings IS 'Hourly snapshots of ticker rankings from ApeWisdom API';
+          COMMENT ON TABLE reddit_heatmap_daily IS 'Daily aggregated metrics for heatmap visualization';
+          COMMENT ON COLUMN reddit_heatmap_daily.popularity_score IS 'Calculated as: (mentions * 0.4) + (upvotes/100 * 0.3) + ((101 - avg_rank) * 0.3)';
+          COMMENT ON COLUMN reddit_heatmap_daily.trend_direction IS 'rising: rank decreased by 5+, falling: rank increased by 5+, stable: otherwise';
+
+          EOF
+          echo "Reddit Heatmap tables created successfully!"
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+      restartPolicy: Never
