@@ -12,7 +12,7 @@ spec:
         args: ["100"]  # Process 100 companies for initial backfill
         env:
         - name: DB_HOST
-          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+          value: "postgres-service.investorcenter.svc.cluster.local"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
