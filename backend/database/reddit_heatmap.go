@@ -84,6 +84,7 @@ func GetRedditHeatmap(days int, limit int) ([]RedditHeatmapData, error) {
 		var data RedditHeatmapData
 		var periodStart, periodEnd time.Time
 		var daysAppeared int
+		var rankVolatility sql.NullFloat64
 
 		err := rows.Scan(
 			&data.TickerSymbol,
@@ -93,7 +94,7 @@ func GetRedditHeatmap(days int, limit int) ([]RedditHeatmapData, error) {
 			&data.MaxRank,
 			&data.TotalMentions,
 			&data.TotalUpvotes,
-			&data.RankVolatility,
+			&rankVolatility,
 			&daysAppeared,
 			&periodStart,
 			&periodEnd,
@@ -101,6 +102,13 @@ func GetRedditHeatmap(days int, limit int) ([]RedditHeatmapData, error) {
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan reddit heatmap row: %w", err)
+		}
+
+		// Handle NULL rank_volatility
+		if rankVolatility.Valid {
+			data.RankVolatility = rankVolatility.Float64
+		} else {
+			data.RankVolatility = 0
 		}
 
 		// Use the period end date as the representative date
@@ -149,6 +157,9 @@ func GetTickerRedditHistory(symbol string, days int) (*RedditTickerHistory, erro
 	var history []RedditHeatmapData
 	for rows.Next() {
 		var data RedditHeatmapData
+		var rankVolatility sql.NullFloat64
+		var trendDirection sql.NullString
+
 		err := rows.Scan(
 			&data.TickerSymbol,
 			&data.Date,
@@ -157,14 +168,29 @@ func GetTickerRedditHistory(symbol string, days int) (*RedditTickerHistory, erro
 			&data.MaxRank,
 			&data.TotalMentions,
 			&data.TotalUpvotes,
-			&data.RankVolatility,
-			&data.TrendDirection,
+			&rankVolatility,
+			&trendDirection,
 			&data.PopularityScore,
 			&data.DataSource,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan ticker reddit history row: %w", err)
 		}
+
+		// Handle NULL rank_volatility
+		if rankVolatility.Valid {
+			data.RankVolatility = rankVolatility.Float64
+		} else {
+			data.RankVolatility = 0
+		}
+
+		// Handle NULL trend_direction
+		if trendDirection.Valid {
+			data.TrendDirection = trendDirection.String
+		} else {
+			data.TrendDirection = "stable"
+		}
+
 		history = append(history, data)
 	}
 
