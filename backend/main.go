@@ -115,19 +115,27 @@ func main() {
 		}
 
 		// Fundamental metrics endpoints
-		fundamentals := v1.Group("/fundamentals")
-		{
-			fundamentals.GET("/", handlers.ListFundamentals)                        // List all symbols with metrics
-			fundamentals.GET("/:symbol", handlers.GetFundamentalsSimple)            // Get stored metrics for symbol (simple JSON)
-			fundamentals.POST("/:symbol/calculate", handlers.CalculateFundamentals) // Calculate and store metrics
-			fundamentals.POST("/:symbol/refresh", handlers.RefreshFundamentals)     // Refresh metrics
-		}
+		// TODO: Implement fundamental handlers
+		// fundamentals := v1.Group("/fundamentals")
+		// {
+		// 	fundamentals.GET("/", handlers.ListFundamentals)                        // List all symbols with metrics
+		// 	fundamentals.GET("/:symbol", handlers.GetFundamentalsSimple)            // Get stored metrics for symbol (simple JSON)
+		// 	fundamentals.POST("/:symbol/calculate", handlers.CalculateFundamentals) // Calculate and store metrics
+		// 	fundamentals.POST("/:symbol/refresh", handlers.RefreshFundamentals)     // Refresh metrics
+		// }
 		
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
 		{
 			volume.POST("/bulk", handlers.GetBulkVolume)  // Get volume for multiple symbols
 			volume.GET("/top", handlers.GetTopVolume)      // Get top stocks by volume
+		}
+
+		// Reddit popularity endpoints
+		reddit := v1.Group("/reddit")
+		{
+			reddit.GET("/heatmap", handlers.GetRedditHeatmap)               // Get trending tickers heatmap (days=7, top=50)
+			reddit.GET("/ticker/:symbol/history", handlers.GetTickerRedditHistory) // Get Reddit history for specific ticker (days=30)
 		}
 
 		// Portfolio endpoints
