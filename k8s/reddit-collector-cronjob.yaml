@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reddit-collector
+  namespace: investorcenter
+  labels:
+    app: reddit-collector
+    component: data-collection
+spec:
+  # Run daily at 2 AM UTC
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid  # Prevent overlapping jobs
+  jobTemplate:
+    spec:
+      backoffLimit: 2  # Retry up to 2 times on failure
+      template:
+        metadata:
+          labels:
+            app: reddit-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: reddit-collector
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-collector:latest
+            imagePullPolicy: Always
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "🚀 Starting Reddit data collection..."
+              python3 /app/apewisdom_collector.py \
+                --limit 100 \
+                --calculate-metrics \
+                --cleanup \
+                --retention-days 30
+              echo "✓ Collection complete!"
+            env:
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: DB_NAME
+              value: "investorcenter_db"
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+          imagePullSecrets:
+          - name: ecr-secret
+---
+# Manual job trigger (for testing)
+# kubectl create job --from=cronjob/reddit-collector reddit-collector-manual -n investorcenter
