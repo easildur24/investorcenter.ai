@@ -78,7 +78,7 @@ spec:
           echo "Reddit Heatmap tables created successfully!"
         env:
         - name: DB_HOST
-          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+          value: "postgres-service.investorcenter.svc.cluster.local"
         - name: DB_NAME
           value: "investorcenter_db"
         - name: DB_USER

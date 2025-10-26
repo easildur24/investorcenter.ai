@@ -38,7 +38,7 @@ spec:
               echo "✓ Collection complete!"
             env:
             - name: DB_HOST
-              value: "postgres-simple-service"
+              value: "postgres-service"
             - name: DB_PORT
               value: "5432"
             - name: DB_USER

@@ -1,3 +1,12 @@
+# ⚠️  WARNING: FOR TESTING/DEVELOPMENT ONLY
+# This deployment uses emptyDir storage - all data is lost when pod restarts
+# For production, use postgres-deployment.yaml which has persistent storage
+#
+# To use this for testing:
+#   kubectl apply -f postgres-simple.yaml
+#
+# Production apps should use DB_HOST=postgres-service (from postgres-deployment.yaml)
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
