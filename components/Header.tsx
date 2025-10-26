@@ -19,17 +19,23 @@ export default function Header() {
             
             {/* Navigation Links */}
             <div className="hidden md:ml-6 md:flex md:space-x-8">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Home
               </Link>
-              <Link 
-                href="/crypto" 
+              <Link
+                href="/crypto"
                 className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
               >
                 Crypto
+              </Link>
+              <Link
+                href="/reddit"
+                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Reddit Trends
               </Link>
             </div>
           </div>
