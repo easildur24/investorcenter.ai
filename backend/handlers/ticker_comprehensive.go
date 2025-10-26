@@ -103,12 +103,12 @@ func GetTicker(c *gin.Context) {
 		// Use a timeout channel to avoid hanging
 		done := make(chan bool, 1)
 		var fundamentalsErr error
-		
+
 		go func() {
 			fundamentals, fundamentalsErr = polygonClient.GetFundamentals(symbol)
 			done <- true
 		}()
-		
+
 		// Wait for fundamentals or timeout after 3 seconds
 		select {
 		case <-done:
@@ -273,10 +273,10 @@ func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {
 	basePrice := 50.0 + float64(asciiSum%450)
 
 	// Use deterministic values based on symbol
-	open := basePrice * 1.00                    // Base price as open
+	open := basePrice * 1.00                           // Base price as open
 	high := open * (1.0 + float64(len(symbol)%3)*0.01) // 0-2% higher
 	low := open * (1.0 - float64(asciiSum%3)*0.01)     // 0-2% lower
-	close := low + (high-low)*0.7               // 70% of the range
+	close := low + (high-low)*0.7                      // 70% of the range
 
 	change := decimal.NewFromFloat(close - open)
 	changePercent := decimal.Zero

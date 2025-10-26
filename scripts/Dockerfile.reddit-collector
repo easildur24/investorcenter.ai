@@ -3,9 +3,8 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY scripts/requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+# Install dependencies (only what's needed for reddit collector)
+RUN pip install --no-cache-dir requests psycopg2-binary
 
 # Copy collector script
 COPY scripts/apewisdom_collector.py /app/apewisdom_collector.py
