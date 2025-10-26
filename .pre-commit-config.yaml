@@ -40,7 +40,7 @@ repos:
     hooks:
       - id: pytest
         name: pytest
-        entry: bash -c 'PYTHONPATH=scripts venv/bin/python -m pytest scripts/us_tickers/tests/ -v'
+        entry: bash -c 'if [ -f venv/bin/python ]; then PYTHONPATH=scripts venv/bin/python -m pytest scripts/us_tickers/tests/ -v; else echo "⏭️ Skipping pytest (venv not found)"; fi'
         language: system
         pass_filenames: false
         always_run: true
