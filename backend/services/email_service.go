@@ -82,6 +82,8 @@ func (es *EmailService) sendEmail(to, subject, htmlBody string) error {
 		return nil
 	}
 
+	fmt.Printf("Attempting to send email to %s via %s:%s\n", to, es.smtpHost, es.smtpPort)
+
 	from := fmt.Sprintf("%s <%s>", es.fromName, es.fromEmail)
 	msg := []byte(fmt.Sprintf("From: %s\r\n"+
 		"To: %s\r\n"+
@@ -96,7 +98,10 @@ func (es *EmailService) sendEmail(to, subject, htmlBody string) error {
 
 	err := smtp.SendMail(addr, auth, es.fromEmail, []string{to}, msg)
 	if err != nil {
+		fmt.Printf("ERROR sending email to %s: %v\n", to, err)
 		return fmt.Errorf("failed to send email: %w", err)
 	}
+
+	fmt.Printf("Successfully sent email to %s\n", to)
 	return nil
 }
