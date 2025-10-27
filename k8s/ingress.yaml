@@ -26,9 +26,9 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: investorcenter-service
+            name: investorcenter-frontend-service
             port:
-              number: 80
+              number: 3000
   - host: www.investorcenter.ai
     http:
       paths:
@@ -43,6 +43,6 @@ spec:
         pathType: Prefix
         backend:
           service:
-            name: investorcenter-service
+            name: investorcenter-frontend-service
             port:
-              number: 80
+              number: 3000

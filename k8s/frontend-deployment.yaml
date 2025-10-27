@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: investorcenter-frontend
+  namespace: investorcenter
+  labels:
+    app: investorcenter-frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: investorcenter-frontend
+  template:
+    metadata:
+      labels:
+        app: investorcenter-frontend
+    spec:
+      containers:
+      - name: investorcenter-frontend
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/frontend:latest
+        ports:
+        - containerPort: 3000
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: NEXT_PUBLIC_API_URL
+          value: "https://investorcenter.ai/api/v1"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
