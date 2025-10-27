@@ -51,14 +51,14 @@ func (u *User) ToPublic() UserPublic {
 
 // Session represents a user session (refresh token)
 type Session struct {
-	ID               string     `json:"id" db:"id"`
-	UserID           string     `json:"user_id" db:"user_id"`
-	RefreshTokenHash string     `json:"-" db:"refresh_token_hash"`
-	ExpiresAt        time.Time  `json:"expires_at" db:"expires_at"`
-	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
-	LastUsedAt       time.Time  `json:"last_used_at" db:"last_used_at"`
-	UserAgent        *string    `json:"user_agent" db:"user_agent"`
-	IPAddress        *string    `json:"ip_address" db:"ip_address"`
+	ID               string    `json:"id" db:"id"`
+	UserID           string    `json:"user_id" db:"user_id"`
+	RefreshTokenHash string    `json:"-" db:"refresh_token_hash"`
+	ExpiresAt        time.Time `json:"expires_at" db:"expires_at"`
+	CreatedAt        time.Time `json:"created_at" db:"created_at"`
+	LastUsedAt       time.Time `json:"last_used_at" db:"last_used_at"`
+	UserAgent        *string   `json:"user_agent" db:"user_agent"`
+	IPAddress        *string   `json:"ip_address" db:"ip_address"`
 }
 
 // OAuthProvider represents a linked OAuth account
