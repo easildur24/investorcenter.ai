@@ -57,6 +57,40 @@ spec:
           value: "redis-service"
         - name: REDIS_PORT
           value: "6379"
+        # Authentication environment variables
+        - name: JWT_ACCESS_TOKEN_EXPIRY
+          value: "1h"
+        - name: JWT_REFRESH_TOKEN_EXPIRY
+          value: "168h"
+        - name: BCRYPT_COST
+          value: "12"
+        # Email SMTP configuration
+        - name: SMTP_HOST
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-host
+        - name: SMTP_PORT
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-port
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-username
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: smtp-password
+        - name: SMTP_FROM_EMAIL
+          value: "noreply@investorcenter.ai"
+        - name: SMTP_FROM_NAME
+          value: "InvestorCenter.ai"
+        - name: FRONTEND_URL
+          value: "https://investorcenter.ai"
         resources:
           requests:
             memory: "128Mi"
