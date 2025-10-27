@@ -195,3 +195,6 @@ bin/
 *.tar
 *.zip
 .next/
+backend/investorcenter-api
+backend/.env
+.env
