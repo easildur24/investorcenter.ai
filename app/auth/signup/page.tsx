@@ -45,7 +45,7 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="fullName">
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="fullName">
               Full Name
             </label>
             <input
@@ -53,13 +53,13 @@ export default function SignupPage() {
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               required
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="email">
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="email">
               Email
             </label>
             <input
@@ -67,13 +67,13 @@ export default function SignupPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               required
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2" htmlFor="password">
+            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="password">
               Password (min 8 characters)
             </label>
             <input
@@ -81,7 +81,7 @@ export default function SignupPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               required
               minLength={8}
             />
