@@ -175,6 +175,169 @@ The SEC EDGAR API returns JSON with company information and recent filings:
 - `primaryDocument`: Filename of main document (e.g., "aapl-20230930.htm")
 - `size`: File size in bytes
 
+---
+
+### SEC Filing Document Formats
+
+SEC filings are available in multiple formats:
+
+#### 1. **HTML Format** (Primary Format)
+Most 10-K and 10-Q filings are published as HTML documents (.htm files).
+
+**URL Pattern**:
+```
+https://www.sec.gov/Archives/edgar/data/{CIK}/{accession-no-hyphens}/{primary-document}
+Example: https://www.sec.gov/Archives/edgar/data/0000320193/000032019323000106/aapl-20230930.htm
+```
+
+**Content**: Full-text filing with sections, tables, and narrative content.
+
+#### 2. **PDF Format** (Optional)
+Some filings have PDF versions, though this is less common for 10-K/10-Q.
+
+**Our System**: Downloads both HTML and PDF when available.
+
+#### 3. **XBRL Format** (Structured Data - XML)
+All modern filings include XBRL (eXtensible Business Reporting Language) data as XML files.
+
+**What it contains**: Structured financial data (revenue, assets, liabilities, etc.) in machine-readable format.
+
+**Files included**:
+- `aapl-20230930_htm.xml` - XBRL instance document
+- `aapl-20230930_cal.xml` - Calculation linkbase
+- `aapl-20230930_def.xml` - Definition linkbase
+- `aapl-20230930_lab.xml` - Label linkbase
+- `aapl-20230930_pre.xml` - Presentation linkbase
+
+#### 4. **Company Facts API** (JSON Format) ✅
+
+**This is the JSON format for financial data!**
+
+The SEC provides a separate API that returns structured financial data in JSON format, extracted from all historical XBRL filings.
+
+**API Endpoint**:
+```
+https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json
+Example: https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json
+```
+
+**Response Format** (JSON):
+```json
+{
+  "cik": 320193,
+  "entityName": "Apple Inc.",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {
+        "label": "Revenue from Contract with Customer, Excluding Assessed Tax",
+        "description": "Amount of revenue...",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 383285000000,
+              "accn": "0000320193-23-000106",
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2023-11-03"
+            },
+            {
+              "end": "2022-09-24",
+              "val": 394328000000,
+              "accn": "0000320193-22-000108",
+              "fy": 2022,
+              "fp": "FY",
+              "form": "10-K",
+              "filed": "2022-10-28"
+            }
+          ]
+        }
+      },
+      "NetIncomeLoss": {
+        "label": "Net Income (Loss)",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 96995000000,
+              "accn": "0000320193-23-000106",
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K"
+            }
+          ]
+        }
+      },
+      "Assets": {
+        "label": "Assets",
+        "units": {
+          "USD": [
+            {
+              "end": "2023-09-30",
+              "val": 352583000000,
+              "accn": "0000320193-23-000106",
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K"
+            }
+          ]
+        }
+      },
+      "EarningsPerShareBasic": {
+        "label": "Earnings Per Share, Basic",
+        "units": {
+          "USD/shares": [
+            {
+              "end": "2023-09-30",
+              "val": 6.16,
+              "accn": "0000320193-23-000106",
+              "fy": 2023,
+              "fp": "FY",
+              "form": "10-K"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+```
+
+**Common Financial Metrics Available in JSON**:
+- **Income Statement**: Revenues, NetIncomeLoss, OperatingIncome, GrossProfit, EarningsPerShare
+- **Balance Sheet**: Assets, Liabilities, StockholdersEquity, Cash, CurrentAssets
+- **Cash Flow**: OperatingCashFlow, CapitalExpenditures, FreeCashFlow
+- **Ratios**: Can be calculated from the above metrics
+
+**Key Fields**:
+- `val`: The numeric value (e.g., 383285000000 = $383.3 billion)
+- `end`: Period end date (e.g., "2023-09-30")
+- `accn`: Accession number linking to the full filing
+- `fy`: Fiscal year
+- `fp`: Fiscal period ("FY" = Full Year, "Q1", "Q2", "Q3", "Q4")
+- `form`: Filing type ("10-K", "10-Q")
+- `filed`: Date filed with SEC
+
+---
+
+### Our System's Approach
+
+**Current Implementation**:
+1. ✅ Download metadata (JSON from submissions API)
+2. ✅ Download full filings (HTML/PDF to S3)
+3. ❌ Company Facts JSON (not yet implemented)
+4. ❌ Parse XBRL XML (not yet implemented)
+
+**Recommended for Financial Data**:
+Use the **Company Facts JSON API** instead of parsing HTML, because:
+- ✅ Already structured in JSON format
+- ✅ All historical periods in one response
+- ✅ Standardized field names (us-gaap taxonomy)
+- ✅ No HTML parsing needed
+- ✅ Includes data from all historical filings
+- ✅ Updated automatically when companies file
+
 **Key Features**:
 - Skips duplicate filings (checks `accession_number`)
 - Tracks companies by market cap (processes larger companies first)
