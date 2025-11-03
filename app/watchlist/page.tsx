@@ -85,44 +85,58 @@ export default function WatchListDashboard() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {watchLists.map((watchList) => (
-              <div key={watchList.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
-                <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-xl font-semibold">{watchList.name}</h3>
-                  {watchList.is_default && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>
+          <>
+            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">How to use Watch Lists</h3>
+              <ul className="text-blue-800 text-sm space-y-1">
+                <li>• Click <strong>View</strong> on a watch list to see details and manage tickers</li>
+                <li>• Click <strong>+ Add Ticker</strong> inside a watch list to add stocks/crypto</li>
+                <li>• Set target buy/sell prices to get visual alerts when targets are hit</li>
+                <li>• Prices update automatically every 30 seconds</li>
+              </ul>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {watchLists.map((watchList) => (
+                <div key={watchList.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                  <div className="flex justify-between items-start mb-3">
+                    <h3 className="text-xl font-semibold text-gray-900">{watchList.name}</h3>
+                    {watchList.is_default && (
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>
+                    )}
+                  </div>
+
+                  {watchList.description && (
+                    <p className="text-gray-600 text-sm mb-4">{watchList.description}</p>
                   )}
-                </div>
 
-                {watchList.description && (
-                  <p className="text-gray-600 text-sm mb-4">{watchList.description}</p>
-                )}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-gray-500">{watchList.item_count} tickers</span>
+                    <span className="text-xs text-gray-400">
+                      {new Date(watchList.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
 
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-500">{watchList.item_count} tickers</span>
-                  <span className="text-xs text-gray-400">
-                    {new Date(watchList.updated_at).toLocaleDateString()}
-                  </span>
+                  <div className="flex gap-2">
+                    <Link
+                      href={`/watchlist/${watchList.id}`}
+                      className="flex-1 text-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                    >
+                      View
+                    </Link>
+                    {!watchList.is_default && (
+                      <button
+                        onClick={() => handleDeleteWatchList(watchList.id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
-
-                <div className="flex gap-2">
-                  <Link
-                    href={`/watchlist/${watchList.id}`}
-                    className="flex-1 text-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                  >
-                    View
-                  </Link>
-                  <button
-                    onClick={() => handleDeleteWatchList(watchList.id)}
-                    className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          </>
         )}
 
         {showCreateModal && (

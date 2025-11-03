@@ -34,12 +34,12 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4">Add Ticker</h2>
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-4 text-gray-900">Add Ticker</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="symbol">
+            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="symbol">
               Symbol *
             </label>
             <input
@@ -47,42 +47,49 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
-              placeholder="e.g., AAPL, X:BTCUSD"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., AAPL, TSLA, X:BTCUSD"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Use X: prefix for crypto (e.g., X:BTCUSD, X:ETHUSD)
+            </p>
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="notes">
-              Notes
+            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="notes">
+              Notes (optional)
             </label>
             <textarea
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Add personal notes about this ticker..."
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               rows={2}
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="tags">
-              Tags (comma-separated)
+            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="tags">
+              Tags (optional)
             </label>
             <input
               id="tags"
               type="text"
               value={tags}
               onChange={(e) => setTags(e.target.value)}
-              placeholder="e.g., tech, growth"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g., tech, growth, dividend"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Separate multiple tags with commas
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2" htmlFor="targetBuy">
+              <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="targetBuy">
                 Target Buy Price
               </label>
               <input
@@ -91,11 +98,12 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                 step="0.01"
                 value={targetBuy}
                 onChange={(e) => setTargetBuy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2" htmlFor="targetSell">
+              <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="targetSell">
                 Target Sell Price
               </label>
               <input
@@ -104,16 +112,21 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                 step="0.01"
                 value={targetSell}
                 onChange={(e) => setTargetSell(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="0.00"
+                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               />
             </div>
+          </div>
+
+          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+            <strong>💡 Tip:</strong> Set target prices to get visual alerts when the price reaches your buy or sell targets.
           </div>
 
           <div className="flex gap-2 justify-end">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
             >
               Cancel
             </button>
@@ -122,7 +135,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               disabled={loading || !symbol}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {loading ? 'Adding...' : 'Add'}
+              {loading ? 'Adding...' : 'Add Ticker'}
             </button>
           </div>
         </form>
