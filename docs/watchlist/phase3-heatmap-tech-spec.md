@@ -15,11 +15,11 @@
 
 **Key Features:**
 - Interactive treemap visualization of watch list items
-- Customizable size metric (market cap, volume, avg volume)
-- Customizable color metric (price change %, volume change %)
+- Customizable size metric (market cap, volume, avg volume, **Reddit mentions**, **Reddit popularity**)
+- Customizable color metric (price change %, volume change %, **Reddit rank**, **Reddit trend**)
 - Time period selection (1D, 1W, 1M, 3M, 6M, YTD, 1Y)
 - Save/load custom heatmap configurations
-- Hover tooltips with detailed ticker info
+- Hover tooltips with detailed ticker info including Reddit data
 - Click to navigate to ticker detail page
 - Export heatmap as PNG image
 - Full-screen heatmap mode
@@ -40,8 +40,10 @@ CREATE TABLE heatmap_configs (
     name VARCHAR(255) NOT NULL,
 
     -- Metric settings
-    size_metric VARCHAR(50) DEFAULT 'market_cap', -- 'market_cap', 'volume', 'avg_volume', 'reddit_mentions'
-    color_metric VARCHAR(50) DEFAULT 'price_change_pct', -- 'price_change_pct', 'volume_change_pct', 'reddit_sentiment'
+    size_metric VARCHAR(50) DEFAULT 'market_cap',
+        -- Options: 'market_cap', 'volume', 'avg_volume', 'reddit_mentions', 'reddit_popularity'
+    color_metric VARCHAR(50) DEFAULT 'price_change_pct',
+        -- Options: 'price_change_pct', 'volume_change_pct', 'reddit_rank', 'reddit_trend'
     time_period VARCHAR(10) DEFAULT '1D', -- '1D', '1W', '1M', '3M', '6M', 'YTD', '1Y', '5Y'
 
     -- Visual settings
@@ -169,6 +171,13 @@ type HeatmapTile struct {
 	PrevClose       *float64 `json:"prev_close,omitempty"`
 	Exchange        string   `json:"exchange"`
 
+	// Reddit data (from reddit_heatmap_daily table)
+	RedditRank         *int     `json:"reddit_rank,omitempty"`          // Current Reddit rank (1 = #1 trending)
+	RedditMentions     *int     `json:"reddit_mentions,omitempty"`      // Total mentions
+	RedditPopularity   *float64 `json:"reddit_popularity,omitempty"`    // Popularity score (0-100)
+	RedditTrend        *string  `json:"reddit_trend,omitempty"`         // "rising", "falling", "stable"
+	RedditRankChange   *int     `json:"reddit_rank_change,omitempty"`   // Rank change vs 24h ago
+
 	// User's custom data from watch list
 	Notes           *string  `json:"notes,omitempty"`
 	Tags            []string `json:"tags,omitempty"`
@@ -207,8 +216,8 @@ type HeatmapData struct {
 type CreateHeatmapConfigRequest struct {
 	WatchListID      string                 `json:"watch_list_id" binding:"required"`
 	Name             string                 `json:"name" binding:"required,min=1,max=255"`
-	SizeMetric       string                 `json:"size_metric" binding:"required,oneof=market_cap volume avg_volume reddit_mentions"`
-	ColorMetric      string                 `json:"color_metric" binding:"required,oneof=price_change_pct volume_change_pct reddit_sentiment"`
+	SizeMetric       string                 `json:"size_metric" binding:"required,oneof=market_cap volume avg_volume reddit_mentions reddit_popularity"`
+	ColorMetric      string                 `json:"color_metric" binding:"required,oneof=price_change_pct volume_change_pct reddit_rank reddit_trend"`
 	TimePeriod       string                 `json:"time_period" binding:"required,oneof=1D 1W 1M 3M 6M YTD 1Y 5Y"`
 	ColorScheme      string                 `json:"color_scheme" binding:"oneof=red_green heatmap blue_red custom"`
 	LabelDisplay     string                 `json:"label_display" binding:"oneof=symbol symbol_change full"`
@@ -221,8 +230,8 @@ type CreateHeatmapConfigRequest struct {
 // UpdateHeatmapConfigRequest for updating existing config
 type UpdateHeatmapConfigRequest struct {
 	Name             string                 `json:"name" binding:"min=1,max=255"`
-	SizeMetric       string                 `json:"size_metric" binding:"oneof=market_cap volume avg_volume reddit_mentions"`
-	ColorMetric      string                 `json:"color_metric" binding:"oneof=price_change_pct volume_change_pct reddit_sentiment"`
+	SizeMetric       string                 `json:"size_metric" binding:"oneof=market_cap volume avg_volume reddit_mentions reddit_popularity"`
+	ColorMetric      string                 `json:"color_metric" binding:"oneof=price_change_pct volume_change_pct reddit_rank reddit_trend"`
 	TimePeriod       string                 `json:"time_period" binding:"oneof=1D 1W 1M 3M 6M YTD 1Y 5Y"`
 	ColorScheme      string                 `json:"color_scheme" binding:"oneof=red_green heatmap blue_red custom"`
 	LabelDisplay     string                 `json:"label_display" binding:"oneof=symbol symbol_change full"`
@@ -557,6 +566,120 @@ func DeleteHeatmapConfig(configID string, userID string) error {
 }
 ```
 
+### 2B. Reddit Data Integration
+
+**Important:** To support Reddit metrics in heatmaps, the `GetWatchListItemsWithData()` function (from Phase 2) must be updated to LEFT JOIN with the `reddit_heatmap_daily` table.
+
+**File:** `backend/database/watchlist.go` (Phase 2 - to be updated)
+
+```go
+// GetWatchListItemsWithData retrieves watch list items with full ticker data INCLUDING Reddit metrics
+func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithData, error) {
+	query := `
+		SELECT
+			wli.id,
+			wli.watch_list_id,
+			wli.ticker_symbol,
+			wli.notes,
+			wli.tags,
+			wli.target_buy_price,
+			wli.target_sell_price,
+			wli.position_opened_at,
+			wli.added_at,
+			t.name,
+			t.asset_type,
+			t.exchange,
+			t.market_cap,
+			-- Reddit data from most recent date
+			rhd.avg_rank as reddit_rank,
+			rhd.total_mentions as reddit_mentions,
+			rhd.popularity_score as reddit_popularity,
+			rhd.trend_direction as reddit_trend,
+			(rhd.avg_rank - rhd.rank_24h_ago) as reddit_rank_change
+		FROM watch_list_items wli
+		INNER JOIN tickers t ON wli.ticker_symbol = t.symbol
+		LEFT JOIN LATERAL (
+			-- Get most recent Reddit data for this ticker
+			SELECT avg_rank, total_mentions, popularity_score, trend_direction, rank_24h_ago
+			FROM reddit_heatmap_daily
+			WHERE ticker_symbol = wli.ticker_symbol
+			ORDER BY date DESC
+			LIMIT 1
+		) rhd ON true
+		WHERE wli.watch_list_id = $1
+		ORDER BY wli.added_at DESC
+	`
+
+	rows, err := DB.Query(query, watchListID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get watch list items: %w", err)
+	}
+	defer rows.Close()
+
+	var items []models.WatchListItemWithData
+	for rows.Next() {
+		var item models.WatchListItemWithData
+
+		// Use sql.Null* types for optional Reddit fields
+		var redditRank sql.NullInt32
+		var redditMentions sql.NullInt32
+		var redditPopularity sql.NullFloat64
+		var redditTrend sql.NullString
+		var redditRankChange sql.NullInt32
+
+		err := rows.Scan(
+			&item.ID,
+			&item.WatchListID,
+			&item.TickerSymbol,
+			&item.Notes,
+			&item.Tags,
+			&item.TargetBuyPrice,
+			&item.TargetSellPrice,
+			&item.PositionOpenedAt,
+			&item.AddedAt,
+			&item.Name,
+			&item.AssetType,
+			&item.Exchange,
+			&item.MarketCap,
+			&redditRank,
+			&redditMentions,
+			&redditPopularity,
+			&redditTrend,
+			&redditRankChange,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan watch list item: %w", err)
+		}
+
+		// Convert NULL-safe types to pointers
+		if redditRank.Valid {
+			rank := int(redditRank.Int32)
+			item.RedditRank = &rank
+		}
+		if redditMentions.Valid {
+			mentions := int(redditMentions.Int32)
+			item.RedditMentions = &mentions
+		}
+		if redditPopularity.Valid {
+			item.RedditPopularity = &redditPopularity.Float64
+		}
+		if redditTrend.Valid {
+			item.RedditTrend = &redditTrend.String
+		}
+		if redditRankChange.Valid {
+			change := int(redditRankChange.Int32)
+			item.RedditRankChange = &change
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+```
+
+**Note:** The `models.WatchListItemWithData` struct (defined in Phase 2) should be extended to include the Reddit fields shown in the `HeatmapTile` struct above.
+
 ### 3. Service Layer
 
 **File:** `backend/services/heatmap_service.go`
@@ -720,6 +843,16 @@ func (s *HeatmapService) calculateSizeValue(
 		if item.Volume != nil {
 			return float64(*item.Volume), s.formatVolume(*item.Volume)
 		}
+	case "reddit_mentions":
+		// Fetch from reddit_heatmap_daily table
+		if item.RedditMentions != nil {
+			return float64(*item.RedditMentions), fmt.Sprintf("%d mentions", *item.RedditMentions)
+		}
+	case "reddit_popularity":
+		// Use Reddit popularity score (0-100)
+		if item.RedditPopularity != nil {
+			return *item.RedditPopularity, fmt.Sprintf("%.0f score", *item.RedditPopularity)
+		}
 	}
 	// Default to market cap 1B if no data
 	return 1000000000, "N/A"
@@ -740,6 +873,25 @@ func (s *HeatmapService) calculateColorValue(
 		// Would need historical volume data
 		// For now return 0
 		return 0, "N/A"
+	case "reddit_rank":
+		// Lower rank = better (1 = #1 trending)
+		// Invert for color scale: display as (101 - rank) so higher is greener
+		if item.RedditRank != nil {
+			invertedRank := 101 - *item.RedditRank
+			return float64(invertedRank), fmt.Sprintf("#%d", *item.RedditRank)
+		}
+	case "reddit_trend":
+		// Map trend to numeric value: rising = +10, stable = 0, falling = -10
+		if item.RedditTrend != nil {
+			switch *item.RedditTrend {
+			case "rising":
+				return 10.0, "↑ Rising"
+			case "falling":
+				return -10.0, "↓ Falling"
+			case "stable":
+				return 0.0, "→ Stable"
+			}
+		}
 	}
 	return 0, "N/A"
 }
@@ -1050,8 +1202,8 @@ export interface HeatmapConfig {
   user_id: string;
   watch_list_id: string;
   name: string;
-  size_metric: 'market_cap' | 'volume' | 'avg_volume' | 'reddit_mentions';
-  color_metric: 'price_change_pct' | 'volume_change_pct' | 'reddit_sentiment';
+  size_metric: 'market_cap' | 'volume' | 'avg_volume' | 'reddit_mentions' | 'reddit_popularity';
+  color_metric: 'price_change_pct' | 'volume_change_pct' | 'reddit_rank' | 'reddit_trend';
   time_period: '1D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y';
   color_scheme: 'red_green' | 'heatmap' | 'blue_red' | 'custom';
   label_display: 'symbol' | 'symbol_change' | 'full';
@@ -1078,6 +1230,13 @@ export interface HeatmapTile {
   market_cap?: number;
   prev_close?: number;
   exchange: string;
+  // Reddit data
+  reddit_rank?: number;          // Current Reddit rank (1 = #1 trending)
+  reddit_mentions?: number;      // Total mentions
+  reddit_popularity?: number;    // Popularity score (0-100)
+  reddit_trend?: 'rising' | 'falling' | 'stable';  // Trend direction
+  reddit_rank_change?: number;   // Rank change vs 24h ago
+  // User watchlist data
   notes?: string;
   tags: string[];
   target_buy_price?: number;
@@ -1311,7 +1470,36 @@ export default function WatchListHeatmap({
           <div class="font-medium">${formatVolume(tile.volume)}</div>
         ` : ''}
 
+        ${tile.reddit_rank ? `
+          <div class="col-span-2 border-t border-gray-200 mt-1 pt-1"></div>
+          <div class="text-gray-600">Reddit Rank:</div>
+          <div class="font-medium text-purple-600">#${tile.reddit_rank}</div>
+        ` : ''}
+
+        ${tile.reddit_mentions ? `
+          <div class="text-gray-600">Reddit Mentions:</div>
+          <div class="font-medium">${tile.reddit_mentions.toLocaleString()}</div>
+        ` : ''}
+
+        ${tile.reddit_popularity ? `
+          <div class="text-gray-600">Reddit Score:</div>
+          <div class="font-medium">${tile.reddit_popularity.toFixed(1)}/100</div>
+        ` : ''}
+
+        ${tile.reddit_trend ? `
+          <div class="text-gray-600">Reddit Trend:</div>
+          <div class="font-medium ${
+            tile.reddit_trend === 'rising' ? 'text-green-600' :
+            tile.reddit_trend === 'falling' ? 'text-red-600' :
+            'text-gray-600'
+          }">
+            ${tile.reddit_trend === 'rising' ? '↑' : tile.reddit_trend === 'falling' ? '↓' : '→'} ${tile.reddit_trend}
+            ${tile.reddit_rank_change ? ` (${tile.reddit_rank_change > 0 ? '+' : ''}${tile.reddit_rank_change})` : ''}
+          </div>
+        ` : ''}
+
         ${tile.target_buy_price ? `
+          <div class="col-span-2 border-t border-gray-200 mt-1 pt-1"></div>
           <div class="text-gray-600">Target Buy:</div>
           <div class="font-medium text-blue-600">$${tile.target_buy_price.toFixed(2)}</div>
         ` : ''}
@@ -1448,6 +1636,8 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
             <option value="market_cap">Market Cap</option>
             <option value="volume">Volume</option>
             <option value="avg_volume">Avg Volume</option>
+            <option value="reddit_mentions">Reddit Mentions</option>
+            <option value="reddit_popularity">Reddit Popularity</option>
           </select>
         </div>
 
@@ -1463,6 +1653,8 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           >
             <option value="price_change_pct">Price Change %</option>
             <option value="volume_change_pct">Volume Change %</option>
+            <option value="reddit_rank">Reddit Rank</option>
+            <option value="reddit_trend">Reddit Trend</option>
           </select>
         </div>
 
