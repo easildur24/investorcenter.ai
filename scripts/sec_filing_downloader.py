@@ -146,15 +146,25 @@ class SECFilingDownloader:
                     DO $$
                     BEGIN
                         IF NOT EXISTS (
-                            SELECT 1 FROM information_schema.columns 
-                            WHERE table_name = 'sec_filings' 
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'sec_filings'
                             AND column_name = 's3_key'
                         ) THEN
-                            ALTER TABLE sec_filings 
+                            ALTER TABLE sec_filings
                             ADD COLUMN s3_key VARCHAR(500),
                             ADD COLUMN document_url VARCHAR(500),
                             ADD COLUMN download_date TIMESTAMP WITH TIME ZONE,
                             ADD COLUMN file_size_bytes BIGINT;
+                        END IF;
+
+                        IF NOT EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'sec_filings'
+                            AND column_name = 'json_s3_key'
+                        ) THEN
+                            ALTER TABLE sec_filings
+                            ADD COLUMN json_s3_key VARCHAR(500),
+                            ADD COLUMN json_download_date TIMESTAMP WITH TIME ZONE;
                         END IF;
                     END $$;
                 """)
@@ -210,12 +220,28 @@ class SECFilingDownloader:
         # Remove hyphens from accession number
         accession_clean = accession_number.replace('-', '')
         cik_padded = cik.zfill(10)
-        
+
         # PDF files typically follow this pattern
         pdf_filename = f"{accession_clean}.pdf"
         pdf_url = f"{self.edgar_base_url}/{cik_padded}/{accession_clean}/{pdf_filename}"
-        
+
         return pdf_url
+
+    def get_company_facts_json(self, cik: str) -> Optional[bytes]:
+        """Fetch Company Facts JSON data from SEC API"""
+        try:
+            cik_padded = cik.zfill(10)
+            url = f"https://data.sec.gov/api/xbrl/companyfacts/CIK{cik_padded}.json"
+
+            self.rate_limit()
+            response = requests.get(url, headers=self.headers, timeout=30)
+            response.raise_for_status()
+
+            return response.content
+
+        except requests.exceptions.RequestException as e:
+            logger.debug(f"Company Facts JSON not available for CIK {cik}: {e}")
+            return None
     
     def construct_s3_key(self, symbol: str, filing_type: str, filing_date: str, 
                         accession_number: str, file_extension: str = 'html') -> str:
@@ -297,24 +323,37 @@ class SECFilingDownloader:
             logger.error(f"Failed to upload to S3: {e}")
             return False
     
-    def update_filing_record(self, filing_id: int, s3_key: str, document_url: str, 
-                           file_size: int) -> bool:
+    def update_filing_record(self, filing_id: int, s3_key: str, document_url: str,
+                           file_size: int, json_s3_key: str = None) -> bool:
         """Update database record with S3 location"""
         try:
             with self.conn.cursor() as cursor:
-                cursor.execute("""
-                    UPDATE sec_filings
-                    SET 
-                        s3_key = %s,
-                        document_url = %s,
-                        download_date = CURRENT_TIMESTAMP,
-                        file_size_bytes = %s
-                    WHERE id = %s
-                """, (s3_key, document_url, file_size, filing_id))
-                
+                if json_s3_key:
+                    cursor.execute("""
+                        UPDATE sec_filings
+                        SET
+                            s3_key = %s,
+                            document_url = %s,
+                            download_date = CURRENT_TIMESTAMP,
+                            file_size_bytes = %s,
+                            json_s3_key = %s,
+                            json_download_date = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (s3_key, document_url, file_size, json_s3_key, filing_id))
+                else:
+                    cursor.execute("""
+                        UPDATE sec_filings
+                        SET
+                            s3_key = %s,
+                            document_url = %s,
+                            download_date = CURRENT_TIMESTAMP,
+                            file_size_bytes = %s
+                        WHERE id = %s
+                    """, (s3_key, document_url, file_size, filing_id))
+
                 self.conn.commit()
                 return True
-                
+
         except Exception as e:
             logger.error(f"Failed to update filing record: {e}")
             self.conn.rollback()
@@ -393,16 +432,39 @@ class SECFilingDownloader:
                     logger.debug(f"  No PDF version available (status: {pdf_response.status_code})")
             except Exception as pdf_error:
                 logger.debug(f"  PDF not available: {pdf_error}")
-            
+
+            # 3. Download Company Facts JSON (one per company, not per filing)
+            # Store with the company symbol for easy retrieval
+            try:
+                json_content = self.get_company_facts_json(filing['cik'])
+                if json_content:
+                    self.stats['downloaded'] += 1
+
+                    # Construct S3 key for JSON (company-level, not filing-specific)
+                    json_s3_key = f"company-facts/{symbol}/companyfacts_{filing['cik']}.json"
+
+                    # Upload JSON to S3
+                    if self.upload_to_s3(json_content, json_s3_key, filing):
+                        self.stats['uploaded'] += 1
+                        files_uploaded.append(('json', json_s3_key, len(json_content)))
+                        logger.info(f"  ✓ Uploaded Company Facts JSON ({len(json_content):,} bytes)")
+            except Exception as json_error:
+                logger.debug(f"  Company Facts JSON not available: {json_error}")
+
             # Update database record with primary file info
             if files_uploaded:
                 # Use the HTML version as primary
                 primary_file = next((f for f in files_uploaded if f[0] == 'html'), files_uploaded[0])
+                # Get JSON S3 key if available
+                json_file = next((f for f in files_uploaded if f[0] == 'json'), None)
+                json_s3_key = json_file[1] if json_file else None
+
                 self.update_filing_record(
                     filing['id'],
                     primary_file[1],  # s3_key
                     html_url,
-                    primary_file[2]   # file_size
+                    primary_file[2],  # file_size
+                    json_s3_key       # json_s3_key
                 )
                 
                 # If we have both HTML and PDF, note it in the log

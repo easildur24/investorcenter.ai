@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: heatmap-migration
+  namespace: investorcenter
+spec:
+  template:
+    spec:
+      containers:
+      - name: migration
+        image: postgres:15-alpine
+        command:
+          - sh
+          - -c
+          - |
+            cat <<'EOF' | psql postgresql://$DB_USER:$DB_PASSWORD@$DB_HOST:$DB_PORT/$DB_NAME
+            -- Heatmap Configurations table
+            CREATE TABLE IF NOT EXISTS heatmap_configs (
+                id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+                user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+                watch_list_id UUID REFERENCES watch_lists(id) ON DELETE CASCADE,
+                name VARCHAR(255) NOT NULL,
+                size_metric VARCHAR(50) DEFAULT 'market_cap',
+                color_metric VARCHAR(50) DEFAULT 'price_change_pct',
+                time_period VARCHAR(10) DEFAULT '1D',
+                color_scheme VARCHAR(50) DEFAULT 'red_green',
+                label_display VARCHAR(50) DEFAULT 'symbol_change',
+                layout_type VARCHAR(50) DEFAULT 'treemap',
+                filters_json JSONB DEFAULT '{}'::jsonb,
+                color_gradient_json JSONB,
+                is_default BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_heatmap_configs_user_id ON heatmap_configs(user_id);
+            CREATE INDEX IF NOT EXISTS idx_heatmap_configs_watch_list_id ON heatmap_configs(watch_list_id);
+            CREATE INDEX IF NOT EXISTS idx_heatmap_configs_user_watch_list ON heatmap_configs(user_id, watch_list_id);
+
+            CREATE OR REPLACE FUNCTION update_heatmap_configs_updated_at()
+            RETURNS TRIGGER AS \$\$
+            BEGIN
+                NEW.updated_at = CURRENT_TIMESTAMP;
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            DROP TRIGGER IF EXISTS update_heatmap_configs_updated_at ON heatmap_configs;
+            CREATE TRIGGER update_heatmap_configs_updated_at
+            BEFORE UPDATE ON heatmap_configs
+            FOR EACH ROW EXECUTE FUNCTION update_heatmap_configs_updated_at();
+
+            CREATE OR REPLACE FUNCTION create_default_heatmap_config()
+            RETURNS TRIGGER AS \$\$
+            BEGIN
+                INSERT INTO heatmap_configs (
+                    user_id,
+                    watch_list_id,
+                    name,
+                    is_default
+                )
+                VALUES (
+                    NEW.user_id,
+                    NEW.id,
+                    'Default Heatmap',
+                    TRUE
+                );
+                RETURN NEW;
+            END;
+            \$\$ LANGUAGE plpgsql;
+
+            DROP TRIGGER IF EXISTS auto_create_default_heatmap_config ON watch_lists;
+            CREATE TRIGGER auto_create_default_heatmap_config
+            AFTER INSERT ON watch_lists
+            FOR EACH ROW EXECUTE FUNCTION create_default_heatmap_config();
+
+            SELECT 'Migration completed successfully' as status;
+            EOF
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+      restartPolicy: Never
+  backoffLimit: 3

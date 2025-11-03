@@ -48,7 +48,7 @@ spec:
       # Then run downloader
       containers:
       - name: sec-backfill-downloader
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v1
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v2
         imagePullPolicy: Always
         env:
         - name: DB_HOST
