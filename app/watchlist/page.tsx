@@ -15,8 +15,11 @@ export default function WatchListDashboard() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    loadWatchLists();
-  }, []);
+    // Only load watch lists if user is authenticated
+    if (user) {
+      loadWatchLists();
+    }
+  }, [user]);
 
   const loadWatchLists = async () => {
     try {
