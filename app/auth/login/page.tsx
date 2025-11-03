@@ -1,19 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 export default function LoginPage() {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  useEffect(() => {
+    // Check if user was redirected due to session expiration
+    if (searchParams.get('session_expired') === 'true') {
+      setSessionExpired(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSessionExpired(false); // Clear session expired message on new login attempt
     setLoading(true);
 
     try {
@@ -28,7 +39,13 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Login to InvestorCenter.ai</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to InvestorCenter.ai</h1>
+
+        {sessionExpired && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-400 text-yellow-800 rounded">
+            <strong>Session Expired:</strong> Your session has expired. Please log in again to continue.
+          </div>
+        )}
 
         {error && (
           <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
