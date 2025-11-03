@@ -105,6 +105,8 @@ coverage.xml
 .npm
 .eslintcache
 .stylelintcache
+tsconfig.tsbuildinfo
+*.tsbuildinfo
 
 # Database
 *.db
