@@ -110,9 +110,9 @@ export default function Home() {
                 <div className="absolute flex items-center justify-center h-12 w-12 rounded-md bg-primary-500 text-white">
                   <CurrencyDollarIcon className="h-6 w-6" />
                 </div>
-                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Portfolio Tracking</p>
+                <p className="ml-16 text-lg leading-6 font-medium text-gray-900">Watch Lists</p>
                 <p className="mt-2 ml-16 text-base text-gray-500">
-                  Track your investments, analyze performance, and get personalized insights.
+                  Create custom watch lists, track real-time prices, and set target price alerts for your favorite stocks and crypto.
                 </p>
               </div>
             </div>
