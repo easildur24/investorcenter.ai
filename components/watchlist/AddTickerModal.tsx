@@ -1,6 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api';
+
+interface SearchResult {
+  symbol: string;
+  name: string;
+  type: string;
+  exchange: string;
+}
 
 interface AddTickerModalProps {
   onClose: () => void;
@@ -14,6 +22,40 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
   const [targetBuy, setTargetBuy] = useState('');
   const [targetSell, setTargetSell] = useState('');
   const [loading, setLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+
+  // Debounced search effect
+  useEffect(() => {
+    const searchTickers = async () => {
+      if (symbol.length < 1) {
+        setSearchResults([]);
+        setShowResults(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const response = await apiClient.searchSecurities(symbol);
+        setSearchResults(response.data);
+        setShowResults(true);
+      } catch (error) {
+        console.error('Search failed:', error);
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    };
+
+    const debounceTimer = setTimeout(searchTickers, 300);
+    return () => clearTimeout(debounceTimer);
+  }, [symbol]);
+
+  const handleSelectTicker = (selectedSymbol: string) => {
+    setSymbol(selectedSymbol);
+    setShowResults(false);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +80,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
         <h2 className="text-2xl font-bold mb-4 text-gray-900">Add Ticker</h2>
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4">
+          <div className="mb-4 relative">
             <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="symbol">
               Symbol *
             </label>
@@ -47,13 +89,48 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               type="text"
               value={symbol}
               onChange={(e) => setSymbol(e.target.value)}
+              onFocus={() => symbol && setShowResults(true)}
+              onBlur={() => setTimeout(() => setShowResults(false), 200)}
               placeholder="e.g., AAPL, TSLA, X:BTCUSD"
               className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
               required
+              autoComplete="off"
             />
             <p className="text-xs text-gray-500 mt-1">
               Use X: prefix for crypto (e.g., X:BTCUSD, X:ETHUSD)
             </p>
+
+            {/* Autocomplete Dropdown */}
+            {showResults && (
+              <div className="absolute z-50 mt-1 w-full bg-white shadow-xl max-h-60 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none border border-gray-200">
+                {isSearching ? (
+                  <div className="px-4 py-2 text-gray-500 text-sm">Searching...</div>
+                ) : searchResults.length > 0 ? (
+                  searchResults.map((result) => (
+                    <button
+                      key={result.symbol}
+                      type="button"
+                      onClick={() => handleSelectTicker(result.symbol)}
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0"
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-gray-900 text-sm">{result.symbol}</div>
+                          <div className="text-sm text-gray-600 truncate">{result.name}</div>
+                        </div>
+                        <div className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                          {result.exchange}
+                        </div>
+                      </div>
+                    </button>
+                  ))
+                ) : symbol && !isSearching ? (
+                  <div className="px-4 py-3 text-gray-500 text-sm">
+                    No results found for "{symbol}"
+                  </div>
+                ) : null}
+              </div>
+            )}
           </div>
 
           <div className="mb-4">
