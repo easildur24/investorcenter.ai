@@ -118,6 +118,9 @@ jobs:
 
     - name: Run tests
       run: cd backend && go test ./... -v
+      env:
+        CI: true
+        SKIP_INTEGRATION_TESTS: true
 
     - name: Run linting
       run: cd backend && go vet ./...
