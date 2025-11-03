@@ -198,18 +198,18 @@ func main() {
 	watchListRoutes := v1.Group("/watchlists")
 	watchListRoutes.Use(auth.AuthMiddleware())
 	{
-		watchListRoutes.GET("", handlers.ListWatchLists)                             // GET /api/v1/watchlists
-		watchListRoutes.POST("", handlers.CreateWatchList)                           // POST /api/v1/watchlists
-		watchListRoutes.GET("/:id", handlers.GetWatchList)                           // GET /api/v1/watchlists/:id
-		watchListRoutes.PUT("/:id", handlers.UpdateWatchList)                        // PUT /api/v1/watchlists/:id
-		watchListRoutes.DELETE("/:id", handlers.DeleteWatchList)                     // DELETE /api/v1/watchlists/:id
+		watchListRoutes.GET("", handlers.ListWatchLists)         // GET /api/v1/watchlists
+		watchListRoutes.POST("", handlers.CreateWatchList)       // POST /api/v1/watchlists
+		watchListRoutes.GET("/:id", handlers.GetWatchList)       // GET /api/v1/watchlists/:id
+		watchListRoutes.PUT("/:id", handlers.UpdateWatchList)    // PUT /api/v1/watchlists/:id
+		watchListRoutes.DELETE("/:id", handlers.DeleteWatchList) // DELETE /api/v1/watchlists/:id
 
 		// Watch list items
-		watchListRoutes.POST("/:id/items", handlers.AddTickerToWatchList)            // POST /api/v1/watchlists/:id/items
+		watchListRoutes.POST("/:id/items", handlers.AddTickerToWatchList)                // POST /api/v1/watchlists/:id/items
 		watchListRoutes.DELETE("/:id/items/:symbol", handlers.RemoveTickerFromWatchList) // DELETE /api/v1/watchlists/:id/items/:symbol
-		watchListRoutes.PUT("/:id/items/:symbol", handlers.UpdateWatchListItem)      // PUT /api/v1/watchlists/:id/items/:symbol
-		watchListRoutes.POST("/:id/bulk", handlers.BulkAddTickers)                   // POST /api/v1/watchlists/:id/bulk
-		watchListRoutes.POST("/:id/reorder", handlers.ReorderWatchListItems)         // POST /api/v1/watchlists/:id/reorder
+		watchListRoutes.PUT("/:id/items/:symbol", handlers.UpdateWatchListItem)          // PUT /api/v1/watchlists/:id/items/:symbol
+		watchListRoutes.POST("/:id/bulk", handlers.BulkAddTickers)                       // POST /api/v1/watchlists/:id/bulk
+		watchListRoutes.POST("/:id/reorder", handlers.ReorderWatchListItems)             // POST /api/v1/watchlists/:id/reorder
 	}
 
 	// Start server

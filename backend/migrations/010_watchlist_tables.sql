@@ -44,7 +44,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER IF NOT EXISTS update_watch_lists_updated_at
+DROP TRIGGER IF EXISTS update_watch_lists_updated_at ON watch_lists;
+CREATE TRIGGER update_watch_lists_updated_at
 BEFORE UPDATE ON watch_lists
 FOR EACH ROW EXECUTE FUNCTION update_watch_lists_updated_at();
 

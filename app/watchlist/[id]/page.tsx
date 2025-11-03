@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { watchListAPI, WatchListWithItems } from '@/lib/api/watchlist';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import { useToast } from '@/lib/hooks/useToast';
 import WatchListTable from '@/components/watchlist/WatchListTable';
 import AddTickerModal from '@/components/watchlist/AddTickerModal';
 import EditTickerModal from '@/components/watchlist/EditTickerModal';
@@ -11,6 +12,7 @@ import EditTickerModal from '@/components/watchlist/EditTickerModal';
 export default function WatchListDetailPage() {
   const params = useParams();
   const watchListId = params.id as string;
+  const toast = useToast();
 
   const [watchList, setWatchList] = useState<WatchListWithItems | null>(null);
   const [loading, setLoading] = useState(true);
@@ -47,8 +49,9 @@ export default function WatchListDetailPage() {
       });
       await loadWatchList();
       setShowAddModal(false);
+      toast.success(`${symbol} added to watch list`);
     } catch (err: any) {
-      alert(err.message || 'Failed to add ticker');
+      toast.error(err.message || 'Failed to add ticker');
     }
   };
 
@@ -58,8 +61,9 @@ export default function WatchListDetailPage() {
     try {
       await watchListAPI.removeTicker(watchListId, symbol);
       await loadWatchList();
+      toast.success(`${symbol} removed from watch list`);
     } catch (err: any) {
-      alert(err.message || 'Failed to remove ticker');
+      toast.error(err.message || 'Failed to remove ticker');
     }
   };
 
@@ -68,8 +72,9 @@ export default function WatchListDetailPage() {
       await watchListAPI.updateTicker(watchListId, symbol, data);
       await loadWatchList();
       setEditingSymbol(null);
+      toast.success(`${symbol} updated successfully`);
     } catch (err: any) {
-      alert(err.message || 'Failed to update ticker');
+      toast.error(err.message || 'Failed to update ticker');
     }
   };
 

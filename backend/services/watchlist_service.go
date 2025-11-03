@@ -40,26 +40,25 @@ func (s *WatchListService) GetWatchListWithItems(watchListID string, userID stri
 			currentPrice := float64(price.Price.InexactFloat64())
 			item.CurrentPrice = &currentPrice
 
-			// Calculate change and change percentage
-			if price.PrevClose.IsPositive() {
-				change := price.Price.Sub(price.PrevClose).InexactFloat64()
+			// Set change and change percentage from cached data
+			if price.Change.IsPositive() || price.Change.IsNegative() {
+				change := price.Change.InexactFloat64()
 				changePercent := price.ChangePercent.InexactFloat64()
-				prevClose := price.PrevClose.InexactFloat64()
 
 				item.PriceChange = &change
 				item.PriceChangePct = &changePercent
-				item.PrevClose = &prevClose
 			}
 
-			// Set volume and market cap if available
+			// Set volume if available
 			if price.Volume > 0 {
 				volume := int64(price.Volume)
 				item.Volume = &volume
 			}
 
-			if price.MarketCap != nil && price.MarketCap.IsPositive() {
-				marketCap := price.MarketCap.InexactFloat64()
-				item.MarketCap = &marketCap
+			// Calculate previous close from current price and change
+			if price.Change.IsPositive() || price.Change.IsNegative() {
+				prevClose := price.Price.Sub(price.Change).InexactFloat64()
+				item.PrevClose = &prevClose
 			}
 		}
 	}
