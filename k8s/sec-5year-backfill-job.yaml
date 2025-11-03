@@ -14,13 +14,14 @@ spec:
     spec:
       serviceAccountName: sec-downloader-sa
       restartPolicy: Never
-      containers:
+      # Run fetcher first as init container
+      initContainers:
       - name: sec-backfill-fetcher
         image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-fetcher:v2
         imagePullPolicy: Always
         env:
         - name: DB_HOST
-          value: "postgres-service.investorcenter.svc.cluster.local"
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
@@ -44,12 +45,14 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "1000m"
+      # Then run downloader
+      containers:
       - name: sec-backfill-downloader
         image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v1
         imagePullPolicy: Always
         env:
         - name: DB_HOST
-          value: "postgres-service.investorcenter.svc.cluster.local"
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
         - name: DB_PORT
           value: "5432"
         - name: DB_NAME
