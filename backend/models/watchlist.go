@@ -46,6 +46,12 @@ type WatchListItemWithData struct {
 	Volume         *int64   `json:"volume"`
 	MarketCap      *float64 `json:"market_cap"`
 	PrevClose      *float64 `json:"prev_close"`
+	// Reddit data (from reddit_heatmap_daily table)
+	RedditRank       *int     `json:"reddit_rank,omitempty"`        // Current Reddit rank (1 = #1 trending)
+	RedditMentions   *int     `json:"reddit_mentions,omitempty"`    // Total mentions
+	RedditPopularity *float64 `json:"reddit_popularity,omitempty"`  // Popularity score (0-100)
+	RedditTrend      *string  `json:"reddit_trend,omitempty"`       // "rising", "falling", "stable"
+	RedditRankChange *int     `json:"reddit_rank_change,omitempty"` // Rank change vs 24h ago
 }
 
 // WatchListWithItems includes the watch list and all its items with data
