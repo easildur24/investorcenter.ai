@@ -25,11 +25,11 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4">Create Watch List</h2>
+        <h2 className="text-2xl font-bold mb-4 text-gray-900">Create Watch List</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2" htmlFor="name">
+            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="name">
               Name *
             </label>
             <input
@@ -37,21 +37,23 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              placeholder="e.g., Tech Stocks, Growth Portfolio"
               required
               maxLength={255}
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2" htmlFor="description">
+            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="description">
               Description (optional)
             </label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              placeholder="Add notes about this watch list..."
               rows={3}
             />
           </div>
@@ -60,7 +62,7 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
             >
               Cancel
             </button>
