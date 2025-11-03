@@ -360,11 +360,23 @@ class SECRSSUpdater:
     def run_continuous(self, interval_minutes: int = 10):
         """Run continuously, checking for updates every interval"""
         logger.info(f"Starting continuous RSS updater (interval: {interval_minutes} minutes)")
-        
+
         while True:
             try:
                 start_time = datetime.now()
-                
+
+                # Reconnect to database at the start of each cycle to avoid connection timeouts
+                if self.conn:
+                    try:
+                        self.conn.close()
+                    except:
+                        pass
+
+                if not self.connect_db():
+                    logger.error("Failed to connect to database, retrying in 1 minute...")
+                    time.sleep(60)
+                    continue
+
                 # Reset stats for this run
                 self.stats = {
                     'feeds_checked': 0,
@@ -373,7 +385,7 @@ class SECRSSUpdater:
                     'companies_updated': 0,
                     'errors': 0
                 }
-                
+
                 # Process RSS updates
                 self.process_rss_updates()
                 

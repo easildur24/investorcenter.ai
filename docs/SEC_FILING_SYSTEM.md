@@ -104,6 +104,77 @@ The SEC Filing Data System is an automated pipeline that fetches, downloads, sto
 
 **Rate Limiting**: 10 requests/second (100ms between requests) as required by SEC
 
+**API Response Format**:
+
+The SEC EDGAR API returns JSON with company information and recent filings:
+
+```json
+{
+  "cik": "320193",
+  "entityType": "operating",
+  "sic": "3571",
+  "sicDescription": "Electronic Computers",
+  "name": "Apple Inc.",
+  "tickers": ["AAPL"],
+  "exchanges": ["Nasdaq"],
+  "ein": "942404110",
+  "description": "...",
+  "category": "Large accelerated filer",
+  "fiscalYearEnd": "0930",
+  "filings": {
+    "recent": {
+      "accessionNumber": [
+        "0000320193-23-000106",
+        "0000320193-23-000077",
+        "0000320193-23-000064"
+      ],
+      "filingDate": [
+        "2023-11-03",
+        "2023-08-04",
+        "2023-05-05"
+      ],
+      "reportDate": [
+        "2023-09-30",
+        "2023-07-01",
+        "2023-04-01"
+      ],
+      "acceptanceDateTime": [
+        "2023-11-03T06:01:36.000Z",
+        "2023-08-04T06:01:46.000Z",
+        "2023-05-05T06:01:34.000Z"
+      ],
+      "act": ["34", "34", "34"],
+      "form": ["10-K", "10-Q", "10-Q"],
+      "fileNumber": ["001-36743", "001-36743", "001-36743"],
+      "filmNumber": ["231383632", "231157090", "23933926"],
+      "items": ["", "", ""],
+      "size": [13221549, 11642555, 11476162],
+      "isXBRL": [1, 1, 1],
+      "isInlineXBRL": [1, 1, 1],
+      "primaryDocument": [
+        "aapl-20230930.htm",
+        "aapl-20230701.htm",
+        "aapl-20230401.htm"
+      ],
+      "primaryDocDescription": [
+        "10-K - Annual report [Section 13 and 15(d)]",
+        "10-Q - Quarterly report [Sections 13 or 15(d)]",
+        "10-Q - Quarterly report [Sections 13 or 15(d)]"
+      ]
+    },
+    "files": []
+  }
+}
+```
+
+**Key Fields Extracted**:
+- `accessionNumber`: Unique filing identifier (e.g., "0000320193-23-000106")
+- `filingDate`: Date filed with SEC (e.g., "2023-11-03")
+- `reportDate`: Period end date (e.g., "2023-09-30" for fiscal year ending Sept 30)
+- `form`: Filing type (e.g., "10-K", "10-Q")
+- `primaryDocument`: Filename of main document (e.g., "aapl-20230930.htm")
+- `size`: File size in bytes
+
 **Key Features**:
 - Skips duplicate filings (checks `accession_number`)
 - Tracks companies by market cap (processes larger companies first)

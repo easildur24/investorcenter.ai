@@ -212,11 +212,11 @@ func main() {
 		watchListRoutes.POST("/:id/reorder", handlers.ReorderWatchListItems)             // POST /api/v1/watchlists/:id/reorder
 
 		// Heatmap routes
-		watchListRoutes.GET("/:id/heatmap", handlers.GetHeatmapData)                               // GET /api/v1/watchlists/:id/heatmap
-		watchListRoutes.GET("/:id/heatmap/configs", handlers.ListHeatmapConfigs)                   // GET /api/v1/watchlists/:id/heatmap/configs
-		watchListRoutes.POST("/:id/heatmap/configs", handlers.CreateHeatmapConfig)                 // POST /api/v1/watchlists/:id/heatmap/configs
-		watchListRoutes.PUT("/:id/heatmap/configs/:configId", handlers.UpdateHeatmapConfig)        // PUT /api/v1/watchlists/:id/heatmap/configs/:configId
-		watchListRoutes.DELETE("/:id/heatmap/configs/:configId", handlers.DeleteHeatmapConfig)     // DELETE /api/v1/watchlists/:id/heatmap/configs/:configId
+		watchListRoutes.GET("/:id/heatmap", handlers.GetHeatmapData)                           // GET /api/v1/watchlists/:id/heatmap
+		watchListRoutes.GET("/:id/heatmap/configs", handlers.ListHeatmapConfigs)               // GET /api/v1/watchlists/:id/heatmap/configs
+		watchListRoutes.POST("/:id/heatmap/configs", handlers.CreateHeatmapConfig)             // POST /api/v1/watchlists/:id/heatmap/configs
+		watchListRoutes.PUT("/:id/heatmap/configs/:configId", handlers.UpdateHeatmapConfig)    // PUT /api/v1/watchlists/:id/heatmap/configs/:configId
+		watchListRoutes.DELETE("/:id/heatmap/configs/:configId", handlers.DeleteHeatmapConfig) // DELETE /api/v1/watchlists/:id/heatmap/configs/:configId
 	}
 
 	// Start server

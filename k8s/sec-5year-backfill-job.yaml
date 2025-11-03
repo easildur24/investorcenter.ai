@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-5year-backfill
+  namespace: investorcenter
+spec:
+  # Keep job history for review
+  ttlSecondsAfterFinished: 86400  # 24 hours
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: sec-5year-backfill
+    spec:
+      serviceAccountName: sec-downloader-sa
+      restartPolicy: Never
+      containers:
+      - name: sec-backfill-fetcher
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-fetcher:v2
+        imagePullPolicy: Always
+        env:
+        - name: DB_HOST
+          value: "postgres-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        # Fetch 5 years of historical data
+        command: ["python", "sec_5year_backfill.py", "--years", "5"]
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+      - name: sec-backfill-downloader
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/sec-filing-downloader:v1
+        imagePullPolicy: Always
+        env:
+        - name: DB_HOST
+          value: "postgres-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: S3_BUCKET
+          value: "investorcenter-sec-filings"
+        - name: AWS_REGION
+          value: "us-east-1"
+        # Download all pending filings (no limit)
+        command: ["python", "sec_filing_downloader.py"]
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
