@@ -28,14 +28,20 @@ export default function WatchListHeatmap({
     // Clear previous render
     d3.select(svgRef.current).selectAll('*').remove();
 
-    // Create treemap layout
+    // Create treemap layout with proper sizing
     const root = d3.hierarchy({ children: data.tiles } as any)
-      .sum((d: any) => d.size_value || 1)
+      .sum((d: any) => {
+        // Ensure we have a valid size_value, use a minimum of 10 for visibility
+        const sizeValue = d.size_value || 10;
+        // For better visual differentiation, we can apply a slight scaling
+        return Math.max(sizeValue, 10);
+      })
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
     const treemap = d3.treemap<any>()
       .size([width, height])
-      .padding(2)
+      .padding(3)  // Increased padding for better visual separation
+      .paddingOuter(4)  // Extra padding on edges
       .round(true);
 
     treemap(root);
