@@ -26,30 +26,6 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
     );
   };
 
-  const formatVolume = (volume?: number) => {
-    if (!volume) return '-';
-    if (volume >= 1e9) return `${(volume / 1e9).toFixed(2)}B`;
-    if (volume >= 1e6) return `${(volume / 1e6).toFixed(2)}M`;
-    if (volume >= 1e3) return `${(volume / 1e3).toFixed(2)}K`;
-    return volume.toLocaleString();
-  };
-
-  const formatMarketCap = (marketCap?: number) => {
-    if (!marketCap) return '-';
-    if (marketCap >= 1e12) return `$${(marketCap / 1e12).toFixed(2)}T`;
-    if (marketCap >= 1e9) return `$${(marketCap / 1e9).toFixed(2)}B`;
-    if (marketCap >= 1e6) return `$${(marketCap / 1e6).toFixed(2)}M`;
-    return `$${marketCap.toLocaleString()}`;
-  };
-
-  const getAssetBadge = (assetType: string, exchange: string) => {
-    const isCrypto = assetType.toLowerCase() === 'crypto' || assetType.toLowerCase() === 'cryptocurrency';
-    if (isCrypto) {
-      return <span className="inline-block px-2 py-1 text-xs font-semibold bg-purple-100 text-purple-800 rounded">CRYPTO</span>;
-    }
-    return <span className="inline-block px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-700 rounded">{exchange}</span>;
-  };
-
   // Check if price meets target conditions
   const checkTargetAlert = (item: WatchListItem) => {
     if (!item.current_price) return null;
@@ -80,12 +56,8 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
           <tr>
             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Symbol</th>
             <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Type</th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Price</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Prev Close</th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Change</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Volume</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Market Cap</th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Target Buy</th>
             <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Target Sell</th>
             <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Alert</th>
@@ -103,22 +75,18 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
                   </Link>
                 </td>
                 <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
-                <td className="px-4 py-3">{getAssetBadge(item.asset_type, item.exchange)}</td>
                 <td className="px-4 py-3 text-right font-medium text-gray-900">{formatPrice(item.current_price)}</td>
-                <td className="px-4 py-3 text-right text-sm text-gray-600">{formatPrice(item.prev_close)}</td>
                 <td className="px-4 py-3 text-right">{formatChange(item.price_change, item.price_change_pct)}</td>
-                <td className="px-4 py-3 text-right text-sm text-gray-900">{formatVolume(item.volume)}</td>
-                <td className="px-4 py-3 text-right text-sm text-gray-900">{formatMarketCap(item.market_cap)}</td>
-                <td className="px-4 py-3 text-right text-sm">
+                <td className="px-4 py-3 text-right text-sm text-gray-700">
                   {item.target_buy_price ? (
-                    <span className={alert?.type === 'buy' ? 'font-bold text-green-700' : 'text-gray-900'}>
+                    <span className={alert?.type === 'buy' ? 'font-bold text-green-700' : 'text-gray-700'}>
                       {formatPrice(item.target_buy_price)}
                     </span>
                   ) : '-'}
                 </td>
-                <td className="px-4 py-3 text-right text-sm">
+                <td className="px-4 py-3 text-right text-sm text-gray-700">
                   {item.target_sell_price ? (
-                    <span className={alert?.type === 'sell' ? 'font-bold text-blue-700' : 'text-gray-900'}>
+                    <span className={alert?.type === 'sell' ? 'font-bold text-blue-700' : 'text-gray-700'}>
                       {formatPrice(item.target_sell_price)}
                     </span>
                   ) : '-'}

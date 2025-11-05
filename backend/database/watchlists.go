@@ -228,9 +228,18 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 		SELECT
 			wli.id, wli.watch_list_id, wli.symbol, wli.notes, wli.tags,
 			wli.target_buy_price, wli.target_sell_price, wli.added_at, wli.display_order,
-			s.name, s.exchange, s.asset_type, s.logo_url
+			s.name, s.exchange, s.asset_type, s.logo_url,
+			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,
+			(rhd.avg_rank - rhd.rank_24h_ago) as reddit_rank_change
 		FROM watch_list_items wli
 		JOIN stocks s ON wli.symbol = s.symbol
+		LEFT JOIN LATERAL (
+			SELECT avg_rank, total_mentions, popularity_score, trend_direction, rank_24h_ago
+			FROM reddit_heatmap_daily
+			WHERE ticker_symbol = wli.symbol
+			ORDER BY date DESC
+			LIMIT 1
+		) rhd ON true
 		WHERE wli.watch_list_id = $1
 		ORDER BY wli.display_order ASC, wli.added_at DESC
 	`
@@ -243,6 +252,14 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 	items := []models.WatchListItemWithData{}
 	for rows.Next() {
 		var item models.WatchListItemWithData
+
+		// Use sql.Null* types for optional Reddit fields
+		var redditRank sql.NullFloat64
+		var redditMentions sql.NullInt32
+		var redditPopularity sql.NullFloat64
+		var redditTrend sql.NullString
+		var redditRankChange sql.NullFloat64
+
 		err := rows.Scan(
 			&item.ID,
 			&item.WatchListID,
@@ -257,10 +274,36 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 			&item.Exchange,
 			&item.AssetType,
 			&item.LogoURL,
+			&redditRank,
+			&redditMentions,
+			&redditPopularity,
+			&redditTrend,
+			&redditRankChange,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan watch list item: %w", err)
 		}
+
+		// Convert NULL-safe types to pointers
+		if redditRank.Valid {
+			rank := int(redditRank.Float64)
+			item.RedditRank = &rank
+		}
+		if redditMentions.Valid {
+			mentions := int(redditMentions.Int32)
+			item.RedditMentions = &mentions
+		}
+		if redditPopularity.Valid {
+			item.RedditPopularity = &redditPopularity.Float64
+		}
+		if redditTrend.Valid {
+			item.RedditTrend = &redditTrend.String
+		}
+		if redditRankChange.Valid {
+			change := int(redditRankChange.Float64)
+			item.RedditRankChange = &change
+		}
+
 		items = append(items, item)
 	}
 

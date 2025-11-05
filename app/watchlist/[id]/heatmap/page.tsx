@@ -1,0 +1,175 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { heatmapAPI, HeatmapData } from '@/lib/api/heatmap';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
+import WatchListHeatmap from '@/components/watchlist/WatchListHeatmap';
+import HeatmapConfigPanel, { HeatmapSettings } from '@/components/watchlist/HeatmapConfigPanel';
+
+export default function WatchListHeatmapPage() {
+  const params = useParams();
+  const router = useRouter();
+  const watchListId = params.id as string;
+
+  const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [settings, setSettings] = useState<HeatmapSettings>({
+    size_metric: 'market_cap',
+    color_metric: 'price_change_pct',
+    time_period: '1D',
+    color_scheme: 'red_green',
+    label_display: 'symbol_change',
+  });
+
+  useEffect(() => {
+    loadHeatmap();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadHeatmap, 30000);
+    return () => clearInterval(interval);
+  }, [watchListId, settings.size_metric, settings.color_metric, settings.time_period]);
+
+  const loadHeatmap = async () => {
+    try {
+      setLoading(true);
+      const data = await heatmapAPI.getHeatmapData(watchListId, undefined, {
+        size_metric: settings.size_metric,
+        color_metric: settings.color_metric,
+        time_period: settings.time_period,
+      });
+      setHeatmapData(data);
+      setError('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to load heatmap');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveConfig = async (name: string) => {
+    try {
+      await heatmapAPI.createConfig(watchListId, {
+        name,
+        ...settings,
+      });
+      alert('Heatmap configuration saved!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to save configuration');
+    }
+  };
+
+  if (loading && !heatmapData) {
+    return (
+      <ProtectedRoute>
+        <div className="flex flex-col items-center justify-center min-h-screen">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mb-4"></div>
+          <div className="text-xl text-gray-700 font-medium">Loading heatmap...</div>
+          <div className="text-sm text-gray-500 mt-2">Fetching ticker data and calculating metrics</div>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
+  return (
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header Section */}
+        <div className="mb-6">
+          {/* Back Button */}
+          <div className="mb-4">
+            <button
+              onClick={() => router.push(`/watchlist/${watchListId}`)}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:text-gray-900 transition-colors shadow-sm"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Watch List
+            </button>
+          </div>
+
+          {/* Title & Info */}
+          <div className="flex items-start justify-between flex-wrap gap-4">
+            <div>
+              <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+                <svg className="w-10 h-10 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                {heatmapData?.watch_list_name || 'Watch List'}
+              </h1>
+              {heatmapData && (
+                <div className="flex items-center gap-4 text-sm text-gray-300">
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                    </svg>
+                    <strong className="text-white">{heatmapData.tile_count}</strong> tickers
+                  </span>
+                  <span className="text-gray-500">•</span>
+                  <span className="inline-flex items-center gap-1">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Updated {new Date(heatmapData.generated_at).toLocaleTimeString()}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Optional: Add export or share buttons here later */}
+          </div>
+        </div>
+
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow-sm">
+          <div className="flex items-start">
+            <svg className="w-5 h-5 text-red-500 mt-0.5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <h3 className="text-sm font-medium text-red-800">Error loading heatmap</h3>
+              <p className="text-sm text-red-700 mt-1">{error}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <HeatmapConfigPanel
+        settings={settings}
+        onChange={setSettings}
+        onSave={handleSaveConfig}
+      />
+
+      {!heatmapData || heatmapData.tiles.length === 0 ? (
+        <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-gray-300">
+          <svg className="mx-auto h-16 w-16 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">No tickers in watchlist</h3>
+          <p className="text-gray-600 mb-4 max-w-md mx-auto">
+            Add some tickers to your watch list to visualize them in the heatmap
+          </p>
+          <button
+            onClick={() => router.push(`/watchlist/${watchListId}`)}
+            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Tickers
+          </button>
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg shadow-lg border border-gray-200 overflow-hidden">
+          <WatchListHeatmap
+            data={heatmapData}
+            width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 200, 1400) : 1200}
+            height={700}
+          />
+        </div>
+      )}
+      </div>
+    </ProtectedRoute>
+  );
+}
