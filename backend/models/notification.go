@@ -93,13 +93,13 @@ type DigestLog struct {
 
 // DigestContent represents digest email content
 type DigestContent struct {
-	UserName         string                 `json:"user_name"`
-	PeriodStart      time.Time              `json:"period_start"`
-	PeriodEnd        time.Time              `json:"period_end"`
-	PortfolioSummary *PortfolioSummary      `json:"portfolio_summary,omitempty"`
-	TopMovers        []TopMover             `json:"top_movers,omitempty"`
-	RecentAlerts     []AlertLogWithRule     `json:"recent_alerts,omitempty"`
-	NewsHighlights   []NewsHighlight        `json:"news_highlights,omitempty"`
+	UserName         string             `json:"user_name"`
+	PeriodStart      time.Time          `json:"period_start"`
+	PeriodEnd        time.Time          `json:"period_end"`
+	PortfolioSummary *PortfolioSummary  `json:"portfolio_summary,omitempty"`
+	TopMovers        []TopMover         `json:"top_movers,omitempty"`
+	RecentAlerts     []AlertLogWithRule `json:"recent_alerts,omitempty"`
+	NewsHighlights   []NewsHighlight    `json:"news_highlights,omitempty"`
 }
 
 type PortfolioSummary struct {

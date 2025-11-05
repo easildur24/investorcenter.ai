@@ -7,20 +7,20 @@ import (
 
 // SubscriptionPlan defines available subscription tiers
 type SubscriptionPlan struct {
-	ID                    string          `json:"id" db:"id"`
-	Name                  string          `json:"name" db:"name"`
-	DisplayName           string          `json:"display_name" db:"display_name"`
-	Description           *string         `json:"description,omitempty" db:"description"`
-	PriceMonthly          float64         `json:"price_monthly" db:"price_monthly"`
-	PriceYearly           float64         `json:"price_yearly" db:"price_yearly"`
-	MaxWatchLists         int             `json:"max_watch_lists" db:"max_watch_lists"`
-	MaxItemsPerWatchList  int             `json:"max_items_per_watch_list" db:"max_items_per_watch_list"`
-	MaxAlertRules         int             `json:"max_alert_rules" db:"max_alert_rules"`
-	MaxHeatmapConfigs     int             `json:"max_heatmap_configs" db:"max_heatmap_configs"`
-	Features              json.RawMessage `json:"features" db:"features"`
-	IsActive              bool            `json:"is_active" db:"is_active"`
-	CreatedAt             time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt             time.Time       `json:"updated_at" db:"updated_at"`
+	ID                   string          `json:"id" db:"id"`
+	Name                 string          `json:"name" db:"name"`
+	DisplayName          string          `json:"display_name" db:"display_name"`
+	Description          *string         `json:"description,omitempty" db:"description"`
+	PriceMonthly         float64         `json:"price_monthly" db:"price_monthly"`
+	PriceYearly          float64         `json:"price_yearly" db:"price_yearly"`
+	MaxWatchLists        int             `json:"max_watch_lists" db:"max_watch_lists"`
+	MaxItemsPerWatchList int             `json:"max_items_per_watch_list" db:"max_items_per_watch_list"`
+	MaxAlertRules        int             `json:"max_alert_rules" db:"max_alert_rules"`
+	MaxHeatmapConfigs    int             `json:"max_heatmap_configs" db:"max_heatmap_configs"`
+	Features             json.RawMessage `json:"features" db:"features"`
+	IsActive             bool            `json:"is_active" db:"is_active"`
+	CreatedAt            time.Time       `json:"created_at" db:"created_at"`
+	UpdatedAt            time.Time       `json:"updated_at" db:"updated_at"`
 }
 
 // UserSubscription represents a user's active subscription
@@ -46,18 +46,18 @@ type UserSubscription struct {
 
 // PaymentHistory tracks payment transactions
 type PaymentHistory struct {
-	ID                    string     `json:"id" db:"id"`
-	UserID                string     `json:"user_id" db:"user_id"`
-	SubscriptionID        *string    `json:"subscription_id,omitempty" db:"subscription_id"`
-	Amount                float64    `json:"amount" db:"amount"`
-	Currency              string     `json:"currency" db:"currency"`
-	Status                string     `json:"status" db:"status"`
-	PaymentMethod         *string    `json:"payment_method,omitempty" db:"payment_method"`
-	StripePaymentIntentID *string    `json:"stripe_payment_intent_id,omitempty" db:"stripe_payment_intent_id"`
-	StripeInvoiceID       *string    `json:"stripe_invoice_id,omitempty" db:"stripe_invoice_id"`
-	Description           *string    `json:"description,omitempty" db:"description"`
-	ReceiptURL            *string    `json:"receipt_url,omitempty" db:"receipt_url"`
-	CreatedAt             time.Time  `json:"created_at" db:"created_at"`
+	ID                    string    `json:"id" db:"id"`
+	UserID                string    `json:"user_id" db:"user_id"`
+	SubscriptionID        *string   `json:"subscription_id,omitempty" db:"subscription_id"`
+	Amount                float64   `json:"amount" db:"amount"`
+	Currency              string    `json:"currency" db:"currency"`
+	Status                string    `json:"status" db:"status"`
+	PaymentMethod         *string   `json:"payment_method,omitempty" db:"payment_method"`
+	StripePaymentIntentID *string   `json:"stripe_payment_intent_id,omitempty" db:"stripe_payment_intent_id"`
+	StripeInvoiceID       *string   `json:"stripe_invoice_id,omitempty" db:"stripe_invoice_id"`
+	Description           *string   `json:"description,omitempty" db:"description"`
+	ReceiptURL            *string   `json:"receipt_url,omitempty" db:"receipt_url"`
+	CreatedAt             time.Time `json:"created_at" db:"created_at"`
 }
 
 // UserSubscriptionWithPlan includes plan details

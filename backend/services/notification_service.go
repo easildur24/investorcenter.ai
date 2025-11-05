@@ -231,7 +231,7 @@ func (s *NotificationService) formatAlertEmailBody(alert *models.AlertRule, cond
 		</body>
 		</html>
 	`, alert.Name, alert.Symbol, alert.AlertType, time.Now().Format(time.RFC3339),
-	   string(conditionJSON), string(marketDataJSON), s.emailService.frontendURL, s.emailService.frontendURL)
+		string(conditionJSON), string(marketDataJSON), s.emailService.frontendURL, s.emailService.frontendURL)
 }
 
 // IsInQuietHours checks if current time is in user's quiet hours

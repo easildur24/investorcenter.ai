@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
+	"time"
 )
 
 type AlertService struct{}
@@ -18,19 +19,19 @@ func NewAlertService() *AlertService {
 func (s *AlertService) CreateAlert(userID string, req *models.CreateAlertRuleRequest) (*models.AlertRule, error) {
 	// Validate alert type
 	validTypes := map[string]bool{
-		"price_above":        true,
-		"price_below":        true,
-		"price_change_pct":   true,
+		"price_above":         true,
+		"price_below":         true,
+		"price_change_pct":    true,
 		"price_change_amount": true,
-		"volume_spike":       true,
-		"unusual_volume":     true,
-		"volume_above":       true,
-		"volume_below":       true,
-		"news":               true,
-		"earnings":           true,
-		"dividend":           true,
-		"sec_filing":         true,
-		"analyst_rating":     true,
+		"volume_spike":        true,
+		"unusual_volume":      true,
+		"volume_above":        true,
+		"volume_below":        true,
+		"news":                true,
+		"earnings":            true,
+		"dividend":            true,
+		"sec_filing":          true,
+		"analyst_rating":      true,
 	}
 
 	if !validTypes[req.AlertType] {
@@ -48,19 +49,36 @@ func (s *AlertService) CreateAlert(userID string, req *models.CreateAlertRuleReq
 		return nil, errors.New("invalid conditions format")
 	}
 
+	// Validate that symbol exists in the watch list
+	items, err := database.GetWatchListItems(req.WatchListID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate watch list: %w", err)
+	}
+
+	symbolExists := false
+	for _, item := range items {
+		if item.Symbol == req.Symbol {
+			symbolExists = true
+			break
+		}
+	}
+	if !symbolExists {
+		return nil, errors.New("symbol not found in watch list")
+	}
+
 	// Create alert rule
 	alert := &models.AlertRule{
-		UserID:          userID,
-		WatchListID:     req.WatchListID,
-		Symbol:          req.Symbol,
-		AlertType:       req.AlertType,
-		Conditions:      req.Conditions,
-		Name:            req.Name,
-		Description:     req.Description,
-		Frequency:       req.Frequency,
-		NotifyEmail:     req.NotifyEmail,
-		NotifyInApp:     req.NotifyInApp,
-		IsActive:        true,
+		UserID:      userID,
+		WatchListID: req.WatchListID,
+		Symbol:      req.Symbol,
+		AlertType:   req.AlertType,
+		Conditions:  req.Conditions,
+		Name:        req.Name,
+		Description: req.Description,
+		Frequency:   req.Frequency,
+		NotifyEmail: req.NotifyEmail,
+		NotifyInApp: req.NotifyInApp,
+		IsActive:    true,
 	}
 
 	if err := database.CreateAlertRule(alert); err != nil {
@@ -161,6 +179,32 @@ func (s *AlertService) CanCreateAlert(userID string) (bool, error) {
 	}
 
 	return count < limits.MaxAlertRules, nil
+}
+
+// ShouldTriggerBasedOnFrequency checks if alert should trigger based on frequency settings
+func (s *AlertService) ShouldTriggerBasedOnFrequency(alert *models.AlertRule) bool {
+	// If no last trigger, allow triggering
+	if alert.LastTriggeredAt == nil {
+		return true
+	}
+
+	now := time.Now()
+
+	switch alert.Frequency {
+	case "once":
+		// Should never trigger again after first time
+		return false
+	case "daily":
+		// Check if last trigger was more than 24 hours ago
+		hoursSinceLastTrigger := now.Sub(*alert.LastTriggeredAt).Hours()
+		return hoursSinceLastTrigger >= 24.0
+	case "always":
+		// Always trigger (could add minimum interval here, e.g., 5 minutes)
+		// For now, allow immediate retriggering
+		return true
+	default:
+		return false
+	}
 }
 
 // GetAlertLogs retrieves alert history

@@ -227,16 +227,16 @@ func main() {
 	alertRoutes := v1.Group("/alerts")
 	alertRoutes.Use(auth.AuthMiddleware())
 	{
-		alertRoutes.GET("", alertHandler.ListAlertRules)              // GET /api/v1/alerts
-		alertRoutes.POST("", alertHandler.CreateAlertRule)            // POST /api/v1/alerts
-		alertRoutes.GET("/:id", alertHandler.GetAlertRule)            // GET /api/v1/alerts/:id
-		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)         // PUT /api/v1/alerts/:id
-		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule)      // DELETE /api/v1/alerts/:id
+		alertRoutes.GET("", alertHandler.ListAlertRules)         // GET /api/v1/alerts
+		alertRoutes.POST("", alertHandler.CreateAlertRule)       // POST /api/v1/alerts
+		alertRoutes.GET("/:id", alertHandler.GetAlertRule)       // GET /api/v1/alerts/:id
+		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)    // PUT /api/v1/alerts/:id
+		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule) // DELETE /api/v1/alerts/:id
 
 		// Alert logs
-		alertRoutes.GET("/logs", alertHandler.ListAlertLogs)          // GET /api/v1/alerts/logs
-		alertRoutes.POST("/logs/:id/read", alertHandler.MarkAlertLogRead)      // POST /api/v1/alerts/logs/:id/read
-		alertRoutes.POST("/logs/:id/dismiss", alertHandler.DismissAlertLog)    // POST /api/v1/alerts/logs/:id/dismiss
+		alertRoutes.GET("/logs", alertHandler.ListAlertLogs)                // GET /api/v1/alerts/logs
+		alertRoutes.POST("/logs/:id/read", alertHandler.MarkAlertLogRead)   // POST /api/v1/alerts/logs/:id/read
+		alertRoutes.POST("/logs/:id/dismiss", alertHandler.DismissAlertLog) // POST /api/v1/alerts/logs/:id/dismiss
 	}
 
 	// Notification routes (protected, require authentication)
@@ -258,14 +258,14 @@ func main() {
 	subscriptionRoutes := v1.Group("/subscriptions")
 	subscriptionRoutes.Use(auth.AuthMiddleware())
 	{
-		subscriptionRoutes.GET("/plans", subscriptionHandler.ListSubscriptionPlans)     // GET /api/v1/subscriptions/plans
-		subscriptionRoutes.GET("/plans/:id", subscriptionHandler.GetSubscriptionPlan)   // GET /api/v1/subscriptions/plans/:id
-		subscriptionRoutes.GET("/me", subscriptionHandler.GetUserSubscription)          // GET /api/v1/subscriptions/me
-		subscriptionRoutes.POST("", subscriptionHandler.CreateSubscription)             // POST /api/v1/subscriptions
-		subscriptionRoutes.PUT("/me", subscriptionHandler.UpdateSubscription)           // PUT /api/v1/subscriptions/me
-		subscriptionRoutes.POST("/me/cancel", subscriptionHandler.CancelSubscription)   // POST /api/v1/subscriptions/me/cancel
-		subscriptionRoutes.GET("/limits", subscriptionHandler.GetSubscriptionLimits)    // GET /api/v1/subscriptions/limits
-		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)      // GET /api/v1/subscriptions/payments
+		subscriptionRoutes.GET("/plans", subscriptionHandler.ListSubscriptionPlans)   // GET /api/v1/subscriptions/plans
+		subscriptionRoutes.GET("/plans/:id", subscriptionHandler.GetSubscriptionPlan) // GET /api/v1/subscriptions/plans/:id
+		subscriptionRoutes.GET("/me", subscriptionHandler.GetUserSubscription)        // GET /api/v1/subscriptions/me
+		subscriptionRoutes.POST("", subscriptionHandler.CreateSubscription)           // POST /api/v1/subscriptions
+		subscriptionRoutes.PUT("/me", subscriptionHandler.UpdateSubscription)         // PUT /api/v1/subscriptions/me
+		subscriptionRoutes.POST("/me/cancel", subscriptionHandler.CancelSubscription) // POST /api/v1/subscriptions/me/cancel
+		subscriptionRoutes.GET("/limits", subscriptionHandler.GetSubscriptionLimits)  // GET /api/v1/subscriptions/limits
+		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)    // GET /api/v1/subscriptions/payments
 	}
 
 	// Start server
