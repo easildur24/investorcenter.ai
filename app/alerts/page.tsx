@@ -3,18 +3,16 @@
 import { useEffect, useState } from 'react';
 import { alertAPI, AlertRuleWithDetails, ALERT_TYPES, ALERT_FREQUENCIES } from '@/lib/api/alerts';
 import { subscriptionAPI, SubscriptionLimits } from '@/lib/api/subscriptions';
-import CreateAlertModal from '@/components/alerts/CreateAlertModal';
-import EditAlertModal from '@/components/alerts/EditAlertModal';
+// TODO: Implement these components (see REMAINING_FRONTEND_COMPONENTS.md)
+// import CreateAlertModal from '@/components/alerts/CreateAlertModal';
+// import EditAlertModal from '@/components/alerts/EditAlertModal';
+// import UpgradeModal from '@/components/subscription/UpgradeModal';
+// import ProtectedRoute from '@/components/ProtectedRoute';
 import AlertCard from '@/components/alerts/AlertCard';
-import UpgradeModal from '@/components/subscription/UpgradeModal';
-import ProtectedRoute from '@/components/ProtectedRoute';
 
 export default function AlertsPage() {
-  return (
-    <ProtectedRoute>
-      <AlertsPageContent />
-    </ProtectedRoute>
-  );
+  // TODO: Add ProtectedRoute wrapper once component is implemented
+  return <AlertsPageContent />;
 }
 
 function AlertsPageContent() {
@@ -87,7 +85,7 @@ function AlertsPageContent() {
       await alertAPI.updateAlert(alert.id, { is_active: !alert.is_active });
       loadAlerts();
     } catch (err: any) {
-      alert(`Failed to update alert: ${err.message}`);
+      window.alert(`Failed to update alert: ${err.message}`);
     }
   };
 
@@ -99,7 +97,7 @@ function AlertsPageContent() {
       loadAlerts();
       loadLimits();
     } catch (err: any) {
-      alert(`Failed to delete alert: ${err.message}`);
+      window.alert(`Failed to delete alert: ${err.message}`);
     }
   };
 
@@ -255,7 +253,8 @@ function AlertsPageContent() {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Modals - TODO: Implement these components */}
+      {/*
       {showCreateModal && (
         <CreateAlertModal
           onClose={() => setShowCreateModal(false)}
@@ -280,6 +279,7 @@ function AlertsPageContent() {
           reason="alert_limit"
         />
       )}
+      */}
     </div>
   );
 }

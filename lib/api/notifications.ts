@@ -73,17 +73,17 @@ export const notificationAPI = {
 
   // Mark notification as read
   async markAsRead(notificationId: string): Promise<void> {
-    return apiClient.post(`/notifications/${notificationId}/read`);
+    return apiClient.post(`/notifications/${notificationId}/read`, {});
   },
 
   // Mark all notifications as read
   async markAllAsRead(): Promise<void> {
-    return apiClient.post('/notifications/read-all');
+    return apiClient.post('/notifications/read-all', {});
   },
 
   // Dismiss notification
   async dismiss(notificationId: string): Promise<void> {
-    return apiClient.post(`/notifications/${notificationId}/dismiss`);
+    return apiClient.post(`/notifications/${notificationId}/dismiss`, {});
   },
 
   // Get notification preferences

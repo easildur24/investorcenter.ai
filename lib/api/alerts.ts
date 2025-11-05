@@ -120,12 +120,12 @@ export const alertAPI = {
 
   // Mark alert log as read
   async markAlertLogRead(logId: string): Promise<void> {
-    return apiClient.post(`/alerts/logs/${logId}/read`);
+    return apiClient.post(`/alerts/logs/${logId}/read`, {});
   },
 
   // Dismiss alert log
   async dismissAlertLog(logId: string): Promise<void> {
-    return apiClient.post(`/alerts/logs/${logId}/dismiss`);
+    return apiClient.post(`/alerts/logs/${logId}/dismiss`, {});
   },
 };
 

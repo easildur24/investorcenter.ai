@@ -113,7 +113,7 @@ export const subscriptionAPI = {
 
   // Cancel subscription
   async cancelSubscription(): Promise<void> {
-    return apiClient.post('/subscriptions/me/cancel');
+    return apiClient.post('/subscriptions/me/cancel', {});
   },
 
   // Get subscription limits
