@@ -29,7 +29,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
   const [name, setName] = useState('');
   const [alertType, setAlertType] = useState('price_above');
   const [threshold, setThreshold] = useState('');
-  const [frequency, setFrequency] = useState('daily');
+  const [frequency, setFrequency] = useState<'once' | 'daily' | 'always'>('daily');
   const [notifyEmail, setNotifyEmail] = useState(true);
   const [notifyInApp, setNotifyInApp] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -234,7 +234,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                 </label>
                 <select
                   value={frequency}
-                  onChange={(e) => setFrequency(e.target.value)}
+                  onChange={(e) => setFrequency(e.target.value as 'once' | 'daily' | 'always')}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
                 >
                   {Object.entries(ALERT_FREQUENCIES).map(([key, info]) => (
