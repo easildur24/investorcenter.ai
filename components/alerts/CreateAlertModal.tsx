@@ -100,7 +100,6 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
         frequency: frequency,
         notify_email: notifyEmail,
         notify_in_app: notifyInApp,
-        is_active: true,
       });
       onSuccess();
     } catch (err: any) {
