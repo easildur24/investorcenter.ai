@@ -284,6 +284,137 @@ func (p *PolygonClient) GetTickerDetails(symbol string) (*TickerDetailsResponse,
 	return &detailsResp, nil
 }
 
+// GetMultipleQuotes fetches quotes for multiple symbols efficiently
+// This method uses bulk snapshots and filters for the requested symbols
+func (p *PolygonClient) GetMultipleQuotes(symbols []string) (map[string]*QuoteData, error) {
+	if len(symbols) == 0 {
+		return make(map[string]*QuoteData), nil
+	}
+
+	// Separate stocks and crypto
+	stocks := []string{}
+	cryptos := []string{}
+
+	for _, symbol := range symbols {
+		if strings.HasPrefix(symbol, "X:") {
+			cryptos = append(cryptos, symbol)
+		} else {
+			stocks = append(stocks, symbol)
+		}
+	}
+
+	quotes := make(map[string]*QuoteData)
+
+	// Fetch stock quotes
+	if len(stocks) > 0 {
+		stockQuotes, err := p.getBulkStockQuotes(stocks)
+		if err != nil {
+			log.Printf("Warning: Failed to fetch bulk stock quotes: %v\n", err)
+		} else {
+			for symbol, quote := range stockQuotes {
+				quotes[symbol] = quote
+			}
+		}
+	}
+
+	// Fetch crypto quotes
+	if len(cryptos) > 0 {
+		cryptoQuotes, err := p.getBulkCryptoQuotes(cryptos)
+		if err != nil {
+			log.Printf("Warning: Failed to fetch bulk crypto quotes: %v\n", err)
+		} else {
+			for symbol, quote := range cryptoQuotes {
+				quotes[symbol] = quote
+			}
+		}
+	}
+
+	return quotes, nil
+}
+
+// QuoteData represents simplified quote data for alert processing
+type QuoteData struct {
+	Symbol    string
+	Price     float64
+	Volume    int64
+	Timestamp int64
+}
+
+// getBulkStockQuotes fetches quotes for multiple stock symbols
+func (p *PolygonClient) getBulkStockQuotes(symbols []string) (map[string]*QuoteData, error) {
+	// Fetch bulk snapshots
+	bulkResp, err := p.GetBulkStockSnapshots()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create map for quick lookup
+	symbolMap := make(map[string]bool)
+	for _, s := range symbols {
+		symbolMap[strings.ToUpper(s)] = true
+	}
+
+	// Filter and convert to QuoteData
+	quotes := make(map[string]*QuoteData)
+	for _, ticker := range bulkResp.Tickers {
+		if symbolMap[ticker.Ticker] {
+			price := ticker.LastTrade.Price
+			if price == 0 {
+				price = ticker.PrevDay.Close
+			}
+
+			volume := int64(ticker.Day.Volume)
+			if volume == 0 {
+				volume = int64(ticker.PrevDay.Volume)
+			}
+
+			quotes[ticker.Ticker] = &QuoteData{
+				Symbol:    ticker.Ticker,
+				Price:     price,
+				Volume:    volume,
+				Timestamp: ticker.LastTrade.Timestamp,
+			}
+		}
+	}
+
+	return quotes, nil
+}
+
+// getBulkCryptoQuotes fetches quotes for multiple crypto symbols
+func (p *PolygonClient) getBulkCryptoQuotes(symbols []string) (map[string]*QuoteData, error) {
+	// Fetch bulk crypto snapshots
+	bulkResp, err := p.GetBulkCryptoSnapshots()
+	if err != nil {
+		return nil, err
+	}
+
+	// Create map for quick lookup
+	symbolMap := make(map[string]bool)
+	for _, s := range symbols {
+		symbolMap[strings.ToUpper(s)] = true
+	}
+
+	// Filter and convert to QuoteData
+	quotes := make(map[string]*QuoteData)
+	for _, ticker := range bulkResp.Tickers {
+		if symbolMap[ticker.Ticker] {
+			price := ticker.LastTrade.Price
+			if price == 0 {
+				price = ticker.PrevDay.Close
+			}
+
+			quotes[ticker.Ticker] = &QuoteData{
+				Symbol:    ticker.Ticker,
+				Price:     price,
+				Volume:    int64(ticker.Day.Volume),
+				Timestamp: ticker.LastTrade.Timestamp,
+			}
+		}
+	}
+
+	return quotes, nil
+}
+
 // IsMarketOpen checks if the US market is currently open
 func (p *PolygonClient) IsMarketOpen() bool {
 	now := time.Now()

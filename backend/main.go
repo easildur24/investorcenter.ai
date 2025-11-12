@@ -219,6 +219,62 @@ func main() {
 		watchListRoutes.DELETE("/:id/heatmap/configs/:configId", handlers.DeleteHeatmapConfig) // DELETE /api/v1/watchlists/:id/heatmap/configs/:configId
 	}
 
+	// Initialize services for alert/notification/subscription features
+	emailService := services.NewEmailService()
+	alertService := services.NewAlertService()
+	notificationService := services.NewNotificationService(emailService)
+	subscriptionService := services.NewSubscriptionService()
+
+	// Initialize handlers
+	alertHandler := handlers.NewAlertHandler(alertService)
+	notificationHandler := handlers.NewNotificationHandler(notificationService)
+	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService)
+
+	// Alert routes (protected, require authentication)
+	alertRoutes := v1.Group("/alerts")
+	alertRoutes.Use(auth.AuthMiddleware())
+	{
+		alertRoutes.GET("", alertHandler.ListAlertRules)         // GET /api/v1/alerts
+		alertRoutes.POST("", alertHandler.CreateAlertRule)       // POST /api/v1/alerts
+		alertRoutes.GET("/:id", alertHandler.GetAlertRule)       // GET /api/v1/alerts/:id
+		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)    // PUT /api/v1/alerts/:id
+		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule) // DELETE /api/v1/alerts/:id
+
+		// Alert logs
+		alertRoutes.GET("/logs", alertHandler.ListAlertLogs)                // GET /api/v1/alerts/logs
+		alertRoutes.POST("/logs/:id/read", alertHandler.MarkAlertLogRead)   // POST /api/v1/alerts/logs/:id/read
+		alertRoutes.POST("/logs/:id/dismiss", alertHandler.DismissAlertLog) // POST /api/v1/alerts/logs/:id/dismiss
+	}
+
+	// Notification routes (protected, require authentication)
+	notificationRoutes := v1.Group("/notifications")
+	notificationRoutes.Use(auth.AuthMiddleware())
+	{
+		notificationRoutes.GET("", notificationHandler.GetInAppNotifications)              // GET /api/v1/notifications
+		notificationRoutes.GET("/unread-count", notificationHandler.GetUnreadCount)        // GET /api/v1/notifications/unread-count
+		notificationRoutes.POST("/:id/read", notificationHandler.MarkNotificationRead)     // POST /api/v1/notifications/:id/read
+		notificationRoutes.POST("/read-all", notificationHandler.MarkAllNotificationsRead) // POST /api/v1/notifications/read-all
+		notificationRoutes.POST("/:id/dismiss", notificationHandler.DismissNotification)   // POST /api/v1/notifications/:id/dismiss
+
+		// Notification preferences
+		notificationRoutes.GET("/preferences", notificationHandler.GetNotificationPreferences)    // GET /api/v1/notifications/preferences
+		notificationRoutes.PUT("/preferences", notificationHandler.UpdateNotificationPreferences) // PUT /api/v1/notifications/preferences
+	}
+
+	// Subscription routes (protected, require authentication)
+	subscriptionRoutes := v1.Group("/subscriptions")
+	subscriptionRoutes.Use(auth.AuthMiddleware())
+	{
+		subscriptionRoutes.GET("/plans", subscriptionHandler.ListSubscriptionPlans)   // GET /api/v1/subscriptions/plans
+		subscriptionRoutes.GET("/plans/:id", subscriptionHandler.GetSubscriptionPlan) // GET /api/v1/subscriptions/plans/:id
+		subscriptionRoutes.GET("/me", subscriptionHandler.GetUserSubscription)        // GET /api/v1/subscriptions/me
+		subscriptionRoutes.POST("", subscriptionHandler.CreateSubscription)           // POST /api/v1/subscriptions
+		subscriptionRoutes.PUT("/me", subscriptionHandler.UpdateSubscription)         // PUT /api/v1/subscriptions/me
+		subscriptionRoutes.POST("/me/cancel", subscriptionHandler.CancelSubscription) // POST /api/v1/subscriptions/me/cancel
+		subscriptionRoutes.GET("/limits", subscriptionHandler.GetSubscriptionLimits)  // GET /api/v1/subscriptions/limits
+		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)    // GET /api/v1/subscriptions/payments
+	}
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
