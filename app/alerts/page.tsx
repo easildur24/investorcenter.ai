@@ -3,8 +3,8 @@
 import { useEffect, useState } from 'react';
 import { alertAPI, AlertRuleWithDetails, ALERT_TYPES, ALERT_FREQUENCIES } from '@/lib/api/alerts';
 import { subscriptionAPI, SubscriptionLimits } from '@/lib/api/subscriptions';
+import CreateAlertModal from '@/components/alerts/CreateAlertModal';
 // TODO: Implement these components (see REMAINING_FRONTEND_COMPONENTS.md)
-// import CreateAlertModal from '@/components/alerts/CreateAlertModal';
 // import EditAlertModal from '@/components/alerts/EditAlertModal';
 // import UpgradeModal from '@/components/subscription/UpgradeModal';
 // import ProtectedRoute from '@/components/ProtectedRoute';
@@ -253,8 +253,7 @@ function AlertsPageContent() {
         )}
       </div>
 
-      {/* Modals - TODO: Implement these components */}
-      {/*
+      {/* Modals */}
       {showCreateModal && (
         <CreateAlertModal
           onClose={() => setShowCreateModal(false)}
@@ -262,6 +261,8 @@ function AlertsPageContent() {
         />
       )}
 
+      {/* TODO: Implement EditAlertModal and UpgradeModal */}
+      {/*
       {showEditModal && selectedAlert && (
         <EditAlertModal
           alert={selectedAlert}
