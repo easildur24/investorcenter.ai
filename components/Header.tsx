@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { ChartBarIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon, BellIcon } from '@heroicons/react/24/outline';
 import TickerSearch from '@/components/TickerSearch';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -43,12 +43,20 @@ export default function Header() {
                 Reddit Trends
               </Link>
               {user && (
-                <Link
-                  href="/watchlist"
-                  className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Watch Lists
-                </Link>
+                <>
+                  <Link
+                    href="/watchlist"
+                    className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Watch Lists
+                  </Link>
+                  <Link
+                    href="/alerts"
+                    className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                  >
+                    Alerts
+                  </Link>
+                </>
               )}
             </div>
           </div>
@@ -58,6 +66,18 @@ export default function Header() {
             <div className="hidden sm:block">
               <TickerSearch />
             </div>
+
+            {/* Alerts Bell Icon - Only when logged in */}
+            {user && (
+              <Link
+                href="/alerts"
+                className="relative p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+                title="Alerts"
+              >
+                <BellIcon className="h-6 w-6" />
+                {/* TODO: Add notification count badge here */}
+              </Link>
+            )}
 
             {user ? (
               <div className="relative">
@@ -79,6 +99,13 @@ export default function Header() {
                       onClick={() => setShowDropdown(false)}
                     >
                       My Watch Lists
+                    </Link>
+                    <Link
+                      href="/alerts"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      My Alerts
                     </Link>
                     <Link
                       href="/settings/profile"
