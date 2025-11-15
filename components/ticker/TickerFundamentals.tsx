@@ -38,27 +38,36 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null);
   const [keyMetrics, setKeyMetrics] = useState<KeyMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isCrypto, setIsCrypto] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
         console.log(`🔥 Fetching REAL fundamentals for ${symbol}...`);
-        
+
         const response = await fetch(`/api/v1/tickers/${symbol}`);
         console.log(`📡 Fundamentals response status: ${response.status}`);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: Failed to fetch fundamentals`);
         }
-        
+
         const result = await response.json();
         console.log('📊 Full API Response for fundamentals:', result);
-        
+
+        // Check if this is a crypto asset - if so, don't show stock fundamentals
+        if (result.data.summary.stock.isCrypto) {
+          console.log('🪙 This is a crypto asset, skipping stock fundamentals');
+          setIsCrypto(true);
+          setLoading(false);
+          return;
+        }
+
         // Extract real fundamentals data from Polygon.io
         const realFundamentals = result.data.summary.fundamentals;
         const realKeyMetrics = result.data.summary.keyMetrics;
-        
+
         console.log('💰 REAL Fundamentals:', realFundamentals);
         console.log('📈 REAL Key Metrics:', realKeyMetrics);
         
@@ -105,6 +114,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
     const timer = setTimeout(fetchData, 100);
     return () => clearTimeout(timer);
   }, [symbol]);
+
+  // Don't render stock fundamentals for crypto assets
+  if (isCrypto) {
+    return null;
+  }
 
   if (loading) {
     return (

@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: ic-score-api-service
+  namespace: investorcenter
+  labels:
+    app: ic-score-api
+    component: ic-score-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: ic-score-api
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ic-score-api-headless
+  namespace: investorcenter
+  labels:
+    app: ic-score-api
+    component: ic-score-service
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+    name: http
+  selector:
+    app: ic-score-api
