@@ -1,8 +1,14 @@
-# InvestorCenter.ai - IC Score Service
+# IC Score Service - Data Ingestion Pipeline & API
+
+InvestorCenter.ai proprietary IC Score system for rating stocks 1-100 using 10 financial factors.
 
 ## Overview
 
-The IC Score Service is a Python-based microservice that provides proprietary stock scoring using 10 financial factors. It uses PostgreSQL 15+ with TimescaleDB for efficient time-series data storage.
+The IC Score service consists of:
+- **Data Ingestion Pipelines**: 7 pipelines across 5 phases to populate database with financial data
+- **IC Score Calculator**: Calculates proprietary scores using 10 weighted factors
+- **REST API**: FastAPI service to serve scores to frontend
+- **Database**: PostgreSQL 15+ with TimescaleDB for efficient time-series data storage
 
 ## Features
 

@@ -1,0 +1,103 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-calculator
+  namespace: investorcenter
+  labels:
+    app: ic-score-calculator
+    component: ic-score-pipeline
+    phase: phase-5
+spec:
+  # Run daily at 7:00 PM ET (12:00 AM UTC next day)
+  schedule: "0 0 * * *"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-calculator
+        component: ic-score-pipeline
+        phase: phase-5
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 14400  # 4 hours timeout
+      ttlSecondsAfterFinished: 21600
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-calculator
+            component: ic-score-pipeline
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: ic-score-calculator
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/ic_score_calculator.py"
+            - "--all"
+
+            env:
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            # Polygon API Key (for technical data)
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "4Gi"
+                cpu: "2000m"
+              limits:
+                memory: "8Gi"
+                cpu: "4000m"
+
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
