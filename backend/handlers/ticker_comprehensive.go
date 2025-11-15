@@ -183,27 +183,75 @@ func GetTickerChart(c *gin.Context) {
 
 	log.Printf("GetTickerChart called for symbol: %s, period: %s", symbol, period)
 
-	polygonClient := services.NewPolygonClient()
+	// Check if this is a crypto asset
+	stockService := services.NewStockService()
+	stock, err := stockService.GetStockBySymbol(c.Request.Context(), symbol)
 
-	// Convert period to days for Polygon API
-	days := services.GetDaysFromPeriod(period)
-
-	var chartData []models.ChartDataPoint
-	var err error
-
-	if period == "1D" {
-		// For intraday, get minute-level data
-		chartData, err = polygonClient.GetIntradayData(symbol)
+	var isCrypto bool
+	if err != nil {
+		// Not in database - check if it's in Redis (crypto)
+		_, cryptoExists := getCryptoFromRedis(symbol)
+		isCrypto = cryptoExists
 	} else {
-		// For longer periods, get daily data
-		chartData, err = polygonClient.GetDailyData(symbol, days)
+		isCrypto = isCryptoAsset(stock.AssetType, symbol)
 	}
 
-	if err != nil {
-		log.Printf("Failed to get chart data for %s: %v", symbol, err)
-		// Fallback to mock data
-		mockChart := generateMockChartData(symbol, period)
-		chartData = mockChart.DataPoints
+	var chartData []models.ChartDataPoint
+	var chartErr error
+	var dataSource string
+
+	if isCrypto {
+		// Use CoinGecko for crypto charts
+		log.Printf("Fetching crypto chart data for %s from CoinGecko", symbol)
+		coinGeckoClient := services.NewCoinGeckoClient()
+		chartData, chartErr = coinGeckoClient.GetChartData(symbol, period)
+		dataSource = "coingecko"
+
+		if chartErr != nil {
+			log.Printf("Failed to get crypto chart data for %s: %v", symbol, chartErr)
+			// Return empty chart with error message instead of mock data
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data": gin.H{
+					"symbol":      symbol,
+					"period":      period,
+					"dataPoints":  []models.ChartDataPoint{},
+					"count":       0,
+					"lastUpdated": time.Now().UTC(),
+					"error":       "Chart data temporarily unavailable",
+				},
+				"meta": gin.H{
+					"symbol":    symbol,
+					"period":    period,
+					"isCrypto":  true,
+					"source":    "coingecko",
+					"timestamp": time.Now().UTC(),
+				},
+			})
+			return
+		}
+	} else {
+		// Use Polygon for stock/ETF charts
+		log.Printf("Fetching stock chart data for %s from Polygon", symbol)
+		polygonClient := services.NewPolygonClient()
+		dataSource = "polygon"
+
+		if period == "1D" {
+			// For intraday, get minute-level data
+			chartData, chartErr = polygonClient.GetIntradayData(symbol)
+		} else {
+			// For longer periods, get daily data
+			days := services.GetDaysFromPeriod(period)
+			chartData, chartErr = polygonClient.GetDailyData(symbol, days)
+		}
+
+		if chartErr != nil {
+			log.Printf("Failed to get chart data for %s: %v", symbol, chartErr)
+			// Fallback to mock data for stocks
+			mockChart := generateMockChartData(symbol, period)
+			chartData = mockChart.DataPoints
+			dataSource = "mock"
+		}
 	}
 
 	response := gin.H{
@@ -219,6 +267,8 @@ func GetTickerChart(c *gin.Context) {
 			"symbol":    symbol,
 			"period":    period,
 			"count":     len(chartData),
+			"isCrypto":  isCrypto,
+			"source":    dataSource,
 			"timestamp": time.Now().UTC(),
 		},
 	}
