@@ -54,8 +54,8 @@ func GetTicker(c *gin.Context) {
 			return
 		}
 	} else {
-		// Found in database - determine if crypto or stock
-		isCrypto = isCryptoAsset(stock.AssetType, symbol)
+		// Found in database - determine if crypto or stock using all available fields
+		isCrypto = isCryptoAssetWithStock(stock)
 	}
 
 	// Get real-time price data
@@ -183,6 +183,46 @@ func GetTickerChart(c *gin.Context) {
 
 	log.Printf("GetTickerChart called for symbol: %s, period: %s", symbol, period)
 
+	// Check if this is a crypto asset
+	stockService := services.NewStockService()
+	stock, stockErr := stockService.GetStockBySymbol(c.Request.Context(), symbol)
+
+	var isCrypto bool
+	if stockErr != nil {
+		// Not in database, check Redis
+		_, cryptoExists := getCryptoFromRedis(symbol)
+		isCrypto = cryptoExists
+	} else {
+		isCrypto = isCryptoAssetWithStock(stock)
+	}
+
+	// Handle crypto chart data separately
+	if isCrypto {
+		log.Printf("⚠️  Chart requested for crypto %s - crypto charts not yet implemented", symbol)
+		// For now, return empty chart data with a message
+		// TODO: Implement crypto chart data from CoinGecko historical API or Redis time-series
+		c.JSON(http.StatusOK, gin.H{
+			"success": true,
+			"data": gin.H{
+				"symbol":      symbol,
+				"period":      period,
+				"dataPoints":  []models.ChartDataPoint{},
+				"count":       0,
+				"lastUpdated": time.Now().UTC(),
+				"message":     "Crypto chart data coming soon",
+			},
+			"meta": gin.H{
+				"symbol":    symbol,
+				"period":    period,
+				"count":     0,
+				"timestamp": time.Now().UTC(),
+				"isCrypto":  true,
+			},
+		})
+		return
+	}
+
+	// For stocks, use Polygon API
 	polygonClient := services.NewPolygonClient()
 
 	// Convert period to days for Polygon API
@@ -247,6 +287,31 @@ func isCryptoAsset(assetType, symbol string) bool {
 	}
 
 	return cryptoSymbols[symbol]
+}
+
+// isCryptoAssetWithStock checks if a stock is crypto based on all available fields
+func isCryptoAssetWithStock(stock *models.Stock) bool {
+	if stock == nil {
+		return false
+	}
+
+	// Check asset type
+	if stock.AssetType == "crypto" {
+		return true
+	}
+
+	// Check exchange (crypto tickers have exchange="CRYPTO")
+	if stock.Exchange == "CRYPTO" {
+		return true
+	}
+
+	// Check sector (crypto tickers have sector="Cryptocurrency")
+	if stock.Sector == "Cryptocurrency" {
+		return true
+	}
+
+	// Fall back to symbol-based check
+	return isCryptoAsset(stock.AssetType, stock.Symbol)
 }
 
 func getUpdateInterval(isCrypto bool, marketStatus string) int {
