@@ -97,7 +97,7 @@ func main() {
 		// Market data endpoints
 		markets := v1.Group("/markets")
 		{
-			markets.GET("/indices", getMarketIndices)
+			markets.GET("/indices", handlers.GetMarketIndices)
 			markets.GET("/search", searchSecurities)
 		}
 
@@ -288,44 +288,6 @@ func main() {
 }
 
 // Market data handlers
-func getMarketIndices(c *gin.Context) {
-	// Mock data - replace with real market data API
-	indices := []gin.H{
-		{
-			"symbol":        "^GSPC",
-			"name":          "S&P 500",
-			"price":         4567.89,
-			"change":        23.45,
-			"changePercent": 0.52,
-			"lastUpdated":   time.Now().UTC(),
-		},
-		{
-			"symbol":        "^DJI",
-			"name":          "Dow Jones",
-			"price":         35432.10,
-			"change":        -45.67,
-			"changePercent": -0.13,
-			"lastUpdated":   time.Now().UTC(),
-		},
-		{
-			"symbol":        "^IXIC",
-			"name":          "NASDAQ",
-			"price":         14123.45,
-			"change":        67.89,
-			"changePercent": 0.48,
-			"lastUpdated":   time.Now().UTC(),
-		},
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"data": indices,
-		"meta": gin.H{
-			"count":     len(indices),
-			"timestamp": time.Now().UTC(),
-		},
-	})
-}
-
 func searchSecurities(c *gin.Context) {
 	query := c.Query("q")
 
