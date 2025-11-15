@@ -37,9 +37,13 @@ app = FastAPI(
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure appropriately for production
+    allow_origins=[
+        "https://investorcenter.ai",
+        "https://www.investorcenter.ai",
+        "http://localhost:3000",  # Development only
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -235,8 +239,8 @@ async def get_top_scores(
     """
 
     if sector:
-        base_query += " JOIN companies c ON ls.ticker = c.ticker"
-        where_clauses.append("c.sector = :sector")
+        base_query += " JOIN stocks s ON ls.ticker = s.ticker"
+        where_clauses.append("s.sector = :sector")
         params["sector"] = sector
 
     if min_score is not None:
@@ -306,8 +310,8 @@ async def screener(
     """
 
     if sector:
-        base_query += " JOIN companies c ON ls.ticker = c.ticker"
-        where_clauses.append("c.sector = :sector")
+        base_query += " JOIN stocks s ON ls.ticker = s.ticker"
+        where_clauses.append("s.sector = :sector")
         params["sector"] = sector
 
     if min_value is not None:

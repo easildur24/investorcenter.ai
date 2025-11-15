@@ -38,7 +38,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('technical_indicators_calculator.log')
+        logging.FileHandler('/app/logs/technical_indicators_calculator.log')
     ]
 )
 logger = logging.getLogger(__name__)

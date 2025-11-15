@@ -37,7 +37,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('ic_score_calculator.log')
+        logging.FileHandler('/app/logs/ic_score_calculator.log')
     ]
 )
 logger = logging.getLogger(__name__)
@@ -100,29 +100,27 @@ class ICScoreCalculator:
         async with self.db.session() as session:
             if ticker:
                 query = text("""
-                    SELECT s.ticker, c.sector
-                    FROM stocks s
-                    LEFT JOIN companies c ON s.ticker = c.ticker
-                    WHERE s.ticker = :ticker
+                    SELECT ticker, sector
+                    FROM stocks
+                    WHERE ticker = :ticker
                 """)
                 result = await session.execute(query, {"ticker": ticker.upper()})
             else:
-                where_clauses = ["s.ticker NOT LIKE '%-%'", "s.is_active = true"]
+                where_clauses = ["ticker NOT LIKE '%-%'", "is_active = true"]
                 params = {}
 
                 if sector:
-                    where_clauses.append("c.sector = :sector")
+                    where_clauses.append("sector = :sector")
                     params['sector'] = sector
 
                 if sp500:
-                    where_clauses.append("s.is_sp500 = true")
+                    where_clauses.append("is_sp500 = true")
 
                 query_str = f"""
-                    SELECT s.ticker, c.sector
-                    FROM stocks s
-                    LEFT JOIN companies c ON s.ticker = c.ticker
+                    SELECT ticker, sector
+                    FROM stocks
                     WHERE {' AND '.join(where_clauses)}
-                    ORDER BY s.ticker
+                    ORDER BY ticker
                     LIMIT :limit
                 """
                 params['limit'] = limit or 10000

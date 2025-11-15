@@ -1,0 +1,106 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-news-sentiment
+  namespace: investorcenter
+  labels:
+    app: ic-score-news-sentiment
+    component: ic-score-pipeline
+    provider: polygon
+    phase: phase-4
+spec:
+  # Run every 4 hours
+  schedule: "0 */4 * * *"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-news-sentiment
+        component: ic-score-pipeline
+        provider: polygon
+        phase: phase-4
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      ttlSecondsAfterFinished: 7200
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-news-sentiment
+            component: ic-score-pipeline
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: news-sentiment-ingestion
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/news_sentiment_ingestion.py"
+            - "--hours"
+            - "4"
+
+            env:
+            # Polygon API Key
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

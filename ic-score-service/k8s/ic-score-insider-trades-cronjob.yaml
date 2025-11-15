@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-insider-trades
+  namespace: investorcenter
+  labels:
+    app: ic-score-insider-trades
+    component: ic-score-pipeline
+    provider: sec
+    phase: phase-3
+spec:
+  # Run hourly during market hours on weekdays (9am-4pm ET = 2pm-9pm UTC)
+  schedule: "0 14-21 * * 1-5"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-insider-trades
+        component: ic-score-pipeline
+        provider: sec
+        phase: phase-3
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      ttlSecondsAfterFinished: 7200
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-insider-trades
+            component: ic-score-pipeline
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: insider-trades-ingestion
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/sec_insider_trades_ingestion.py"
+            - "--hours"
+            - "24"
+
+            env:
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000
