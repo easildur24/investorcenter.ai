@@ -23,16 +23,16 @@ type IndexInfo struct {
 func GetMarketIndices(c *gin.Context) {
 	polygonClient := services.NewPolygonClient()
 
-	// Define major market indices with their Polygon.io symbols
-	// Polygon.io uses "I:" prefix for indices
-	// Reference: https://polygon.io/docs/indices/getting-started
+	// Define major market indices using ETF proxies
+	// Note: Using ETFs as proxies since indices require premium Polygon.io plan
+	// ETFs track indices very closely and provide real-time data
 	indexSymbols := []struct {
 		Symbol string
 		Name   string
 	}{
-		{"I:SPX", "S&P 500"},     // S&P 500 Index
-		{"I:DJI", "Dow Jones"},   // Dow Jones Industrial Average
-		{"I:COMP", "NASDAQ"},     // NASDAQ Composite Index
+		{"SPY", "S&P 500"},   // SPDR S&P 500 ETF Trust (tracks S&P 500)
+		{"DIA", "Dow Jones"}, // SPDR Dow Jones Industrial Average ETF (tracks DJIA)
+		{"QQQ", "NASDAQ"},    // Invesco QQQ Trust (tracks NASDAQ-100)
 	}
 
 	indices := []IndexInfo{}
@@ -65,7 +65,7 @@ func GetMarketIndices(c *gin.Context) {
 	if len(indices) == 0 {
 		log.Printf("Error: Failed to fetch any market indices. Errors: %v", fetchErrors)
 		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "Failed to fetch market indices from Polygon.io. Please check API key and connectivity.",
+			"error":   "Failed to fetch market indices from Polygon.io. Please check API key and connectivity.",
 			"details": fetchErrors,
 			"meta": gin.H{
 				"timestamp": time.Now().UTC(),
