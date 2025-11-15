@@ -1,0 +1,148 @@
+I need you to implement a data ingestion pipeline system for the IC Score feature at InvestorCenter.ai. This is a comprehensive project with 5 phases.
+
+## Context
+- Project location: /Users/esun/code/investorcenter.ai/ic-score-service/
+- Database schema: Already created (16 tables in schema.sql)
+- SQLAlchemy models: Already defined in models.py
+- Target: Populate database with real financial data for 4,600 US stocks
+- End goal: Calculate proprietary IC Scores (1-100) using 10 financial factors
+
+## Existing Infrastructure to Leverage
+- Go backend has Polygon.io integration (backend/services/polygon.go)
+- PostgreSQL database: investorcenter_db at localhost:5432
+- 4,600 US stocks with CIK numbers in `stocks` table
+- Kubernetes cluster: investorcenter-eks on AWS
+- Environment variable POLYGON_API_KEY already exists
+
+## Complete Implementation Plan
+Read the detailed plan here: /Users/esun/code/investorcenter.ai/ic-score-service/IMPLEMENTATION_PROMPT.md
+
+This document contains:
+- 5 implementation phases with specific tasks
+- All file paths and code requirements
+- Database schema details
+- API endpoints to create
+- Kubernetes deployment specs
+- Testing strategy
+- Success criteria
+
+## Your Tasks
+
+### Phase 1: SEC Financial Statements (Weeks 1-2)
+1. Create `pipelines/utils/sec_client.py` - SEC EDGAR API client
+   - Fetch from https://data.sec.gov/api/xbrl/companyfacts/CIK{cik}.json
+   - Rate limit: 10 req/sec
+   - Parse income statement, balance sheet, cash flow
+   - Calculate financial ratios (PE, PB, PS, ROE, margins, etc.)
+
+2. Create `pipelines/sec_financials_ingestion.py`
+   - Read stocks from main DB `stocks` table (use CIK)
+   - Fetch 5 years of quarterly data for each stock
+   - Insert into `financials` table
+   - CLI: --limit, --all, --ticker, --resume flags
+
+3. Create `k8s/ic-score-sec-financials-cronjob.yaml`
+   - Schedule: Weekly Sunday 2am
+   - Follow pattern from k8s/polygon-ticker-updater-cronjob.yaml
+
+### Phase 2: Technical Indicators (Week 3)
+1. Create `pipelines/technical_indicators_calculator.py`
+   - Fetch 252 days price data from Polygon.io
+   - Calculate: RSI, MACD, SMA, EMA, Bollinger Bands
+   - Calculate momentum: 1M, 3M, 6M, 12M returns
+   - Insert into `technical_indicators` and `stock_prices` tables
+
+2. Create `k8s/ic-score-technical-indicators-cronjob.yaml`
+   - Schedule: Daily 6pm ET (after market close)
+
+### Phase 3: Insider & Institutional Data (Week 4)
+1. Create `pipelines/sec_insider_trades_ingestion.py`
+   - Poll SEC RSS: https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=4&output=atom
+   - Parse Form 4 XML filings
+   - Insert into `insider_trades` table
+
+2. Create `pipelines/sec_13f_ingestion.py`
+   - Download quarterly 13F bulk files from SEC
+   - Parse institutional holdings
+   - Insert into `institutional_holdings` table
+
+3. Create Kubernetes CronJobs for both
+
+### Phase 4: Analyst Ratings & News (Weeks 5-6)
+1. Create `pipelines/analyst_ratings_ingestion.py`
+   - Use Benzinga API free tier or Polygon.io
+   - Insert into `analyst_ratings` table
+
+2. Create `pipelines/news_sentiment_ingestion.py`
+   - Fetch from Polygon.io News API
+   - Use FinBERT model for sentiment if not provided
+   - Insert into `news_articles` table
+
+3. Create Kubernetes CronJobs
+
+### Phase 5: IC Score Calculator & API (Week 7)
+1. Create `pipelines/ic_score_calculator.py`
+   - Implement algorithm from docs/competitor-features/tech-spec-02-implementation-details.md (lines 428-766)
+   - Calculate 10 factor scores with sector-relative percentiles
+   - Weighted average: value(12%), growth(15%), profitability(12%), financial_health(10%), momentum(8%), analyst(10%), insider(8%), institutional(10%), news_sentiment(7%), technical(8%)
+   - Assign ratings: Strong Buy(80-100), Buy(65-79), Hold(50-64), Underperform(35-49), Sell(1-34)
+   - Insert into `ic_scores` table
+
+2. Create `api/main.py` - FastAPI service
+   - GET /api/scores/{ticker} - Latest IC Score
+   - GET /api/scores/{ticker}/history - Historical scores
+   - GET /api/scores/top - Top rated stocks
+   - GET /api/scores/screener - Advanced filtering
+   - GET /health - Health check
+
+3. Create Kubernetes manifests:
+   - ic-score-calculator-cronjob.yaml (daily 7pm ET)
+   - ic-score-api-deployment.yaml (3 replicas)
+   - ic-score-api-service.yaml (ClusterIP)
+
+## Key Implementation Guidelines
+- Use async/await for database operations (database.py already provides this)
+- Add comprehensive error handling and logging
+- Use argparse for CLI arguments
+- Add progress bars with tqdm for long operations
+- Handle missing data gracefully (track data_completeness)
+- Respect API rate limits
+- Write unit tests in tests/ directory
+- Use type hints throughout
+
+## Dependencies to Add
+Add to requirements.txt:
+- requests, aiohttp - API clients
+- pandas, pandas-ta, numpy - Data processing
+- ta-lib - Technical indicators
+- transformers, torch - Sentiment analysis (Phase 4)
+- fastapi, uvicorn, pydantic - API (Phase 5)
+- tqdm - Progress bars
+
+## Testing
+After each phase, verify data:
+```bash
+# Test Phase 1
+python pipelines/sec_financials_ingestion.py --limit 10
+psql -d investorcenter_db -c "SELECT ticker, COUNT(*) FROM financials GROUP BY ticker;"
+
+# Test Phase 5
+python pipelines/ic_score_calculator.py --limit 10
+psql -d investorcenter_db -c "SELECT ticker, overall_score, rating FROM ic_scores ORDER BY overall_score DESC LIMIT 10;"
+```
+
+## Success Criteria
+- Phase 1: 4,600 stocks with financial data, 90%+ S&P 500 completeness
+- Phase 2: 4,600 stocks with technical indicators
+- Phase 3: 30 days insider trades, 4 quarters institutional data
+- Phase 4: 500+ stocks analyst ratings, 30 days news
+- Phase 5: 4,600 stocks with daily IC Scores, API responds <100ms
+
+## Start Here
+1. Read full implementation details: ic-score-service/IMPLEMENTATION_PROMPT.md
+2. Begin with Phase 1: Create SEC client and financials ingestion
+3. Test on 10 stocks before scaling to all 4,600
+4. Move to Phase 2 after Phase 1 verification
+5. Continue sequentially through all phases
+
+Please implement this system phase by phase, testing thoroughly after each phase. Ask clarifying questions if needed.
