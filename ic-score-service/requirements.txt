@@ -27,7 +27,7 @@ pandas>=2.1.0
 numpy>=1.26.0
 
 # Technical analysis (Phase 2)
-pandas-ta>=0.3.14b0
+# pandas-ta>=0.3.14b0  # REMOVED: Not available for Python 3.11/ARM64, using TA-Lib instead
 TA-Lib>=0.4.28  # Note: requires system-level installation
 
 # NLP/Sentiment (Phase 4)

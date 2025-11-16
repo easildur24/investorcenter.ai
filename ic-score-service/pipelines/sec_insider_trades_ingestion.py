@@ -33,7 +33,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('sec_insider_trades_ingestion.log')
+        logging.FileHandler('/app/logs/sec_insider_trades_ingestion.log')
     ]
 )
 logger = logging.getLogger(__name__)

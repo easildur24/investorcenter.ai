@@ -1,64 +1,54 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: ic-score-sec-financials
+  name: ic-score-13f-holdings
   namespace: investorcenter
   labels:
-    app: ic-score-sec-financials
+    app: ic-score-13f-holdings
     component: ic-score-pipeline
     provider: sec
-    phase: phase-1
+    phase: phase-3
 spec:
-  # Run weekly on Sunday at 2:00 AM UTC
-  schedule: "0 2 * * 0"
+  # Run quarterly on 15th at 3am UTC (45 days after quarter end for 13F filing deadline)
+  # Jan 15, Apr 15, Jul 15, Oct 15
+  schedule: "0 3 15 1,4,7,10 *"
 
-  # Keep last 3 successful and 1 failed job for debugging
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
-
-  # Don't start new job if previous is still running
   concurrencyPolicy: Forbid
 
   jobTemplate:
     metadata:
       labels:
-        app: ic-score-sec-financials
+        app: ic-score-13f-holdings
         component: ic-score-pipeline
         provider: sec
-        phase: phase-1
+        phase: phase-3
     spec:
-      # Retry failed jobs up to 2 times
       backoffLimit: 2
-
-      # Job timeout: 12 hours (for processing all 4,600 stocks)
-      activeDeadlineSeconds: 43200
-
-      # Clean up completed jobs after 6 hours
+      activeDeadlineSeconds: 21600  # 6 hours timeout (large file processing)
       ttlSecondsAfterFinished: 21600
 
       template:
         metadata:
           labels:
-            app: ic-score-sec-financials
+            app: ic-score-13f-holdings
             component: ic-score-pipeline
-            provider: sec
-            phase: phase-1
         spec:
           restartPolicy: OnFailure
 
           containers:
-          - name: sec-financials-ingestion
+          - name: 13f-holdings-ingestion
             image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
             imagePullPolicy: Always
 
             command: ["python"]
             args:
-            - "/app/pipelines/sec_financials_ingestion.py"
-            - "--all"
-            - "--resume"
+            - "/app/pipelines/sec_13f_ingestion.py"
+            - "--latest"
 
             env:
-            # Database connection configuration
+            # Database connection
             - name: DB_HOST
               value: "postgres-simple-service"
             - name: DB_PORT
@@ -78,13 +68,11 @@ spec:
                   name: postgres-secret
                   key: password
 
-            # Python environment
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: PYTHONPATH
               value: "/app"
 
-            # Resource limits (higher for large-scale ingestion)
             resources:
               requests:
                 memory: "2Gi"
@@ -93,7 +81,6 @@ spec:
                 memory: "4Gi"
                 cpu: "2000m"
 
-            # Volume mounts for logs and temp files
             volumeMounts:
             - name: logs
               mountPath: /app/logs
@@ -106,7 +93,6 @@ spec:
           - name: tmp
             emptyDir: {}
 
-          # Security context
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000

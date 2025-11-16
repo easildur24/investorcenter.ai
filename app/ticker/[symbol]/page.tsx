@@ -8,6 +8,7 @@ import TickerAnalysts from '@/components/ticker/TickerAnalysts';
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
+import ICScoreCard from '@/components/ic-score/ICScoreCard';
 
 interface PageProps {
   params: {
@@ -133,6 +134,11 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               <div className="bg-white rounded-lg shadow">
                 <TickerEarnings symbol={symbol} />
               </div>
+
+              {/* IC Score Analysis */}
+              <Suspense fallback={<ICScoreSkeleton />}>
+                <ICScoreCard ticker={symbol} variant="full" />
+              </Suspense>
             </div>
 
             {/* Right Column - Fundamentals and Analysis */}
@@ -380,6 +386,18 @@ function AnalystsSkeleton() {
         <div className="h-8 bg-gray-200 rounded w-full"></div>
         <div className="h-4 bg-gray-200 rounded w-3/4"></div>
         <div className="h-4 bg-gray-200 rounded w-2/3"></div>
+      </div>
+    </div>
+  );
+}
+
+function ICScoreSkeleton() {
+  return (
+    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden animate-pulse">
+      <div className="bg-gray-300 h-24"></div>
+      <div className="p-6 space-y-4">
+        <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="h-64 bg-gray-200 rounded"></div>
       </div>
     </div>
   );

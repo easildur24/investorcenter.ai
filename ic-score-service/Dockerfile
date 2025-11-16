@@ -9,7 +9,20 @@ RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     git \
+    wget \
     && rm -rf /var/lib/apt/lists/*
+
+# Install TA-Lib C library (with ARM64 support)
+RUN wget http://prdownloads.sourceforge.net/ta-lib/ta-lib-0.4.0-src.tar.gz && \
+    tar -xzf ta-lib-0.4.0-src.tar.gz && \
+    cd ta-lib/ && \
+    wget -O config.guess 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' && \
+    wget -O config.sub 'https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD' && \
+    ./configure --prefix=/usr && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf ta-lib-0.4.0-src.tar.gz ta-lib/
 
 # Copy requirements first for better caching
 COPY requirements.txt .
@@ -28,7 +41,12 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     libpq5 \
     curl \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
+
+# Copy TA-Lib library from builder
+COPY --from=builder /usr/lib/libta_lib.* /usr/lib/
+COPY --from=builder /usr/include/ta-lib/ /usr/include/ta-lib/
 
 # Copy Python packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages

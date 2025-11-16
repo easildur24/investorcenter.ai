@@ -34,10 +34,98 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('news_sentiment_ingestion.log')
+        logging.FileHandler('/app/logs/news_sentiment_ingestion.log')
     ]
 )
 logger = logging.getLogger(__name__)
+
+
+class FinBERTSentimentAnalyzer:
+    """FinBERT sentiment analyzer for financial text."""
+
+    def __init__(self):
+        """Initialize FinBERT model (lazy loading)."""
+        self.tokenizer = None
+        self.model = None
+        self._initialized = False
+
+    def _initialize_model(self):
+        """Initialize the model (lazy loading to avoid startup delays)."""
+        if self._initialized:
+            return
+
+        try:
+            from transformers import AutoTokenizer, AutoModelForSequenceClassification
+            import torch
+
+            logger.info("Loading FinBERT model...")
+            self.tokenizer = AutoTokenizer.from_pretrained("ProsusAI/finbert")
+            self.model = AutoModelForSequenceClassification.from_pretrained("ProsusAI/finbert")
+            self.model.eval()
+            self._initialized = True
+            logger.info("FinBERT model loaded successfully")
+
+        except ImportError:
+            logger.warning("transformers or torch not available - sentiment analysis disabled")
+            self._initialized = False
+        except Exception as e:
+            logger.error(f"Error loading FinBERT model: {e}")
+            self._initialized = False
+
+    def analyze(self, text: str) -> tuple[Optional[float], Optional[str]]:
+        """Analyze sentiment of financial text using FinBERT.
+
+        Args:
+            text: Text to analyze (title + summary).
+
+        Returns:
+            tuple: (score from -100 to 100, label: positive/negative/neutral)
+        """
+        if not text:
+            return None, None
+
+        # Initialize model if needed
+        if not self._initialized:
+            self._initialize_model()
+
+        if not self._initialized or not self.model:
+            return None, None
+
+        try:
+            import torch
+
+            # Truncate text to max length
+            inputs = self.tokenizer(
+                text,
+                return_tensors="pt",
+                truncation=True,
+                max_length=512,
+                padding=True
+            )
+
+            # Get predictions
+            with torch.no_grad():
+                outputs = self.model(**inputs)
+                predictions = torch.nn.functional.softmax(outputs.logits, dim=-1)
+
+            # FinBERT labels: positive, negative, neutral
+            labels = ['positive', 'negative', 'neutral']
+            predicted_class = predictions.argmax().item()
+            confidence = predictions[0][predicted_class].item()
+
+            # Map to -100 to 100 scale
+            if labels[predicted_class] == 'positive':
+                score = confidence * 100
+            elif labels[predicted_class] == 'negative':
+                score = -confidence * 100
+            else:
+                score = 0.0
+
+            return score, labels[predicted_class].capitalize()
+
+        except Exception as e:
+            logger.error(f"Error in FinBERT sentiment analysis: {e}")
+            return None, None
 
 
 class NewsSentimentIngestion:
@@ -47,6 +135,7 @@ class NewsSentimentIngestion:
         """Initialize the ingestion pipeline."""
         self.polygon_client = PolygonClient()
         self.db = get_database()
+        self.sentiment_analyzer = FinBERTSentimentAnalyzer()
 
         self.processed_count = 0
         self.success_count = 0
@@ -113,12 +202,12 @@ class NewsSentimentIngestion:
                     'image_url': article.get('image_url'),
                 }
 
-                # Extract sentiment if available
+                # Extract sentiment if available from Polygon
                 insights = article.get('insights', [])
                 if insights:
                     for insight in insights:
                         if insight.get('sentiment'):
-                            record['sentiment_label'] = insight['sentiment']
+                            record['sentiment_label'] = insight['sentiment'].capitalize()
                             # Map to numeric score
                             if insight['sentiment'] == 'positive':
                                 record['sentiment_score'] = 75.0
@@ -126,6 +215,15 @@ class NewsSentimentIngestion:
                                 record['sentiment_score'] = -75.0
                             else:
                                 record['sentiment_score'] = 0.0
+                            break
+
+                # If sentiment not provided by Polygon, use FinBERT
+                if record['sentiment_score'] is None:
+                    text = f"{record['title']} {record.get('summary', '')}"
+                    score, label = self.sentiment_analyzer.analyze(text)
+                    if score is not None:
+                        record['sentiment_score'] = score
+                        record['sentiment_label'] = label
 
                 records.append(record)
 

@@ -1,0 +1,191 @@
+'use client';
+
+import React from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
+import { formatFactorName } from '@/lib/types/ic-score';
+import type { ICScore, ICScoreFactor } from '@/lib/types/ic-score';
+
+interface ICScoreFactorChartProps {
+  factors: ICScore['factors'];
+  height?: number;
+}
+
+/**
+ * Horizontal bar chart showing IC Score factor breakdown
+ *
+ * Displays all 10 factors with:
+ * - Factor name
+ * - Weighted contribution to total score
+ * - Color-coded bars based on performance
+ */
+export default function ICScoreFactorChart({ factors, height = 500 }: ICScoreFactorChartProps) {
+  // Convert factors object to array for charting
+  const factorData = Object.entries(factors).map(([key, factor]) => ({
+    name: formatFactorName(key),
+    value: factor.value,
+    weight: factor.weight,
+    contribution: factor.contribution,
+    fullName: key,
+  }));
+
+  // Sort by contribution (descending)
+  factorData.sort((a, b) => b.contribution - a.contribution);
+
+  // Get color based on factor value
+  const getBarColor = (value: number): string => {
+    if (value >= 80) return '#10b981'; // green-500
+    if (value >= 65) return '#84cc16'; // lime-500
+    if (value >= 50) return '#eab308'; // yellow-500
+    if (value >= 35) return '#f97316'; // orange-500
+    return '#ef4444'; // red-500
+  };
+
+  return (
+    <div className="w-full">
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart
+          data={factorData}
+          layout="vertical"
+          margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+        >
+          <XAxis type="number" domain={[0, 100]} />
+          <YAxis
+            type="category"
+            dataKey="name"
+            width={150}
+            tick={{ fontSize: 13 }}
+          />
+          <Tooltip content={<CustomTooltip />} />
+          <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+            {factorData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={getBarColor(entry.value)} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      {/* Legend */}
+      <div className="mt-4 px-6">
+        <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-green-500"></div>
+            <span>Strong Buy (80-100)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-lime-500"></div>
+            <span>Buy (65-79)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-yellow-500"></div>
+            <span>Hold (50-64)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-orange-500"></div>
+            <span>Underperform (35-49)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-red-500"></div>
+            <span>Sell (0-34)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Custom tooltip for factor chart
+ */
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{
+    payload: {
+      name: string;
+      value: number;
+      weight: number;
+      contribution: number;
+    };
+  }>;
+}
+
+function CustomTooltip({ active, payload }: TooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const data = payload[0].payload;
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+      <p className="font-semibold text-gray-900 text-sm mb-2">{data.name}</p>
+      <div className="space-y-1 text-xs text-gray-600">
+        <div className="flex justify-between gap-4">
+          <span>Score:</span>
+          <span className="font-medium text-gray-900">{data.value.toFixed(1)}/100</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span>Weight:</span>
+          <span className="font-medium text-gray-900">{(data.weight * 100).toFixed(0)}%</span>
+        </div>
+        <div className="flex justify-between gap-4">
+          <span>Contribution:</span>
+          <span className="font-medium text-gray-900">{data.contribution.toFixed(1)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Compact factor list view (alternative to chart)
+ */
+interface ICScoreFactorListProps {
+  factors: ICScore['factors'];
+}
+
+export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
+  const factorData = Object.entries(factors).map(([key, factor]) => ({
+    name: formatFactorName(key),
+    value: factor.value,
+    weight: factor.weight,
+    contribution: factor.contribution,
+  }));
+
+  // Sort by contribution (descending)
+  factorData.sort((a, b) => b.contribution - a.contribution);
+
+  const getBarColor = (value: number): string => {
+    if (value >= 80) return 'bg-green-500';
+    if (value >= 65) return 'bg-lime-500';
+    if (value >= 50) return 'bg-yellow-500';
+    if (value >= 35) return 'bg-orange-500';
+    return 'bg-red-500';
+  };
+
+  return (
+    <div className="space-y-3">
+      {factorData.map((factor, index) => (
+        <div key={index} className="space-y-1">
+          <div className="flex justify-between items-center text-sm">
+            <span className="font-medium text-gray-700">{factor.name}</span>
+            <span className="text-gray-600">
+              {factor.value.toFixed(1)} <span className="text-xs text-gray-400">/ 100</span>
+            </span>
+          </div>
+          <div className="w-full bg-gray-200 rounded-full h-2">
+            <div
+              className={`h-2 rounded-full transition-all duration-500 ${getBarColor(
+                factor.value
+              )}`}
+              style={{ width: `${factor.value}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>Weight: {(factor.weight * 100).toFixed(0)}%</span>
+            <span>Contributes: {factor.contribution.toFixed(1)}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}

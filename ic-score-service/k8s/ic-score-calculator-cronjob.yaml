@@ -47,7 +47,7 @@ spec:
             env:
             # Database connection
             - name: DB_HOST
-              value: "postgres-service"
+              value: "postgres-simple-service"
             - name: DB_PORT
               value: "5432"
             - name: DB_NAME
@@ -79,11 +79,11 @@ spec:
 
             resources:
               requests:
-                memory: "4Gi"
-                cpu: "2000m"
+                memory: "1Gi"
+                cpu: "1000m"
               limits:
-                memory: "8Gi"
-                cpu: "4000m"
+                memory: "2Gi"
+                cpu: "1500m"
 
             volumeMounts:
             - name: logs

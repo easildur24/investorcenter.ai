@@ -1,64 +1,54 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: ic-score-sec-financials
+  name: ic-score-insider-trades
   namespace: investorcenter
   labels:
-    app: ic-score-sec-financials
+    app: ic-score-insider-trades
     component: ic-score-pipeline
     provider: sec
-    phase: phase-1
+    phase: phase-3
 spec:
-  # Run weekly on Sunday at 2:00 AM UTC
-  schedule: "0 2 * * 0"
+  # Run hourly during market hours on weekdays (9am-4pm ET = 2pm-9pm UTC)
+  schedule: "0 14-21 * * 1-5"
 
-  # Keep last 3 successful and 1 failed job for debugging
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
-
-  # Don't start new job if previous is still running
   concurrencyPolicy: Forbid
 
   jobTemplate:
     metadata:
       labels:
-        app: ic-score-sec-financials
+        app: ic-score-insider-trades
         component: ic-score-pipeline
         provider: sec
-        phase: phase-1
+        phase: phase-3
     spec:
-      # Retry failed jobs up to 2 times
       backoffLimit: 2
-
-      # Job timeout: 12 hours (for processing all 4,600 stocks)
-      activeDeadlineSeconds: 43200
-
-      # Clean up completed jobs after 6 hours
-      ttlSecondsAfterFinished: 21600
+      activeDeadlineSeconds: 3600  # 1 hour timeout
+      ttlSecondsAfterFinished: 7200
 
       template:
         metadata:
           labels:
-            app: ic-score-sec-financials
+            app: ic-score-insider-trades
             component: ic-score-pipeline
-            provider: sec
-            phase: phase-1
         spec:
           restartPolicy: OnFailure
 
           containers:
-          - name: sec-financials-ingestion
+          - name: insider-trades-ingestion
             image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
             imagePullPolicy: Always
 
             command: ["python"]
             args:
-            - "/app/pipelines/sec_financials_ingestion.py"
-            - "--all"
-            - "--resume"
+            - "/app/pipelines/sec_insider_trades_ingestion.py"
+            - "--hours"
+            - "24"
 
             env:
-            # Database connection configuration
+            # Database connection
             - name: DB_HOST
               value: "postgres-simple-service"
             - name: DB_PORT
@@ -78,22 +68,19 @@ spec:
                   name: postgres-secret
                   key: password
 
-            # Python environment
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: PYTHONPATH
               value: "/app"
 
-            # Resource limits (higher for large-scale ingestion)
             resources:
               requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
                 memory: "2Gi"
                 cpu: "1000m"
-              limits:
-                memory: "4Gi"
-                cpu: "2000m"
 
-            # Volume mounts for logs and temp files
             volumeMounts:
             - name: logs
               mountPath: /app/logs
@@ -106,7 +93,6 @@ spec:
           - name: tmp
             emptyDir: {}
 
-          # Security context
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000
