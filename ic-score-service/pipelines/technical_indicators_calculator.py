@@ -22,7 +22,7 @@ from typing import List, Optional, Dict, Any
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pandas as pd
-import pandas_ta as ta
+import talib
 from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,37 +106,41 @@ class TechnicalIndicatorsCalculator:
         df = df.sort_values('date').reset_index(drop=True)
 
         try:
+            # Convert to numpy arrays for TA-Lib
+            close_prices = df['close'].values
+            volume_data = df['volume'].values
+
             # RSI (14-day)
-            rsi = ta.rsi(df['close'], length=14)
-            current_rsi = rsi.iloc[-1] if not rsi.empty else None
+            rsi = talib.RSI(close_prices, timeperiod=14)
+            current_rsi = rsi[-1] if len(rsi) > 0 and not pd.isna(rsi[-1]) else None
 
             # MACD (12, 26, 9)
-            macd = ta.macd(df['close'], fast=12, slow=26, signal=9)
-            current_macd = macd['MACD_12_26_9'].iloc[-1] if macd is not None else None
-            current_macd_signal = macd['MACDs_12_26_9'].iloc[-1] if macd is not None else None
-            current_macd_hist = macd['MACDh_12_26_9'].iloc[-1] if macd is not None else None
+            macd, macd_signal, macd_hist = talib.MACD(close_prices, fastperiod=12, slowperiod=26, signalperiod=9)
+            current_macd = macd[-1] if len(macd) > 0 and not pd.isna(macd[-1]) else None
+            current_macd_signal = macd_signal[-1] if len(macd_signal) > 0 and not pd.isna(macd_signal[-1]) else None
+            current_macd_hist = macd_hist[-1] if len(macd_hist) > 0 and not pd.isna(macd_hist[-1]) else None
 
             # SMAs (50-day, 200-day)
-            sma_50 = ta.sma(df['close'], length=50)
-            sma_200 = ta.sma(df['close'], length=200)
-            current_sma_50 = sma_50.iloc[-1] if not sma_50.empty else None
-            current_sma_200 = sma_200.iloc[-1] if not sma_200.empty else None
+            sma_50 = talib.SMA(close_prices, timeperiod=50)
+            sma_200 = talib.SMA(close_prices, timeperiod=200)
+            current_sma_50 = sma_50[-1] if len(sma_50) > 0 and not pd.isna(sma_50[-1]) else None
+            current_sma_200 = sma_200[-1] if len(sma_200) > 0 and not pd.isna(sma_200[-1]) else None
 
             # EMAs (12-day, 26-day)
-            ema_12 = ta.ema(df['close'], length=12)
-            ema_26 = ta.ema(df['close'], length=26)
-            current_ema_12 = ema_12.iloc[-1] if not ema_12.empty else None
-            current_ema_26 = ema_26.iloc[-1] if not ema_26.empty else None
+            ema_12 = talib.EMA(close_prices, timeperiod=12)
+            ema_26 = talib.EMA(close_prices, timeperiod=26)
+            current_ema_12 = ema_12[-1] if len(ema_12) > 0 and not pd.isna(ema_12[-1]) else None
+            current_ema_26 = ema_26[-1] if len(ema_26) > 0 and not pd.isna(ema_26[-1]) else None
 
             # Bollinger Bands (20-day, 2 std dev)
-            bbands = ta.bbands(df['close'], length=20, std=2)
-            current_bb_upper = bbands['BBU_20_2.0'].iloc[-1] if bbands is not None else None
-            current_bb_middle = bbands['BBM_20_2.0'].iloc[-1] if bbands is not None else None
-            current_bb_lower = bbands['BBL_20_2.0'].iloc[-1] if bbands is not None else None
+            bb_upper, bb_middle, bb_lower = talib.BBANDS(close_prices, timeperiod=20, nbdevup=2, nbdevdn=2, matype=0)
+            current_bb_upper = bb_upper[-1] if len(bb_upper) > 0 and not pd.isna(bb_upper[-1]) else None
+            current_bb_middle = bb_middle[-1] if len(bb_middle) > 0 and not pd.isna(bb_middle[-1]) else None
+            current_bb_lower = bb_lower[-1] if len(bb_lower) > 0 and not pd.isna(bb_lower[-1]) else None
 
             # Volume moving average (20-day)
-            volume_ma = ta.sma(df['volume'], length=20)
-            current_volume_ma = volume_ma.iloc[-1] if not volume_ma.empty else None
+            volume_ma = talib.SMA(volume_data, timeperiod=20)
+            current_volume_ma = volume_ma[-1] if len(volume_ma) > 0 and not pd.isna(volume_ma[-1]) else None
 
             # Momentum metrics
             current_price = df['close'].iloc[-1]

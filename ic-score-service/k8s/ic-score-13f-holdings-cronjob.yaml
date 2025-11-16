@@ -50,7 +50,7 @@ spec:
             env:
             # Database connection
             - name: DB_HOST
-              value: "postgres-service"
+              value: "postgres-simple-service"
             - name: DB_PORT
               value: "5432"
             - name: DB_NAME
