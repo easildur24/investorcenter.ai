@@ -1,25 +1,24 @@
 #!/usr/bin/env python3
 """SEC Form 13F Institutional Holdings Ingestion Pipeline.
 
-This script downloads quarterly 13F bulk files from SEC and populates the
-institutional_holdings table with institutional ownership data.
+This script fetches 13F filings from major institutional investors using the
+SEC EDGAR API and populates the institutional_holdings table.
 
 Usage:
-    python sec_13f_ingestion.py --quarter 2024Q3      # Specific quarter
-    python sec_13f_ingestion.py --backfill 4          # Last 4 quarters
-    python sec_13f_ingestion.py --latest              # Latest quarter
+    python sec_13f_ingestion.py --latest              # Latest quarter from top institutions
+    python sec_13f_ingestion.py --limit 50            # Top 50 institutions
+    python sec_13f_ingestion.py --cik 0001067983      # Single institution (Berkshire)
 """
 
 import argparse
 import asyncio
-import csv
 import logging
 import sys
 import time
-from datetime import datetime, date, timedelta
-from io import StringIO
+import xml.etree.ElementTree as ET
+from datetime import datetime, date
 from pathlib import Path
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -44,15 +43,37 @@ logger = logging.getLogger(__name__)
 
 
 class SEC13FIngestion:
-    """Ingestion pipeline for SEC Form 13F institutional holdings."""
+    """Ingestion pipeline for SEC Form 13F institutional holdings using EDGAR API."""
 
-    # SEC 13F bulk data URLs
-    BASE_URL = "https://www.sec.gov/files/structureddata/data/form-13f-data-sets"
-    USER_AGENT = "InvestorCenter.ai admin@investorcenter.ai"
+    # SEC EDGAR URLs
+    EDGAR_BROWSE_URL = "https://www.sec.gov/cgi-bin/browse-edgar"
+    EDGAR_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data"
+    SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
-    # Rate limiting: 10 requests/second
+    USER_AGENT = "InvestorCenter.ai research@investorcenter.ai"
+
+    # Rate limiting: 10 requests/second per SEC guidelines
     REQUESTS_PER_SECOND = 10
     MIN_REQUEST_INTERVAL = 1.0 / REQUESTS_PER_SECOND
+
+    # Top institutional investors by AUM (CIK numbers)
+    MAJOR_INSTITUTIONS = [
+        ('0001067983', 'Berkshire Hathaway'),
+        ('0001166559', 'Vanguard Group'),
+        ('0001364742', 'BlackRock'),
+        ('0000315066', 'State Street Corp'),
+        ('0000102909', 'Morgan Stanley'),
+        ('0000070858', 'Bank of America'),
+        ('0000093751', 'Citigroup'),
+        ('0001364180', 'Goldman Sachs'),
+        ('0000019617', 'JPMorgan Chase'),
+        ('0000718937', 'T. Rowe Price'),
+        ('0000039362', 'Fidelity'),
+        ('0001000275', 'Wellington Management'),
+        ('0001861449', 'Geode Capital Management'),
+        ('0001109357', 'Northern Trust'),
+        ('0000896159', 'Capital Group'),
+    ]
 
     def __init__(self):
         """Initialize the ingestion pipeline."""
@@ -66,8 +87,8 @@ class SEC13FIngestion:
         self.success_count = 0
         self.error_count = 0
 
-        # CIK to ticker mapping cache
-        self.cik_to_ticker = {}
+        # CUSIP to ticker mapping cache
+        self.cusip_to_ticker = {}
 
     def _rate_limit(self):
         """Implement rate limiting for SEC requests."""
@@ -80,167 +101,243 @@ class SEC13FIngestion:
 
         self.last_request_time = time.time()
 
-    async def load_cik_ticker_mapping(self):
-        """Load CIK to ticker mapping from stocks table."""
+    async def load_cusip_ticker_mapping(self):
+        """Load CUSIP to ticker mapping from SEC and database."""
+        # First, get from database (stocks we already have)
         async with self.db.session() as session:
             query = text("""
-                SELECT cik, ticker
+                SELECT cusip, ticker
                 FROM stocks
-                WHERE cik IS NOT NULL
+                WHERE cusip IS NOT NULL AND cusip != ''
             """)
             result = await session.execute(query)
             rows = result.fetchall()
 
             for row in rows:
-                cik = str(row[0]).zfill(10)  # Pad CIK to 10 digits
-                self.cik_to_ticker[cik] = row[1]
+                cusip = str(row[0]).strip()
+                if cusip:
+                    self.cusip_to_ticker[cusip] = row[1]
 
-        logger.info(f"Loaded {len(self.cik_to_ticker)} CIK to ticker mappings")
+        logger.info(f"Loaded {len(self.cusip_to_ticker)} CUSIP mappings from database")
 
-    def parse_quarter(self, quarter_str: str) -> date:
-        """Parse quarter string (e.g., '2024Q3') to quarter end date.
+        # Also fetch from SEC company tickers JSON (has CUSIP in some cases)
+        try:
+            self._rate_limit()
+            response = self.session.get(self.SEC_TICKERS_URL, timeout=30)
+            response.raise_for_status()
 
-        Args:
-            quarter_str: Quarter string in format YYYYQN.
+            data = response.json()
+            # SEC tickers JSON doesn't have CUSIP, but we'll keep this for future
+            logger.info(f"SEC tickers JSON loaded ({len(data)} companies)")
 
-        Returns:
-            Quarter end date.
-        """
-        year = int(quarter_str[:4])
-        quarter = int(quarter_str[-1])
+        except Exception as e:
+            logger.warning(f"Could not load SEC tickers JSON: {e}")
 
-        # Quarter end dates
-        quarter_ends = {
-            1: date(year, 3, 31),
-            2: date(year, 6, 30),
-            3: date(year, 9, 30),
-            4: date(year, 12, 31),
-        }
-
-        return quarter_ends[quarter]
-
-    def get_latest_quarter(self) -> str:
-        """Get the latest completed quarter.
-
-        Returns:
-            Quarter string (e.g., '2024Q3').
-        """
-        today = date.today()
-        year = today.year
-        month = today.month
-
-        # 13F filings are due 45 days after quarter end
-        # So we need to go back ~3 months from today
-        if month <= 2:
-            # In Q1, latest available is likely Q3 of previous year
-            return f"{year - 1}Q3"
-        elif month <= 5:
-            # In Q2, latest available is Q4 of previous year
-            return f"{year - 1}Q4"
-        elif month <= 8:
-            # In Q3, latest available is Q1 of current year
-            return f"{year}Q1"
-        else:
-            # In Q4, latest available is Q2 of current year
-            return f"{year}Q2"
-
-    def download_13f_data(self, quarter: str) -> Optional[str]:
-        """Download 13F bulk data file for a quarter.
+    def get_latest_13f_filing(self, institution_cik: str) -> Optional[Dict[str, str]]:
+        """Get the latest 13F filing for an institution.
 
         Args:
-            quarter: Quarter string (e.g., '2024Q3').
+            institution_cik: Institution CIK (10 digits).
 
         Returns:
-            CSV data as string, or None if download fails.
+            Dictionary with filing metadata, or None.
         """
-        # Construct URL
-        # Note: Actual SEC 13F bulk data format may vary
-        # This is a placeholder implementation
-        year = quarter[:4]
-        q = quarter[-1]
-
-        # Example URL pattern (actual may differ)
-        url = f"{self.BASE_URL}/{year}q{q}/form13f-{year}q{q}.txt"
-
         self._rate_limit()
 
         try:
-            logger.info(f"Downloading 13F data for {quarter} from {url}")
-            response = self.session.get(url, timeout=60)
+            url = f"{self.EDGAR_BROWSE_URL}?action=getcompany&CIK={institution_cik}&type=13F-HR&count=1&output=atom"
+            response = self.session.get(url, timeout=30)
             response.raise_for_status()
 
-            logger.info(f"Successfully downloaded 13F data for {quarter}")
-            return response.text
+            # Parse XML response
+            root = ET.fromstring(response.content)
 
-        except requests.exceptions.HTTPError as e:
-            if e.response.status_code == 404:
-                logger.warning(f"13F data not found for {quarter}")
-            else:
-                logger.error(f"HTTP error downloading {quarter}: {e}")
-            return None
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Request error downloading {quarter}: {e}")
-            return None
+            # Find first entry (latest filing)
+            ns = {'atom': 'http://www.w3.org/2005/Atom'}
+            entry = root.find('atom:entry', ns)
+
+            if entry is None:
+                logger.warning(f"No 13F filings found for CIK {institution_cik}")
+                return None
+
+            # Extract metadata
+            content = entry.find('atom:content', ns)
+            if content is None:
+                return None
+
+            accession = content.find('accession-number')
+            filing_date = content.find('filing-date')
+            filing_href = content.find('filing-href')
+
+            if accession is None or filing_date is None:
+                return None
+
+            return {
+                'accession_number': accession.text,
+                'filing_date': filing_date.text,
+                'filing_url': filing_href.text if filing_href is not None else None,
+                'cik': institution_cik
+            }
+
         except Exception as e:
-            logger.exception(f"Unexpected error downloading {quarter}: {e}")
+            logger.error(f"Error fetching 13F filing for CIK {institution_cik}: {e}")
             return None
 
-    def parse_13f_data(
-        self,
-        csv_data: str,
-        quarter_end_date: date
-    ) -> List[Dict[str, Any]]:
-        """Parse 13F CSV data into structured holdings.
+    def parse_filing_date_to_quarter(self, filing_date_str: str) -> date:
+        """Parse filing date string to quarter end date.
 
         Args:
-            csv_data: Raw CSV data string.
+            filing_date_str: Filing date in YYYY-MM-DD format.
+
+        Returns:
+            Estimated quarter end date.
+        """
+        filing_date = datetime.strptime(filing_date_str, '%Y-%m-%d').date()
+
+        # 13F filings are due 45 days after quarter end
+        # Estimate quarter based on filing month
+        month = filing_date.month
+        year = filing_date.year
+
+        if month <= 3:
+            # Filed in Q1, likely for Q4 of previous year
+            return date(year - 1, 12, 31)
+        elif month <= 6:
+            # Filed in Q2, likely for Q1
+            return date(year, 3, 31)
+        elif month <= 9:
+            # Filed in Q3, likely for Q2
+            return date(year, 6, 30)
+        else:
+            # Filed in Q4, likely for Q3
+            return date(year, 9, 30)
+
+    def get_information_table_url(self, accession_number: str, cik: str) -> Optional[str]:
+        """Find the information table XML file URL from a 13F filing.
+
+        Args:
+            accession_number: Filing accession number.
+            cik: Institution CIK.
+
+        Returns:
+            URL to information table XML, or None.
+        """
+        self._rate_limit()
+
+        try:
+            # Clean accession number for URL
+            accession_clean = accession_number.replace('-', '')
+
+            # Get index page
+            index_url = f"{self.EDGAR_ARCHIVES_URL}/{cik}/{accession_clean}/{accession_number}-index.htm"
+            response = self.session.get(index_url, timeout=30)
+            response.raise_for_status()
+
+            # Look for .xml files (not primary_doc.xml)
+            html = response.text
+
+            # Pattern: href="/Archives/edgar/data/CIK/ACCESSION/XXXXX.xml"
+            # Find all XML files
+            import re
+            xml_files = re.findall(r'href="(/Archives/edgar/data/[^"]+\.xml)"', html)
+
+            # Filter out primary_doc.xml, find the information table
+            for xml_file in xml_files:
+                if 'primary_doc.xml' not in xml_file.lower():
+                    # This is likely the information table
+                    return f"https://www.sec.gov{xml_file}"
+
+            logger.warning(f"Could not find information table XML in {accession_number}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error getting information table URL: {e}")
+            return None
+
+    def parse_information_table(
+        self,
+        xml_url: str,
+        institution_cik: str,
+        institution_name: str,
+        quarter_end_date: date,
+        filing_date: date
+    ) -> List[Dict[str, Any]]:
+        """Parse 13F information table XML.
+
+        Args:
+            xml_url: URL to information table XML.
+            institution_cik: Institution CIK.
+            institution_name: Institution name.
             quarter_end_date: Quarter end date.
+            filing_date: Filing date.
 
         Returns:
             List of holding dictionaries.
         """
+        self._rate_limit()
+
         holdings = []
 
         try:
-            # Parse CSV
-            reader = csv.DictReader(StringIO(csv_data), delimiter='\t')
+            response = self.session.get(xml_url, timeout=30)
+            response.raise_for_status()
 
-            for row in reader:
-                # Extract institution CIK and name
-                # Note: Actual CSV format may vary
-                institution_cik = row.get('FILING_MANAGER_CIK', '').zfill(10)
-                institution_name = row.get('FILING_MANAGER_NAME', 'Unknown')
+            # Parse XML
+            root = ET.fromstring(response.content)
 
-                # Extract company CIK
-                company_cik = row.get('ISSUER_CIK', '').zfill(10)
+            # Namespace
+            ns = {'': 'http://www.sec.gov/edgar/document/thirteenf/informationtable'}
 
-                # Map to ticker
-                ticker = self.cik_to_ticker.get(company_cik)
-                if not ticker:
-                    continue  # Skip if we don't track this stock
+            # Find all infoTable elements
+            for info_table in root.findall('.//infoTable', ns):
+                try:
+                    # Extract data
+                    cusip_elem = info_table.find('cusip', ns)
+                    value_elem = info_table.find('value', ns)
+                    shares_elem = info_table.find('shrsOrPrnAmt/sshPrnamt', ns)
 
-                # Extract holdings data
-                shares = int(row.get('SHARES', 0))
-                market_value = int(row.get('VALUE', 0)) * 1000  # Value in thousands
+                    if cusip_elem is None or value_elem is None or shares_elem is None:
+                        continue
 
-                # Create holding record
-                holding = {
-                    'ticker': ticker,
-                    'filing_date': quarter_end_date,  # Approximate
-                    'quarter_end_date': quarter_end_date,
-                    'institution_name': institution_name,
-                    'institution_cik': institution_cik,
-                    'shares': shares,
-                    'market_value': market_value,
-                    'position_change': 'Unknown',  # Calculate from previous quarter
-                }
+                    cusip = cusip_elem.text.strip()
 
-                holdings.append(holding)
+                    # Map CUSIP to ticker
+                    ticker = self.cusip_to_ticker.get(cusip)
+                    if not ticker:
+                        # Try without check digit (last character)
+                        ticker = self.cusip_to_ticker.get(cusip[:-1]) if len(cusip) > 8 else None
+
+                    if not ticker:
+                        # Skip stocks we don't track
+                        continue
+
+                    # Parse values
+                    market_value = int(value_elem.text)  # Already in dollars
+                    shares = int(shares_elem.text)
+
+                    # Create holding record
+                    holding = {
+                        'ticker': ticker,
+                        'filing_date': filing_date,
+                        'quarter_end_date': quarter_end_date,
+                        'institution_name': institution_name,
+                        'institution_cik': institution_cik,
+                        'shares': shares,
+                        'market_value': market_value,
+                        'position_change': None,  # Will calculate later
+                        'shares_change': None,
+                        'percent_change': None,
+                    }
+
+                    holdings.append(holding)
+
+                except Exception as e:
+                    # Skip individual entries that fail to parse
+                    continue
 
         except Exception as e:
-            logger.error(f"Error parsing 13F data: {e}", exc_info=True)
+            logger.error(f"Error parsing information table from {xml_url}: {e}")
 
-        logger.info(f"Parsed {len(holdings)} holdings from 13F data")
         return holdings
 
     async def calculate_quarter_changes(
@@ -254,9 +351,8 @@ class SEC13FIngestion:
             holdings: List of current quarter holdings.
             quarter_end_date: Current quarter end date.
         """
-        # Get previous quarter data
         async with self.db.session() as session:
-            for holding in tqdm(holdings, desc="Calculating QoQ changes"):
+            for holding in holdings:
                 ticker = holding['ticker']
                 institution_cik = holding['institution_cik']
 
@@ -279,7 +375,6 @@ class SEC13FIngestion:
 
                 if prev_holding:
                     prev_shares = prev_holding[0]
-                    prev_value = prev_holding[1]
 
                     shares_change = holding['shares'] - prev_shares
                     holding['shares_change'] = shares_change
@@ -291,15 +386,9 @@ class SEC13FIngestion:
 
                     # Determine position change
                     if shares_change > 0:
-                        if prev_shares == 0:
-                            holding['position_change'] = 'New'
-                        else:
-                            holding['position_change'] = 'Increased'
+                        holding['position_change'] = 'Increased' if prev_shares > 0 else 'New'
                     elif shares_change < 0:
-                        if holding['shares'] == 0:
-                            holding['position_change'] = 'Sold Out'
-                        else:
-                            holding['position_change'] = 'Decreased'
+                        holding['position_change'] = 'Sold Out' if holding['shares'] == 0 else 'Decreased'
                     else:
                         holding['position_change'] = 'Unchanged'
                 else:
@@ -327,6 +416,7 @@ class SEC13FIngestion:
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['ticker', 'quarter_end_date', 'institution_cik'],
                     set_={
+                        'filing_date': stmt.excluded.filing_date,
                         'shares': stmt.excluded.shares,
                         'market_value': stmt.excluded.market_value,
                         'position_change': stmt.excluded.position_change,
@@ -345,95 +435,121 @@ class SEC13FIngestion:
             logger.error(f"Error storing holdings: {e}", exc_info=True)
             return False
 
-    async def process_quarter(self, quarter: str) -> bool:
-        """Process 13F data for a quarter.
+    async def process_institution(
+        self,
+        institution_cik: str,
+        institution_name: str
+    ) -> Tuple[int, int]:
+        """Process 13F filings for one institution.
 
         Args:
-            quarter: Quarter string (e.g., '2024Q3').
+            institution_cik: Institution CIK.
+            institution_name: Institution name.
 
         Returns:
-            True if successful.
+            Tuple of (holdings_count, error_count).
         """
-        logger.info(f"Processing 13F data for {quarter}")
+        logger.info(f"Processing {institution_name} (CIK: {institution_cik})")
 
-        # Parse quarter end date
-        quarter_end_date = self.parse_quarter(quarter)
+        # Get latest 13F filing
+        filing = self.get_latest_13f_filing(institution_cik)
 
-        # Download 13F data
-        csv_data = self.download_13f_data(quarter)
+        if not filing:
+            logger.warning(f"No 13F filing found for {institution_name}")
+            return 0, 1
 
-        if not csv_data:
-            logger.warning(f"No data available for {quarter}")
-            return False
+        logger.info(f"Found filing: {filing['accession_number']} dated {filing['filing_date']}")
+
+        # Parse filing date to quarter
+        quarter_end_date = self.parse_filing_date_to_quarter(filing['filing_date'])
+        filing_date = datetime.strptime(filing['filing_date'], '%Y-%m-%d').date()
+
+        # Get information table URL
+        info_table_url = self.get_information_table_url(
+            filing['accession_number'],
+            institution_cik
+        )
+
+        if not info_table_url:
+            logger.error(f"Could not find information table for {institution_name}")
+            return 0, 1
 
         # Parse holdings
-        holdings = self.parse_13f_data(csv_data, quarter_end_date)
+        holdings = self.parse_information_table(
+            info_table_url,
+            institution_cik,
+            institution_name,
+            quarter_end_date,
+            filing_date
+        )
 
         if not holdings:
-            logger.warning(f"No holdings parsed for {quarter}")
-            return False
+            logger.warning(f"No holdings parsed for {institution_name}")
+            return 0, 1
 
-        # Calculate quarter-over-quarter changes
+        logger.info(f"Parsed {len(holdings)} holdings for {institution_name}")
+
+        # Calculate changes
         await self.calculate_quarter_changes(holdings, quarter_end_date)
 
-        # Store in database
+        # Store holdings
         success = await self.store_holdings(holdings)
 
-        return success
+        return (len(holdings), 0) if success else (0, 1)
 
     async def run(
         self,
-        quarter: Optional[str] = None,
-        backfill_quarters: int = 0,
-        latest: bool = False
+        cik: Optional[str] = None,
+        limit: int = 15,
+        all_institutions: bool = False
     ):
         """Run the ingestion pipeline.
 
         Args:
-            quarter: Specific quarter to process.
-            backfill_quarters: Number of quarters to backfill.
-            latest: Process latest available quarter.
+            cik: Specific institution CIK to process.
+            limit: Number of major institutions to process.
+            all_institutions: Process all major institutions.
         """
         start_time = datetime.now()
         logger.info("=" * 80)
         logger.info("SEC Form 13F Institutional Holdings Ingestion Pipeline")
         logger.info("=" * 80)
 
-        # Load CIK to ticker mapping
-        await self.load_cik_ticker_mapping()
+        # Load CUSIP to ticker mapping
+        await self.load_cusip_ticker_mapping()
 
-        # Determine quarters to process
-        quarters = []
+        # Determine institutions to process
+        institutions = []
 
-        if latest or not quarter:
-            quarters.append(self.get_latest_quarter())
-        elif quarter:
-            quarters.append(quarter)
+        if cik:
+            # Single institution
+            institution_name = next(
+                (name for c, name in self.MAJOR_INSTITUTIONS if c == cik),
+                'Unknown'
+            )
+            institutions = [(cik, institution_name)]
+        elif all_institutions:
+            institutions = self.MAJOR_INSTITUTIONS
+        else:
+            institutions = self.MAJOR_INSTITUTIONS[:limit]
 
-        if backfill_quarters > 0:
-            # Generate list of previous quarters
-            latest_q = quarters[0] if quarters else self.get_latest_quarter()
-            year = int(latest_q[:4])
-            q = int(latest_q[-1])
+        logger.info(f"Processing {len(institutions)} institutions")
 
-            for i in range(backfill_quarters):
-                q -= 1
-                if q < 1:
-                    q = 4
-                    year -= 1
-                quarters.append(f"{year}Q{q}")
-
-        logger.info(f"Processing {len(quarters)} quarters: {quarters}")
-
-        # Process each quarter
-        for quarter in quarters:
-            success = await self.process_quarter(quarter)
+        # Process each institution
+        total_holdings = 0
+        for institution_cik, institution_name in tqdm(institutions, desc="Processing institutions"):
+            holdings_count, error_count = await self.process_institution(
+                institution_cik,
+                institution_name
+            )
 
             self.processed_count += 1
-            if success:
-                self.success_count += 1
-            else:
+            total_holdings += holdings_count
+
+            if error_count > 0:
                 self.error_count += 1
+            else:
+                self.success_count += 1
 
         # Print summary
         duration = datetime.now() - start_time
@@ -441,9 +557,10 @@ class SEC13FIngestion:
         logger.info("Ingestion Complete")
         logger.info("=" * 80)
         logger.info(f"Duration: {duration}")
-        logger.info(f"Processed: {self.processed_count} quarters")
+        logger.info(f"Institutions Processed: {self.processed_count}")
         logger.info(f"Success: {self.success_count}")
         logger.info(f"Errors: {self.error_count}")
+        logger.info(f"Total Holdings Stored: {total_holdings}")
 
 
 def main():
@@ -453,46 +570,50 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Process specific quarter
-  python sec_13f_ingestion.py --quarter 2024Q3
-
-  # Process latest quarter
+  # Process top 15 institutions (default)
   python sec_13f_ingestion.py --latest
 
-  # Backfill last 4 quarters
-  python sec_13f_ingestion.py --backfill 4
+  # Process top 50 institutions
+  python sec_13f_ingestion.py --limit 50
+
+  # Process all major institutions
+  python sec_13f_ingestion.py --all
+
+  # Process single institution (Berkshire Hathaway)
+  python sec_13f_ingestion.py --cik 0001067983
         """
     )
 
     parser.add_argument(
-        '--quarter',
+        '--cik',
         type=str,
-        help='Specific quarter to process (e.g., 2024Q3)'
+        help='Specific institution CIK to process'
     )
     parser.add_argument(
-        '--backfill',
+        '--limit',
         type=int,
-        default=0,
-        help='Backfill N previous quarters'
+        default=15,
+        help='Number of major institutions to process (default: 15)'
+    )
+    parser.add_argument(
+        '--all',
+        action='store_true',
+        help='Process all major institutions'
     )
     parser.add_argument(
         '--latest',
         action='store_true',
-        help='Process latest available quarter'
+        help='Process latest filings (same as default)'
     )
 
     args = parser.parse_args()
 
-    # Validate arguments
-    if not args.quarter and not args.latest and args.backfill == 0:
-        args.latest = True  # Default to latest
-
     # Run pipeline
     pipeline = SEC13FIngestion()
     asyncio.run(pipeline.run(
-        quarter=args.quarter,
-        backfill_quarters=args.backfill,
-        latest=args.latest
+        cik=args.cik,
+        limit=args.limit,
+        all_institutions=args.all
     ))
 
 
