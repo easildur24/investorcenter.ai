@@ -127,6 +127,16 @@ func main() {
 			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 		}
 
+		// IC Score endpoints
+		stocks := v1.Group("/stocks")
+		{
+			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                // Get IC Score for a ticker
+			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory) // Get IC Score history
+		}
+
+		// IC Scores admin endpoints (list all scores)
+		v1.GET("/ic-scores", handlers.GetICScores) // List all IC Scores with pagination
+
 		// Crypto endpoints
 		crypto := v1.Group("/crypto")
 		{
