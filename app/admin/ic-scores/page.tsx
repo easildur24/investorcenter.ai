@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getICScores, ICScoreListItem, getScoreColor } from '@/lib/api/ic-score';
-import { Search, ChevronLeft, ChevronRight, ArrowUpDown } from 'lucide-react';
+import { getICScores, getICScore, ICScoreListItem, ICScoreData, getScoreColor, getFactorDetails } from '@/lib/api/ic-score';
+import { Search, ChevronLeft, ChevronRight, ArrowUpDown, X } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ICScoresAdminPage() {
@@ -18,6 +18,11 @@ export default function ICScoresAdminPage() {
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState('overall_score');
   const [order, setOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Modal state
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
+  const [detailedScore, setDetailedScore] = useState<ICScoreData | null>(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
 
   const currentPage = Math.floor(meta.offset / meta.limit) + 1;
   const totalPages = Math.ceil(meta.total / meta.limit);
@@ -65,6 +70,24 @@ export default function ICScoresAdminPage() {
     e.preventDefault();
     setMeta({ ...meta, offset: 0 }); // Reset to first page
     fetchScores();
+  }
+
+  async function handleViewDetails(ticker: string) {
+    setSelectedTicker(ticker);
+    setLoadingDetails(true);
+    try {
+      const data = await getICScore(ticker);
+      setDetailedScore(data);
+    } catch (error) {
+      console.error('Error fetching IC Score details:', error);
+    } finally {
+      setLoadingDetails(false);
+    }
+  }
+
+  function closeModal() {
+    setSelectedTicker(null);
+    setDetailedScore(null);
   }
 
   return (
@@ -273,12 +296,12 @@ export default function ICScoresAdminPage() {
                           {new Date(score.calculated_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4">
-                          <Link
-                            href={`/ticker/${score.ticker}#ic-score`}
+                          <button
+                            onClick={() => handleViewDetails(score.ticker)}
                             className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
                           >
                             View Details
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -318,6 +341,146 @@ export default function ICScoresAdminPage() {
           )}
         </div>
       </div>
+
+      {/* Details Modal */}
+      {selectedTicker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">
+                {selectedTicker} - IC Score Breakdown
+              </h2>
+              <button
+                onClick={closeModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="p-6">
+              {loadingDetails ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                </div>
+              ) : detailedScore ? (
+                <div className="space-y-6">
+                  {/* Overall Score Summary */}
+                  <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-6 border border-blue-200">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-blue-600 font-medium">Overall IC Score</div>
+                        <div className={`text-5xl font-bold ${getScoreColor(detailedScore.overall_score)} mt-2`}>
+                          {Math.round(detailedScore.overall_score)}
+                        </div>
+                        <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white border border-blue-200">
+                          {detailedScore.rating}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm text-gray-600">Data Completeness</div>
+                        <div className="text-3xl font-bold text-gray-900 mt-1">
+                          {Math.round(detailedScore.data_completeness)}%
+                        </div>
+                        <div className="text-sm text-gray-600 mt-1">
+                          {detailedScore.factor_count} of 10 factors
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Factor Breakdown */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Factor Breakdown</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {getFactorDetails(detailedScore).map((factor) => (
+                        <div
+                          key={factor.name}
+                          className={`border rounded-lg p-4 ${
+                            factor.available
+                              ? 'bg-white border-gray-200'
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="font-medium text-gray-900">{factor.display_name}</div>
+                            {factor.available ? (
+                              <span className={`text-2xl font-bold ${getScoreColor(factor.score)}`}>
+                                {Math.round(factor.score!)}
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-400 font-medium">N/A</span>
+                            )}
+                          </div>
+                          {factor.available ? (
+                            <>
+                              <div className="mb-2">
+                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div
+                                    className={`h-full ${
+                                      factor.score! >= 70
+                                        ? 'bg-green-500'
+                                        : factor.score! >= 50
+                                        ? 'bg-yellow-500'
+                                        : 'bg-red-500'
+                                    }`}
+                                    style={{ width: `${factor.score}%` }}
+                                  />
+                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500">{factor.description}</div>
+                            </>
+                          ) : (
+                            <div className="text-xs text-gray-400">Data not available</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Additional Info */}
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-600">Calculated:</span>{' '}
+                        <span className="font-medium text-gray-900">
+                          {new Date(detailedScore.calculated_at).toLocaleString()}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-600">Confidence:</span>{' '}
+                        <span className="font-medium text-gray-900">{detailedScore.confidence_level}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-600">
+                  Failed to load IC Score details
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+              <Link
+                href={`/ticker/${selectedTicker}`}
+                className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+              >
+                View Full Ticker Page →
+              </Link>
+              <button
+                onClick={closeModal}
+                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
