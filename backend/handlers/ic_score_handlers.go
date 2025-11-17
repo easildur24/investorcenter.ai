@@ -152,7 +152,8 @@ func GetICScores(c *gin.Context) {
 
 	args = append(args, limit, offset)
 
-	var scores []models.ICScoreListItem
+	// Initialize with empty slice to ensure JSON returns [] not null
+	scores := make([]models.ICScoreListItem, 0)
 	err := database.DB.Select(&scores, query, args...)
 	if err != nil {
 		log.Printf("Error fetching IC Scores: %v", err)
