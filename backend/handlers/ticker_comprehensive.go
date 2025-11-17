@@ -54,8 +54,8 @@ func GetTicker(c *gin.Context) {
 			return
 		}
 	} else {
-		// Found in database - determine if crypto or stock
-		isCrypto = isCryptoAsset(stock.AssetType, symbol)
+		// Found in database - determine if crypto or stock using all available fields
+		isCrypto = isCryptoAssetWithStock(stock)
 	}
 
 	// Get real-time price data
@@ -297,6 +297,31 @@ func isCryptoAsset(assetType, symbol string) bool {
 	}
 
 	return cryptoSymbols[symbol]
+}
+
+// isCryptoAssetWithStock checks if a stock is crypto based on all available fields
+func isCryptoAssetWithStock(stock *models.Stock) bool {
+	if stock == nil {
+		return false
+	}
+
+	// Check asset type
+	if stock.AssetType == "crypto" {
+		return true
+	}
+
+	// Check exchange (crypto tickers have exchange="CRYPTO")
+	if stock.Exchange == "CRYPTO" {
+		return true
+	}
+
+	// Check sector (crypto tickers have sector="Cryptocurrency")
+	if stock.Sector == "Cryptocurrency" {
+		return true
+	}
+
+	// Fall back to symbol-based check
+	return isCryptoAsset(stock.AssetType, stock.Symbol)
 }
 
 func getUpdateInterval(isCrypto bool, marketStatus string) int {

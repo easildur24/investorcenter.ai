@@ -33,6 +33,11 @@ func setupTestRouter() *gin.Engine {
 func createTestUser(t *testing.T) string {
 	userID := "test-user-id-123"
 
+	// Skip if database not available (CI environment)
+	if database.DB == nil {
+		t.Skip("Skipping test: database connection not available")
+	}
+
 	// Check if user already exists
 	var exists bool
 	err := database.DB.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE id = $1)", userID).Scan(&exists)

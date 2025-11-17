@@ -484,7 +484,7 @@ class TechnicalIndicator(Base):
     ticker: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
     indicator_name: Mapped[str] = mapped_column(String(50), primary_key=True, nullable=False)
     value: Mapped[Optional[Decimal]] = mapped_column(Numeric(18, 6))
-    metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
+    indicator_metadata: Mapped[Optional[dict]] = mapped_column('metadata', JSONB)
 
     def __repr__(self) -> str:
         return f"<TechnicalIndicator(ticker='{self.ticker}', indicator='{self.indicator_name}', value={self.value})>"
