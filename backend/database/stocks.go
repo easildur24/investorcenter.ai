@@ -18,6 +18,7 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 		       market_cap,
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
+		       COALESCE(asset_type, 'stock') as asset_type,
 		       created_at, updated_at
 		FROM tickers
 		WHERE UPPER(symbol) = UPPER($1)
@@ -44,6 +45,7 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 		       market_cap,
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
+		       COALESCE(asset_type, 'stock') as asset_type,
 		       created_at, updated_at
 		FROM tickers
 		WHERE UPPER(symbol) LIKE UPPER($1)

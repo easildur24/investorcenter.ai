@@ -169,7 +169,7 @@ func GetTicker(c *gin.Context) {
 			"assetType": stock.AssetType,
 			"isCrypto":  isCrypto,
 			"timestamp": time.Now().UTC(),
-			"source":    "polygon",
+			"source":    getDataSource(isCrypto),
 		},
 	}
 
@@ -309,6 +309,13 @@ func getUpdateInterval(isCrypto bool, marketStatus string) int {
 	}
 
 	return 300 // 5 minutes when market is closed
+}
+
+func getDataSource(isCrypto bool) string {
+	if isCrypto {
+		return "redis" // Crypto data from Redis (populated by coingecko-service)
+	}
+	return "polygon" // Stock data from Polygon API
 }
 
 func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {

@@ -145,7 +145,7 @@ func (c *CoinGeckoClient) GetMarketChart(symbol string, days int) ([]models.Char
 		// Add volume if available
 		if i < len(result.TotalVolumes) && len(result.TotalVolumes[i]) >= 2 {
 			volume := decimal.NewFromFloat(result.TotalVolumes[i][1])
-			dataPoint.Volume = volume
+			dataPoint.Volume = volume.IntPart()
 		}
 
 		dataPoints = append(dataPoints, dataPoint)
