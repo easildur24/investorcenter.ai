@@ -205,6 +205,113 @@ class ICScoreCalculator:
 
             return {'net_buying_90d': net_buying}
 
+    async def fetch_news_sentiment_data(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch news sentiment data for a stock."""
+        async with self.db.session() as session:
+            # Get articles from last 30 days
+            query = text("""
+                SELECT
+                    COUNT(*) as article_count,
+                    AVG(sentiment_score) as avg_sentiment,
+                    SUM(CASE WHEN sentiment_label = 'Positive' THEN 1 ELSE 0 END) as positive_count,
+                    SUM(CASE WHEN sentiment_label = 'Negative' THEN 1 ELSE 0 END) as negative_count,
+                    SUM(CASE WHEN sentiment_label = 'Neutral' THEN 1 ELSE 0 END) as neutral_count
+                FROM news_articles
+                WHERE :ticker = ANY(tickers)
+                  AND published_at >= NOW() - INTERVAL '30 days'
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row or row[0] == 0:
+                return None
+
+            return {
+                'article_count': row[0],
+                'avg_sentiment': float(row[1]) if row[1] else 0,
+                'positive_count': row[2] or 0,
+                'negative_count': row[3] or 0,
+                'neutral_count': row[4] or 0
+            }
+
+    async def fetch_analyst_data(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch analyst ratings data for a stock."""
+        async with self.db.session() as session:
+            # Get most recent analyst ratings
+            query = text("""
+                SELECT
+                    rating,
+                    price_target,
+                    analyst_firm,
+                    date
+                FROM analyst_ratings
+                WHERE ticker = :ticker
+                  AND date >= NOW() - INTERVAL '90 days'
+                ORDER BY date DESC
+                LIMIT 20
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            rows = result.fetchall()
+
+            if not rows:
+                return None
+
+            # Count buy/hold/sell ratings
+            buy_count = sum(1 for row in rows if row[0] and any(x in row[0].lower() for x in ['buy', 'outperform', 'overweight']))
+            hold_count = sum(1 for row in rows if row[0] and any(x in row[0].lower() for x in ['hold', 'neutral', 'equal']))
+            sell_count = sum(1 for row in rows if row[0] and any(x in row[0].lower() for x in ['sell', 'underperform', 'underweight']))
+
+            # Calculate average price target
+            price_targets = [float(row[1]) for row in rows if row[1]]
+            avg_price_target = np.mean(price_targets) if price_targets else None
+
+            return {
+                'total_analysts': len(rows),
+                'buy_count': buy_count,
+                'hold_count': hold_count,
+                'sell_count': sell_count,
+                'avg_price_target': avg_price_target
+            }
+
+    async def fetch_institutional_data(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch institutional holdings data for a stock."""
+        async with self.db.session() as session:
+            # Get most recent quarter holdings
+            query = text("""
+                SELECT
+                    SUM(shares) as total_shares,
+                    SUM(market_value) as total_value,
+                    COUNT(DISTINCT cik) as num_institutions
+                FROM institutional_holdings
+                WHERE ticker = :ticker
+                  AND filing_date >= NOW() - INTERVAL '120 days'
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row or row[0] is None:
+                return None
+
+            # Get change from previous quarter
+            prev_query = text("""
+                SELECT SUM(shares) as prev_shares
+                FROM institutional_holdings
+                WHERE ticker = :ticker
+                  AND filing_date >= NOW() - INTERVAL '240 days'
+                  AND filing_date < NOW() - INTERVAL '120 days'
+            """)
+            prev_result = await session.execute(prev_query, {"ticker": ticker})
+            prev_row = prev_result.fetchone()
+
+            prev_shares = prev_row[0] if prev_row and prev_row[0] else None
+
+            return {
+                'total_shares': int(row[0]) if row[0] else 0,
+                'total_value': float(row[1]) if row[1] else 0,
+                'num_institutions': row[2] or 0,
+                'prev_shares': int(prev_shares) if prev_shares else None
+            }
+
     def calculate_value_score(self, financial_data: Dict[str, Any], sector_data: Dict) -> Tuple[Optional[float], Dict]:
         """Calculate value score based on P/E, P/B, P/S ratios vs sector median."""
         if not financial_data:
@@ -408,6 +515,116 @@ class ICScoreCalculator:
 
         return np.mean(scores), metadata
 
+    def calculate_news_sentiment_score(self, news_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
+        """Calculate news sentiment score based on article sentiment analysis."""
+        if not news_data or news_data.get('article_count', 0) == 0:
+            return None, {}
+
+        metadata = {}
+        scores = []
+
+        # Average sentiment score (already 0-100 from sentiment analysis)
+        avg_sentiment = news_data.get('avg_sentiment', 0)
+        sentiment_score = max(0, min(100, avg_sentiment))
+        scores.append(sentiment_score)
+        metadata['avg_sentiment'] = avg_sentiment
+
+        # Positive vs negative ratio
+        positive_count = news_data.get('positive_count', 0)
+        negative_count = news_data.get('negative_count', 0)
+        total_articles = news_data.get('article_count', 0)
+
+        if total_articles > 0:
+            positive_ratio = (positive_count / total_articles) * 100
+            metadata['positive_ratio'] = positive_ratio
+            metadata['article_count'] = total_articles
+
+        if not scores:
+            return None, metadata
+
+        return np.mean(scores), metadata
+
+    def calculate_analyst_consensus_score(self, analyst_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
+        """Calculate analyst consensus score based on buy/hold/sell ratings."""
+        if not analyst_data or analyst_data.get('total_analysts', 0) == 0:
+            return None, {}
+
+        metadata = {}
+        total_analysts = analyst_data['total_analysts']
+        buy_count = analyst_data.get('buy_count', 0)
+        hold_count = analyst_data.get('hold_count', 0)
+        sell_count = analyst_data.get('sell_count', 0)
+
+        # Calculate consensus score: 100 = all buy, 50 = all hold, 0 = all sell
+        if total_analysts > 0:
+            # Weight: Buy = 100, Hold = 50, Sell = 0
+            weighted_score = ((buy_count * 100) + (hold_count * 50) + (sell_count * 0)) / total_analysts
+            consensus_score = max(0, min(100, weighted_score))
+        else:
+            consensus_score = 50  # Neutral if no clear ratings
+
+        metadata['total_analysts'] = total_analysts
+        metadata['buy_count'] = buy_count
+        metadata['hold_count'] = hold_count
+        metadata['sell_count'] = sell_count
+        metadata['avg_price_target'] = analyst_data.get('avg_price_target')
+
+        return consensus_score, metadata
+
+    def calculate_insider_activity_score(self, insider_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
+        """Calculate insider activity score based on net buying/selling."""
+        if not insider_data:
+            return None, {}
+
+        metadata = {}
+        net_buying = insider_data.get('net_buying_90d', 0)
+
+        # Normalize: Heavy buying = 100, neutral = 50, heavy selling = 0
+        # Normalize around typical ranges (e.g., -100k to +100k shares)
+        if net_buying > 0:
+            # Positive net buying
+            score = min(100, 50 + (net_buying / 2000))  # 100k shares = 100 score
+        elif net_buying < 0:
+            # Net selling
+            score = max(0, 50 + (net_buying / 2000))  # -100k shares = 0 score
+        else:
+            score = 50  # Neutral
+
+        metadata['net_buying_90d'] = net_buying
+
+        return score, metadata
+
+    def calculate_institutional_score(self, institutional_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
+        """Calculate institutional ownership score based on holdings changes."""
+        if not institutional_data or institutional_data.get('num_institutions', 0) == 0:
+            return None, {}
+
+        metadata = {}
+        num_institutions = institutional_data['num_institutions']
+        total_shares = institutional_data.get('total_shares', 0)
+        prev_shares = institutional_data.get('prev_shares')
+
+        scores = []
+
+        # Number of institutions (more is better, up to a point)
+        # Normalize: 50 institutions = 50, 100+ = 100
+        inst_score = min(100, (num_institutions / 100) * 100)
+        scores.append(inst_score)
+        metadata['num_institutions'] = num_institutions
+
+        # Change in holdings (increasing = positive)
+        if prev_shares is not None and prev_shares > 0:
+            change_pct = ((total_shares - prev_shares) / prev_shares) * 100
+            # Normalize: +10% = 100, 0% = 50, -10% = 0
+            change_score = max(0, min(100, 50 + (change_pct * 5)))
+            scores.append(change_score)
+            metadata['holdings_change_pct'] = change_pct
+
+        if not scores:
+            return None, metadata
+
+        return np.mean(scores), metadata
+
     async def calculate_ic_score(
         self,
         ticker: str,
@@ -427,6 +644,9 @@ class ICScoreCalculator:
             financial_data = await self.fetch_financial_data(ticker)
             technical_data = await self.fetch_technical_data(ticker)
             insider_data = await self.fetch_insider_data(ticker)
+            news_data = await self.fetch_news_sentiment_data(ticker)
+            analyst_data = await self.fetch_analyst_data(ticker)
+            institutional_data = await self.fetch_institutional_data(ticker)
 
             # Calculate individual factor scores
             factor_scores = {}
@@ -467,6 +687,30 @@ class ICScoreCalculator:
             if tech_score is not None:
                 factor_scores['technical'] = tech_score
                 factor_metadata['technical'] = tech_meta
+
+            # News sentiment score
+            news_score, news_meta = self.calculate_news_sentiment_score(news_data)
+            if news_score is not None:
+                factor_scores['news_sentiment'] = news_score
+                factor_metadata['news_sentiment'] = news_meta
+
+            # Analyst consensus score
+            analyst_score, analyst_meta = self.calculate_analyst_consensus_score(analyst_data)
+            if analyst_score is not None:
+                factor_scores['analyst_consensus'] = analyst_score
+                factor_metadata['analyst_consensus'] = analyst_meta
+
+            # Insider activity score
+            insider_score, insider_meta = self.calculate_insider_activity_score(insider_data)
+            if insider_score is not None:
+                factor_scores['insider_activity'] = insider_score
+                factor_metadata['insider_activity'] = insider_meta
+
+            # Institutional score
+            institutional_score, institutional_meta = self.calculate_institutional_score(institutional_data)
+            if institutional_score is not None:
+                factor_scores['institutional'] = institutional_score
+                factor_metadata['institutional'] = institutional_meta
 
             # Calculate data completeness
             data_completeness = (len(factor_scores) / len(self.WEIGHTS)) * 100
