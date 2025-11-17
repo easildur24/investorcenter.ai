@@ -236,11 +236,13 @@ func main() {
 	alertService := services.NewAlertService()
 	notificationService := services.NewNotificationService(emailService)
 	subscriptionService := services.NewSubscriptionService()
+	cronjobService := services.NewCronjobService()
 
 	// Initialize handlers
 	alertHandler := handlers.NewAlertHandler(alertService)
 	notificationHandler := handlers.NewNotificationHandler(notificationService)
 	subscriptionHandler := handlers.NewSubscriptionHandler(subscriptionService)
+	cronjobHandler := handlers.NewCronjobHandler(cronjobService)
 
 	// Alert routes (protected, require authentication)
 	alertRoutes := v1.Group("/alerts")
@@ -285,6 +287,19 @@ func main() {
 		subscriptionRoutes.POST("/me/cancel", subscriptionHandler.CancelSubscription) // POST /api/v1/subscriptions/me/cancel
 		subscriptionRoutes.GET("/limits", subscriptionHandler.GetSubscriptionLimits)  // GET /api/v1/subscriptions/limits
 		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)    // GET /api/v1/subscriptions/payments
+	}
+
+	// Admin cronjob monitoring routes (protected, require authentication)
+	// TODO: Add admin role check middleware
+	cronjobRoutes := v1.Group("/admin/cronjobs")
+	cronjobRoutes.Use(auth.AuthMiddleware())
+	{
+		cronjobRoutes.GET("/overview", cronjobHandler.GetOverview)                       // GET /api/v1/admin/cronjobs/overview
+		cronjobRoutes.GET("/schedules", cronjobHandler.GetAllSchedules)                  // GET /api/v1/admin/cronjobs/schedules
+		cronjobRoutes.GET("/metrics", cronjobHandler.GetMetrics)                         // GET /api/v1/admin/cronjobs/metrics
+		cronjobRoutes.GET("/:jobName/history", cronjobHandler.GetJobHistory)             // GET /api/v1/admin/cronjobs/:jobName/history
+		cronjobRoutes.GET("/details/:executionId", cronjobHandler.GetJobDetails)         // GET /api/v1/admin/cronjobs/details/:executionId
+		cronjobRoutes.POST("/log", cronjobHandler.LogExecution)                          // POST /api/v1/admin/cronjobs/log (for cronjobs to call)
 	}
 
 	// Start server
