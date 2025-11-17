@@ -24,6 +24,55 @@ logger = logging.getLogger(__name__)
 
 
 class CoinGeckoCompleteService:
+    # Priority mapping for symbols that have duplicates on CoinGecko
+    # Maps symbol -> CoinGecko ID for the canonical/main version
+    PRIORITY_SYMBOL_MAP = {
+        'BTC': 'bitcoin',
+        'ETH': 'ethereum',
+        'USDT': 'tether',
+        'BNB': 'binancecoin',
+        'SOL': 'solana',
+        'USDC': 'usd-coin',
+        'XRP': 'ripple',
+        'DOGE': 'dogecoin',
+        'ADA': 'cardano',
+        'TRX': 'tron',
+        'AVAX': 'avalanche-2',
+        'LINK': 'chainlink',
+        'DOT': 'polkadot',
+        'MATIC': 'matic-network',
+        'UNI': 'uniswap',
+        'LTC': 'litecoin',
+        'BCH': 'bitcoin-cash',
+        'NEAR': 'near',
+        'ATOM': 'cosmos',
+        'XLM': 'stellar',
+        'ALGO': 'algorand',
+        'FIL': 'filecoin',
+        'APT': 'aptos',
+        'ARB': 'arbitrum',
+        'OP': 'optimism',
+        'HBAR': 'hedera-hashgraph',
+        'VET': 'vechain',
+        'ICP': 'internet-computer',
+        'GRT': 'the-graph',
+        'AAVE': 'aave',
+        'MKR': 'maker',
+        'SNX': 'synthetix-network-token',
+        'THETA': 'theta-token',
+        'EOS': 'eos',
+        'AXS': 'axie-infinity',
+        'SAND': 'the-sandbox',
+        'MANA': 'decentraland',
+        'FTM': 'fantom',
+        'EGLD': 'elrond-erd-2',
+        'XTZ': 'tezos',
+        'KLAY': 'klay-token',
+        'PEPE': 'pepe',
+        'SHIB': 'shiba-inu',
+        'WIF': 'dogwifcoin',
+    }
+
     def __init__(self):
         self.redis_client = redis.Redis(
             host=os.getenv('REDIS_HOST', 'localhost'),
@@ -232,29 +281,40 @@ class CoinGeckoCompleteService:
                     else:
                         ttl = 600  # 10 minutes for others
 
-                # Store in Redis - but check if a better coin already exists
+                # Store in Redis - but check priority mapping first
                 key = f"crypto:quote:{symbol}"
-
-                # Check if this symbol already exists
-                existing = self.redis_client.get(key)
+                coin_id = coin.get('id', '')
                 should_store = True
 
-                if existing:
-                    try:
-                        existing_data = json.loads(existing)
-                        existing_rank = existing_data.get('market_cap_rank')
-                        new_rank = redis_data.get('market_cap_rank')
+                # Check if this symbol has a priority mapping
+                if symbol in self.PRIORITY_SYMBOL_MAP:
+                    priority_id = self.PRIORITY_SYMBOL_MAP[symbol]
+                    if coin_id != priority_id:
+                        # This is NOT the priority coin for this symbol - skip it
+                        should_store = False
+                        logger.debug(
+                            f"Skipping {symbol} (id: {coin_id}) - "
+                            f"priority mapping exists for {priority_id}"
+                        )
+                else:
+                    # No priority mapping - check if a better coin already exists
+                    existing = self.redis_client.get(key)
+                    if existing:
+                        try:
+                            existing_data = json.loads(existing)
+                            existing_rank = existing_data.get('market_cap_rank')
+                            new_rank = redis_data.get('market_cap_rank')
 
-                        # Only overwrite if new coin has better rank
-                        if (existing_rank and new_rank and
-                            existing_rank < new_rank):
-                            should_store = False
-                            logger.debug(
-                                f"Skipping {symbol} (rank {new_rank}) "
-                                f"- better coin exists (rank {existing_rank})"
-                            )
-                    except:
-                        pass  # If parsing fails, store anyway
+                            # Only overwrite if new coin has better rank
+                            if (existing_rank and new_rank and
+                                existing_rank < new_rank):
+                                should_store = False
+                                logger.debug(
+                                    f"Skipping {symbol} (rank {new_rank}) "
+                                    f"- better coin exists (rank {existing_rank})"
+                                )
+                        except:
+                            pass  # If parsing fails, store anyway
 
                 if should_store:
                     self.redis_client.setex(
