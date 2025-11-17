@@ -257,8 +257,8 @@ interface TopFactorsListProps {
 function TopFactorsList({ factors, limit = 5, compact = false }: TopFactorsListProps) {
   const factorArray = Object.entries(factors)
     .map(([key, factor]) => ({
-      name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
       ...factor,
+      name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
     }))
     .sort((a, b) => b.contribution - a.contribution)
     .slice(0, limit);

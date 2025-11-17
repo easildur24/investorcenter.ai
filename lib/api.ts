@@ -34,11 +34,16 @@ class ApiClient {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
-    
+
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    // Only set Content-Type for requests with a body to avoid CORS preflight
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET' && method !== 'HEAD') {
+      headers['Content-Type'] = 'application/json';
+    }
 
     if (this.token) {
       headers.Authorization = `Bearer ${this.token}`;

@@ -214,8 +214,18 @@ class SECFinancialsIngestion:
                 logger.warning(f"{ticker}: No valid records to insert")
                 return False
 
+            # De-duplicate records based on unique constraint (ticker, period_end_date, fiscal_quarter)
+            # Keep the last occurrence (most recent filing typically has most accurate data)
+            unique_records = {}
+            for record in records:
+                key = (record['ticker'], record['period_end_date'], record['fiscal_quarter'])
+                unique_records[key] = record
+
+            deduplicated_records = list(unique_records.values())
+            logger.info(f"{ticker}: De-duplicated {len(records)} records to {len(deduplicated_records)}")
+
             # Insert with ON CONFLICT DO UPDATE to handle duplicates
-            stmt = pg_insert(Financial).values(records)
+            stmt = pg_insert(Financial).values(deduplicated_records)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['ticker', 'period_end_date', 'fiscal_quarter'],
                 set_={
@@ -237,7 +247,7 @@ class SECFinancialsIngestion:
             await session.execute(stmt)
             await session.commit()
 
-            logger.info(f"{ticker}: Successfully inserted {len(records)} financial records")
+            logger.info(f"{ticker}: Successfully inserted {len(deduplicated_records)} financial records")
             return True
 
         except Exception as e:
