@@ -281,7 +281,7 @@ class ICScoreCalculator:
                 SELECT
                     SUM(shares) as total_shares,
                     SUM(market_value) as total_value,
-                    COUNT(DISTINCT cik) as num_institutions
+                    COUNT(DISTINCT institution_cik) as num_institutions
                 FROM institutional_holdings
                 WHERE ticker = :ticker
                   AND filing_date >= NOW() - INTERVAL '120 days'
