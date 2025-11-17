@@ -478,7 +478,7 @@ class ICScoreCalculator:
             # Calculate weighted overall score (only for available factors)
             total_weight = sum(self.WEIGHTS[factor] for factor in factor_scores.keys())
             overall_score = sum(
-                factor_scores[factor] * self.WEIGHTS[factor]
+                float(factor_scores[factor]) * self.WEIGHTS[factor]
                 for factor in factor_scores.keys()
             ) / total_weight if total_weight > 0 else 0
 
