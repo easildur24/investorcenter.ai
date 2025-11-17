@@ -138,7 +138,7 @@ export default function ICScoresAdminPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by ticker symbol..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               />
             </div>
             <button
@@ -229,7 +229,7 @@ export default function ICScoresAdminPage() {
                           Calculated
                         </SortButton>
                       </th>
-                      <th className="px-6 py-3 text-left">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
