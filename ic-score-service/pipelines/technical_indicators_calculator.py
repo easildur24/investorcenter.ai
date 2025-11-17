@@ -106,9 +106,9 @@ class TechnicalIndicatorsCalculator:
         df = df.sort_values('date').reset_index(drop=True)
 
         try:
-            # Convert to numpy arrays for TA-Lib
-            close_prices = df['close'].values
-            volume_data = df['volume'].values
+            # Convert to numpy arrays for TA-Lib (must be float64)
+            close_prices = df['close'].astype('float64').values
+            volume_data = df['volume'].astype('float64').values
 
             # RSI (14-day)
             rsi = talib.RSI(close_prices, timeperiod=14)
@@ -222,8 +222,8 @@ class TechnicalIndicatorsCalculator:
             if not records:
                 return False
 
-            # Insert with ON CONFLICT DO UPDATE
-            stmt = pg_insert(StockPrice).values(records)
+            # Insert with ON CONFLICT DO UPDATE (use __table__ for Core-style insert)
+            stmt = pg_insert(StockPrice.__table__).values(records)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['time', 'ticker'],
                 set_={
@@ -277,8 +277,8 @@ class TechnicalIndicatorsCalculator:
             if not records:
                 return False
 
-            # Insert with ON CONFLICT DO UPDATE
-            stmt = pg_insert(TechnicalIndicator).values(records)
+            # Insert with ON CONFLICT DO UPDATE (use __table__ for Core-style insert)
+            stmt = pg_insert(TechnicalIndicator.__table__).values(records)
             stmt = stmt.on_conflict_do_update(
                 index_elements=['time', 'ticker', 'indicator_name'],
                 set_={
