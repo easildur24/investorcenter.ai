@@ -164,6 +164,11 @@ func GetICScores(c *gin.Context) {
 		return
 	}
 
+	// Ensure scores is never nil (sqlx may set it to nil if no rows found)
+	if scores == nil {
+		scores = make([]models.ICScoreListItem, 0)
+	}
+
 	// Get total count
 	countQuery := "SELECT COUNT(DISTINCT ticker) FROM ic_scores"
 	if search != "" {
