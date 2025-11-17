@@ -41,7 +41,8 @@ export default function ICScoresAdminPage() {
         sort,
         order,
       });
-      setScores(result.data);
+      // Handle null or undefined data gracefully
+      setScores(result.data || []);
       setMeta(result.meta);
     } catch (error) {
       console.error('Error fetching IC Scores:', error);
