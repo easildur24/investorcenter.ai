@@ -85,8 +85,8 @@ class InsiderTradesIngestion:
                 if title is None or link is None or updated is None:
                     continue
 
-                # Parse timestamp
-                updated_time = datetime.fromisoformat(updated.text.replace('Z', '+00:00'))
+                # Parse timestamp (convert to naive datetime for comparison)
+                updated_time = datetime.fromisoformat(updated.text.replace('Z', '+00:00')).replace(tzinfo=None)
                 if updated_time < cutoff_time:
                     continue
 

@@ -153,21 +153,22 @@ class SEC13FIngestion:
             root = ET.fromstring(response.content)
 
             # Find first entry (latest filing)
-            ns = {'atom': 'http://www.w3.org/2005/Atom'}
-            entry = root.find('atom:entry', ns)
+            # Use full namespace URI in tag name for compatibility
+            entry = root.find('{http://www.w3.org/2005/Atom}entry')
 
             if entry is None:
                 logger.warning(f"No 13F filings found for CIK {institution_cik}")
                 return None
 
             # Extract metadata
-            content = entry.find('atom:content', ns)
+            content = entry.find('{http://www.w3.org/2005/Atom}content')
             if content is None:
                 return None
 
-            accession = content.find('accession-number')
-            filing_date = content.find('filing-date')
-            filing_href = content.find('filing-href')
+            # Child elements also use Atom namespace
+            accession = content.find('{http://www.w3.org/2005/Atom}accession-number')
+            filing_date = content.find('{http://www.w3.org/2005/Atom}filing-date')
+            filing_href = content.find('{http://www.w3.org/2005/Atom}filing-href')
 
             if accession is None or filing_date is None:
                 return None
@@ -241,10 +242,11 @@ class SEC13FIngestion:
             import re
             xml_files = re.findall(r'href="(/Archives/edgar/data/[^"]+\.xml)"', html)
 
-            # Filter out primary_doc.xml, find the information table
+            # Filter out primary_doc.xml and XSLT-transformed versions, find the RAW information table XML
             for xml_file in xml_files:
-                if 'primary_doc.xml' not in xml_file.lower():
-                    # This is likely the information table
+                if ('primary_doc.xml' not in xml_file.lower() and
+                    'xslForm13F_X' not in xml_file):  # Skip XSLT-transformed HTML versions
+                    # This is the raw information table XML
                     return f"https://www.sec.gov{xml_file}"
 
             logger.warning(f"Could not find information table XML in {accession_number}")
@@ -308,8 +310,10 @@ class SEC13FIngestion:
                         ticker = self.cusip_to_ticker.get(cusip[:-1]) if len(cusip) > 8 else None
 
                     if not ticker:
-                        # Skip stocks we don't track
-                        continue
+                        # Use CUSIP as ticker temporarily (can backfill later)
+                        # CUSIP is 9 chars, ticker field is VARCHAR(10), so it fits
+                        ticker = cusip
+                        logger.debug(f"No ticker match for CUSIP {cusip}, storing as CUSIP")
 
                     # Parse values
                     market_value = int(value_elem.text)  # Already in dollars

@@ -186,8 +186,8 @@ class NewsSentimentIngestion:
             # Prepare records
             records = []
             for article in news_articles:
-                # Parse published date
-                published_at = datetime.fromisoformat(article['published_utc'].replace('Z', '+00:00'))
+                # Parse published date (convert to naive datetime for PostgreSQL TIMESTAMP WITHOUT TIME ZONE)
+                published_at = datetime.fromisoformat(article['published_utc'].replace('Z', '+00:00')).replace(tzinfo=None)
 
                 record = {
                     'title': article.get('title', '')[:500],
