@@ -243,11 +243,11 @@ class ICScoreCalculator:
                     rating,
                     price_target,
                     analyst_firm,
-                    date
+                    rating_date
                 FROM analyst_ratings
                 WHERE ticker = :ticker
-                  AND date >= NOW() - INTERVAL '90 days'
-                ORDER BY date DESC
+                  AND rating_date >= NOW() - INTERVAL '90 days'
+                ORDER BY rating_date DESC
                 LIMIT 20
             """)
             result = await session.execute(query, {"ticker": ticker})
