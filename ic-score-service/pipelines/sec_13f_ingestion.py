@@ -413,26 +413,61 @@ class SEC13FIngestion:
         if not holdings:
             return False
 
+        # De-duplicate holdings by aggregating shares/value for same (ticker, quarter, institution)
+        # This happens when institutions have multiple sub-managers holding the same security
+        aggregated = {}
+        for holding in holdings:
+            key = (holding['ticker'], holding['quarter_end_date'], holding['institution_cik'])
+
+            if key in aggregated:
+                # Aggregate shares and market value
+                aggregated[key]['shares'] += holding['shares']
+                aggregated[key]['market_value'] += holding['market_value']
+            else:
+                # First occurrence - keep all fields
+                aggregated[key] = holding.copy()
+
+        deduplicated_holdings = list(aggregated.values())
+
+        if len(holdings) != len(deduplicated_holdings):
+            logger.info(
+                f"De-duplicated {len(holdings)} holdings to {len(deduplicated_holdings)} "
+                f"(aggregated {len(holdings) - len(deduplicated_holdings)} duplicate CUSIPs)"
+            )
+
+        # Batch insert to avoid PostgreSQL parameter limit (32767 args)
+        # With ~10 fields per record, 1000 records = ~10,000 args (safe)
+        batch_size = 1000
+        total_stored = 0
+
         try:
             async with self.db.session() as session:
-                # Insert with ON CONFLICT DO UPDATE
-                stmt = pg_insert(InstitutionalHolding).values(holdings)
-                stmt = stmt.on_conflict_do_update(
-                    index_elements=['ticker', 'quarter_end_date', 'institution_cik'],
-                    set_={
-                        'filing_date': stmt.excluded.filing_date,
-                        'shares': stmt.excluded.shares,
-                        'market_value': stmt.excluded.market_value,
-                        'position_change': stmt.excluded.position_change,
-                        'shares_change': stmt.excluded.shares_change,
-                        'percent_change': stmt.excluded.percent_change,
-                    }
-                )
+                for i in range(0, len(deduplicated_holdings), batch_size):
+                    batch = deduplicated_holdings[i:i + batch_size]
 
-                await session.execute(stmt)
+                    # Insert with ON CONFLICT DO UPDATE
+                    stmt = pg_insert(InstitutionalHolding).values(batch)
+                    stmt = stmt.on_conflict_do_update(
+                        index_elements=['ticker', 'quarter_end_date', 'institution_cik'],
+                        set_={
+                            'filing_date': stmt.excluded.filing_date,
+                            'shares': stmt.excluded.shares,
+                            'market_value': stmt.excluded.market_value,
+                            'position_change': stmt.excluded.position_change,
+                            'shares_change': stmt.excluded.shares_change,
+                            'percent_change': stmt.excluded.percent_change,
+                        }
+                    )
+
+                    await session.execute(stmt)
+                    total_stored += len(batch)
+
+                    if len(deduplicated_holdings) > batch_size:
+                        logger.info(f"Stored batch {i//batch_size + 1}: {len(batch)} holdings")
+
                 await session.commit()
 
-                logger.info(f"Stored {len(holdings)} institutional holdings")
+                logger.info(f"Stored {total_stored} institutional holdings total")
                 return True
 
         except Exception as e:

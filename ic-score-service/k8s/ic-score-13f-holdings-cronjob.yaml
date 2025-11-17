@@ -39,7 +39,7 @@ spec:
 
           containers:
           - name: 13f-holdings-ingestion
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.1.2-13f-batch
             imagePullPolicy: Always
 
             command: ["python"]
