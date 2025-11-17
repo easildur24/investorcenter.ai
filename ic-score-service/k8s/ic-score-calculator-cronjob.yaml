@@ -36,7 +36,7 @@ spec:
 
           containers:
           - name: ic-score-calculator
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.4.2-schema-fix
             imagePullPolicy: Always
 
             command: ["python"]
