@@ -202,28 +202,53 @@ class NewsSentimentIngestion:
                     'image_url': article.get('image_url'),
                 }
 
-                # Extract sentiment if available from Polygon
+                # Extract sentiment from Polygon (if available)
+                polygon_sentiment = None
+                polygon_reasoning = None
                 insights = article.get('insights', [])
                 if insights:
                     for insight in insights:
                         if insight.get('sentiment'):
-                            record['sentiment_label'] = insight['sentiment'].capitalize()
-                            # Map to numeric score
-                            if insight['sentiment'] == 'positive':
-                                record['sentiment_score'] = 75.0
-                            elif insight['sentiment'] == 'negative':
-                                record['sentiment_score'] = -75.0
-                            else:
-                                record['sentiment_score'] = 0.0
+                            polygon_sentiment = insight['sentiment']
+                            polygon_reasoning = insight.get('sentiment_reasoning', '')
                             break
 
-                # If sentiment not provided by Polygon, use FinBERT
-                if record['sentiment_score'] is None:
-                    text = f"{record['title']} {record.get('summary', '')}"
-                    score, label = self.sentiment_analyzer.analyze(text)
-                    if score is not None:
-                        record['sentiment_score'] = score
-                        record['sentiment_label'] = label
+                # Always run FinBERT for nuanced analysis
+                text = f"{record['title']} {record.get('summary', '')}"
+                finbert_score, finbert_label = self.sentiment_analyzer.analyze(text)
+
+                # Use hybrid scoring approach
+                if finbert_score is not None:
+                    if polygon_sentiment:
+                        # Hybrid: Blend Polygon and FinBERT with FinBERT weighted more heavily
+                        # This captures Polygon's context awareness + FinBERT's nuance
+                        polygon_base_scores = {
+                            'positive': 60.0,
+                            'negative': -60.0,
+                            'neutral': 0.0
+                        }
+                        polygon_base = polygon_base_scores.get(polygon_sentiment, 0.0)
+
+                        # 70% FinBERT (nuanced), 30% Polygon (context)
+                        blended_score = 0.7 * finbert_score + 0.3 * polygon_base
+                        record['sentiment_score'] = round(blended_score, 2)
+
+                        # Use FinBERT label as it's more granular, but note Polygon agreement
+                        record['sentiment_label'] = finbert_label
+                    else:
+                        # Only FinBERT available - use directly
+                        record['sentiment_score'] = round(finbert_score, 2)
+                        record['sentiment_label'] = finbert_label
+                elif polygon_sentiment:
+                    # Fallback: Only Polygon available (FinBERT failed)
+                    # Use improved mapping that considers context
+                    polygon_scores = {
+                        'positive': 70.0,
+                        'negative': -70.0,
+                        'neutral': 0.0
+                    }
+                    record['sentiment_score'] = polygon_scores.get(polygon_sentiment, 0.0)
+                    record['sentiment_label'] = polygon_sentiment.capitalize()
 
                 records.append(record)
 
