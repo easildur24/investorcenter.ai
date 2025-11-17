@@ -18,16 +18,18 @@ var (
 
 // Custom claims for JWT
 type Claims struct {
-	UserID string `json:"user_id"`
-	Email  string `json:"email"`
+	UserID  string `json:"user_id"`
+	Email   string `json:"email"`
+	IsAdmin bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
 // GenerateAccessToken creates a short-lived JWT access token
 func GenerateAccessToken(user *models.User) (string, error) {
 	claims := Claims{
-		UserID: user.ID,
-		Email:  user.Email,
+		UserID:  user.ID,
+		Email:   user.Email,
+		IsAdmin: user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(accessTokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -44,8 +46,9 @@ func GenerateAccessToken(user *models.User) (string, error) {
 // GenerateRefreshToken creates a long-lived refresh token
 func GenerateRefreshToken(user *models.User) (string, error) {
 	claims := Claims{
-		UserID: user.ID,
-		Email:  user.Email,
+		UserID:  user.ID,
+		Email:   user.Email,
+		IsAdmin: user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(refreshTokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

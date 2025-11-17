@@ -287,6 +287,21 @@ func main() {
 		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)    // GET /api/v1/subscriptions/payments
 	}
 
+	// Admin routes (protected, require authentication + admin role)
+	adminDataHandler := handlers.NewAdminDataHandler(database.DB)
+	adminRoutes := v1.Group("/admin")
+	adminRoutes.Use(auth.AuthMiddleware())
+	adminRoutes.Use(auth.AdminMiddleware())
+	{
+		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)         // GET /api/v1/admin/stocks
+		adminRoutes.GET("/users", adminDataHandler.GetUsers)           // GET /api/v1/admin/users
+		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)     // GET /api/v1/admin/news
+		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals) // GET /api/v1/admin/fundamentals
+		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)         // GET /api/v1/admin/alerts
+		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists) // GET /api/v1/admin/watchlists
+		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)   // GET /api/v1/admin/stats
+	}
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
