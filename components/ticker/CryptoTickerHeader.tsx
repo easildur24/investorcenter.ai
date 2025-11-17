@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRealTimePrice } from '@/lib/hooks/useRealTimePrice';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
+import HybridChart from './HybridChart';
 
 interface CryptoTickerHeaderProps {
   symbol: string;
@@ -36,15 +37,38 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
   const [currentPrice, setCurrentPrice] = useState(initialData.price);
   const [previousPrice, setPreviousPrice] = useState<string>(initialData.price.price);
   const [flashColor, setFlashColor] = useState<'green' | 'red' | null>(null);
-  
+  const [chartData, setChartData] = useState<any>(null);
+  const [chartLoading, setChartLoading] = useState(true);
+
   // Decode URL-encoded symbol for display
   const decodedSymbol = decodeURIComponent(symbol);
   const displaySymbol = decodedSymbol.replace('X:', '');
-  
-  const { priceData } = useRealTimePrice({ 
-    symbol, 
-    enabled: initialData.market.shouldUpdateRealtime 
+
+  const { priceData } = useRealTimePrice({
+    symbol,
+    enabled: initialData.market.shouldUpdateRealtime
   });
+
+  // Fetch chart data on mount
+  useEffect(() => {
+    const fetchChartData = async () => {
+      try {
+        setChartLoading(true);
+        const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=1Y`);
+        const data = await response.json();
+
+        if (data.success && data.data) {
+          setChartData(data.data);
+        }
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+      } finally {
+        setChartLoading(false);
+      }
+    };
+
+    fetchChartData();
+  }, [symbol]);
 
   // Update current price when real-time data comes in
   useEffect(() => {
@@ -167,13 +191,26 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
         </div>
       </div>
 
-      {/* Chart placeholder - exact like CMC */}
+      {/* Interactive Price Chart */}
       <div className="mb-8">
         <h2 className="text-xl font-semibold text-gray-900 mb-4">{cryptoName} to USD Chart</h2>
-        <div className="bg-gray-50 rounded-lg p-8 text-center">
-          <div className="text-gray-500">Loading Data</div>
-          <div className="text-gray-400 text-sm mt-1">Please wait a moment.</div>
-        </div>
+        {chartLoading ? (
+          <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <div className="text-gray-500">Loading chart data...</div>
+            <div className="text-gray-400 text-sm mt-1">Please wait a moment.</div>
+          </div>
+        ) : chartData && chartData.dataPoints && chartData.dataPoints.length > 0 ? (
+          <HybridChart
+            symbol={symbol}
+            initialData={chartData}
+            currentPrice={parseFloat(currentPrice.price)}
+          />
+        ) : (
+          <div className="bg-gray-50 rounded-lg p-8 text-center">
+            <div className="text-gray-500">Chart data temporarily unavailable</div>
+            <div className="text-gray-400 text-sm mt-1">Please try again later.</div>
+          </div>
+        )}
       </div>
 
       {/* EXACT CoinMarketCap statistics section */}

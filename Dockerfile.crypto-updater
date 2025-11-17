@@ -2,10 +2,13 @@ FROM python:3.13-slim
 
 WORKDIR /app
 
-# Install dependencies
-COPY scripts/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    pip install --no-cache-dir aiohttp redis psycopg2-binary
+# Install system dependencies
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install only the dependencies needed for coingecko service
+RUN pip install --no-cache-dir aiohttp redis psycopg2-binary
 
 # Copy scripts
 COPY scripts/coingecko_complete_service.py .
