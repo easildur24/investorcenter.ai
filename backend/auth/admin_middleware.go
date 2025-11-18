@@ -22,9 +22,26 @@ func AdminMiddleware() gin.HandlerFunc {
 
 		// Get isAdmin flag from context
 		isAdmin, exists := c.Get("is_admin")
-		if !exists || !isAdmin.(bool) {
+		if !exists {
+			userID, _ := c.Get("user_id")
 			c.JSON(http.StatusForbidden, gin.H{
-				"error": "Forbidden - admin access required",
+				"error":   "Forbidden - admin access required",
+				"debug":   "is_admin not found in context",
+				"user_id": userID,
+			})
+			c.Abort()
+			return
+		}
+
+		isAdminBool, ok := isAdmin.(bool)
+		if !ok || !isAdminBool {
+			userID, _ := c.Get("user_id")
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":          "Forbidden - admin access required",
+				"debug":          "is_admin is false or not a bool",
+				"is_admin_value": isAdmin,
+				"is_admin_type":  ok,
+				"user_id":        userID,
 			})
 			c.Abort()
 			return

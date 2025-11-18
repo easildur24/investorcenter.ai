@@ -35,7 +35,7 @@ func CreateUser(user *models.User) error {
 func GetUserByEmail(email string) (*models.User, error) {
 	query := `
 		SELECT id, email, password_hash, full_name, timezone, created_at, updated_at,
-		       last_login_at, email_verified, is_premium, is_active
+		       last_login_at, email_verified, is_premium, is_active, is_admin
 		FROM users
 		WHERE email = $1 AND is_active = TRUE
 	`
@@ -52,6 +52,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 		&user.EmailVerified,
 		&user.IsPremium,
 		&user.IsActive,
+		&user.IsAdmin,
 	)
 
 	if err == sql.ErrNoRows {
@@ -67,7 +68,7 @@ func GetUserByEmail(email string) (*models.User, error) {
 func GetUserByID(id string) (*models.User, error) {
 	query := `
 		SELECT id, email, password_hash, full_name, timezone, created_at, updated_at,
-		       last_login_at, email_verified, is_premium, is_active
+		       last_login_at, email_verified, is_premium, is_active, is_admin
 		FROM users
 		WHERE id = $1 AND is_active = TRUE
 	`
@@ -84,6 +85,7 @@ func GetUserByID(id string) (*models.User, error) {
 		&user.EmailVerified,
 		&user.IsPremium,
 		&user.IsActive,
+		&user.IsAdmin,
 	)
 
 	if err == sql.ErrNoRows {
@@ -194,7 +196,7 @@ func SetPasswordResetToken(email, token string, expiresAt time.Time) error {
 func GetUserByPasswordResetToken(token string) (*models.User, error) {
 	query := `
 		SELECT id, email, password_hash, full_name, timezone, created_at, updated_at,
-		       last_login_at, email_verified, is_premium, is_active
+		       last_login_at, email_verified, is_premium, is_active, is_admin
 		FROM users
 		WHERE password_reset_token = $1
 		  AND password_reset_expires_at > $2
@@ -213,6 +215,7 @@ func GetUserByPasswordResetToken(token string) (*models.User, error) {
 		&user.EmailVerified,
 		&user.IsPremium,
 		&user.IsActive,
+		&user.IsAdmin,
 	)
 
 	if err == sql.ErrNoRows {
