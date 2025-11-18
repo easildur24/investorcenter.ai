@@ -23,8 +23,15 @@ export async function getAdminStocks(params?: {
   sort?: string;
   order?: 'asc' | 'desc';
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/stocks', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+  if (params?.sort) queryParams.append('sort', params.sort);
+  if (params?.order) queryParams.append('order', params.order);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/stocks${query ? `?${query}` : ''}`);
 }
 
 // Fetch users (admin)
@@ -33,8 +40,13 @@ export async function getAdminUsers(params?: {
   offset?: number;
   search?: string;
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/users', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/users${query ? `?${query}` : ''}`);
 }
 
 // Fetch news articles (admin)
@@ -43,8 +55,13 @@ export async function getAdminNews(params?: {
   offset?: number;
   search?: string;
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/news', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/news${query ? `?${query}` : ''}`);
 }
 
 // Fetch fundamentals (admin)
@@ -53,8 +70,13 @@ export async function getAdminFundamentals(params?: {
   offset?: number;
   search?: string;
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/fundamentals', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/fundamentals${query ? `?${query}` : ''}`);
 }
 
 // Fetch alerts (admin)
@@ -62,8 +84,12 @@ export async function getAdminAlerts(params?: {
   limit?: number;
   offset?: number;
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/alerts', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/alerts${query ? `?${query}` : ''}`);
 }
 
 // Fetch watch lists (admin)
@@ -71,12 +97,15 @@ export async function getAdminWatchLists(params?: {
   limit?: number;
   offset?: number;
 }): Promise<AdminDataResponse<any>> {
-  const response = await apiClient.get('/admin/watchlists', { params });
-  return response.data;
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/watchlists${query ? `?${query}` : ''}`);
 }
 
 // Fetch database statistics (admin)
 export async function getAdminDatabaseStats(): Promise<{ stats: DatabaseStats }> {
-  const response = await apiClient.get('/admin/stats');
-  return response.data;
+  return apiClient.get('/admin/stats');
 }
