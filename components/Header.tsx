@@ -114,6 +114,25 @@ export default function Header() {
                     >
                       Settings
                     </Link>
+                    <div className="border-t border-gray-200 my-1"></div>
+                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                      Admin
+                    </div>
+                    <Link
+                      href="/admin/cronjobs"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Cronjob Monitoring
+                    </Link>
+                    <Link
+                      href="/admin/ic-scores"
+                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      IC Score Admin
+                    </Link>
+                    <div className="border-t border-gray-200 my-1"></div>
                     <button
                       onClick={() => {
                         setShowDropdown(false);
