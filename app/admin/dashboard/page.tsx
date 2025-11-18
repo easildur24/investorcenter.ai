@@ -299,8 +299,8 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
             {data.map((row, idx) => (
               <tr key={idx} className="hover:bg-gray-50">
                 {Object.entries(row).map(([key, value]) => (
-                  <td key={key} className="px-6 py-4 text-sm text-gray-900">
-                    {formatValue(value)}
+                  <td key={key} className="px-6 py-4 text-sm text-gray-900 align-top">
+                    {formatValue(value, key)}
                   </td>
                 ))}
               </tr>
@@ -340,7 +340,30 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
   );
 }
 
-function formatValue(value: any): string {
+function ExpandableSummary({ text }: { text: string }) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const shortText = text.length > 100 ? text.substring(0, 100) + '...' : text;
+
+  if (text.length <= 100) {
+    return <span>{text}</span>;
+  }
+
+  return (
+    <div className="max-w-md">
+      <p className="text-sm">
+        {isExpanded ? text : shortText}
+      </p>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+      >
+        {isExpanded ? 'Show less' : 'Show more'}
+      </button>
+    </div>
+  );
+}
+
+function formatValue(value: any, key?: string): React.ReactNode {
   if (value === null || value === undefined) {
     return '-';
   }
@@ -350,11 +373,50 @@ function formatValue(value: any): string {
   if (typeof value === 'object' && value instanceof Date) {
     return new Date(value).toLocaleString();
   }
+  if (Array.isArray(value)) {
+    // Handle arrays (like tickers)
+    if (value.length === 0) return '-';
+    if (value.length <= 3) {
+      return (
+        <div className="flex flex-wrap gap-1">
+          {value.map((item, idx) => (
+            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+              {item}
+            </span>
+          ))}
+        </div>
+      );
+    }
+    return (
+      <div className="flex flex-wrap gap-1">
+        {value.slice(0, 2).map((item, idx) => (
+          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            {item}
+          </span>
+        ))}
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+          +{value.length - 2} more
+        </span>
+      </div>
+    );
+  }
   if (typeof value === 'object') {
     return JSON.stringify(value);
   }
   if (typeof value === 'number') {
     return value.toLocaleString();
   }
-  return String(value);
+  // Truncate long text for certain columns
+  const str = String(value);
+  if (key === 'summary' && str.length > 0) {
+    return <ExpandableSummary text={str} />;
+  }
+  if (key === 'url') {
+    return (
+      <a href={str} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate block max-w-xs">
+        {str.length > 40 ? str.substring(0, 40) + '...' : str}
+      </a>
+    );
+  }
+  return str;
 }
