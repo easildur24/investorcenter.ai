@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jmoiron/sqlx"
+	"github.com/lib/pq"
 )
 
 // AdminDataHandler handles admin queries for all data types
@@ -203,7 +204,7 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 	search := c.Query("search")
 
 	query := `
-		SELECT id, ticker, title, summary, source, url, sentiment,
+		SELECT id, tickers, title, summary, source, url, sentiment_label,
 		       author, published_at, created_at
 		FROM news_articles
 	`
@@ -211,8 +212,8 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 	args := []interface{}{}
 
 	if search != "" {
-		query += " WHERE ticker ILIKE $1 OR title ILIKE $1"
-		countQuery += " WHERE ticker ILIKE $1 OR title ILIKE $1"
+		query += " WHERE title ILIKE $1"
+		countQuery += " WHERE title ILIKE $1"
 		args = append(args, "%"+search+"%")
 	}
 
@@ -229,7 +230,7 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch news"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch news", "details": err.Error()})
 		return
 	}
 	defer rows.Close()
@@ -237,10 +238,11 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 	var articles []map[string]interface{}
 	for rows.Next() {
 		var id int
-		var ticker, title, summary, source, url, sentiment, author sql.NullString
+		var title, summary, source, url, sentimentLabel, author sql.NullString
+		var tickers pq.StringArray
 		var publishedAt, createdAt sql.NullTime
 
-		err := rows.Scan(&id, &ticker, &title, &summary, &source, &url, &sentiment,
+		err := rows.Scan(&id, &tickers, &title, &summary, &source, &url, &sentimentLabel,
 			&author, &publishedAt, &createdAt)
 		if err != nil {
 			continue
@@ -248,12 +250,12 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 
 		article := map[string]interface{}{
 			"id":           id,
-			"ticker":       ticker.String,
+			"tickers":      tickers,
 			"title":        title.String,
 			"summary":      summary.String,
 			"source":       source.String,
 			"url":          url.String,
-			"sentiment":    sentiment.String,
+			"sentiment":    sentimentLabel.String,
 			"author":       author.String,
 			"published_at": publishedAt.Time,
 			"created_at":   createdAt.Time,
@@ -278,11 +280,11 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 	search := c.Query("search")
 
 	query := `
-		SELECT ticker, period, year, pe_ratio, pb_ratio, ps_ratio,
-		       revenue, eps, market_cap, created_at, updated_at
-		FROM fundamentals
+		SELECT ticker, fiscal_year, fiscal_quarter, period_end_date, pe_ratio, pb_ratio, ps_ratio,
+		       revenue, eps_diluted, market_cap, created_at
+		FROM financials
 	`
-	countQuery := "SELECT COUNT(*) FROM fundamentals"
+	countQuery := "SELECT COUNT(*) FROM financials"
 	args := []interface{}{}
 
 	if search != "" {
@@ -291,7 +293,7 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 		args = append(args, "%"+search+"%")
 	}
 
-	query += " ORDER BY ticker, year DESC, period DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	query += " ORDER BY ticker, fiscal_year DESC, fiscal_quarter DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
 	args = append(args, limit, offset)
 
 	var total int
@@ -304,36 +306,40 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 
 	rows, err := h.db.Query(query, args...)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch fundamentals"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch fundamentals", "details": err.Error()})
 		return
 	}
 	defer rows.Close()
 
 	var fundamentals []map[string]interface{}
 	for rows.Next() {
-		var ticker, period sql.NullString
-		var year sql.NullInt64
-		var peRatio, pbRatio, psRatio, revenue, eps, marketCap sql.NullFloat64
-		var createdAt, updatedAt sql.NullTime
+		var ticker sql.NullString
+		var fiscalYear sql.NullInt64
+		var fiscalQuarter sql.NullInt64
+		var periodEndDate sql.NullTime
+		var peRatio, pbRatio, psRatio sql.NullFloat64
+		var revenue, marketCap sql.NullInt64
+		var epsDiluted sql.NullFloat64
+		var createdAt sql.NullTime
 
-		err := rows.Scan(&ticker, &period, &year, &peRatio, &pbRatio, &psRatio,
-			&revenue, &eps, &marketCap, &createdAt, &updatedAt)
+		err := rows.Scan(&ticker, &fiscalYear, &fiscalQuarter, &periodEndDate, &peRatio, &pbRatio, &psRatio,
+			&revenue, &epsDiluted, &marketCap, &createdAt)
 		if err != nil {
 			continue
 		}
 
 		fundamental := map[string]interface{}{
-			"ticker":     ticker.String,
-			"period":     period.String,
-			"year":       year.Int64,
-			"pe_ratio":   peRatio.Float64,
-			"pb_ratio":   pbRatio.Float64,
-			"ps_ratio":   psRatio.Float64,
-			"revenue":    revenue.Float64,
-			"eps":        eps.Float64,
-			"market_cap": marketCap.Float64,
-			"created_at": createdAt.Time,
-			"updated_at": updatedAt.Time,
+			"ticker":          ticker.String,
+			"fiscal_year":     fiscalYear.Int64,
+			"fiscal_quarter":  fiscalQuarter.Int64,
+			"period_end_date": periodEndDate.Time,
+			"pe_ratio":        peRatio.Float64,
+			"pb_ratio":        pbRatio.Float64,
+			"ps_ratio":        psRatio.Float64,
+			"revenue":         revenue.Int64,
+			"eps":             epsDiluted.Float64,
+			"market_cap":      marketCap.Int64,
+			"created_at":      createdAt.Time,
 		}
 		fundamentals = append(fundamentals, fundamental)
 	}
