@@ -294,12 +294,27 @@ func main() {
 	cronjobRoutes := v1.Group("/admin/cronjobs")
 	cronjobRoutes.Use(auth.AuthMiddleware())
 	{
-		cronjobRoutes.GET("/overview", cronjobHandler.GetOverview)                       // GET /api/v1/admin/cronjobs/overview
-		cronjobRoutes.GET("/schedules", cronjobHandler.GetAllSchedules)                  // GET /api/v1/admin/cronjobs/schedules
-		cronjobRoutes.GET("/metrics", cronjobHandler.GetMetrics)                         // GET /api/v1/admin/cronjobs/metrics
-		cronjobRoutes.GET("/:jobName/history", cronjobHandler.GetJobHistory)             // GET /api/v1/admin/cronjobs/:jobName/history
-		cronjobRoutes.GET("/details/:executionId", cronjobHandler.GetJobDetails)         // GET /api/v1/admin/cronjobs/details/:executionId
-		cronjobRoutes.POST("/log", cronjobHandler.LogExecution)                          // POST /api/v1/admin/cronjobs/log (for cronjobs to call)
+		cronjobRoutes.GET("/overview", cronjobHandler.GetOverview)               // GET /api/v1/admin/cronjobs/overview
+		cronjobRoutes.GET("/schedules", cronjobHandler.GetAllSchedules)          // GET /api/v1/admin/cronjobs/schedules
+		cronjobRoutes.GET("/metrics", cronjobHandler.GetMetrics)                 // GET /api/v1/admin/cronjobs/metrics
+		cronjobRoutes.GET("/:jobName/history", cronjobHandler.GetJobHistory)     // GET /api/v1/admin/cronjobs/:jobName/history
+		cronjobRoutes.GET("/details/:executionId", cronjobHandler.GetJobDetails) // GET /api/v1/admin/cronjobs/details/:executionId
+		cronjobRoutes.POST("/log", cronjobHandler.LogExecution)                  // POST /api/v1/admin/cronjobs/log (for cronjobs to call)
+	}
+
+	// Admin data query routes (protected, require authentication + admin role)
+	adminDataHandler := handlers.NewAdminDataHandler(database.DB)
+	adminRoutes := v1.Group("/admin")
+	adminRoutes.Use(auth.AuthMiddleware())
+	adminRoutes.Use(auth.AdminMiddleware())
+	{
+		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)             // GET /api/v1/admin/stocks
+		adminRoutes.GET("/users", adminDataHandler.GetUsers)               // GET /api/v1/admin/users
+		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)         // GET /api/v1/admin/news
+		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals) // GET /api/v1/admin/fundamentals
+		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)             // GET /api/v1/admin/alerts
+		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)     // GET /api/v1/admin/watchlists
+		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)       // GET /api/v1/admin/stats
 	}
 
 	// Start server

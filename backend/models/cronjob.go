@@ -22,23 +22,23 @@ type CronjobSchedule struct {
 
 // CronjobExecutionLog represents a single cronjob execution
 type CronjobExecutionLog struct {
-	ID                int        `json:"id" db:"id"`
-	JobName           string     `json:"job_name" db:"job_name"`
-	JobCategory       string     `json:"job_category" db:"job_category"`
-	ExecutionID       string     `json:"execution_id" db:"execution_id"`
-	Status            string     `json:"status" db:"status"`
-	StartedAt         time.Time  `json:"started_at" db:"started_at"`
-	CompletedAt       *time.Time `json:"completed_at" db:"completed_at"`
-	DurationSeconds   *int       `json:"duration_seconds" db:"duration_seconds"`
-	RecordsProcessed  int        `json:"records_processed" db:"records_processed"`
-	RecordsUpdated    int        `json:"records_updated" db:"records_updated"`
-	RecordsFailed     int        `json:"records_failed" db:"records_failed"`
-	ErrorMessage      *string    `json:"error_message" db:"error_message"`
-	ErrorStackTrace   *string    `json:"error_stack_trace" db:"error_stack_trace"`
-	K8sPodName        *string    `json:"k8s_pod_name" db:"k8s_pod_name"`
-	K8sNamespace      *string    `json:"k8s_namespace" db:"k8s_namespace"`
-	ExitCode          *int       `json:"exit_code" db:"exit_code"`
-	CreatedAt         time.Time  `json:"created_at" db:"created_at"`
+	ID               int        `json:"id" db:"id"`
+	JobName          string     `json:"job_name" db:"job_name"`
+	JobCategory      string     `json:"job_category" db:"job_category"`
+	ExecutionID      string     `json:"execution_id" db:"execution_id"`
+	Status           string     `json:"status" db:"status"`
+	StartedAt        time.Time  `json:"started_at" db:"started_at"`
+	CompletedAt      *time.Time `json:"completed_at" db:"completed_at"`
+	DurationSeconds  *int       `json:"duration_seconds" db:"duration_seconds"`
+	RecordsProcessed int        `json:"records_processed" db:"records_processed"`
+	RecordsUpdated   int        `json:"records_updated" db:"records_updated"`
+	RecordsFailed    int        `json:"records_failed" db:"records_failed"`
+	ErrorMessage     *string    `json:"error_message" db:"error_message"`
+	ErrorStackTrace  *string    `json:"error_stack_trace" db:"error_stack_trace"`
+	K8sPodName       *string    `json:"k8s_pod_name" db:"k8s_pod_name"`
+	K8sNamespace     *string    `json:"k8s_namespace" db:"k8s_namespace"`
+	ExitCode         *int       `json:"exit_code" db:"exit_code"`
+	CreatedAt        time.Time  `json:"created_at" db:"created_at"`
 }
 
 // CronjobAlert represents alert configuration for cronjobs
@@ -95,8 +95,8 @@ type CronjobOverviewResponse struct {
 
 // CronjobSummary represents summary statistics
 type CronjobSummary struct {
-	TotalJobs  int           `json:"total_jobs"`
-	ActiveJobs int           `json:"active_jobs"`
+	TotalJobs  int            `json:"total_jobs"`
+	ActiveJobs int            `json:"active_jobs"`
 	Last24h    Last24hSummary `json:"last_24h"`
 }
 
@@ -110,15 +110,15 @@ type Last24hSummary struct {
 
 // CronjobStatusWithInfo combines schedule info with latest execution
 type CronjobStatusWithInfo struct {
-	JobName             string                 `json:"job_name"`
-	JobCategory         string                 `json:"job_category"`
-	Schedule            string                 `json:"schedule"`
-	ScheduleDescription string                 `json:"schedule_description"`
-	LastRun             *LastRunInfo           `json:"last_run"`
-	HealthStatus        string                 `json:"health_status"` // 'healthy', 'warning', 'critical'
-	ConsecutiveFailures int                    `json:"consecutive_failures"`
-	AvgDuration7d       *float64               `json:"avg_duration_7d"`
-	SuccessRate7d       *float64               `json:"success_rate_7d"`
+	JobName             string       `json:"job_name"`
+	JobCategory         string       `json:"job_category"`
+	Schedule            string       `json:"schedule"`
+	ScheduleDescription string       `json:"schedule_description"`
+	LastRun             *LastRunInfo `json:"last_run"`
+	HealthStatus        string       `json:"health_status"` // 'healthy', 'warning', 'critical'
+	ConsecutiveFailures int          `json:"consecutive_failures"`
+	AvgDuration7d       *float64     `json:"avg_duration_7d"`
+	SuccessRate7d       *float64     `json:"success_rate_7d"`
 }
 
 // LastRunInfo represents the last execution info
@@ -163,7 +163,7 @@ type CronjobPerformance struct {
 
 // CronjobMetricsResponse represents metrics overview
 type CronjobMetricsResponse struct {
-	DailySuccessRate  []CronjobDailySummary   `json:"daily_success_rate"`
-	JobPerformance    []CronjobPerformance    `json:"job_performance"`
-	FailureBreakdown  map[string]int          `json:"failure_breakdown"`
+	DailySuccessRate []CronjobDailySummary `json:"daily_success_rate"`
+	JobPerformance   []CronjobPerformance  `json:"job_performance"`
+	FailureBreakdown map[string]int        `json:"failure_breakdown"`
 }

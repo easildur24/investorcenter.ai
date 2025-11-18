@@ -21,6 +21,7 @@ type User struct {
 	PasswordResetExpiresAt     *time.Time `json:"-" db:"password_reset_expires_at"`
 	IsPremium                  bool       `json:"is_premium" db:"is_premium"`
 	IsActive                   bool       `json:"is_active" db:"is_active"`
+	IsAdmin                    bool       `json:"is_admin" db:"is_admin"`
 }
 
 // UserPublic is the public-facing user data (safe to expose in API)
@@ -32,6 +33,7 @@ type UserPublic struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	EmailVerified bool       `json:"email_verified"`
 	IsPremium     bool       `json:"is_premium"`
+	IsAdmin       bool       `json:"is_admin"`
 	LastLoginAt   *time.Time `json:"last_login_at"`
 }
 
@@ -45,6 +47,7 @@ func (u *User) ToPublic() UserPublic {
 		CreatedAt:     u.CreatedAt,
 		EmailVerified: u.EmailVerified,
 		IsPremium:     u.IsPremium,
+		IsAdmin:       u.IsAdmin,
 		LastLoginAt:   u.LastLoginAt,
 	}
 }
