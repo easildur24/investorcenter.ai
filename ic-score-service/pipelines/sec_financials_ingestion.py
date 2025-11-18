@@ -208,6 +208,20 @@ class SECFinancialsIngestion:
                     'raw_data': financial,
                 }
 
+                # Calculate EPS if not provided by SEC but we have the data
+                net_income = record.get('net_income')
+                shares_outstanding = record.get('shares_outstanding')
+
+                if net_income is not None and shares_outstanding is not None and shares_outstanding > 0:
+                    # Calculate EPS = Net Income / Shares Outstanding
+                    calculated_eps = round(net_income / shares_outstanding, 4)
+
+                    # Only override if SEC didn't provide EPS
+                    if record.get('eps_basic') is None:
+                        record['eps_basic'] = calculated_eps
+                    if record.get('eps_diluted') is None:
+                        record['eps_diluted'] = calculated_eps
+
                 records.append(record)
 
             if not records:
@@ -240,6 +254,8 @@ class SECFinancialsIngestion:
                     'roe': stmt.excluded.roe,
                     'roa': stmt.excluded.roa,
                     'debt_to_equity': stmt.excluded.debt_to_equity,
+                    'eps_basic': stmt.excluded.eps_basic,
+                    'eps_diluted': stmt.excluded.eps_diluted,
                     'raw_data': stmt.excluded.raw_data,
                 }
             )
