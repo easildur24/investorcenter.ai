@@ -282,16 +282,16 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 	query := `
 		SELECT
 			COALESCE(t.ticker, v.ticker) as ticker,
-			t.calculation_date,
+			COALESCE(t.calculation_date, v.calculation_date) as calculation_date,
 			t.ttm_period_start,
 			t.ttm_period_end,
-			v.pe_ratio,
-			v.pb_ratio,
-			v.ps_ratio,
+			v.ttm_pe_ratio,
+			v.ttm_pb_ratio,
+			v.ttm_ps_ratio,
 			t.revenue,
 			t.eps_diluted,
-			v.market_cap,
-			GREATEST(t.updated_at, v.updated_at) as created_at
+			v.ttm_market_cap,
+			COALESCE(t.created_at, v.created_at) as created_at
 		FROM ttm_financials t
 		FULL OUTER JOIN valuation_ratios v ON t.ticker = v.ticker AND t.calculation_date = v.calculation_date
 	`
@@ -308,7 +308,7 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 		args = append(args, "%"+search+"%")
 	}
 
-	query += " ORDER BY COALESCE(t.ticker, v.ticker), GREATEST(t.updated_at, v.updated_at) DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	query += " ORDER BY COALESCE(t.ticker, v.ticker), COALESCE(t.created_at, v.created_at) DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
 	args = append(args, limit, offset)
 
 	var total int
