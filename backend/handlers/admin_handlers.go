@@ -280,20 +280,35 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 	search := c.Query("search")
 
 	query := `
-		SELECT ticker, fiscal_year, fiscal_quarter, period_end_date, pe_ratio, pb_ratio, ps_ratio,
-		       revenue, eps_diluted, market_cap, created_at
-		FROM financials
+		SELECT
+			COALESCE(t.ticker, v.ticker) as ticker,
+			t.calculation_date,
+			t.ttm_period_start,
+			t.ttm_period_end,
+			v.pe_ratio,
+			v.pb_ratio,
+			v.ps_ratio,
+			t.revenue,
+			t.eps_diluted,
+			v.market_cap,
+			GREATEST(t.updated_at, v.updated_at) as created_at
+		FROM ttm_financials t
+		FULL OUTER JOIN valuation_ratios v ON t.ticker = v.ticker AND t.calculation_date = v.calculation_date
 	`
-	countQuery := "SELECT COUNT(*) FROM financials"
+	countQuery := `
+		SELECT COUNT(DISTINCT COALESCE(t.ticker, v.ticker))
+		FROM ttm_financials t
+		FULL OUTER JOIN valuation_ratios v ON t.ticker = v.ticker AND t.calculation_date = v.calculation_date
+	`
 	args := []interface{}{}
 
 	if search != "" {
-		query += " WHERE ticker ILIKE $1"
-		countQuery += " WHERE ticker ILIKE $1"
+		query += " WHERE COALESCE(t.ticker, v.ticker) ILIKE $1"
+		countQuery += " WHERE COALESCE(t.ticker, v.ticker) ILIKE $1"
 		args = append(args, "%"+search+"%")
 	}
 
-	query += " ORDER BY ticker, fiscal_year DESC, fiscal_quarter DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	query += " ORDER BY COALESCE(t.ticker, v.ticker), GREATEST(t.updated_at, v.updated_at) DESC LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
 	args = append(args, limit, offset)
 
 	var total int
@@ -314,32 +329,30 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 	var fundamentals []map[string]interface{}
 	for rows.Next() {
 		var ticker sql.NullString
-		var fiscalYear sql.NullInt64
-		var fiscalQuarter sql.NullInt64
-		var periodEndDate sql.NullTime
+		var calculationDate, ttmPeriodStart, ttmPeriodEnd sql.NullTime
 		var peRatio, pbRatio, psRatio sql.NullFloat64
 		var revenue, marketCap sql.NullInt64
 		var epsDiluted sql.NullFloat64
 		var createdAt sql.NullTime
 
-		err := rows.Scan(&ticker, &fiscalYear, &fiscalQuarter, &periodEndDate, &peRatio, &pbRatio, &psRatio,
-			&revenue, &epsDiluted, &marketCap, &createdAt)
+		err := rows.Scan(&ticker, &calculationDate, &ttmPeriodStart, &ttmPeriodEnd,
+			&peRatio, &pbRatio, &psRatio, &revenue, &epsDiluted, &marketCap, &createdAt)
 		if err != nil {
 			continue
 		}
 
 		fundamental := map[string]interface{}{
-			"ticker":          ticker.String,
-			"fiscal_year":     fiscalYear.Int64,
-			"fiscal_quarter":  fiscalQuarter.Int64,
-			"period_end_date": periodEndDate.Time,
-			"pe_ratio":        peRatio.Float64,
-			"pb_ratio":        pbRatio.Float64,
-			"ps_ratio":        psRatio.Float64,
-			"revenue":         revenue.Int64,
-			"eps":             epsDiluted.Float64,
-			"market_cap":      marketCap.Int64,
-			"created_at":      createdAt.Time,
+			"ticker":           ticker.String,
+			"calculation_date": calculationDate.Time,
+			"ttm_period_start": ttmPeriodStart.Time,
+			"ttm_period_end":   ttmPeriodEnd.Time,
+			"pe_ratio":         peRatio.Float64,
+			"pb_ratio":         pbRatio.Float64,
+			"ps_ratio":         psRatio.Float64,
+			"revenue":          revenue.Int64,
+			"eps":              epsDiluted.Float64,
+			"market_cap":       marketCap.Int64,
+			"created_at":       createdAt.Time,
 		}
 		fundamentals = append(fundamentals, fundamental)
 	}
