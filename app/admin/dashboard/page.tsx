@@ -319,7 +319,7 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -329,7 +329,7 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
