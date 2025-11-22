@@ -488,16 +488,324 @@ func (h *AdminDataHandler) GetWatchLists(c *gin.Context) {
 	})
 }
 
+// GetSECFinancials returns raw quarterly SEC financial data
+func (h *AdminDataHandler) GetSECFinancials(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, period_end_date, fiscal_year, fiscal_quarter,
+			revenue, cost_of_revenue, gross_profit, operating_expenses,
+			operating_income, net_income, eps_basic, eps_diluted,
+			shares_outstanding, total_assets, total_liabilities,
+			shareholders_equity, cash_and_equivalents, short_term_debt,
+			long_term_debt, roa, roe, roic, gross_margin,
+			operating_margin, net_margin, created_at
+		FROM financials
+	`
+	countQuery := "SELECT COUNT(*) FROM financials"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY period_end_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch SEC financials", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var financials []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var ticker sql.NullString
+		var periodEndDate sql.NullTime
+		var fiscalYear, fiscalQuarter sql.NullInt64
+		var revenue, costOfRevenue, grossProfit, operatingExpenses sql.NullInt64
+		var operatingIncome, netIncome sql.NullInt64
+		var epsBasic, epsDiluted sql.NullFloat64
+		var sharesOutstanding sql.NullInt64
+		var totalAssets, totalLiabilities, shareholdersEquity sql.NullInt64
+		var cash, shortTermDebt, longTermDebt sql.NullInt64
+		var roa, roe, roic sql.NullFloat64
+		var grossMargin, operatingMargin, netMargin sql.NullFloat64
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &periodEndDate, &fiscalYear, &fiscalQuarter,
+			&revenue, &costOfRevenue, &grossProfit, &operatingExpenses,
+			&operatingIncome, &netIncome, &epsBasic, &epsDiluted,
+			&sharesOutstanding, &totalAssets, &totalLiabilities,
+			&shareholdersEquity, &cash, &shortTermDebt, &longTermDebt,
+			&roa, &roe, &roic, &grossMargin, &operatingMargin, &netMargin, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		financial := map[string]interface{}{
+			"id":                  id,
+			"ticker":              ticker.String,
+			"period_end_date":     periodEndDate.Time,
+			"fiscal_year":         fiscalYear.Int64,
+			"fiscal_quarter":      fiscalQuarter.Int64,
+			"revenue":             revenue.Int64,
+			"cost_of_revenue":     costOfRevenue.Int64,
+			"gross_profit":        grossProfit.Int64,
+			"operating_expenses":  operatingExpenses.Int64,
+			"operating_income":    operatingIncome.Int64,
+			"net_income":          netIncome.Int64,
+			"eps_basic":           epsBasic.Float64,
+			"eps_diluted":         epsDiluted.Float64,
+			"shares_outstanding":  sharesOutstanding.Int64,
+			"total_assets":        totalAssets.Int64,
+			"total_liabilities":   totalLiabilities.Int64,
+			"shareholders_equity": shareholdersEquity.Int64,
+			"cash":                cash.Int64,
+			"short_term_debt":     shortTermDebt.Int64,
+			"long_term_debt":      longTermDebt.Int64,
+			"roa":                 roa.Float64,
+			"roe":                 roe.Float64,
+			"roic":                roic.Float64,
+			"gross_margin":        grossMargin.Float64,
+			"operating_margin":    operatingMargin.Float64,
+			"net_margin":          netMargin.Float64,
+			"created_at":          createdAt.Time,
+		}
+		financials = append(financials, financial)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": financials,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetTTMFinancials returns TTM financial data
+func (h *AdminDataHandler) GetTTMFinancials(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, calculation_date, ttm_period_start, ttm_period_end,
+			revenue, cost_of_revenue, gross_profit, operating_expenses,
+			operating_income, net_income, eps_basic, eps_diluted,
+			shares_outstanding, total_assets, total_liabilities,
+			shareholders_equity, cash_and_equivalents, short_term_debt,
+			long_term_debt, operating_cash_flow, investing_cash_flow,
+			financing_cash_flow, free_cash_flow, capex, created_at
+		FROM ttm_financials
+	`
+	countQuery := "SELECT COUNT(*) FROM ttm_financials"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY calculation_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch TTM financials", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var ttmFinancials []map[string]interface{}
+	for rows.Next() {
+		var id int
+		var ticker sql.NullString
+		var calculationDate, ttmPeriodStart, ttmPeriodEnd sql.NullTime
+		var revenue, costOfRevenue, grossProfit, operatingExpenses sql.NullInt64
+		var operatingIncome, netIncome sql.NullInt64
+		var epsBasic, epsDiluted sql.NullFloat64
+		var sharesOutstanding sql.NullInt64
+		var totalAssets, totalLiabilities, shareholdersEquity sql.NullInt64
+		var cash, shortTermDebt, longTermDebt sql.NullInt64
+		var operatingCashFlow, investingCashFlow, financingCashFlow sql.NullInt64
+		var freeCashFlow, capex sql.NullInt64
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &calculationDate, &ttmPeriodStart, &ttmPeriodEnd,
+			&revenue, &costOfRevenue, &grossProfit, &operatingExpenses,
+			&operatingIncome, &netIncome, &epsBasic, &epsDiluted,
+			&sharesOutstanding, &totalAssets, &totalLiabilities,
+			&shareholdersEquity, &cash, &shortTermDebt, &longTermDebt,
+			&operatingCashFlow, &investingCashFlow, &financingCashFlow,
+			&freeCashFlow, &capex, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		ttmFinancial := map[string]interface{}{
+			"id":                    id,
+			"ticker":                ticker.String,
+			"calculation_date":      calculationDate.Time,
+			"ttm_period_start":      ttmPeriodStart.Time,
+			"ttm_period_end":        ttmPeriodEnd.Time,
+			"revenue":               revenue.Int64,
+			"cost_of_revenue":       costOfRevenue.Int64,
+			"gross_profit":          grossProfit.Int64,
+			"operating_expenses":    operatingExpenses.Int64,
+			"operating_income":      operatingIncome.Int64,
+			"net_income":            netIncome.Int64,
+			"eps_basic":             epsBasic.Float64,
+			"eps_diluted":           epsDiluted.Float64,
+			"shares_outstanding":    sharesOutstanding.Int64,
+			"total_assets":          totalAssets.Int64,
+			"total_liabilities":     totalLiabilities.Int64,
+			"shareholders_equity":   shareholdersEquity.Int64,
+			"cash_and_equivalents":  cash.Int64,
+			"short_term_debt":       shortTermDebt.Int64,
+			"long_term_debt":        longTermDebt.Int64,
+			"operating_cash_flow":   operatingCashFlow.Int64,
+			"investing_cash_flow":   investingCashFlow.Int64,
+			"financing_cash_flow":   financingCashFlow.Int64,
+			"free_cash_flow":        freeCashFlow.Int64,
+			"capex":                 capex.Int64,
+			"created_at":            createdAt.Time,
+		}
+		ttmFinancials = append(ttmFinancials, ttmFinancial)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": ttmFinancials,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetValuationRatios returns valuation ratios data
+func (h *AdminDataHandler) GetValuationRatios(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, ttm_financial_id, calculation_date,
+			stock_price, ttm_market_cap, ttm_pe_ratio, ttm_pb_ratio,
+			ttm_ps_ratio, ttm_period_start, ttm_period_end,
+			created_at
+		FROM valuation_ratios
+	`
+	countQuery := "SELECT COUNT(*) FROM valuation_ratios"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY calculation_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch valuation ratios", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var valuationRatios []map[string]interface{}
+	for rows.Next() {
+		var id, ttmFinancialID sql.NullInt64
+		var ticker sql.NullString
+		var calculationDate, ttmPeriodStart, ttmPeriodEnd sql.NullTime
+		var stockPrice sql.NullFloat64
+		var marketCap sql.NullInt64
+		var peRatio, pbRatio, psRatio sql.NullFloat64
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &ttmFinancialID, &calculationDate,
+			&stockPrice, &marketCap, &peRatio, &pbRatio, &psRatio,
+			&ttmPeriodStart, &ttmPeriodEnd, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		valuationRatio := map[string]interface{}{
+			"id":                id.Int64,
+			"ticker":            ticker.String,
+			"ttm_financial_id":  ttmFinancialID.Int64,
+			"calculation_date":  calculationDate.Time,
+			"stock_price":       stockPrice.Float64,
+			"ttm_market_cap":    marketCap.Int64,
+			"ttm_pe_ratio":      peRatio.Float64,
+			"ttm_pb_ratio":      pbRatio.Float64,
+			"ttm_ps_ratio":      psRatio.Float64,
+			"ttm_period_start":  ttmPeriodStart.Time,
+			"ttm_period_end":    ttmPeriodEnd.Time,
+			"created_at":        createdAt.Time,
+		}
+		valuationRatios = append(valuationRatios, valuationRatio)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": valuationRatios,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
 // GetDatabaseStats returns database statistics
 func (h *AdminDataHandler) GetDatabaseStats(c *gin.Context) {
 	stats := make(map[string]interface{})
 
 	// Count all tables
 	tables := []string{
-		"tickers", "stock_prices", "fundamentals", "ic_scores",
-		"news_articles", "insider_trading", "analyst_ratings",
-		"technical_indicators", "users", "watch_lists", "alert_rules",
-		"user_subscriptions", "reddit_heatmap_daily",
+		"tickers", "stock_prices", "fundamentals", "ttm_financials",
+		"valuation_ratios", "ic_scores", "news_articles", "insider_trading",
+		"analyst_ratings", "technical_indicators", "users", "watch_lists",
+		"alert_rules", "user_subscriptions", "reddit_heatmap_daily",
 	}
 
 	for _, table := range tables {

@@ -6,6 +6,9 @@ import {
   getAdminUsers,
   getAdminNews,
   getAdminFundamentals,
+  getAdminSECFinancials,
+  getAdminTTMFinancials,
+  getAdminValuationRatios,
   getAdminAlerts,
   getAdminWatchLists,
   getAdminDatabaseStats,
@@ -25,7 +28,7 @@ import {
   Activity
 } from 'lucide-react';
 
-type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'alerts' | 'watchlists';
+type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('stats');
@@ -48,6 +51,9 @@ export default function AdminDashboardPage() {
     { id: 'users' as TabType, name: 'Users', icon: Users },
     { id: 'news' as TabType, name: 'News', icon: FileText },
     { id: 'fundamentals' as TabType, name: 'Fundamentals', icon: BarChart3 },
+    { id: 'sec-financials' as TabType, name: 'SEC Financials', icon: FileText },
+    { id: 'ttm-financials' as TabType, name: 'TTM Financials', icon: TrendingUp },
+    { id: 'valuation-ratios' as TabType, name: 'Valuation Ratios', icon: BarChart3 },
     { id: 'alerts' as TabType, name: 'Alerts', icon: Bell },
     { id: 'watchlists' as TabType, name: 'Watch Lists', icon: BookmarkIcon },
   ];
@@ -90,6 +96,21 @@ export default function AdminDashboardPage() {
           break;
         case 'fundamentals':
           result = await getAdminFundamentals(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'sec-financials':
+          result = await getAdminSECFinancials(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'ttm-financials':
+          result = await getAdminTTMFinancials(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'valuation-ratios':
+          result = await getAdminValuationRatios(params);
           setData(result.data || []);
           setMeta(result.meta);
           break;

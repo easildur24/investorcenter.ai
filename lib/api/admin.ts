@@ -109,3 +109,48 @@ export async function getAdminWatchLists(params?: {
 export async function getAdminDatabaseStats(): Promise<{ stats: DatabaseStats }> {
   return apiClient.get('/admin/stats');
 }
+
+// Fetch SEC financials (admin)
+export async function getAdminSECFinancials(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/sec-financials${query ? `?${query}` : ''}`);
+}
+
+// Fetch TTM financials (admin)
+export async function getAdminTTMFinancials(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/ttm-financials${query ? `?${query}` : ''}`);
+}
+
+// Fetch valuation ratios (admin)
+export async function getAdminValuationRatios(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/valuation-ratios${query ? `?${query}` : ''}`);
+}
