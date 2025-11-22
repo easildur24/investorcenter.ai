@@ -32,31 +32,31 @@ def upgrade() -> None:
     # Add column to ttm_financials table
     op.add_column('ttm_financials', sa.Column('ttm_ebitda', sa.BigInteger, nullable=True))
 
-    # Add columns to valuation_ratios table
-    op.add_column('valuation_ratios', sa.Column('enterprise_value', sa.BigInteger, nullable=True))
-    op.add_column('valuation_ratios', sa.Column('ttm_ev_ebitda_ratio', sa.Numeric(precision=10, scale=2), nullable=True))
+    # Add EV/EBITDA columns to financials table (valuation metrics stored here)
+    op.add_column('financials', sa.Column('enterprise_value', sa.BigInteger, nullable=True))
+    op.add_column('financials', sa.Column('ttm_ev_ebitda_ratio', sa.Numeric(precision=10, scale=2), nullable=True))
 
     # Create indexes for performance queries
     op.create_index('ix_financials_ebitda', 'financials', ['ebitda'], unique=False)
     op.create_index('ix_ttm_financials_ttm_ebitda', 'ttm_financials', ['ttm_ebitda'], unique=False)
-    op.create_index('ix_valuation_ratios_ev_ebitda', 'valuation_ratios', ['ttm_ev_ebitda_ratio'], unique=False)
+    op.create_index('ix_financials_ev_ebitda', 'financials', ['ttm_ev_ebitda_ratio'], unique=False)
 
 
 def downgrade() -> None:
     """Remove EBITDA-related columns from tables."""
 
     # Drop indexes
-    op.drop_index('ix_valuation_ratios_ev_ebitda', table_name='valuation_ratios')
+    op.drop_index('ix_financials_ev_ebitda', table_name='financials')
     op.drop_index('ix_ttm_financials_ttm_ebitda', table_name='ttm_financials')
     op.drop_index('ix_financials_ebitda', table_name='financials')
 
-    # Drop columns from valuation_ratios
-    op.drop_column('valuation_ratios', 'ttm_ev_ebitda_ratio')
-    op.drop_column('valuation_ratios', 'enterprise_value')
+    # Drop EV/EBITDA columns from financials
+    op.drop_column('financials', 'ttm_ev_ebitda_ratio')
+    op.drop_column('financials', 'enterprise_value')
 
     # Drop column from ttm_financials
     op.drop_column('ttm_financials', 'ttm_ebitda')
 
-    # Drop columns from financials
+    # Drop EBITDA columns from financials
     op.drop_column('financials', 'ebitda')
     op.drop_column('financials', 'depreciation_and_amortization')

@@ -169,18 +169,56 @@ class ValuationRatiosCalculator:
                 'total_liabilities': int(row[12]) if row[12] else None,
             }
 
+    async def get_latest_ttm_financials(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Get latest TTM financial data for EV/EBITDA calculation.
+
+        Args:
+            ticker: Stock ticker symbol.
+
+        Returns:
+            Dictionary with TTM financial data, or None if not found.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT
+                    ttm_ebitda,
+                    cash_and_equivalents,
+                    short_term_debt,
+                    long_term_debt,
+                    calculation_date
+                FROM ttm_financials
+                WHERE ticker = :ticker
+                ORDER BY calculation_date DESC
+                LIMIT 1
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                'ttm_ebitda': int(row[0]) if row[0] else None,
+                'cash_and_equivalents': int(row[1]) if row[1] else None,
+                'short_term_debt': int(row[2]) if row[2] else None,
+                'long_term_debt': int(row[3]) if row[3] else None,
+                'calculation_date': row[4],
+            }
+
     def calculate_ratios(
         self,
         ticker: str,
         price_data: Dict[str, Any],
-        financial_data: Dict[str, Any]
+        financial_data: Dict[str, Any],
+        ttm_data: Optional[Dict[str, Any]] = None
     ) -> Optional[Dict[str, Any]]:
-        """Calculate valuation ratios.
+        """Calculate valuation ratios including EV/EBITDA.
 
         Args:
             ticker: Stock ticker symbol.
             price_data: Latest stock price data.
             financial_data: Latest financial statement data.
+            ttm_data: TTM financial data (for EBITDA calculation).
 
         Returns:
             Dictionary of calculated ratios, or None if insufficient data.
@@ -259,6 +297,27 @@ class ValuationRatiosCalculator:
             else:
                 ratios['current_ratio'] = None
 
+            # Calculate Enterprise Value and EV/EBITDA (if TTM data available)
+            ratios['enterprise_value'] = None
+            ratios['ttm_ev_ebitda_ratio'] = None
+
+            if ttm_data and shares_outstanding and shares_outstanding > 0:
+                market_cap = int(stock_price * shares_outstanding)
+                cash = ttm_data.get('cash_and_equivalents') or 0
+                short_term_debt = ttm_data.get('short_term_debt') or 0
+                long_term_debt = ttm_data.get('long_term_debt') or 0
+                total_debt = short_term_debt + long_term_debt
+
+                # Enterprise Value = Market Cap + Total Debt - Cash
+                enterprise_value = market_cap + total_debt - cash
+                ratios['enterprise_value'] = enterprise_value
+
+                # EV/EBITDA ratio
+                ttm_ebitda = ttm_data.get('ttm_ebitda')
+                if ttm_ebitda and ttm_ebitda > 0:
+                    ev_ebitda_ratio = enterprise_value / ttm_ebitda
+                    ratios['ttm_ev_ebitda_ratio'] = round(ev_ebitda_ratio, 2)
+
             # Check if we calculated at least one ratio
             if not any([ratios.get('pe_ratio'), ratios.get('pb_ratio'), ratios.get('ps_ratio')]):
                 logger.warning(f"{ticker}: Could not calculate any valuation ratios")
@@ -305,6 +364,14 @@ class ValuationRatiosCalculator:
                     update_fields.append("market_cap = :market_cap")
                     params['market_cap'] = ratios['market_cap']
 
+                if ratios.get('enterprise_value') is not None:
+                    update_fields.append("enterprise_value = :enterprise_value")
+                    params['enterprise_value'] = ratios['enterprise_value']
+
+                if ratios.get('ttm_ev_ebitda_ratio') is not None:
+                    update_fields.append("ttm_ev_ebitda_ratio = :ttm_ev_ebitda_ratio")
+                    params['ttm_ev_ebitda_ratio'] = ratios['ttm_ev_ebitda_ratio']
+
                 # Always update metadata
                 update_fields.append("valuation_calculation_date = :calc_date")
                 update_fields.append("valuation_stock_price = :stock_price")
@@ -348,8 +415,11 @@ class ValuationRatiosCalculator:
                 logger.warning(f"{ticker}: No financial data found")
                 return False
 
+            # Get latest TTM financial data (for EV/EBITDA)
+            ttm_data = await self.get_latest_ttm_financials(ticker)
+
             # Calculate ratios
-            ratios = self.calculate_ratios(ticker, price_data, financial_data)
+            ratios = self.calculate_ratios(ticker, price_data, financial_data, ttm_data)
             if not ratios:
                 return False
 
@@ -357,11 +427,13 @@ class ValuationRatiosCalculator:
             success = await self.update_financials_with_ratios(ratios)
 
             if success:
+                ev_ebitda_str = f", EV/EBITDA: {ratios.get('ttm_ev_ebitda_ratio')}" if ratios.get('ttm_ev_ebitda_ratio') else ""
                 logger.info(
                     f"{ticker}: Updated ratios - "
                     f"P/E: {ratios.get('pe_ratio')}, "
                     f"P/B: {ratios.get('pb_ratio')}, "
-                    f"P/S: {ratios.get('ps_ratio')}, "
+                    f"P/S: {ratios.get('ps_ratio')}"
+                    f"{ev_ebitda_str}, "
                     f"Price: ${ratios['valuation_stock_price']}"
                 )
 
