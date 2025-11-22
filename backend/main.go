@@ -144,14 +144,16 @@ func main() {
 		}
 
 		// Fundamental metrics endpoints
-		// TODO: Implement fundamental handlers
-		// fundamentals := v1.Group("/fundamentals")
-		// {
-		// 	fundamentals.GET("/", handlers.ListFundamentals)                        // List all symbols with metrics
-		// 	fundamentals.GET("/:symbol", handlers.GetFundamentalsSimple)            // Get stored metrics for symbol (simple JSON)
-		// 	fundamentals.POST("/:symbol/calculate", handlers.CalculateFundamentals) // Calculate and store metrics
-		// 	fundamentals.POST("/:symbol/refresh", handlers.RefreshFundamentals)     // Refresh metrics
-		// }
+		fundamentals := v1.Group("/fundamentals")
+		{
+			fundamentals.GET("/", handlers.ListFundamentals)                        // List all symbols with metrics
+			fundamentals.GET("/:symbol", handlers.GetFundamentalsSimple)            // Get stored metrics for symbol (simple JSON)
+			fundamentals.POST("/:symbol/calculate", handlers.CalculateFundamentals) // Calculate and store metrics
+			fundamentals.POST("/:symbol/refresh", handlers.RefreshFundamentals)     // Refresh metrics
+		}
+
+		// Simple fundamentals endpoint (for testing)
+		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimpleHandler)
 
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
