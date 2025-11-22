@@ -408,7 +408,7 @@ function formatValue(value: any, key?: string): React.ReactNode {
   }
   // Truncate long text for certain columns
   const str = String(value);
-  if (key === 'summary' && str.length > 0) {
+  if ((key === 'summary' || key === 'description') && str.length > 0) {
     return <ExpandableSummary text={str} />;
   }
   if (key === 'url') {
