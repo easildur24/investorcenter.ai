@@ -296,7 +296,7 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 		FULL OUTER JOIN valuation_ratios v ON t.ticker = v.ticker AND t.calculation_date = v.calculation_date
 	`
 	countQuery := `
-		SELECT COUNT(DISTINCT COALESCE(t.ticker, v.ticker))
+		SELECT COUNT(*)
 		FROM ttm_financials t
 		FULL OUTER JOIN valuation_ratios v ON t.ticker = v.ticker AND t.calculation_date = v.calculation_date
 	`
