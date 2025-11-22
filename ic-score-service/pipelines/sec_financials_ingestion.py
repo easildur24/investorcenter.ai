@@ -190,6 +190,10 @@ class SECFinancialsIngestion:
                     'free_cash_flow': financial.get('free_cash_flow'),
                     'capex': financial.get('capex'),
 
+                    # EBITDA Components
+                    'depreciation_and_amortization': financial.get('depreciation_and_amortization'),
+                    'ebitda': financial.get('ebitda'),
+
                     # Calculated Metrics
                     'pe_ratio': financial.get('pe_ratio'),
                     'pb_ratio': financial.get('pb_ratio'),

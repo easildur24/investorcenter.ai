@@ -167,7 +167,8 @@ class TTMFinancialsCalculator:
                     shareholders_equity, cash_and_equivalents,
                     short_term_debt, long_term_debt,
                     operating_cash_flow, investing_cash_flow,
-                    financing_cash_flow, free_cash_flow, capex
+                    financing_cash_flow, free_cash_flow, capex,
+                    ebitda
                 FROM financials
                 WHERE ticker = :ticker
                   AND statement_type = '10-Q'
@@ -208,6 +209,7 @@ class TTMFinancialsCalculator:
                     'financing_cash_flow': int(row[23]) if row[23] else None,
                     'free_cash_flow': int(row[24]) if row[24] else None,
                     'capex': int(row[25]) if row[25] else None,
+                    'ebitda': int(row[26]) if row[26] else None,
                 })
 
             return quarters
@@ -310,6 +312,43 @@ class TTMFinancialsCalculator:
 
         return (ttm_eps_basic, ttm_eps_diluted)
 
+    async def get_balance_sheet_history(self, ticker: str, limit: int = 5) -> List[Dict]:
+        """Get historical balance sheet data for average calculations.
+
+        Args:
+            ticker: Stock ticker symbol.
+            limit: Number of quarters to retrieve.
+
+        Returns:
+            List of balance sheet data dicts, ordered from newest to oldest.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT
+                    period_end_date, total_assets, shareholders_equity,
+                    cash_and_equivalents
+                FROM financials
+                WHERE ticker = :ticker
+                  AND statement_type = '10-Q'
+                  AND fiscal_quarter IS NOT NULL
+                ORDER BY period_end_date DESC
+                LIMIT :limit
+            """)
+
+            result = await session.execute(query, {"ticker": ticker, "limit": limit})
+            rows = result.fetchall()
+
+            balance_sheets = []
+            for row in rows:
+                balance_sheets.append({
+                    'period_end_date': row[0],
+                    'total_assets': int(row[1]) if row[1] else None,
+                    'shareholders_equity': int(row[2]) if row[2] else None,
+                    'cash_and_equivalents': int(row[3]) if row[3] else None,
+                })
+
+            return balance_sheets
+
     async def calculate_ttm_metrics(self, ticker: str) -> Optional[Dict]:
         """Calculate all TTM metrics for a ticker.
 
@@ -324,6 +363,9 @@ class TTMFinancialsCalculator:
 
         # Get quarterly 10-Q data (get 5 to ensure we have prior year data)
         quarters = await self.get_quarterly_data(ticker, limit=5)
+
+        # Get balance sheet history for averaging
+        balance_sheets = await self.get_balance_sheet_history(ticker, limit=5)
 
         if not quarters:
             logger.debug(f"{ticker}: No quarterly data found")
@@ -341,6 +383,7 @@ class TTMFinancialsCalculator:
         operating_cash_flow = None
         free_cash_flow = None
         capex = None
+        ttm_ebitda = None
 
         # Use annual 10-K if recent (within 3 months)
         use_annual = False
@@ -355,6 +398,7 @@ class TTMFinancialsCalculator:
             operating_cash_flow = annual_10k.get('operating_cash_flow')
             free_cash_flow = annual_10k.get('free_cash_flow')
             capex = annual_10k.get('capex')
+            ttm_ebitda = annual_10k.get('ebitda')
         elif len(quarters) >= 4:
             # Sum last 4 quarters
             last_4_quarters = quarters[:4]
@@ -379,6 +423,10 @@ class TTMFinancialsCalculator:
             if capex_values:
                 capex = sum(capex_values)
 
+            ebitda_values = [q['ebitda'] for q in last_4_quarters if q['ebitda'] is not None]
+            if ebitda_values:
+                ttm_ebitda = sum(ebitda_values)
+
         # Balance sheet items from most recent quarter
         shares_outstanding = most_recent_q.get('shares_outstanding')
         total_assets = most_recent_q.get('total_assets')
@@ -399,6 +447,94 @@ class TTMFinancialsCalculator:
             ttm_period_end = most_recent_q['period_end_date']
             ttm_period_start = most_recent_q['period_end_date']
 
+        # Calculate performance ratios
+        ttm_roa = None
+        ttm_roe = None
+        ttm_roic = None
+        ttm_gross_margin = None
+        ttm_operating_margin = None
+        ttm_net_margin = None
+
+        # Calculate margins (simple ratios with TTM revenue)
+        if revenue and revenue != 0:
+            # Gross margin
+            gross_profit = None
+            if use_annual and annual_10k and annual_10k.get('gross_profit'):
+                gross_profit = annual_10k.get('gross_profit')
+            elif len(quarters) >= 4:
+                gross_profit_values = [q.get('gross_profit') for q in quarters[:4] if q.get('gross_profit') is not None]
+                if len(gross_profit_values) == 4:
+                    gross_profit = sum(gross_profit_values)
+
+            if gross_profit is not None:
+                ttm_gross_margin = round((gross_profit / revenue) * 100, 4)
+
+            # Operating margin
+            operating_income = None
+            if use_annual and annual_10k and annual_10k.get('operating_income'):
+                operating_income = annual_10k.get('operating_income')
+            elif len(quarters) >= 4:
+                operating_income_values = [q.get('operating_income') for q in quarters[:4] if q.get('operating_income') is not None]
+                if len(operating_income_values) == 4:
+                    operating_income = sum(operating_income_values)
+
+            if operating_income is not None:
+                ttm_operating_margin = round((operating_income / revenue) * 100, 4)
+
+            # Net margin
+            if net_income is not None:
+                ttm_net_margin = round((net_income / revenue) * 100, 4)
+
+        # Calculate ROA (need average total assets)
+        if net_income is not None and len(balance_sheets) >= 4:
+            current_assets = balance_sheets[0].get('total_assets')
+            past_assets = balance_sheets[3].get('total_assets')  # 4 quarters ago
+
+            if current_assets and past_assets and past_assets != 0:
+                avg_total_assets = (current_assets + past_assets) / 2
+                if avg_total_assets != 0:
+                    ttm_roa = round((net_income / avg_total_assets) * 100, 4)
+
+        # Calculate ROE (need average shareholders equity)
+        if net_income is not None and len(balance_sheets) >= 4:
+            current_equity = balance_sheets[0].get('shareholders_equity')
+            past_equity = balance_sheets[3].get('shareholders_equity')  # 4 quarters ago
+
+            if current_equity and past_equity and past_equity != 0:
+                avg_shareholders_equity = (current_equity + past_equity) / 2
+                if avg_shareholders_equity != 0:
+                    ttm_roe = round((net_income / avg_shareholders_equity) * 100, 4)
+
+        # Calculate ROIC (need average invested capital)
+        # ROIC = Operating Income × (1 - Tax Rate) / Average Invested Capital
+        # Average Invested Capital = Average (Total Assets - Cash)
+        if len(balance_sheets) >= 4:
+            operating_income_for_roic = None
+            if use_annual and annual_10k and annual_10k.get('operating_income'):
+                operating_income_for_roic = annual_10k.get('operating_income')
+            elif len(quarters) >= 4:
+                op_inc_values = [q.get('operating_income') for q in quarters[:4] if q.get('operating_income') is not None]
+                if len(op_inc_values) == 4:
+                    operating_income_for_roic = sum(op_inc_values)
+
+            if operating_income_for_roic is not None:
+                current_assets_roic = balance_sheets[0].get('total_assets')
+                current_cash = balance_sheets[0].get('cash_and_equivalents') or 0
+                past_assets_roic = balance_sheets[3].get('total_assets')
+                past_cash = balance_sheets[3].get('cash_and_equivalents') or 0
+
+                if current_assets_roic and past_assets_roic:
+                    current_invested_capital = current_assets_roic - current_cash
+                    past_invested_capital = past_assets_roic - past_cash
+
+                    avg_invested_capital = (current_invested_capital + past_invested_capital) / 2
+
+                    if avg_invested_capital != 0:
+                        # Use 21% default tax rate (can be refined with actual tax data later)
+                        tax_rate = 0.21
+                        nopat = operating_income_for_roic * (1 - tax_rate)
+                        ttm_roic = round((nopat / avg_invested_capital) * 100, 4)
+
         ttm_data = {
             'ticker': ticker,
             'calculation_date': date.today(),
@@ -409,6 +545,7 @@ class TTMFinancialsCalculator:
             'net_income': net_income,
             'eps_basic': eps_basic,
             'eps_diluted': eps_diluted,
+            'ttm_ebitda': ttm_ebitda,
             # Balance Sheet (from most recent quarter)
             'shares_outstanding': shares_outstanding,
             'total_assets': total_assets,
@@ -421,6 +558,13 @@ class TTMFinancialsCalculator:
             'operating_cash_flow': operating_cash_flow,
             'free_cash_flow': free_cash_flow,
             'capex': capex,
+            # Performance Ratios
+            'ttm_roa': ttm_roa,
+            'ttm_roe': ttm_roe,
+            'ttm_roic': ttm_roic,
+            'ttm_gross_margin': ttm_gross_margin,
+            'ttm_operating_margin': ttm_operating_margin,
+            'ttm_net_margin': ttm_net_margin,
         }
 
         return ttm_data
@@ -439,18 +583,22 @@ class TTMFinancialsCalculator:
                 query = text("""
                     INSERT INTO ttm_financials (
                         ticker, calculation_date, ttm_period_start, ttm_period_end,
-                        revenue, net_income, eps_basic, eps_diluted,
+                        revenue, net_income, eps_basic, eps_diluted, ttm_ebitda,
                         shares_outstanding, total_assets, total_liabilities,
                         shareholders_equity, cash_and_equivalents,
                         short_term_debt, long_term_debt,
-                        operating_cash_flow, free_cash_flow, capex
+                        operating_cash_flow, free_cash_flow, capex,
+                        ttm_roa, ttm_roe, ttm_roic,
+                        ttm_gross_margin, ttm_operating_margin, ttm_net_margin
                     ) VALUES (
                         :ticker, :calculation_date, :ttm_period_start, :ttm_period_end,
-                        :revenue, :net_income, :eps_basic, :eps_diluted,
+                        :revenue, :net_income, :eps_basic, :eps_diluted, :ttm_ebitda,
                         :shares_outstanding, :total_assets, :total_liabilities,
                         :shareholders_equity, :cash_and_equivalents,
                         :short_term_debt, :long_term_debt,
-                        :operating_cash_flow, :free_cash_flow, :capex
+                        :operating_cash_flow, :free_cash_flow, :capex,
+                        :ttm_roa, :ttm_roe, :ttm_roic,
+                        :ttm_gross_margin, :ttm_operating_margin, :ttm_net_margin
                     )
                     ON CONFLICT (ticker, calculation_date)
                     DO UPDATE SET
@@ -460,6 +608,7 @@ class TTMFinancialsCalculator:
                         net_income = EXCLUDED.net_income,
                         eps_basic = EXCLUDED.eps_basic,
                         eps_diluted = EXCLUDED.eps_diluted,
+                        ttm_ebitda = EXCLUDED.ttm_ebitda,
                         shares_outstanding = EXCLUDED.shares_outstanding,
                         total_assets = EXCLUDED.total_assets,
                         total_liabilities = EXCLUDED.total_liabilities,
@@ -469,7 +618,13 @@ class TTMFinancialsCalculator:
                         long_term_debt = EXCLUDED.long_term_debt,
                         operating_cash_flow = EXCLUDED.operating_cash_flow,
                         free_cash_flow = EXCLUDED.free_cash_flow,
-                        capex = EXCLUDED.capex
+                        capex = EXCLUDED.capex,
+                        ttm_roa = EXCLUDED.ttm_roa,
+                        ttm_roe = EXCLUDED.ttm_roe,
+                        ttm_roic = EXCLUDED.ttm_roic,
+                        ttm_gross_margin = EXCLUDED.ttm_gross_margin,
+                        ttm_operating_margin = EXCLUDED.ttm_operating_margin,
+                        ttm_net_margin = EXCLUDED.ttm_net_margin
                 """)
 
                 await session.execute(query, ttm_data)

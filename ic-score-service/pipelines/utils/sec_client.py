@@ -49,6 +49,8 @@ class SECClient:
         'eps_basic': ['EarningsPerShareBasic'],
         'eps_diluted': ['EarningsPerShareDiluted'],
         'shares_outstanding': ['CommonStockSharesOutstanding', 'WeightedAverageNumberOfSharesOutstandingBasic'],
+        'depreciation_and_amortization': ['DepreciationDepletionAndAmortization', 'DepreciationAndAmortization',
+                                          'Depreciation', 'AmortizationOfIntangibleAssets'],
 
         # Balance Sheet
         'total_assets': ['Assets'],
@@ -276,11 +278,16 @@ class SECClient:
         long_term_debt = get_decimal('long_term_debt') or Decimal('0')
         operating_cash_flow = get_decimal('operating_cash_flow')
         capex = get_decimal('capex')
+        depreciation_and_amortization = get_decimal('depreciation_and_amortization')
 
         # Calculate missing base metrics
         if gross_profit is None and revenue and cost_of_revenue:
             financial['gross_profit'] = float(revenue - cost_of_revenue)
             gross_profit = revenue - cost_of_revenue
+
+        # EBITDA = Operating Income + Depreciation & Amortization
+        if operating_income and depreciation_and_amortization:
+            financial['ebitda'] = float(operating_income + depreciation_and_amortization)
 
         # Free cash flow
         if operating_cash_flow and capex:
