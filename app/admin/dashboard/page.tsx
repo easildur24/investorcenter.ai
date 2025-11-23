@@ -25,8 +25,10 @@ import {
   Bell,
   BookmarkIcon,
   BarChart3,
-  Activity
+  Activity,
+  Filter
 } from 'lucide-react';
+import { filterDerivatives } from '@/lib/utils/tickerFilters';
 
 type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists';
 
@@ -41,6 +43,7 @@ export default function AdminDashboardPage() {
   });
   const [search, setSearch] = useState('');
   const [stats, setStats] = useState<any>(null);
+  const [hideDerivatives, setHideDerivatives] = useState(false);
 
   const currentPage = Math.floor(meta.offset / meta.limit) + 1;
   const totalPages = Math.ceil(meta.total / meta.limit);
@@ -193,7 +196,7 @@ export default function AdminDashboardPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab !== 'stats' && (
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6 mb-6">
-            <form onSubmit={handleSearchSubmit} className="flex gap-4">
+            <form onSubmit={handleSearchSubmit} className="flex gap-4 items-center">
               <div className="flex-1 relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                 <input
@@ -222,6 +225,20 @@ export default function AdminDashboardPage() {
                   Clear
                 </button>
               )}
+              {(activeTab === 'fundamentals' || activeTab === 'sec-financials' || activeTab === 'ttm-financials' || activeTab === 'valuation-ratios') && (
+                <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={hideDerivatives}
+                    onChange={(e) => setHideDerivatives(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <Filter className="w-4 h-4 text-gray-600" />
+                  <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
+                    Hide derivatives
+                  </span>
+                </label>
+              )}
             </form>
           </div>
         )}
@@ -237,7 +254,9 @@ export default function AdminDashboardPage() {
             <StatsView stats={stats} />
           ) : (
             <DataTable
-              data={data}
+              data={hideDerivatives && (activeTab === 'fundamentals' || activeTab === 'sec-financials' || activeTab === 'ttm-financials' || activeTab === 'valuation-ratios')
+                ? filterDerivatives(data, 'ticker')
+                : data}
               type={activeTab}
               meta={meta}
               currentPage={currentPage}
