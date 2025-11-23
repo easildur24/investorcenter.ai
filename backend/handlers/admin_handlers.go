@@ -776,9 +776,27 @@ func (h *AdminDataHandler) GetValuationRatios(c *gin.Context) {
 			"calculation_date": calculationDate.Time,
 			"stock_price":      stockPrice.Float64,
 			"ttm_market_cap":   marketCap.Int64,
-			"ttm_pe_ratio":     func() interface{} { if peRatio.Valid { return peRatio.Float64 } else { return nil } }(),
-			"ttm_pb_ratio":     func() interface{} { if pbRatio.Valid { return pbRatio.Float64 } else { return nil } }(),
-			"ttm_ps_ratio":     func() interface{} { if psRatio.Valid { return psRatio.Float64 } else { return nil } }(),
+			"ttm_pe_ratio": func() interface{} {
+				if peRatio.Valid {
+					return peRatio.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"ttm_pb_ratio": func() interface{} {
+				if pbRatio.Valid {
+					return pbRatio.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"ttm_ps_ratio": func() interface{} {
+				if psRatio.Valid {
+					return psRatio.Float64
+				} else {
+					return nil
+				}
+			}(),
 			"ttm_period_start": ttmPeriodStart.Time,
 			"ttm_period_end":   ttmPeriodEnd.Time,
 			"created_at":       createdAt.Time,
@@ -881,20 +899,38 @@ func (h *AdminDataHandler) GetAnalystRatings(c *gin.Context) {
 		}
 
 		ratingData := map[string]interface{}{
-			"id":                 id.Int64,
-			"ticker":             ticker.String,
-			"rating_date":        ratingDate.Time,
-			"analyst_name":       analystName.String,
-			"analyst_firm":       analystFirm.String,
-			"rating":             rating.String,
-			"rating_numeric":     func() interface{} { if ratingNumeric.Valid { return ratingNumeric.Float64 } else { return nil } }(),
-			"price_target":       func() interface{} { if priceTarget.Valid { return priceTarget.Float64 } else { return nil } }(),
-			"prior_rating":       priorRating.String,
-			"prior_price_target": func() interface{} { if priorPriceTarget.Valid { return priorPriceTarget.Float64 } else { return nil } }(),
-			"action":             action.String,
-			"notes":              notes.String,
-			"source":             source.String,
-			"created_at":         createdAt.Time,
+			"id":           id.Int64,
+			"ticker":       ticker.String,
+			"rating_date":  ratingDate.Time,
+			"analyst_name": analystName.String,
+			"analyst_firm": analystFirm.String,
+			"rating":       rating.String,
+			"rating_numeric": func() interface{} {
+				if ratingNumeric.Valid {
+					return ratingNumeric.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"price_target": func() interface{} {
+				if priceTarget.Valid {
+					return priceTarget.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"prior_rating": priorRating.String,
+			"prior_price_target": func() interface{} {
+				if priorPriceTarget.Valid {
+					return priorPriceTarget.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"action":     action.String,
+			"notes":      notes.String,
+			"source":     source.String,
+			"created_at": createdAt.Time,
 		}
 		ratings = append(ratings, ratingData)
 	}
@@ -969,15 +1005,21 @@ func (h *AdminDataHandler) GetInsiderTrades(c *gin.Context) {
 		}
 
 		trade := map[string]interface{}{
-			"id":                 id.Int64,
-			"ticker":             ticker.String,
-			"filing_date":        filingDate.Time,
-			"transaction_date":   transactionDate.Time,
-			"insider_name":       insiderName.String,
-			"insider_title":      insiderTitle.String,
-			"transaction_type":   transactionType.String,
-			"shares":             shares.Int64,
-			"price_per_share":    func() interface{} { if pricePerShare.Valid { return pricePerShare.Float64 } else { return nil } }(),
+			"id":               id.Int64,
+			"ticker":           ticker.String,
+			"filing_date":      filingDate.Time,
+			"transaction_date": transactionDate.Time,
+			"insider_name":     insiderName.String,
+			"insider_title":    insiderTitle.String,
+			"transaction_type": transactionType.String,
+			"shares":           shares.Int64,
+			"price_per_share": func() interface{} {
+				if pricePerShare.Valid {
+					return pricePerShare.Float64
+				} else {
+					return nil
+				}
+			}(),
 			"total_value":        totalValue.Int64,
 			"shares_owned_after": sharesOwnedAfter.Int64,
 			"is_derivative":      isDerivative.Bool,
@@ -1057,20 +1099,32 @@ func (h *AdminDataHandler) GetInstitutionalHoldings(c *gin.Context) {
 		}
 
 		holding := map[string]interface{}{
-			"id":                   id.Int64,
-			"ticker":               ticker.String,
-			"filing_date":          filingDate.Time,
-			"quarter_end_date":     quarterEndDate.Time,
-			"institution_name":     institutionName.String,
-			"institution_cik":      institutionCIK.String,
-			"shares":               shares.Int64,
-			"market_value":         marketValue.Int64,
-			"percent_of_portfolio": func() interface{} { if percentOfPortfolio.Valid { return percentOfPortfolio.Float64 } else { return nil } }(),
-			"position_change":      positionChange.String,
-			"shares_change":        sharesChange.Int64,
-			"percent_change":       func() interface{} { if percentChange.Valid { return percentChange.Float64 } else { return nil } }(),
-			"sec_filing_url":       secFilingURL.String,
-			"created_at":           createdAt.Time,
+			"id":               id.Int64,
+			"ticker":           ticker.String,
+			"filing_date":      filingDate.Time,
+			"quarter_end_date": quarterEndDate.Time,
+			"institution_name": institutionName.String,
+			"institution_cik":  institutionCIK.String,
+			"shares":           shares.Int64,
+			"market_value":     marketValue.Int64,
+			"percent_of_portfolio": func() interface{} {
+				if percentOfPortfolio.Valid {
+					return percentOfPortfolio.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"position_change": positionChange.String,
+			"shares_change":   sharesChange.Int64,
+			"percent_change": func() interface{} {
+				if percentChange.Valid {
+					return percentChange.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"sec_filing_url": secFilingURL.String,
+			"created_at":     createdAt.Time,
 		}
 		holdings = append(holdings, holding)
 	}
@@ -1139,8 +1193,14 @@ func (h *AdminDataHandler) GetTechnicalIndicators(c *gin.Context) {
 			"time":           time.Time,
 			"ticker":         ticker.String,
 			"indicator_name": indicatorName.String,
-			"value":          func() interface{} { if value.Valid { return value.Float64 } else { return nil } }(),
-			"metadata":       metadata.String,
+			"value": func() interface{} {
+				if value.Valid {
+					return value.Float64
+				} else {
+					return nil
+				}
+			}(),
+			"metadata": metadata.String,
 		}
 		indicators = append(indicators, indicator)
 	}
