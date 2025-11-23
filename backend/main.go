@@ -153,7 +153,7 @@ func main() {
 		}
 
 		// Simple fundamentals endpoint (for testing)
-		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimpleHandler)
+		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimple)
 
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
