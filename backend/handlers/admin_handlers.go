@@ -824,6 +824,429 @@ func (h *AdminDataHandler) GetDatabaseStats(c *gin.Context) {
 	})
 }
 
+// GetAnalystRatings returns analyst ratings data
+func (h *AdminDataHandler) GetAnalystRatings(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, rating_date, analyst_name, analyst_firm,
+			rating, rating_numeric, price_target, prior_rating,
+			prior_price_target, action, notes, source, created_at
+		FROM analyst_ratings
+	`
+	countQuery := "SELECT COUNT(*) FROM analyst_ratings"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY rating_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch analyst ratings", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var ratings []map[string]interface{}
+	for rows.Next() {
+		var id sql.NullInt64
+		var ticker, analystName, analystFirm, rating, action, notes, source sql.NullString
+		var ratingDate sql.NullTime
+		var ratingNumeric, priceTarget, priorPriceTarget sql.NullFloat64
+		var priorRating sql.NullString
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &ratingDate, &analystName, &analystFirm,
+			&rating, &ratingNumeric, &priceTarget, &priorRating,
+			&priorPriceTarget, &action, &notes, &source, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		ratingData := map[string]interface{}{
+			"id":                 id.Int64,
+			"ticker":             ticker.String,
+			"rating_date":        ratingDate.Time,
+			"analyst_name":       analystName.String,
+			"analyst_firm":       analystFirm.String,
+			"rating":             rating.String,
+			"rating_numeric":     func() interface{} { if ratingNumeric.Valid { return ratingNumeric.Float64 } else { return nil } }(),
+			"price_target":       func() interface{} { if priceTarget.Valid { return priceTarget.Float64 } else { return nil } }(),
+			"prior_rating":       priorRating.String,
+			"prior_price_target": func() interface{} { if priorPriceTarget.Valid { return priorPriceTarget.Float64 } else { return nil } }(),
+			"action":             action.String,
+			"notes":              notes.String,
+			"source":             source.String,
+			"created_at":         createdAt.Time,
+		}
+		ratings = append(ratings, ratingData)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": ratings,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetInsiderTrades returns insider trading data
+func (h *AdminDataHandler) GetInsiderTrades(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, filing_date, transaction_date, insider_name,
+			insider_title, transaction_type, shares, price_per_share,
+			total_value, shares_owned_after, is_derivative, form_type,
+			sec_filing_url, created_at
+		FROM insider_trades
+	`
+	countQuery := "SELECT COUNT(*) FROM insider_trades"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY transaction_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch insider trades", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var trades []map[string]interface{}
+	for rows.Next() {
+		var id sql.NullInt64
+		var ticker, insiderName, insiderTitle, transactionType, formType, secFilingURL sql.NullString
+		var filingDate, transactionDate sql.NullTime
+		var shares, totalValue, sharesOwnedAfter sql.NullInt64
+		var pricePerShare sql.NullFloat64
+		var isDerivative sql.NullBool
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &filingDate, &transactionDate, &insiderName,
+			&insiderTitle, &transactionType, &shares, &pricePerShare,
+			&totalValue, &sharesOwnedAfter, &isDerivative, &formType,
+			&secFilingURL, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		trade := map[string]interface{}{
+			"id":                 id.Int64,
+			"ticker":             ticker.String,
+			"filing_date":        filingDate.Time,
+			"transaction_date":   transactionDate.Time,
+			"insider_name":       insiderName.String,
+			"insider_title":      insiderTitle.String,
+			"transaction_type":   transactionType.String,
+			"shares":             shares.Int64,
+			"price_per_share":    func() interface{} { if pricePerShare.Valid { return pricePerShare.Float64 } else { return nil } }(),
+			"total_value":        totalValue.Int64,
+			"shares_owned_after": sharesOwnedAfter.Int64,
+			"is_derivative":      isDerivative.Bool,
+			"form_type":          formType.String,
+			"sec_filing_url":     secFilingURL.String,
+			"created_at":         createdAt.Time,
+		}
+		trades = append(trades, trade)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": trades,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetInstitutionalHoldings returns institutional holdings data (13F filings)
+func (h *AdminDataHandler) GetInstitutionalHoldings(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, filing_date, quarter_end_date, institution_name,
+			institution_cik, shares, market_value, percent_of_portfolio,
+			position_change, shares_change, percent_change, sec_filing_url,
+			created_at
+		FROM institutional_holdings
+	`
+	countQuery := "SELECT COUNT(*) FROM institutional_holdings"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY quarter_end_date DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch institutional holdings", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var holdings []map[string]interface{}
+	for rows.Next() {
+		var id sql.NullInt64
+		var ticker, institutionName, institutionCIK, positionChange, secFilingURL sql.NullString
+		var filingDate, quarterEndDate sql.NullTime
+		var shares, marketValue, sharesChange sql.NullInt64
+		var percentOfPortfolio, percentChange sql.NullFloat64
+		var createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &filingDate, &quarterEndDate, &institutionName,
+			&institutionCIK, &shares, &marketValue, &percentOfPortfolio,
+			&positionChange, &sharesChange, &percentChange, &secFilingURL,
+			&createdAt)
+		if err != nil {
+			continue
+		}
+
+		holding := map[string]interface{}{
+			"id":                   id.Int64,
+			"ticker":               ticker.String,
+			"filing_date":          filingDate.Time,
+			"quarter_end_date":     quarterEndDate.Time,
+			"institution_name":     institutionName.String,
+			"institution_cik":      institutionCIK.String,
+			"shares":               shares.Int64,
+			"market_value":         marketValue.Int64,
+			"percent_of_portfolio": func() interface{} { if percentOfPortfolio.Valid { return percentOfPortfolio.Float64 } else { return nil } }(),
+			"position_change":      positionChange.String,
+			"shares_change":        sharesChange.Int64,
+			"percent_change":       func() interface{} { if percentChange.Valid { return percentChange.Float64 } else { return nil } }(),
+			"sec_filing_url":       secFilingURL.String,
+			"created_at":           createdAt.Time,
+		}
+		holdings = append(holdings, holding)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": holdings,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetTechnicalIndicators returns technical indicators data
+func (h *AdminDataHandler) GetTechnicalIndicators(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			time, ticker, indicator_name, value, metadata
+		FROM technical_indicators
+	`
+	countQuery := "SELECT COUNT(*) FROM technical_indicators"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY time DESC, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch technical indicators", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var indicators []map[string]interface{}
+	for rows.Next() {
+		var time sql.NullTime
+		var ticker, indicatorName sql.NullString
+		var value sql.NullFloat64
+		var metadata sql.NullString
+
+		err := rows.Scan(&time, &ticker, &indicatorName, &value, &metadata)
+		if err != nil {
+			continue
+		}
+
+		indicator := map[string]interface{}{
+			"time":           time.Time,
+			"ticker":         ticker.String,
+			"indicator_name": indicatorName.String,
+			"value":          func() interface{} { if value.Valid { return value.Float64 } else { return nil } }(),
+			"metadata":       metadata.String,
+		}
+		indicators = append(indicators, indicator)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": indicators,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// GetCompanies returns companies master data
+func (h *AdminDataHandler) GetCompanies(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			id, ticker, name, sector, industry, market_cap, country,
+			exchange, currency, website, description, employees,
+			founded_year, hq_location, logo_url, is_active,
+			last_updated, created_at
+		FROM companies
+	`
+	countQuery := "SELECT COUNT(*) FROM companies"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1 OR name ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1 OR name ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY market_cap DESC NULLS LAST, ticker LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch companies", "details": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var companies []map[string]interface{}
+	for rows.Next() {
+		var id sql.NullInt64
+		var ticker, name, sector, industry, country, exchange, currency sql.NullString
+		var website, description, hqLocation, logoURL sql.NullString
+		var marketCap sql.NullInt64
+		var employees, foundedYear sql.NullInt64
+		var isActive sql.NullBool
+		var lastUpdated, createdAt sql.NullTime
+
+		err := rows.Scan(&id, &ticker, &name, &sector, &industry, &marketCap, &country,
+			&exchange, &currency, &website, &description, &employees,
+			&foundedYear, &hqLocation, &logoURL, &isActive,
+			&lastUpdated, &createdAt)
+		if err != nil {
+			continue
+		}
+
+		company := map[string]interface{}{
+			"id":           id.Int64,
+			"ticker":       ticker.String,
+			"name":         name.String,
+			"sector":       sector.String,
+			"industry":     industry.String,
+			"market_cap":   marketCap.Int64,
+			"country":      country.String,
+			"exchange":     exchange.String,
+			"currency":     currency.String,
+			"website":      website.String,
+			"description":  description.String,
+			"employees":    employees.Int64,
+			"founded_year": foundedYear.Int64,
+			"hq_location":  hqLocation.String,
+			"logo_url":     logoURL.String,
+			"is_active":    isActive.Bool,
+			"last_updated": lastUpdated.Time,
+			"created_at":   createdAt.Time,
+		}
+		companies = append(companies, company)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": companies,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
 // Helper function to parse query integer parameters
 func parseQueryInt(c *gin.Context, key string, defaultValue int) int {
 	val := c.Query(key)

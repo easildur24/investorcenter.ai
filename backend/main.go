@@ -320,6 +320,12 @@ func main() {
 		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)                   // GET /api/v1/admin/alerts
 		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)           // GET /api/v1/admin/watchlists
 		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)             // GET /api/v1/admin/stats
+		// IC Score pipeline data (from IC Score service database)
+		adminRoutes.GET("/analyst-ratings", adminDataHandler.GetAnalystRatings)           // GET /api/v1/admin/analyst-ratings
+		adminRoutes.GET("/insider-trades", adminDataHandler.GetInsiderTrades)             // GET /api/v1/admin/insider-trades
+		adminRoutes.GET("/institutional-holdings", adminDataHandler.GetInstitutionalHoldings) // GET /api/v1/admin/institutional-holdings
+		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators) // GET /api/v1/admin/technical-indicators
+		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                      // GET /api/v1/admin/companies
 	}
 
 	// Start server
