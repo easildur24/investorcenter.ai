@@ -234,6 +234,35 @@ class PolygonClient:
 
         return response['results']
 
+    def get_latest_price(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Get the most recent closing price for a ticker.
+
+        Args:
+            ticker: Stock ticker symbol.
+
+        Returns:
+            Dictionary with latest price data (close, date) or None if not found.
+        """
+        # Get last 7 days of data to ensure we get latest
+        bars = self.get_daily_prices(ticker, days=7)
+
+        if not bars or len(bars) == 0:
+            logger.warning(f"{ticker}: No price data available")
+            return None
+
+        # Return most recent bar
+        latest_bar = bars[-1]
+
+        return {
+            'close': latest_bar.get('c'),  # Close price
+            'open': latest_bar.get('o'),
+            'high': latest_bar.get('h'),
+            'low': latest_bar.get('l'),
+            'volume': latest_bar.get('v'),
+            'date': latest_bar.get('date'),
+            'timestamp': latest_bar.get('t')
+        }
+
     def close(self):
         """Close the HTTP session."""
         if self.session:
