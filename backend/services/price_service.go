@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/shopspring/decimal"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
@@ -14,7 +15,7 @@ import (
 
 // PriceService handles stock price data from TimescaleDB
 type PriceService struct {
-	db *sql.DB
+	db *sqlx.DB
 }
 
 // NewPriceService creates a new price service

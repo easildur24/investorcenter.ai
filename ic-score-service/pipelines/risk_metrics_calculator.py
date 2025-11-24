@@ -128,6 +128,9 @@ class RiskMetricsCalculator:
         Returns:
             DataFrame with columns: date, close.
         """
+        # Convert trading days to calendar days (252 trading days ≈ 365 calendar days)
+        calendar_days = int(days * 365 / 252) + 100
+
         query = text("""
             SELECT
                 DATE(time) as date,
@@ -135,11 +138,11 @@ class RiskMetricsCalculator:
             FROM stock_prices
             WHERE ticker = :ticker
               AND interval = '1day'
-              AND time >= NOW() - INTERVAL ':days days'
+              AND time >= NOW() - INTERVAL '1 day' * :days
             ORDER BY time
         """)
 
-        result = await session.execute(query, {"ticker": ticker, "days": days + 100})
+        result = await session.execute(query, {"ticker": ticker, "days": calendar_days})
         rows = result.fetchall()
 
         if not rows:
@@ -165,17 +168,20 @@ class RiskMetricsCalculator:
         Returns:
             DataFrame with columns: date, close.
         """
+        # Convert trading days to calendar days (252 trading days ≈ 365 calendar days)
+        calendar_days = int(days * 365 / 252) + 100
+
         query = text("""
             SELECT
                 DATE(time) as date,
                 close
             FROM benchmark_returns
             WHERE symbol = :symbol
-              AND time >= NOW() - INTERVAL ':days days'
+              AND time >= NOW() - INTERVAL '1 day' * :days
             ORDER BY time
         """)
 
-        result = await session.execute(query, {"symbol": self.BENCHMARK_SYMBOL, "days": days + 100})
+        result = await session.execute(query, {"symbol": self.BENCHMARK_SYMBOL, "days": calendar_days})
         rows = result.fetchall()
 
         if not rows:
@@ -187,32 +193,35 @@ class RiskMetricsCalculator:
 
         return df
 
-    async def get_risk_free_rate(self, session: AsyncSession) -> float:
-        """Get current risk-free rate (3-month Treasury).
+    async def get_risk_free_rate(self, trading_days: int, session: AsyncSession) -> float:
+        """Get average 1-month Treasury rate over the lookback period.
 
         Args:
+            trading_days: Number of trading days in the lookback period.
             session: Database session.
 
         Returns:
-            Annual risk-free rate as percentage (e.g., 4.5 for 4.5%).
+            Average annual risk-free rate as percentage (e.g., 4.5 for 4.5%).
         """
+        # Convert trading days to calendar days (252 trading days ≈ 365 calendar days)
+        calendar_days = int(trading_days * 365 / 252)
+
         query = text("""
-            SELECT rate_3m
+            SELECT AVG(rate_1m) as avg_rate
             FROM treasury_rates
-            WHERE rate_3m IS NOT NULL
-            ORDER BY date DESC
-            LIMIT 1
+            WHERE rate_1m IS NOT NULL
+              AND date >= NOW() - INTERVAL '1 day' * :days
         """)
 
-        result = await session.execute(query)
+        result = await session.execute(query, {"days": calendar_days})
         row = result.fetchone()
 
         if row and row[0]:
             return float(row[0])
 
         # Fallback: use historical average
-        logger.warning("Using fallback risk-free rate of 4.0%")
-        return 4.0
+        logger.warning("Using fallback risk-free rate of 4.9%")
+        return 4.9
 
     def calculate_monthly_returns(self, df: pd.DataFrame) -> pd.DataFrame:
         """Convert daily prices to monthly returns.
@@ -499,8 +508,8 @@ class RiskMetricsCalculator:
                 logger.warning(f"{ticker}: Insufficient benchmark data for {period}")
                 return None
 
-            # Get risk-free rate
-            risk_free_rate = await self.get_risk_free_rate(session)
+            # Get risk-free rate (average 1M Treasury over lookback period)
+            risk_free_rate = await self.get_risk_free_rate(trading_days, session)
 
             # Calculate monthly returns
             stock_monthly = self.calculate_monthly_returns(stock_df)
@@ -524,18 +533,9 @@ class RiskMetricsCalculator:
             stock_returns = merged['return_stock']
             benchmark_returns = merged['return_benchmark']
 
-            # Calculate annualized returns
-            years = trading_days / 252
-            stock_annualized_return = self.calculate_annualized_return(
-                stock_df['close'].iloc[0],
-                stock_df['close'].iloc[-1],
-                years
-            )
-            benchmark_annualized_return = self.calculate_annualized_return(
-                benchmark_df['close'].iloc[0],
-                benchmark_df['close'].iloc[-1],
-                years
-            )
+            # Calculate annualized returns (YCharts method: average monthly return × 12)
+            stock_annualized_return = float(stock_returns.mean() * 12)
+            benchmark_annualized_return = float(benchmark_returns.mean() * 12)
 
             # Calculate standard deviation (annualized)
             monthly_std = stock_returns.std()

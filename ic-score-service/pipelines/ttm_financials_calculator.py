@@ -322,8 +322,10 @@ class TTMFinancialsCalculator:
         # Get annual 10-K
         annual_10k = await self.get_annual_10k(ticker)
 
-        # Get quarterly 10-Q data (get 5 to ensure we have prior year data)
-        quarters = await self.get_quarterly_data(ticker, limit=5)
+        # Get quarterly 10-Q data (get 10 to ensure we have prior year data)
+        # For companies with non-calendar fiscal years, we need more quarters
+        # to find the matching quarter from the previous fiscal year
+        quarters = await self.get_quarterly_data(ticker, limit=10)
 
         if not quarters:
             logger.debug(f"{ticker}: No quarterly data found")
