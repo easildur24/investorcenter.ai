@@ -231,18 +231,29 @@ func GetTickerChart(c *gin.Context) {
 			return
 		}
 	} else {
-		// Use Polygon for stock/ETF charts
-		log.Printf("Fetching stock chart data for %s from Polygon", symbol)
-		polygonClient := services.NewPolygonClient()
-		dataSource = "polygon"
-
+		// For stocks: Try database first (faster, has 3 years of data), fallback to Polygon
 		if period == "1D" {
-			// For intraday, get minute-level data
+			// For intraday data, must use Polygon
+			log.Printf("Fetching intraday chart data for %s from Polygon", symbol)
+			polygonClient := services.NewPolygonClient()
 			chartData, chartErr = polygonClient.GetIntradayData(symbol)
+			dataSource = "polygon"
 		} else {
-			// For longer periods, get daily data
-			days := services.GetDaysFromPeriod(period)
-			chartData, chartErr = polygonClient.GetDailyData(symbol, days)
+			// For longer periods, try database first
+			log.Printf("Fetching chart data for %s from database", symbol)
+			priceService := services.NewPriceService()
+			chartData, chartErr = priceService.GetHistoricalPrices(c.Request.Context(), symbol, period)
+
+			if chartErr == nil && len(chartData) > 0 {
+				dataSource = "database"
+				log.Printf("✓ Successfully fetched %d data points from database for %s", len(chartData), symbol)
+			} else {
+				// Fallback to Polygon if database query fails or returns no data
+				log.Printf("Database query failed or returned no data for %s, falling back to Polygon: %v", symbol, chartErr)
+				polygonClient := services.NewPolygonClient()
+				chartData, chartErr = polygonClient.GetDailyData(symbol, services.GetDaysFromPeriod(period))
+				dataSource = "polygon"
+			}
 		}
 
 		if chartErr != nil {

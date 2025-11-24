@@ -126,8 +126,8 @@ class PolygonClient:
             List of OHLCV bars or None if request fails.
         """
         if not from_date:
-            # Default to 252 trading days (1 year)
-            from_date = (datetime.now() - timedelta(days=365)).strftime('%Y-%m-%d')
+            # Default to 3 years (756 trading days)
+            from_date = (datetime.now() - timedelta(days=1095)).strftime('%Y-%m-%d')
 
         if not to_date:
             to_date = datetime.now().strftime('%Y-%m-%d')
