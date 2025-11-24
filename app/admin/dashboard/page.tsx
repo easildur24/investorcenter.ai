@@ -12,6 +12,11 @@ import {
   getAdminAlerts,
   getAdminWatchLists,
   getAdminDatabaseStats,
+  getAdminAnalystRatings,
+  getAdminInsiderTrades,
+  getAdminInstitutionalHoldings,
+  getAdminTechnicalIndicators,
+  getAdminCompanies,
   AdminDataResponse
 } from '@/lib/api/admin';
 import {
@@ -26,11 +31,14 @@ import {
   BookmarkIcon,
   BarChart3,
   Activity,
-  Filter
+  Filter,
+  TrendingDown,
+  Building2,
+  LineChart
 } from 'lucide-react';
 import { filterDerivatives } from '@/lib/utils/tickerFilters';
 
-type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists';
+type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists' | 'analyst-ratings' | 'insider-trades' | 'institutional-holdings' | 'technical-indicators' | 'companies';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('stats');
@@ -59,6 +67,11 @@ export default function AdminDashboardPage() {
     { id: 'valuation-ratios' as TabType, name: 'Valuation Ratios', icon: BarChart3 },
     { id: 'alerts' as TabType, name: 'Alerts', icon: Bell },
     { id: 'watchlists' as TabType, name: 'Watch Lists', icon: BookmarkIcon },
+    { id: 'analyst-ratings' as TabType, name: 'Analyst Ratings', icon: TrendingUp },
+    { id: 'insider-trades' as TabType, name: 'Insider Trades', icon: TrendingDown },
+    { id: 'institutional-holdings' as TabType, name: '13F Holdings', icon: Building2 },
+    { id: 'technical-indicators' as TabType, name: 'Technical Indicators', icon: LineChart },
+    { id: 'companies' as TabType, name: 'Companies', icon: Building2 },
   ];
 
   useEffect(() => {
@@ -124,6 +137,31 @@ export default function AdminDashboardPage() {
           break;
         case 'watchlists':
           result = await getAdminWatchLists(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'analyst-ratings':
+          result = await getAdminAnalystRatings(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'insider-trades':
+          result = await getAdminInsiderTrades(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'institutional-holdings':
+          result = await getAdminInstitutionalHoldings(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'technical-indicators':
+          result = await getAdminTechnicalIndicators(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'companies':
+          result = await getAdminCompanies(params);
           setData(result.data || []);
           setMeta(result.meta);
           break;
