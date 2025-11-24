@@ -1,3 +1,7 @@
+'use client';
+
+import { useEffect } from 'react';
+
 interface HybridChartProps {
   symbol: string;
   initialData: any;
@@ -51,6 +55,120 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
   // Timeframe buttons with JavaScript for interactivity
   const timeframes = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'];
+
+  // Initialize chart interactivity
+  useEffect(() => {
+    const chart = document.getElementById('price-chart');
+    const tooltip = document.getElementById('chart-tooltip');
+    const buttons = document.querySelectorAll('.timeframe-btn');
+
+    if (!chart || !tooltip) return;
+
+    // Add hover functionality for tooltip
+    const handleMouseMove = (e: MouseEvent) => {
+      const rect = chart.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+
+      // Calculate which data point we're hovering over
+      const dataIndex = Math.round(((x - 40) / (chartWidth - 80)) * (dataPoints.length - 1));
+
+      if (dataIndex >= 0 && dataIndex < dataPoints.length) {
+        const point = dataPoints[dataIndex];
+        const date = new Date(point.timestamp);
+
+        // Update tooltip content
+        const tooltipDate = document.getElementById('tooltip-date');
+        const tooltipOhlc = document.getElementById('tooltip-ohlc');
+
+        if (tooltipDate) {
+          tooltipDate.textContent = date.toLocaleDateString();
+        }
+
+        if (tooltipOhlc) {
+          tooltipOhlc.innerHTML =
+            'Open: $' + parseFloat(point.open).toFixed(2) + '<br>' +
+            'High: $' + parseFloat(point.high).toFixed(2) + '<br>' +
+            'Low: $' + parseFloat(point.low).toFixed(2) + '<br>' +
+            '<strong>Close: $' + parseFloat(point.close).toFixed(2) + '</strong><br>' +
+            'Volume: ' + point.volume.toLocaleString();
+        }
+
+        // Position tooltip near cursor
+        const tooltipWidth = 160;
+        const tooltipHeight = 100;
+        const offset = 10;
+
+        let left = e.clientX + offset;
+        let top = e.clientY - offset;
+
+        // Keep tooltip within viewport
+        if (left + tooltipWidth > window.innerWidth - 10) {
+          left = e.clientX - tooltipWidth - offset;
+        }
+
+        if (top < 10) {
+          top = e.clientY + offset;
+        }
+
+        if (top + tooltipHeight > window.innerHeight - 10) {
+          top = e.clientY - tooltipHeight - offset;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+        tooltip.style.opacity = '1';
+      }
+    };
+
+    const handleMouseLeave = () => {
+      tooltip.style.opacity = '0';
+    };
+
+    chart.addEventListener('mousemove', handleMouseMove);
+    chart.addEventListener('mouseleave', handleMouseLeave);
+
+    // Add timeframe button functionality
+    buttons.forEach(button => {
+      const handleClick = async function(this: HTMLElement) {
+        const period = this.dataset.period;
+        const btnSymbol = this.dataset.symbol;
+
+        // Update button states
+        buttons.forEach(btn => {
+          btn.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
+          btn.classList.add('text-gray-600');
+        });
+        this.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
+        this.classList.remove('text-gray-600');
+
+        // Show loading
+        const originalText = this.textContent;
+        this.textContent = '...';
+
+        try {
+          // Fetch new data
+          const response = await fetch(`/api/v1/tickers/${btnSymbol}/chart?period=${period}`);
+          const result = await response.json();
+
+          if (result.data?.dataPoints) {
+            // Reload the page with new period
+            window.location.search = `?period=${period}`;
+          }
+        } catch (error) {
+          console.error('Failed to fetch chart data:', error);
+          this.textContent = originalText || period || '';
+        }
+      };
+
+      button.addEventListener('click', handleClick);
+    });
+
+    // Cleanup event listeners on unmount
+    return () => {
+      chart.removeEventListener('mousemove', handleMouseMove);
+      chart.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [dataPoints, chartWidth, symbol]);
 
   return (
     <div className="p-6">
@@ -200,121 +318,6 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         </div>
       </div>
 
-      {/* Client-side JavaScript for interactivity */}
-      <script 
-        dangerouslySetInnerHTML={{
-          __html: `
-            (function() {
-              // Wait for DOM to be ready
-              if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', initChart);
-              } else {
-                initChart();
-              }
-              
-              function initChart() {
-                const chart = document.getElementById('price-chart');
-                const tooltip = document.getElementById('chart-tooltip');
-                const buttons = document.querySelectorAll('.timeframe-btn');
-                
-                if (!chart || !tooltip) return;
-                
-                const chartData = JSON.parse(chart.dataset.chartData || '[]');
-                const symbol = chart.dataset.symbol;
-                
-                // Add hover functionality
-                chart.addEventListener('mousemove', function(e) {
-                  const rect = chart.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  
-                  // Calculate which data point we're hovering over
-                  const dataIndex = Math.round(((x - 40) / (${chartWidth} - 80)) * (chartData.length - 1));
-                  
-                  if (dataIndex >= 0 && dataIndex < chartData.length) {
-                    const point = chartData[dataIndex];
-                    const date = new Date(point.timestamp);
-                    
-                    // Update tooltip content
-                    document.getElementById('tooltip-date').textContent = date.toLocaleDateString();
-                    document.getElementById('tooltip-ohlc').innerHTML = 
-                      'Open: $' + parseFloat(point.open).toFixed(2) + '<br>' +
-                      'High: $' + parseFloat(point.high).toFixed(2) + '<br>' +
-                      'Low: $' + parseFloat(point.low).toFixed(2) + '<br>' +
-                      '<strong>Close: $' + parseFloat(point.close).toFixed(2) + '</strong><br>' +
-                      'Volume: ' + point.volume.toLocaleString();
-                    
-                    // Position tooltip EXACTLY next to cursor
-                    const tooltipWidth = 160;
-                    const tooltipHeight = 100;
-                    const offset = 10; // Very small offset from cursor
-                    
-                    // Position to the right and slightly above cursor
-                    let left = e.clientX + offset;
-                    let top = e.clientY - offset;
-                    
-                    // If tooltip would go off right edge, show on left side
-                    if (left + tooltipWidth > window.innerWidth - 10) {
-                      left = e.clientX - tooltipWidth - offset;
-                    }
-                    
-                    // If tooltip would go off top edge, show below cursor
-                    if (top < 10) {
-                      top = e.clientY + offset;
-                    }
-                    
-                    // If tooltip would go off bottom edge, show above cursor
-                    if (top + tooltipHeight > window.innerHeight - 10) {
-                      top = e.clientY - tooltipHeight - offset;
-                    }
-                    
-                    tooltip.style.left = left + 'px';
-                    tooltip.style.top = top + 'px';
-                    tooltip.style.opacity = '1';
-                  }
-                });
-                
-                chart.addEventListener('mouseleave', function() {
-                  tooltip.style.opacity = '0';
-                });
-                
-                // Add timeframe button functionality
-                buttons.forEach(button => {
-                  button.addEventListener('click', async function() {
-                    const period = this.dataset.period;
-                    const symbol = this.dataset.symbol;
-                    
-                    // Update button states
-                    buttons.forEach(btn => {
-                      btn.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
-                      btn.classList.add('text-gray-600');
-                    });
-                    this.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
-                    this.classList.remove('text-gray-600');
-                    
-                    // Show loading
-                    this.textContent = '...';
-                    
-                    try {
-                      // Fetch new data
-                      const response = await fetch('/api/v1/tickers/' + symbol + '/chart?period=' + period);
-                      const result = await response.json();
-                      
-                      if (result.data?.dataPoints) {
-                        // Reload the page with new period (simple but effective)
-                        window.location.search = '?period=' + period;
-                      }
-                    } catch (error) {
-                      console.error('Failed to fetch chart data:', error);
-                      this.textContent = period;
-                    }
-                  });
-                });
-              }
-            })();
-          `
-        }}
-      />
     </div>
   );
 }
