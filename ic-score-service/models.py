@@ -488,3 +488,64 @@ class TechnicalIndicator(Base):
 
     def __repr__(self) -> str:
         return f"<TechnicalIndicator(ticker='{self.ticker}', indicator='{self.indicator_name}', value={self.value})>"
+
+
+class BenchmarkReturn(Base):
+    """TimescaleDB hypertable for benchmark index returns (S&P 500, etc.)."""
+    __tablename__ = 'benchmark_returns'
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    symbol: Mapped[str] = mapped_column(String(20), primary_key=True, nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    total_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    daily_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
+    volume: Mapped[Optional[int]] = mapped_column(BigInteger)
+
+    def __repr__(self) -> str:
+        return f"<BenchmarkReturn(symbol='{self.symbol}', time={self.time}, close={self.close})>"
+
+
+class TreasuryRate(Base):
+    """US Treasury rates from FRED API for risk-free rate calculations."""
+    __tablename__ = 'treasury_rates'
+
+    date: Mapped[date] = mapped_column(Date, primary_key=True, nullable=False)
+    rate_1m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_3m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_6m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_1y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_2y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<TreasuryRate(date={self.date}, rate_3m={self.rate_3m}, rate_10y={self.rate_10y})>"
+
+
+class RiskMetric(Base):
+    """TimescaleDB hypertable for risk metrics (Alpha, Beta, Sharpe, Sortino, etc.)."""
+    __tablename__ = 'risk_metrics'
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    ticker: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
+    period: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
+
+    # Risk Metrics
+    alpha: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    beta: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    sharpe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    sortino_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    std_dev: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    max_drawdown: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    var_5: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Supporting metrics
+    annualized_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    downside_deviation: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Metadata
+    data_points: Mapped[Optional[int]] = mapped_column(Integer)
+    calculation_date: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<RiskMetric(ticker='{self.ticker}', period='{self.period}', beta={self.beta}, sharpe={self.sharpe_ratio})>"

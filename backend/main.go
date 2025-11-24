@@ -310,22 +310,22 @@ func main() {
 	adminRoutes.Use(auth.AuthMiddleware())
 	adminRoutes.Use(auth.AdminMiddleware())
 	{
-		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)                   // GET /api/v1/admin/stocks
-		adminRoutes.GET("/users", adminDataHandler.GetUsers)                     // GET /api/v1/admin/users
-		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)               // GET /api/v1/admin/news
-		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals)       // GET /api/v1/admin/fundamentals
-		adminRoutes.GET("/sec-financials", adminDataHandler.GetSECFinancials)    // GET /api/v1/admin/sec-financials
-		adminRoutes.GET("/ttm-financials", adminDataHandler.GetTTMFinancials)    // GET /api/v1/admin/ttm-financials
+		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)                    // GET /api/v1/admin/stocks
+		adminRoutes.GET("/users", adminDataHandler.GetUsers)                      // GET /api/v1/admin/users
+		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)                // GET /api/v1/admin/news
+		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals)        // GET /api/v1/admin/fundamentals
+		adminRoutes.GET("/sec-financials", adminDataHandler.GetSECFinancials)     // GET /api/v1/admin/sec-financials
+		adminRoutes.GET("/ttm-financials", adminDataHandler.GetTTMFinancials)     // GET /api/v1/admin/ttm-financials
 		adminRoutes.GET("/valuation-ratios", adminDataHandler.GetValuationRatios) // GET /api/v1/admin/valuation-ratios
-		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)                   // GET /api/v1/admin/alerts
-		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)           // GET /api/v1/admin/watchlists
-		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)             // GET /api/v1/admin/stats
+		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)                    // GET /api/v1/admin/alerts
+		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)            // GET /api/v1/admin/watchlists
+		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)              // GET /api/v1/admin/stats
 		// IC Score pipeline data (from IC Score service database)
-		adminRoutes.GET("/analyst-ratings", adminDataHandler.GetAnalystRatings)           // GET /api/v1/admin/analyst-ratings
-		adminRoutes.GET("/insider-trades", adminDataHandler.GetInsiderTrades)             // GET /api/v1/admin/insider-trades
+		adminRoutes.GET("/analyst-ratings", adminDataHandler.GetAnalystRatings)               // GET /api/v1/admin/analyst-ratings
+		adminRoutes.GET("/insider-trades", adminDataHandler.GetInsiderTrades)                 // GET /api/v1/admin/insider-trades
 		adminRoutes.GET("/institutional-holdings", adminDataHandler.GetInstitutionalHoldings) // GET /api/v1/admin/institutional-holdings
-		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators) // GET /api/v1/admin/technical-indicators
-		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                      // GET /api/v1/admin/companies
+		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
+		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
 	}
 
 	// Start server

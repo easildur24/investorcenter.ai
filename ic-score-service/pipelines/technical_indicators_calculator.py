@@ -305,8 +305,8 @@ class TechnicalIndicatorsCalculator:
             True if successful.
         """
         try:
-            # Fetch 252 days of price data (1 trading year)
-            prices = self.polygon_client.get_daily_prices(ticker, days=300)
+            # Fetch 3 years of price data (756 trading days)
+            prices = self.polygon_client.get_daily_prices(ticker, days=1150)
 
             if not prices or len(prices) < 20:
                 logger.warning(f"{ticker}: Insufficient price data")
