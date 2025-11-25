@@ -229,3 +229,18 @@ export async function getAdminCompanies(params?: {
   const query = queryParams.toString();
   return apiClient.get(`/admin/companies${query ? `?${query}` : ''}`);
 }
+
+// Fetch risk metrics (admin)
+export async function getAdminRiskMetrics(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/risk-metrics${query ? `?${query}` : ''}`);
+}

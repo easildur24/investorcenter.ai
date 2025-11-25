@@ -17,6 +17,7 @@ import {
   getAdminInstitutionalHoldings,
   getAdminTechnicalIndicators,
   getAdminCompanies,
+  getAdminRiskMetrics,
   AdminDataResponse
 } from '@/lib/api/admin';
 import {
@@ -38,7 +39,7 @@ import {
 } from 'lucide-react';
 import { filterDerivatives } from '@/lib/utils/tickerFilters';
 
-type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists' | 'analyst-ratings' | 'insider-trades' | 'institutional-holdings' | 'technical-indicators' | 'companies';
+type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists' | 'analyst-ratings' | 'insider-trades' | 'institutional-holdings' | 'technical-indicators' | 'companies' | 'risk-metrics';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('stats');
@@ -72,6 +73,7 @@ export default function AdminDashboardPage() {
     { id: 'institutional-holdings' as TabType, name: '13F Holdings', icon: Building2 },
     { id: 'technical-indicators' as TabType, name: 'Technical Indicators', icon: LineChart },
     { id: 'companies' as TabType, name: 'Companies', icon: Building2 },
+    { id: 'risk-metrics' as TabType, name: 'Risk Metrics', icon: Activity },
   ];
 
   useEffect(() => {
@@ -162,6 +164,11 @@ export default function AdminDashboardPage() {
           break;
         case 'companies':
           result = await getAdminCompanies(params);
+          setData(result.data || []);
+          setMeta(result.meta);
+          break;
+        case 'risk-metrics':
+          result = await getAdminRiskMetrics(params);
           setData(result.data || []);
           setMeta(result.meta);
           break;

@@ -326,6 +326,7 @@ func main() {
 		adminRoutes.GET("/institutional-holdings", adminDataHandler.GetInstitutionalHoldings) // GET /api/v1/admin/institutional-holdings
 		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
 		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
+		adminRoutes.GET("/risk-metrics", adminDataHandler.GetRiskMetrics)                     // GET /api/v1/admin/risk-metrics
 	}
 
 	// Start server

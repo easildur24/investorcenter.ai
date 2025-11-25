@@ -1307,6 +1307,109 @@ func (h *AdminDataHandler) GetCompanies(c *gin.Context) {
 	})
 }
 
+// GetRiskMetrics returns risk metrics data
+func (h *AdminDataHandler) GetRiskMetrics(c *gin.Context) {
+	limit := parseQueryInt(c, "limit", 50)
+	offset := parseQueryInt(c, "offset", 0)
+	search := c.Query("search")
+
+	query := `
+		SELECT
+			time, ticker, period, alpha, beta, sharpe_ratio, sortino_ratio,
+			std_dev, max_drawdown, var_5, annualized_return, downside_deviation,
+			data_points, calculation_date
+		FROM risk_metrics
+	`
+	countQuery := "SELECT COUNT(*) FROM risk_metrics"
+	args := []interface{}{}
+
+	if search != "" {
+		query += " WHERE ticker ILIKE $1"
+		countQuery += " WHERE ticker ILIKE $1"
+		args = append(args, "%"+search+"%")
+	}
+
+	query += " ORDER BY time DESC"
+	query += " LIMIT $" + strconv.Itoa(len(args)+1) + " OFFSET $" + strconv.Itoa(len(args)+2)
+	args = append(args, limit, offset)
+
+	// Get total count
+	var total int
+	countArgs := args[:len(args)-2]
+	if len(countArgs) == 0 {
+		h.db.QueryRow(countQuery).Scan(&total)
+	} else {
+		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+	}
+
+	// Execute query
+	rows, err := h.db.Query(query, args...)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch risk metrics"})
+		return
+	}
+	defer rows.Close()
+
+	var metrics []map[string]interface{}
+	for rows.Next() {
+		var time, calculationDate sql.NullTime
+		var ticker, period sql.NullString
+		var alpha, beta, sharpeRatio, sortinoRatio sql.NullFloat64
+		var stdDev, maxDrawdown, var5, annualizedReturn, downsideDeviation sql.NullFloat64
+		var dataPoints sql.NullInt64
+
+		err := rows.Scan(&time, &ticker, &period, &alpha, &beta, &sharpeRatio, &sortinoRatio,
+			&stdDev, &maxDrawdown, &var5, &annualizedReturn, &downsideDeviation,
+			&dataPoints, &calculationDate)
+		if err != nil {
+			continue
+		}
+
+		metric := map[string]interface{}{
+			"time":               time.Time,
+			"ticker":             ticker.String,
+			"period":             period.String,
+			"alpha":              nullFloatToInterface(alpha),
+			"beta":               nullFloatToInterface(beta),
+			"sharpe_ratio":       nullFloatToInterface(sharpeRatio),
+			"sortino_ratio":      nullFloatToInterface(sortinoRatio),
+			"std_dev":            nullFloatToInterface(stdDev),
+			"max_drawdown":       nullFloatToInterface(maxDrawdown),
+			"var_5":              nullFloatToInterface(var5),
+			"annualized_return":  nullFloatToInterface(annualizedReturn),
+			"downside_deviation": nullFloatToInterface(downsideDeviation),
+			"data_points":        nullIntToInterface(dataPoints),
+			"calculation_date":   calculationDate.Time,
+		}
+		metrics = append(metrics, metric)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": metrics,
+		"meta": gin.H{
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// Helper function to convert sql.NullFloat64 to interface{}
+func nullFloatToInterface(nf sql.NullFloat64) interface{} {
+	if nf.Valid {
+		return nf.Float64
+	}
+	return nil
+}
+
+// Helper function to convert sql.NullInt64 to interface{}
+func nullIntToInterface(ni sql.NullInt64) interface{} {
+	if ni.Valid {
+		return ni.Int64
+	}
+	return nil
+}
+
 // Helper function to parse query integer parameters
 func parseQueryInt(c *gin.Context, key string, defaultValue int) int {
 	val := c.Query(key)
