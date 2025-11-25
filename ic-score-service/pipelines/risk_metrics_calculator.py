@@ -223,32 +223,30 @@ class RiskMetricsCalculator:
         logger.warning("Using fallback risk-free rate of 4.9%")
         return 4.9
 
-    def calculate_monthly_returns(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Convert daily prices to monthly returns.
+    def calculate_daily_returns(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Calculate daily returns from price data.
 
         Args:
             df: DataFrame with 'date' and 'close' columns.
 
         Returns:
-            DataFrame with monthly returns.
+            DataFrame with daily returns.
         """
         if df.empty:
             return pd.DataFrame()
 
         df = df.copy()
         df['date'] = pd.to_datetime(df['date'])
+        df = df.sort_values('date')  # Ensure chronological order
         df = df.set_index('date')
 
-        # Resample to month-end and take last close price
-        monthly = df.resample('M').last()
+        # Calculate daily percentage returns
+        df['return'] = df['close'].pct_change() * 100
 
-        # Calculate percentage returns
-        monthly['return'] = monthly['close'].pct_change() * 100
+        # Drop first row (NaN from pct_change)
+        df = df.dropna()
 
-        # Drop first row (NaN)
-        monthly = monthly.dropna()
-
-        return monthly.reset_index()
+        return df.reset_index()
 
     def calculate_beta(
         self,
@@ -346,7 +344,7 @@ class RiskMetricsCalculator:
     def calculate_sortino_ratio(
         self,
         annualized_return: float,
-        monthly_returns: pd.Series,
+        daily_returns: pd.Series,
         risk_free_rate: float
     ) -> Tuple[Optional[float], Optional[float]]:
         """Calculate Sortino Ratio and downside deviation.
@@ -356,24 +354,25 @@ class RiskMetricsCalculator:
 
         Args:
             annualized_return: Annualized return (%).
-            monthly_returns: Monthly returns series.
+            daily_returns: Daily returns series.
             risk_free_rate: Risk-free rate (%).
 
         Returns:
             Tuple of (Sortino ratio, downside deviation) or (None, None).
         """
         try:
-            # Get negative returns only
-            negative_returns = monthly_returns[monthly_returns < 0]
+            # Calculate downside deviation (semi-deviation below 0%)
+            # Use ALL periods in denominator (YCharts/Sortino standard formula)
+            downside_returns = np.minimum(daily_returns, 0)  # Returns below 0%, else 0
 
-            if len(negative_returns) < 2:
-                return None, None
+            # Calculate semi-variance (mean of squared downside returns)
+            semi_variance = np.mean(downside_returns ** 2)
 
-            # Calculate downside deviation (monthly)
-            downside_dev_monthly = negative_returns.std()
+            # Downside deviation = sqrt of semi-variance
+            downside_dev_daily = np.sqrt(semi_variance)
 
-            # Annualize downside deviation
-            downside_dev_annual = downside_dev_monthly * np.sqrt(12)
+            # Annualize downside deviation (daily to annual: multiply by sqrt(252))
+            downside_dev_annual = downside_dev_daily * np.sqrt(252)
 
             if downside_dev_annual == 0:
                 return None, None
@@ -419,26 +418,26 @@ class RiskMetricsCalculator:
             logger.warning(f"Error calculating max drawdown: {e}")
             return None
 
-    def calculate_var_5(self, monthly_returns: pd.Series) -> Optional[float]:
+    def calculate_var_5(self, daily_returns: pd.Series) -> Optional[float]:
         """Calculate Value at Risk at 5% confidence (parametric method).
 
-        Formula: VaR_5% = -1.645 * Monthly_Std_Dev
+        Formula: VaR_5% = -1.645 * Daily_Std_Dev
 
         Args:
-            monthly_returns: Monthly returns series.
+            daily_returns: Daily returns series.
 
         Returns:
             VaR 5% (%) or None.
         """
-        if len(monthly_returns) < 12:
+        if len(daily_returns) < 60:  # Require at least 60 trading days
             return None
 
         try:
-            # Calculate monthly standard deviation
-            monthly_std = monthly_returns.std()
+            # Calculate daily standard deviation
+            daily_std = daily_returns.std()
 
             # VaR at 5% confidence (1.645 is the z-score for 95% confidence)
-            var_5 = -1.645 * monthly_std
+            var_5 = -1.645 * daily_std
 
             return float(var_5)
 
@@ -511,35 +510,40 @@ class RiskMetricsCalculator:
             # Get risk-free rate (average 1M Treasury over lookback period)
             risk_free_rate = await self.get_risk_free_rate(trading_days, session)
 
-            # Calculate monthly returns
-            stock_monthly = self.calculate_monthly_returns(stock_df)
-            benchmark_monthly = self.calculate_monthly_returns(benchmark_df)
+            # Calculate daily returns
+            stock_daily = self.calculate_daily_returns(stock_df)
+            benchmark_daily = self.calculate_daily_returns(benchmark_df)
 
-            if stock_monthly.empty or benchmark_monthly.empty:
+            if stock_daily.empty or benchmark_daily.empty:
                 return None
 
-            # Align dates
+            # Align dates (inner join to match trading days)
             merged = pd.merge(
-                stock_monthly[['date', 'return']],
-                benchmark_monthly[['date', 'return']],
+                stock_daily[['date', 'return']],
+                benchmark_daily[['date', 'return']],
                 on='date',
                 suffixes=('_stock', '_benchmark')
             )
 
-            if len(merged) < 12:
-                logger.warning(f"{ticker}: Insufficient monthly returns for {period}")
+            # Sort by date descending and limit to exact number of trading days requested
+            # This ensures we use the most recent N trading days, matching YCharts methodology
+            merged = merged.sort_values('date', ascending=False).head(trading_days).sort_values('date')
+
+            # Require at least 60 trading days (~3 months)
+            if len(merged) < 60:
+                logger.warning(f"{ticker}: Insufficient daily returns for {period} (got {len(merged)}, need 60+)")
                 return None
 
             stock_returns = merged['return_stock']
             benchmark_returns = merged['return_benchmark']
 
-            # Calculate annualized returns (YCharts method: average monthly return × 12)
-            stock_annualized_return = float(stock_returns.mean() * 12)
-            benchmark_annualized_return = float(benchmark_returns.mean() * 12)
+            # Calculate annualized returns (YCharts method: average daily return × 252)
+            stock_annualized_return = float(stock_returns.mean() * 252)
+            benchmark_annualized_return = float(benchmark_returns.mean() * 252)
 
-            # Calculate standard deviation (annualized)
-            monthly_std = stock_returns.std()
-            annualized_std = monthly_std * np.sqrt(12)
+            # Calculate standard deviation (annualized from daily)
+            daily_std = stock_returns.std()
+            annualized_std = daily_std * np.sqrt(252)
 
             # Calculate Beta
             beta = self.calculate_beta(stock_returns, benchmark_returns)
