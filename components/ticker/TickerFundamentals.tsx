@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { safeToFixed, safeParseNumber, formatLargeNumber, formatPercent } from '@/lib/utils';
+import { safeToFixed, safeParseNumber, formatLargeNumber, formatPercent, formatRelativeTime } from '@/lib/utils';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -42,11 +42,114 @@ const isValidValue = (value: any): boolean => {
   return true;
 };
 
+// Metric type definitions for contextual N/A messages
+type MetricType = 'debt' | 'ratio' | 'growth' | 'margin' | 'valuation' | 'market' | 'default';
+
+interface MetricConfig {
+  zeroMessage: string;
+  nullMessage: string;
+  tooltip: string;
+}
+
+const metricConfigs: Record<MetricType, MetricConfig> = {
+  debt: {
+    zeroMessage: 'No debt',
+    nullMessage: 'Not reported',
+    tooltip: 'This company may have no debt, or the value was not reported in SEC filings',
+  },
+  ratio: {
+    zeroMessage: 'N/A',
+    nullMessage: 'Not reported',
+    tooltip: 'This ratio could not be calculated from available SEC filings',
+  },
+  growth: {
+    zeroMessage: '0.00%',
+    nullMessage: 'Insufficient data',
+    tooltip: 'Growth metrics require historical data that may not be available yet',
+  },
+  margin: {
+    zeroMessage: '0.00%',
+    nullMessage: 'Not reported',
+    tooltip: 'Margin data may not be available in the latest SEC filings',
+  },
+  valuation: {
+    zeroMessage: 'N/A',
+    nullMessage: 'Not available',
+    tooltip: 'Valuation metrics require both price and fundamental data',
+  },
+  market: {
+    zeroMessage: '0',
+    nullMessage: 'Not available',
+    tooltip: 'Market data is refreshed during trading hours',
+  },
+  default: {
+    zeroMessage: 'N/A',
+    nullMessage: 'Not reported',
+    tooltip: 'This data is not currently available',
+  },
+};
+
+// Contextual N/A display component
+interface MetricValueProps {
+  value: number | string;
+  metricType?: MetricType;
+  formatter?: (val: number | string) => string;
+  colorClass?: string;
+}
+
+function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-gray-900' }: MetricValueProps) {
+  const config = metricConfigs[metricType];
+
+  // Check if value is null/undefined/N/A
+  if (value === null || value === undefined || value === 'N/A' || value === '') {
+    return (
+      <span
+        className="text-gray-400 cursor-help"
+        title={config.tooltip}
+      >
+        {config.nullMessage}
+      </span>
+    );
+  }
+
+  // Check if value is zero (special handling for debt)
+  const numValue = typeof value === 'string' ? parseFloat(value) : value;
+  if (numValue === 0 && metricType === 'debt') {
+    return (
+      <span
+        className="text-green-600 cursor-help"
+        title="Company has no reported debt - this is typically a positive indicator"
+      >
+        {config.zeroMessage}
+      </span>
+    );
+  }
+
+  // Format and display the value
+  const displayValue = formatter ? formatter(value) : String(value);
+
+  // If formatter returned N/A, show contextual message
+  if (displayValue === 'N/A') {
+    return (
+      <span
+        className="text-gray-400 cursor-help"
+        title={config.tooltip}
+      >
+        {config.nullMessage}
+      </span>
+    );
+  }
+
+  return <span className={`font-medium ${colorClass}`}>{displayValue}</span>;
+}
+
 export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) {
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null);
   const [keyMetrics, setKeyMetrics] = useState<KeyMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCrypto, setIsCrypto] = useState(false);
+  const [dataFetchedAt, setDataFetchedAt] = useState<Date | null>(null);
+  const [icScoreDataDate, setIcScoreDataDate] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -85,6 +188,10 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           const financialsResult = await financialsResponse.json();
           icScoreFinancials = financialsResult.data || {};
           console.log('📊 IC Score Financials:', icScoreFinancials);
+          // Capture the filing date if available
+          if (icScoreFinancials.period_end_date || icScoreFinancials.filing_date) {
+            setIcScoreDataDate(icScoreFinancials.period_end_date || icScoreFinancials.filing_date);
+          }
         }
 
         // Extract IC Score risk metrics if available
@@ -131,6 +238,7 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         console.log('✅ Merged Key Metrics:', mappedKeyMetrics);
         setFundamentals(mappedFundamentals);
         setKeyMetrics(mappedKeyMetrics);
+        setDataFetchedAt(new Date());
       } catch (error) {
         console.error('❌ Error fetching fundamentals:', error);
       } finally {
@@ -178,7 +286,14 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
   return (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Key Metrics</h3>
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold text-gray-900">Key Metrics</h3>
+        {dataFetchedAt && (
+          <span className="text-xs text-gray-400" title={dataFetchedAt.toLocaleString()}>
+            Updated {formatRelativeTime(dataFetchedAt)}
+          </span>
+        )}
+      </div>
       
       {/* Valuation Metrics */}
       <div className="mb-6">
@@ -186,15 +301,15 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">P/E Ratio</span>
-            <span className="font-medium text-gray-900">{safeToFixed(fundamentals.pe, 1)}</span>
+            <MetricValue value={fundamentals.pe} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Price/Book</span>
-            <span className="font-medium text-gray-900">{safeToFixed(fundamentals.pb, 1)}</span>
+            <MetricValue value={fundamentals.pb} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Price/Sales</span>
-            <span className="font-medium text-gray-900">{safeToFixed(fundamentals.ps, 1)}</span>
+            <MetricValue value={fundamentals.ps} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
         </div>
       </div>
@@ -205,19 +320,19 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">ROE</span>
-            <span className="font-medium text-gray-900">{formatPercent(fundamentals.roe)}</span>
+            <MetricValue value={fundamentals.roe} metricType="ratio" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">ROA</span>
-            <span className="font-medium text-gray-900">{formatPercent(fundamentals.roa)}</span>
+            <MetricValue value={fundamentals.roa} metricType="ratio" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Gross Margin</span>
-            <span className="font-medium text-gray-900">{formatPercent(fundamentals.grossMargin)}</span>
+            <MetricValue value={fundamentals.grossMargin} metricType="margin" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Net Margin</span>
-            <span className="font-medium text-gray-900">{formatPercent(fundamentals.netMargin)}</span>
+            <MetricValue value={fundamentals.netMargin} metricType="margin" formatter={formatPercent} />
           </div>
         </div>
       </div>
@@ -228,11 +343,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">Debt/Equity</span>
-            <span className="font-medium text-gray-900">{safeToFixed(fundamentals.debtToEquity, 1)}</span>
+            <MetricValue value={fundamentals.debtToEquity} metricType="debt" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Current Ratio</span>
-            <span className="font-medium text-gray-900">{safeToFixed(fundamentals.currentRatio, 1)}</span>
+            <MetricValue value={fundamentals.currentRatio} metricType="ratio" formatter={(v) => safeToFixed(v, 1)} />
           </div>
         </div>
       </div>
@@ -243,21 +358,30 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">YTD Change</span>
-            <span className={`font-medium ${safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatPercent(keyMetrics.ytdChange)}
-            </span>
+            <MetricValue
+              value={keyMetrics.ytdChange}
+              metricType="growth"
+              formatter={formatPercent}
+              colorClass={safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-green-600' : 'text-red-600'}
+            />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Revenue Growth</span>
-            <span className={`font-medium ${safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatPercent(keyMetrics.revenueGrowth1Y)}
-            </span>
+            <MetricValue
+              value={keyMetrics.revenueGrowth1Y}
+              metricType="growth"
+              formatter={formatPercent}
+              colorClass={safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}
+            />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Earnings Growth</span>
-            <span className={`font-medium ${safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-              {formatPercent(keyMetrics.earningsGrowth1Y)}
-            </span>
+            <MetricValue
+              value={keyMetrics.earningsGrowth1Y}
+              metricType="growth"
+              formatter={formatPercent}
+              colorClass={safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}
+            />
           </div>
         </div>
       </div>
@@ -268,15 +392,23 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-gray-600">Beta</span>
-            <span className="font-medium text-gray-900">{safeToFixed(keyMetrics.beta, 2)}</span>
+            <MetricValue value={keyMetrics.beta} metricType="market" formatter={(v) => safeToFixed(v, 2)} />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Avg Volume</span>
-            <span className="font-medium text-gray-900">{safeToFixed(safeParseNumber(keyMetrics.averageVolume) / 1000000, 1)}M</span>
+            <MetricValue
+              value={keyMetrics.averageVolume}
+              metricType="market"
+              formatter={(v) => `${safeToFixed(safeParseNumber(v) / 1000000, 1)}M`}
+            />
           </div>
           <div className="flex justify-between">
             <span className="text-gray-600">Shares Out</span>
-            <span className="font-medium text-gray-900">{safeToFixed(safeParseNumber(keyMetrics.sharesOutstanding) / 1000000000, 1)}B</span>
+            <MetricValue
+              value={keyMetrics.sharesOutstanding}
+              metricType="market"
+              formatter={(v) => `${safeToFixed(safeParseNumber(v) / 1000000000, 1)}B`}
+            />
           </div>
         </div>
       </div>

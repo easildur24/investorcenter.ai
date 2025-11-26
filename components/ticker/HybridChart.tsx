@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 
 interface HybridChartProps {
   symbol: string;
@@ -17,7 +17,24 @@ interface ChartDataPoint {
   volume: number;
 }
 
+// Calculate Simple Moving Average
+function calculateSMA(data: number[], period: number): (number | null)[] {
+  const sma: (number | null)[] = [];
+  for (let i = 0; i < data.length; i++) {
+    if (i < period - 1) {
+      sma.push(null);
+    } else {
+      const sum = data.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0);
+      sma.push(sum / period);
+    }
+  }
+  return sma;
+}
+
 export default function HybridChart({ symbol, initialData, currentPrice }: HybridChartProps) {
+  const [showMA50, setShowMA50] = useState(false);
+  const [showMA200, setShowMA200] = useState(false);
+  const [showVolume, setShowVolume] = useState(true);
   if (!initialData?.dataPoints || initialData.dataPoints.length === 0) {
     return (
       <div className="p-6">
@@ -31,27 +48,65 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
   const dataPoints: ChartDataPoint[] = initialData.dataPoints;
   const prices = dataPoints.map(d => parseFloat(d.close));
+  const volumes = dataPoints.map(d => d.volume);
   const high = Math.max(...prices);
   const low = Math.min(...prices);
   const priceRange = high - low || 1;
-  
+  const maxVolume = Math.max(...volumes);
+
   // Use real current price, not chart data
   const firstPrice = prices[0];
   const priceChange = currentPrice - firstPrice;
   const priceChangePercent = firstPrice > 0 ? (priceChange / firstPrice) * 100 : 0;
 
-  // Chart dimensions
-  const chartHeight = 300;
+  // Calculate moving averages
+  const ma50 = useMemo(() => calculateSMA(prices, 50), [prices]);
+  const ma200 = useMemo(() => calculateSMA(prices, 200), [prices]);
+
+  // Chart dimensions - adjusted for volume section
+  const totalChartHeight = showVolume ? 380 : 300;
+  const priceChartHeight = showVolume ? 260 : 300;
+  const volumeChartHeight = 80;
   const chartWidth = 900;
   const padding = 40;
-  const priceScale = (chartHeight - 2 * padding) / priceRange;
+  const priceScale = (priceChartHeight - 2 * padding) / priceRange;
+  const volumeScale = volumeChartHeight / maxVolume;
 
-  // Generate SVG paths
+  // Generate SVG paths for price line
   const pathData = dataPoints.map((point, index) => {
     const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
-    const y = chartHeight - padding - (parseFloat(point.close) - low) * priceScale;
+    const y = priceChartHeight - padding - (parseFloat(point.close) - low) * priceScale;
     return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
+
+  // Generate SVG path for 50-day MA
+  const ma50PathData = ma50.map((value, index) => {
+    if (value === null) return '';
+    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
+    const y = priceChartHeight - padding - (value - low) * priceScale;
+    // Find the first non-null index to start the path
+    const isFirst = ma50.slice(0, index).every(v => v === null);
+    return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
+  }).filter(Boolean).join(' ');
+
+  // Generate SVG path for 200-day MA
+  const ma200PathData = ma200.map((value, index) => {
+    if (value === null) return '';
+    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
+    const y = priceChartHeight - padding - (value - low) * priceScale;
+    const isFirst = ma200.slice(0, index).every(v => v === null);
+    return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
+  }).filter(Boolean).join(' ');
+
+  // Volume bar data
+  const volumeBars = dataPoints.map((point, index) => {
+    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
+    const barWidth = Math.max(1, (chartWidth - 2 * padding) / dataPoints.length - 1);
+    const barHeight = point.volume * volumeScale;
+    const y = priceChartHeight + volumeChartHeight - barHeight;
+    const isUp = parseFloat(point.close) >= parseFloat(point.open);
+    return { x: x - barWidth / 2, y, width: barWidth, height: barHeight, isUp };
+  });
 
   // Timeframe buttons with JavaScript for interactivity
   const timeframes = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'];
@@ -172,7 +227,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
   return (
     <div className="p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-gray-900">Interactive Price Chart</h3>
         <div className="flex space-x-1 bg-gray-100 rounded-lg p-1" id="timeframe-buttons">
           {timeframes.map((period) => (
@@ -191,13 +246,46 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           ))}
         </div>
       </div>
-      
+
+      {/* Chart Options */}
+      <div className="flex flex-wrap gap-4 mb-4">
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showVolume}
+            onChange={(e) => setShowVolume(e.target.checked)}
+            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+          />
+          <span className="text-sm text-gray-600">Volume Bars</span>
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showMA50}
+            onChange={(e) => setShowMA50(e.target.checked)}
+            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+          />
+          <span className="text-sm text-gray-600">50-Day MA</span>
+          {showMA50 && <span className="w-4 h-0.5 bg-blue-500"></span>}
+        </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showMA200}
+            onChange={(e) => setShowMA200(e.target.checked)}
+            className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+          />
+          <span className="text-sm text-gray-600">200-Day MA</span>
+          {showMA200 && <span className="w-4 h-0.5 bg-orange-500"></span>}
+        </label>
+      </div>
+
       {/* Enhanced Interactive SVG Chart */}
-      <div className="relative h-80 bg-white border rounded-lg overflow-hidden">
-        <svg 
+      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: showVolume ? '380px' : '300px' }}>
+        <svg
           id="price-chart"
-          width={chartWidth} 
-          height={chartHeight} 
+          width={chartWidth}
+          height={totalChartHeight}
           className="w-full h-full cursor-crosshair"
           data-symbol={symbol}
           data-chart-data={JSON.stringify(dataPoints)}
@@ -212,15 +300,38 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
               <stop offset="100%" style={{stopColor: '#10b981', stopOpacity: 0.05}} />
             </linearGradient>
           </defs>
-          <rect width="100%" height="100%" fill="url(#chartGrid)" />
-          
+          <rect width="100%" height={priceChartHeight} fill="url(#chartGrid)" />
+
           {/* Price area with gradient */}
           <path
-            d={`${pathData} L ${chartWidth - padding} ${chartHeight - padding} L ${padding} ${chartHeight - padding} Z`}
+            d={`${pathData} L ${chartWidth - padding} ${priceChartHeight - padding} L ${padding} ${priceChartHeight - padding} Z`}
             fill="url(#priceGradient)"
             stroke="none"
           />
-          
+
+          {/* 200-Day Moving Average Line */}
+          {showMA200 && ma200PathData && (
+            <path
+              d={ma200PathData}
+              fill="none"
+              stroke="#f97316"
+              strokeWidth="2"
+              strokeDasharray="4,4"
+              opacity="0.8"
+            />
+          )}
+
+          {/* 50-Day Moving Average Line */}
+          {showMA50 && ma50PathData && (
+            <path
+              d={ma50PathData}
+              fill="none"
+              stroke="#3b82f6"
+              strokeWidth="2"
+              opacity="0.8"
+            />
+          )}
+
           {/* Enhanced price line */}
           <path
             d={pathData}
@@ -231,36 +342,68 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             strokeLinejoin="round"
             className="drop-shadow-sm"
           />
-          
+
           {/* Y-axis labels */}
           <text x="10" y="30" className="text-sm fill-gray-700 font-semibold">${high.toFixed(2)}</text>
-          <text x="10" y={chartHeight - 15} className="text-sm fill-gray-700 font-semibold">${low.toFixed(2)}</text>
-          
+          <text x="10" y={priceChartHeight - 15} className="text-sm fill-gray-700 font-semibold">${low.toFixed(2)}</text>
+
           {/* Enhanced current price indicator */}
           <circle
             cx={chartWidth - padding}
-            cy={chartHeight - padding - (currentPrice - low) * priceScale}
+            cy={priceChartHeight - padding - (currentPrice - low) * priceScale}
             r="8"
             fill="#10b981"
             stroke="white"
             strokeWidth="4"
             className="drop-shadow-lg"
           />
-          
+
           {/* Current price label */}
           <text
             x={chartWidth - padding - 60}
-            y={chartHeight - padding - (currentPrice - low) * priceScale + 5}
+            y={priceChartHeight - padding - (currentPrice - low) * priceScale + 5}
             className="text-sm fill-white font-bold"
             textAnchor="end"
           >
             ${currentPrice.toFixed(2)}
           </text>
+
+          {/* Volume Bars Section */}
+          {showVolume && (
+            <g>
+              {/* Volume divider line */}
+              <line
+                x1={padding}
+                y1={priceChartHeight}
+                x2={chartWidth - padding}
+                y2={priceChartHeight}
+                stroke="#e5e7eb"
+                strokeWidth="1"
+              />
+
+              {/* Volume bars */}
+              {volumeBars.map((bar, index) => (
+                <rect
+                  key={index}
+                  x={bar.x}
+                  y={bar.y}
+                  width={bar.width}
+                  height={bar.height}
+                  fill={bar.isUp ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}
+                  stroke={bar.isUp ? '#10b981' : '#ef4444'}
+                  strokeWidth="0.5"
+                />
+              ))}
+
+              {/* Volume label */}
+              <text x="10" y={priceChartHeight + 15} className="text-xs fill-gray-400">Volume</text>
+            </g>
+          )}
         </svg>
-        
+
         {/* Hover tooltip placeholder */}
-        <div 
-          id="chart-tooltip" 
+        <div
+          id="chart-tooltip"
           className="fixed z-30 bg-gray-900 text-white p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-gray-700"
           style={{ left: -200, top: -200, minWidth: '140px', fontFamily: 'monospace' }}
         >

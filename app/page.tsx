@@ -1,5 +1,6 @@
 import { ChartBarIcon, ArrowTrendingUpIcon, DocumentChartBarIcon, CurrencyDollarIcon } from '@heroicons/react/24/outline'
 import MarketOverview from '@/components/MarketOverview'
+import TopMovers from '@/components/home/TopMovers'
 
 export default function Home() {
   return (
@@ -54,9 +55,10 @@ export default function Home() {
               Real-time market insights
             </p>
           </div>
-          
-          <div className="max-w-3xl mx-auto">
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
             <MarketOverview />
+            <TopMovers />
           </div>
         </div>
       </div>

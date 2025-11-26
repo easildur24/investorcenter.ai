@@ -61,8 +61,8 @@ export default function TickerSearch() {
     <div className="relative w-full max-w-md">
       <form onSubmit={handleSubmit}>
         <div className="relative">
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
+          <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
+            <MagnifyingGlassIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
           </div>
           <input
             type="text"
@@ -70,8 +70,14 @@ export default function TickerSearch() {
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => query && setShowResults(true)}
             onBlur={() => setTimeout(() => setShowResults(false), 200)}
-            placeholder="Search 4,653+ stocks..."
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            placeholder="Search..."
+            aria-label="Search stocks and crypto"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="characters"
+            spellCheck="false"
+            enterKeyHint="search"
+            className="block w-full pl-7 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
           />
         </div>
       </form>

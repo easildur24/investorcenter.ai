@@ -100,6 +100,7 @@ func main() {
 		markets := v1.Group("/markets")
 		{
 			markets.GET("/indices", handlers.GetMarketIndices)
+			markets.GET("/movers", handlers.GetMarketMovers)
 			markets.GET("/search", searchSecurities)
 		}
 

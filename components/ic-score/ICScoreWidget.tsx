@@ -2,14 +2,22 @@
 
 import { useState } from 'react';
 import { ICScoreData, getScoreColor, getStarRating } from '@/lib/api/ic-score';
-import { ChevronDown, ChevronUp, Star, Info } from 'lucide-react';
+import { ChevronDown, ChevronUp, Star, Info, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { formatRelativeTime } from '@/lib/utils';
+
+interface ScoreChange {
+  change: number;
+  direction: 'up' | 'down' | 'unchanged';
+  period: string;
+}
 
 interface ICScoreWidgetProps {
   icScore: ICScoreData;
   showFactors?: boolean;
+  scoreChange?: ScoreChange | null;
 }
 
-export default function ICScoreWidget({ icScore, showFactors = false }: ICScoreWidgetProps) {
+export default function ICScoreWidget({ icScore, showFactors = false, scoreChange }: ICScoreWidgetProps) {
   const [expanded, setExpanded] = useState(showFactors);
   const score = icScore.overall_score;
   const rating = icScore.rating;
@@ -119,6 +127,22 @@ export default function ICScoreWidget({ icScore, showFactors = false }: ICScoreW
           {rating}
         </div>
 
+        {/* Score Change Indicator */}
+        {scoreChange && scoreChange.change !== 0 && (
+          <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+            scoreChange.direction === 'up' ? 'bg-green-100 text-green-700' :
+            scoreChange.direction === 'down' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+          }`}>
+            {scoreChange.direction === 'up' && <TrendingUp className="w-4 h-4" />}
+            {scoreChange.direction === 'down' && <TrendingDown className="w-4 h-4" />}
+            {scoreChange.direction === 'unchanged' && <Minus className="w-4 h-4" />}
+            <span>
+              {scoreChange.direction === 'up' ? '+' : scoreChange.direction === 'down' ? '-' : ''}
+              {scoreChange.change} pts this month
+            </span>
+          </div>
+        )}
+
         {/* Confidence Level */}
         {icScore.confidence_level && (
           <div className="mt-4 text-sm text-gray-600">
@@ -131,6 +155,14 @@ export default function ICScoreWidget({ icScore, showFactors = false }: ICScoreW
           <div className="mt-2 text-sm text-gray-600">
             <span className="font-medium">{Math.round(icScore.sector_percentile)}</span>
             <sup>th</sup> percentile in sector
+          </div>
+        )}
+
+        {/* Last Updated Timestamp */}
+        {icScore.calculated_at && (
+          <div className="mt-4 flex items-center justify-center gap-1 text-xs text-gray-400">
+            <Clock className="w-3 h-3" />
+            <span>Updated {formatRelativeTime(icScore.calculated_at)}</span>
           </div>
         )}
       </div>

@@ -132,6 +132,35 @@ class ApiClient {
     }>>(`/markets/search?q=${encodeURIComponent(query)}`);
   }
 
+  async getMarketMovers(limit: number = 5) {
+    return this.request<{
+      gainers: Array<{
+        symbol: string;
+        name?: string;
+        price: number;
+        change: number;
+        changePercent: number;
+        volume: number;
+      }>;
+      losers: Array<{
+        symbol: string;
+        name?: string;
+        price: number;
+        change: number;
+        changePercent: number;
+        volume: number;
+      }>;
+      mostActive: Array<{
+        symbol: string;
+        name?: string;
+        price: number;
+        change: number;
+        changePercent: number;
+        volume: number;
+      }>;
+    }>(`/markets/movers?limit=${limit}`);
+  }
+
   // Portfolio methods
   async getPortfolios() {
     return this.request<Array<{

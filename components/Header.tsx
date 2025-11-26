@@ -67,9 +67,9 @@ export default function Header() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
-            {/* Ticker Search - Always visible */}
-            <div className="hidden sm:block">
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Ticker Search - Always visible on all screen sizes */}
+            <div className="w-36 sm:w-auto">
               <TickerSearch />
             </div>
 
@@ -170,11 +170,6 @@ export default function Header() {
             )}
           </div>
         </div>
-      </div>
-
-      {/* Mobile Search */}
-      <div className="sm:hidden px-4 pb-3">
-        <TickerSearch />
       </div>
     </nav>
   );
