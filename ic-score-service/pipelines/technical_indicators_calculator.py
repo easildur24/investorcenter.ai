@@ -13,6 +13,7 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -32,13 +33,16 @@ from database.database import get_database
 from models import StockPrice, TechnicalIndicator
 from pipelines.utils.polygon_client import PolygonClient
 
-# Setup logging
+# Setup logging with configurable log directory
+LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/app/logs/technical_indicators_calculator.log')
+        logging.FileHandler(os.path.join(LOG_DIR, 'technical_indicators_calculator.log'))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -145,16 +149,31 @@ class TechnicalIndicatorsCalculator:
             # Momentum metrics
             current_price = df['close'].iloc[-1]
 
-            # Calculate returns over different periods
+            # Calculate returns over different periods with validation
             momentum = {}
+
+            def safe_return(current: float, historical: float) -> Optional[float]:
+                """Calculate return with validation for zero/NaN values."""
+                if pd.isna(historical) or pd.isna(current) or historical <= 0:
+                    return None
+                return ((current / historical) - 1) * 100
+
             if len(df) >= 252:
-                momentum['12m_return'] = ((current_price / df['close'].iloc[-252]) - 1) * 100
+                ret = safe_return(current_price, df['close'].iloc[-252])
+                if ret is not None:
+                    momentum['12m_return'] = ret
             if len(df) >= 126:
-                momentum['6m_return'] = ((current_price / df['close'].iloc[-126]) - 1) * 100
+                ret = safe_return(current_price, df['close'].iloc[-126])
+                if ret is not None:
+                    momentum['6m_return'] = ret
             if len(df) >= 63:
-                momentum['3m_return'] = ((current_price / df['close'].iloc[-63]) - 1) * 100
+                ret = safe_return(current_price, df['close'].iloc[-63])
+                if ret is not None:
+                    momentum['3m_return'] = ret
             if len(df) >= 21:
-                momentum['1m_return'] = ((current_price / df['close'].iloc[-21]) - 1) * 100
+                ret = safe_return(current_price, df['close'].iloc[-21])
+                if ret is not None:
+                    momentum['1m_return'] = ret
 
             return {
                 'rsi': current_rsi,

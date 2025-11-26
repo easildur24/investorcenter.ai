@@ -14,6 +14,7 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime, date, timedelta
 from decimal import Decimal
@@ -31,13 +32,16 @@ from tqdm import tqdm
 from database.database import get_database
 from models import ICScore, Financial, TechnicalIndicator, InsiderTrade, InstitutionalHolding, AnalystRating, NewsArticle
 
-# Setup logging
+# Setup logging with configurable log directory
+LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/app/logs/ic_score_calculator.log')
+        logging.FileHandler(os.path.join(LOG_DIR, 'ic_score_calculator.log'))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -67,6 +71,40 @@ class ICScoreCalculator:
         'Hold': 50,
         'Underperform': 35,
         'Sell': 0,
+    }
+
+    # Minimum data completeness threshold (percentage)
+    # Require at least 40% of factors (4/10) to calculate a score
+    MIN_DATA_COMPLETENESS = 40.0
+
+    # Core factors that should be present for reliable scoring
+    CORE_FACTORS = {'value', 'growth', 'profitability', 'financial_health'}
+
+    # Valuation benchmarks for scoring normalization
+    # These represent "fair value" centers for scoring
+    VALUATION_BENCHMARKS = {
+        'pe_ratio': 15.0,    # S&P 500 historical average P/E
+        'pb_ratio': 2.0,     # Typical fair value P/B
+        'ps_ratio': 2.0,     # Typical fair value P/S
+    }
+
+    # Scoring scale factors
+    # Higher factor = more sensitive to deviations from benchmark
+    SCALE_FACTORS = {
+        'pe_scale': 2.0,         # P/E deviation scaling
+        'pb_scale': 20.0,        # P/B deviation scaling
+        'ps_scale': 20.0,        # P/S deviation scaling
+        'growth_scale': 2.5,     # Growth rate scaling (50 + growth * scale)
+        'margin_scale': 5.0,     # Margin % to score (margin * scale)
+        'roe_scale': 5.0,        # ROE % to score (roe * scale)
+        'roa_scale': 10.0,       # ROA % to score (roa * scale)
+        'de_scale': 50.0,        # D/E ratio scaling (100 - de * scale)
+        'cr_optimal': 2.0,       # Optimal current ratio
+        'cr_scale': 40.0,        # Current ratio deviation scaling
+        'return_scale': 2.5,     # Return % to score adjustment
+        'macd_scale': 10.0,      # MACD histogram scaling
+        'trend_scale': 5.0,      # Price vs SMA scaling
+        'insider_scale': 2000.0, # Shares to score scaling
     }
 
     def __init__(self):
@@ -313,7 +351,14 @@ class ICScoreCalculator:
             }
 
     def calculate_value_score(self, financial_data: Dict[str, Any], sector_data: Dict) -> Tuple[Optional[float], Dict]:
-        """Calculate value score based on P/E, P/B, P/S ratios vs sector median."""
+        """Calculate value score based on P/E, P/B, P/S ratios vs sector median.
+
+        Scoring methodology:
+        - Lower valuation ratios = higher value scores
+        - Scores normalized to 0-100 scale centered on benchmark values
+        - P/E benchmark: ~15 (S&P 500 historical average)
+        - P/B, P/S benchmarks: ~2 (typical fair value)
+        """
         if not financial_data:
             return None, {}
 
@@ -333,17 +378,23 @@ class ICScoreCalculator:
         scores = []
         if pe and pe > 0:
             # Lower P/E is better, normalize to 0-100 scale
-            pe_score = max(0, min(100, 100 - (pe - 15) * 2))  # Centered at P/E of 15
+            pe_benchmark = self.VALUATION_BENCHMARKS['pe_ratio']
+            pe_scale = self.SCALE_FACTORS['pe_scale']
+            pe_score = max(0, min(100, 100 - (pe - pe_benchmark) * pe_scale))
             scores.append(pe_score)
             metadata['pe_ratio'] = float(pe)
 
         if pb and pb > 0:
-            pb_score = max(0, min(100, 100 - (pb - 2) * 20))  # Centered at P/B of 2
+            pb_benchmark = self.VALUATION_BENCHMARKS['pb_ratio']
+            pb_scale = self.SCALE_FACTORS['pb_scale']
+            pb_score = max(0, min(100, 100 - (pb - pb_benchmark) * pb_scale))
             scores.append(pb_score)
             metadata['pb_ratio'] = float(pb)
 
         if ps and ps > 0:
-            ps_score = max(0, min(100, 100 - (ps - 2) * 20))  # Centered at P/S of 2
+            ps_benchmark = self.VALUATION_BENCHMARKS['ps_ratio']
+            ps_scale = self.SCALE_FACTORS['ps_scale']
+            ps_score = max(0, min(100, 100 - (ps - ps_benchmark) * ps_scale))
             scores.append(ps_score)
             metadata['ps_ratio'] = float(ps)
 
@@ -353,12 +404,19 @@ class ICScoreCalculator:
         return np.mean(scores), metadata
 
     def calculate_growth_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate growth score based on revenue, EPS, FCF growth."""
+        """Calculate growth score based on revenue, EPS, FCF growth.
+
+        Scoring methodology:
+        - 0% growth = 50 (neutral)
+        - +20% growth = 100 (maximum score)
+        - -20% growth = 0 (minimum score)
+        """
         if not financial_data or len(financial_data.get('historical', [])) < 4:
             return None, {}
 
         historical = financial_data['historical']
         metadata = {}
+        growth_scale = self.SCALE_FACTORS['growth_scale']
 
         # Calculate year-over-year growth rates
         scores = []
@@ -367,7 +425,7 @@ class ICScoreCalculator:
         if historical[0].get('revenue') and historical[3].get('revenue'):
             rev_growth = ((historical[0]['revenue'] / historical[3]['revenue']) - 1) * 100
             # Normalize: 0% = 50, 20% = 100, -20% = 0
-            rev_score = max(0, min(100, 50 + rev_growth * 2.5))
+            rev_score = max(0, min(100, 50 + rev_growth * growth_scale))
             scores.append(rev_score)
             metadata['revenue_growth_yoy'] = rev_growth
 
@@ -375,7 +433,7 @@ class ICScoreCalculator:
         if historical[0].get('eps_diluted') and historical[3].get('eps_diluted'):
             if historical[3]['eps_diluted'] > 0:
                 eps_growth = ((historical[0]['eps_diluted'] / historical[3]['eps_diluted']) - 1) * 100
-                eps_score = max(0, min(100, 50 + eps_growth * 2.5))
+                eps_score = max(0, min(100, 50 + eps_growth * growth_scale))
                 scores.append(eps_score)
                 metadata['eps_growth_yoy'] = eps_growth
 
@@ -385,7 +443,12 @@ class ICScoreCalculator:
         return np.mean(scores), metadata
 
     def calculate_profitability_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate profitability score based on margins, ROE, ROA."""
+        """Calculate profitability score based on margins, ROE, ROA.
+
+        Scoring methodology:
+        - 0% margin/ROE = 0, 20% = 100
+        - 0% ROA = 0, 10% = 100 (ROA typically lower than ROE)
+        """
         if not financial_data:
             return None, {}
 
@@ -396,23 +459,24 @@ class ICScoreCalculator:
         # Net margin
         if latest.get('net_margin'):
             margin = float(latest['net_margin'])
-            # Normalize: 0% = 0, 20% = 100
-            margin_score = max(0, min(100, margin * 5))
+            margin_scale = self.SCALE_FACTORS['margin_scale']
+            margin_score = max(0, min(100, margin * margin_scale))
             scores.append(margin_score)
             metadata['net_margin'] = margin
 
         # ROE
         if latest.get('roe'):
             roe = float(latest['roe'])
-            # Normalize: 0% = 0, 20% = 100
-            roe_score = max(0, min(100, roe * 5))
+            roe_scale = self.SCALE_FACTORS['roe_scale']
+            roe_score = max(0, min(100, roe * roe_scale))
             scores.append(roe_score)
             metadata['roe'] = roe
 
         # ROA
         if latest.get('roa'):
             roa = float(latest['roa'])
-            roa_score = max(0, min(100, roa * 10))
+            roa_scale = self.SCALE_FACTORS['roa_scale']
+            roa_score = max(0, min(100, roa * roa_scale))
             scores.append(roa_score)
             metadata['roa'] = roa
 
@@ -422,7 +486,12 @@ class ICScoreCalculator:
         return np.mean(scores), metadata
 
     def calculate_financial_health_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate financial health score based on D/E, current ratio."""
+        """Calculate financial health score based on D/E, current ratio.
+
+        Scoring methodology:
+        - D/E: 0 = 100 (no debt), 2+ = 0 (high debt)
+        - Current ratio: 2.0 = 100 (optimal), 0 or 5+ = 0 (extremes)
+        """
         if not financial_data:
             return None, {}
 
@@ -433,16 +502,17 @@ class ICScoreCalculator:
         # Debt to equity (lower is better)
         if latest.get('debt_to_equity') is not None:
             de = float(latest['debt_to_equity'])
-            # Normalize: 0 = 100, 2 = 0
-            de_score = max(0, min(100, 100 - de * 50))
+            de_scale = self.SCALE_FACTORS['de_scale']
+            de_score = max(0, min(100, 100 - de * de_scale))
             scores.append(de_score)
             metadata['debt_to_equity'] = de
 
         # Current ratio (optimal around 1.5-2.0)
         if latest.get('current_ratio'):
             cr = float(latest['current_ratio'])
-            # Normalize: 2.0 = 100, 0 or 5+ = 0
-            cr_score = max(0, min(100, 100 - abs(cr - 2.0) * 40))
+            cr_optimal = self.SCALE_FACTORS['cr_optimal']
+            cr_scale = self.SCALE_FACTORS['cr_scale']
+            cr_score = max(0, min(100, 100 - abs(cr - cr_optimal) * cr_scale))
             scores.append(cr_score)
             metadata['current_ratio'] = cr
 
@@ -452,19 +522,24 @@ class ICScoreCalculator:
         return np.mean(scores), metadata
 
     def calculate_momentum_score(self, technical_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate momentum score based on price returns."""
+        """Calculate momentum score based on price returns.
+
+        Scoring methodology:
+        - -20% return = 0, 0% = 50, +20% = 100
+        """
         if not technical_data:
             return None, {}
 
         metadata = {}
         scores = []
+        return_scale = self.SCALE_FACTORS['return_scale']
 
         # Use various period returns
         for period in ['1m_return', '3m_return', '6m_return', '12m_return']:
             if period in technical_data:
                 ret = technical_data[period]
                 # Normalize: -20% = 0, 0% = 50, 20% = 100
-                score = max(0, min(100, 50 + ret * 2.5))
+                score = max(0, min(100, 50 + ret * return_scale))
                 scores.append(score)
                 metadata[period] = ret
 
@@ -474,21 +549,30 @@ class ICScoreCalculator:
         return np.mean(scores), metadata
 
     def calculate_technical_score(self, technical_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate technical score based on RSI, MACD, trend."""
+        """Calculate technical score based on RSI, MACD, trend.
+
+        Scoring methodology:
+        - RSI: 30 = 0 (oversold), 50 = 50 (neutral), 70 = 100 (overbought)
+        - MACD: Positive histogram = bullish, negative = bearish
+        - Trend: Price above SMA50 = bullish
+        """
         if not technical_data:
             return None, {}
 
         metadata = {}
         scores = []
+        return_scale = self.SCALE_FACTORS['return_scale']
+        macd_scale = self.SCALE_FACTORS['macd_scale']
+        trend_scale = self.SCALE_FACTORS['trend_scale']
 
         # RSI (30-70 range is neutral, <30 oversold, >70 overbought)
         if 'rsi' in technical_data:
             rsi = technical_data['rsi']
             # Normalize: 30 = 0, 50 = 50, 70 = 100
             if rsi < 50:
-                rsi_score = max(0, (rsi - 30) * 2.5)
+                rsi_score = max(0, (rsi - 30) * return_scale)
             else:
-                rsi_score = min(100, 50 + (rsi - 50) * 2.5)
+                rsi_score = min(100, 50 + (rsi - 50) * return_scale)
             scores.append(rsi_score)
             metadata['rsi'] = rsi
 
@@ -496,7 +580,7 @@ class ICScoreCalculator:
         if 'macd_histogram' in technical_data:
             macd_hist = technical_data['macd_histogram']
             # Simple normalization
-            macd_score = 50 + min(50, max(-50, macd_hist * 10))
+            macd_score = 50 + min(50, max(-50, macd_hist * macd_scale))
             scores.append(macd_score)
             metadata['macd_histogram'] = macd_hist
 
@@ -506,7 +590,7 @@ class ICScoreCalculator:
             sma = technical_data['sma_50']
             if sma > 0:
                 trend = ((price / sma) - 1) * 100
-                trend_score = max(0, min(100, 50 + trend * 5))
+                trend_score = max(0, min(100, 50 + trend * trend_scale))
                 scores.append(trend_score)
                 metadata['price_vs_sma50'] = trend
 
@@ -572,21 +656,27 @@ class ICScoreCalculator:
         return consensus_score, metadata
 
     def calculate_insider_activity_score(self, insider_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
-        """Calculate insider activity score based on net buying/selling."""
+        """Calculate insider activity score based on net buying/selling.
+
+        Scoring methodology:
+        - Heavy buying (+100k shares) = 100
+        - Neutral (0 shares) = 50
+        - Heavy selling (-100k shares) = 0
+        """
         if not insider_data:
             return None, {}
 
         metadata = {}
         net_buying = insider_data.get('net_buying_90d', 0)
+        insider_scale = self.SCALE_FACTORS['insider_scale']
 
         # Normalize: Heavy buying = 100, neutral = 50, heavy selling = 0
-        # Normalize around typical ranges (e.g., -100k to +100k shares)
         if net_buying > 0:
             # Positive net buying
-            score = min(100, 50 + (net_buying / 2000))  # 100k shares = 100 score
+            score = min(100, 50 + (net_buying / insider_scale))
         elif net_buying < 0:
             # Net selling
-            score = max(0, 50 + (net_buying / 2000))  # -100k shares = 0 score
+            score = max(0, 50 + (net_buying / insider_scale))
         else:
             score = 50  # Neutral
 
@@ -717,6 +807,22 @@ class ICScoreCalculator:
 
             if not factor_scores:
                 logger.warning(f"{ticker}: No factor scores calculated")
+                return None
+
+            # Enforce minimum data completeness threshold
+            if data_completeness < self.MIN_DATA_COMPLETENESS:
+                logger.warning(
+                    f"{ticker}: Data completeness {data_completeness:.1f}% below minimum "
+                    f"threshold {self.MIN_DATA_COMPLETENESS}% (factors: {list(factor_scores.keys())})"
+                )
+                return None
+
+            # Check if core financial factors are present for reliable scoring
+            available_core = set(factor_scores.keys()) & self.CORE_FACTORS
+            if len(available_core) < 2:
+                logger.warning(
+                    f"{ticker}: Insufficient core factors ({available_core}), need at least 2 of {self.CORE_FACTORS}"
+                )
                 return None
 
             # Calculate weighted overall score (only for available factors)

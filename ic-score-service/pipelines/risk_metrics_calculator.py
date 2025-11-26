@@ -27,6 +27,7 @@ Usage:
 import argparse
 import asyncio
 import logging
+import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -46,13 +47,16 @@ from tqdm import tqdm
 from database.database import get_database
 from models import RiskMetric
 
-# Setup logging
+# Setup logging with configurable log directory
+LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
+Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler('/app/logs/risk_metrics_calculator.log')
+        logging.FileHandler(os.path.join(LOG_DIR, 'risk_metrics_calculator.log'))
     ]
 )
 logger = logging.getLogger(__name__)
@@ -71,6 +75,9 @@ class RiskMetricsCalculator:
     # Benchmark symbol
     BENCHMARK_SYMBOL = 'SPY'
 
+    # Epsilon for floating point comparisons (avoids division by near-zero)
+    EPSILON = 1e-10
+
     def __init__(self):
         """Initialize the calculator."""
         self.db = get_database()
@@ -80,6 +87,21 @@ class RiskMetricsCalculator:
         self.success_count = 0
         self.error_count = 0
 
+    @staticmethod
+    def validate_ticker(ticker: str) -> bool:
+        """Validate ticker symbol format.
+
+        Args:
+            ticker: Ticker symbol to validate.
+
+        Returns:
+            True if valid, False otherwise.
+        """
+        import re
+        # Valid tickers: 1-5 uppercase letters, optionally with . (e.g., BRK.A)
+        pattern = r'^[A-Z]{1,5}(\.[A-Z])?$'
+        return bool(re.match(pattern, ticker.upper()))
+
     async def get_stocks_to_process(
         self,
         limit: Optional[int] = None,
@@ -88,16 +110,26 @@ class RiskMetricsCalculator:
         """Get list of stocks to process from database.
 
         Args:
-            limit: Maximum number of stocks to process.
+            limit: Maximum number of stocks to process (must be positive).
             ticker: Single ticker to process.
 
         Returns:
             List of ticker symbols.
-        """
-        async with self.db.session() as session:
-            if ticker:
-                return [ticker.upper()]
 
+        Raises:
+            ValueError: If limit is negative or ticker format is invalid.
+        """
+        # Input validation
+        if limit is not None and limit < 0:
+            raise ValueError(f"limit must be non-negative, got {limit}")
+
+        if ticker:
+            ticker_upper = ticker.upper()
+            if not self.validate_ticker(ticker_upper):
+                raise ValueError(f"Invalid ticker format: {ticker}")
+            return [ticker_upper]
+
+        async with self.db.session() as session:
             query = text("""
                 SELECT ticker
                 FROM stocks
@@ -258,8 +290,8 @@ class RiskMetricsCalculator:
         Formula: Beta = Covariance(stock, benchmark) / Variance(benchmark)
 
         Args:
-            stock_returns: Stock monthly returns.
-            benchmark_returns: Benchmark monthly returns.
+            stock_returns: Stock daily returns.
+            benchmark_returns: Benchmark daily returns.
 
         Returns:
             Beta value or None if insufficient data.
@@ -271,14 +303,14 @@ class RiskMetricsCalculator:
             covariance = np.cov(stock_returns, benchmark_returns)[0, 1]
             variance = np.var(benchmark_returns, ddof=1)
 
-            if variance == 0:
+            if abs(variance) < self.EPSILON:
                 return None
 
             beta = covariance / variance
             return float(beta)
 
         except Exception as e:
-            logger.warning(f"Error calculating beta: {e}")
+            logger.error(f"Error calculating beta: {e}", exc_info=True)
             return None
 
     def calculate_alpha(
@@ -309,7 +341,7 @@ class RiskMetricsCalculator:
             return float(alpha)
 
         except Exception as e:
-            logger.warning(f"Error calculating alpha: {e}")
+            logger.error(f"Error calculating alpha: {e}", exc_info=True)
             return None
 
     def calculate_sharpe_ratio(
@@ -330,7 +362,7 @@ class RiskMetricsCalculator:
         Returns:
             Sharpe ratio or None.
         """
-        if annualized_std == 0:
+        if abs(annualized_std) < self.EPSILON:
             return None
 
         try:
@@ -338,7 +370,7 @@ class RiskMetricsCalculator:
             return float(sharpe)
 
         except Exception as e:
-            logger.warning(f"Error calculating Sharpe ratio: {e}")
+            logger.error(f"Error calculating Sharpe ratio: {e}", exc_info=True)
             return None
 
     def calculate_sortino_ratio(
@@ -374,7 +406,7 @@ class RiskMetricsCalculator:
             # Annualize downside deviation (daily to annual: multiply by sqrt(252))
             downside_dev_annual = downside_dev_daily * np.sqrt(252)
 
-            if downside_dev_annual == 0:
+            if abs(downside_dev_annual) < self.EPSILON:
                 return None, None
 
             # Calculate Sortino ratio
@@ -383,7 +415,7 @@ class RiskMetricsCalculator:
             return float(sortino), float(downside_dev_annual)
 
         except Exception as e:
-            logger.warning(f"Error calculating Sortino ratio: {e}")
+            logger.error(f"Error calculating Sortino ratio: {e}", exc_info=True)
             return None, None
 
     def calculate_max_drawdown(self, df: pd.DataFrame) -> Optional[float]:
@@ -415,7 +447,7 @@ class RiskMetricsCalculator:
             return max_dd
 
         except Exception as e:
-            logger.warning(f"Error calculating max drawdown: {e}")
+            logger.error(f"Error calculating max drawdown: {e}", exc_info=True)
             return None
 
     def calculate_var_5(self, daily_returns: pd.Series) -> Optional[float]:
@@ -442,7 +474,7 @@ class RiskMetricsCalculator:
             return float(var_5)
 
         except Exception as e:
-            logger.warning(f"Error calculating VaR: {e}")
+            logger.error(f"Error calculating VaR: {e}", exc_info=True)
             return None
 
     def calculate_annualized_return(
@@ -471,7 +503,7 @@ class RiskMetricsCalculator:
             return float(annualized_return)
 
         except Exception as e:
-            logger.warning(f"Error calculating annualized return: {e}")
+            logger.error(f"Error calculating annualized return: {e}", exc_info=True)
             return 0.0
 
     async def calculate_metrics_for_period(
@@ -536,6 +568,26 @@ class RiskMetricsCalculator:
 
             stock_returns = merged['return_stock']
             benchmark_returns = merged['return_benchmark']
+
+            # Validate and clean NaN values from returns
+            if stock_returns.isna().any() or benchmark_returns.isna().any():
+                nan_count_stock = stock_returns.isna().sum()
+                nan_count_benchmark = benchmark_returns.isna().sum()
+                logger.warning(f"{ticker}: Found NaN values in returns (stock: {nan_count_stock}, benchmark: {nan_count_benchmark})")
+                # Drop rows with NaN values
+                valid_mask = ~(stock_returns.isna() | benchmark_returns.isna())
+                stock_returns = stock_returns[valid_mask]
+                benchmark_returns = benchmark_returns[valid_mask]
+
+                # Re-check minimum data requirement after dropping NaN
+                if len(stock_returns) < 60:
+                    logger.warning(f"{ticker}: Insufficient data after dropping NaN for {period}")
+                    return None
+
+            # Validate no infinite values
+            if np.isinf(stock_returns).any() or np.isinf(benchmark_returns).any():
+                logger.warning(f"{ticker}: Found infinite values in returns, skipping")
+                return None
 
             # Calculate annualized returns (YCharts method: average daily return × 252)
             stock_annualized_return = float(stock_returns.mean() * 252)
