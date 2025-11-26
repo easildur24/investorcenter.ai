@@ -1,0 +1,94 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: risk-metrics-all-tickers
+  namespace: investorcenter
+  labels:
+    app: ic-score-risk-metrics
+    run-type: full-calculation
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 7200  # Keep for 2 hours
+
+  template:
+    metadata:
+      labels:
+        app: ic-score-risk-metrics
+    spec:
+      restartPolicy: Never
+
+      containers:
+      - name: risk-metrics-calculator
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:risk-metrics-daily-v2
+        imagePullPolicy: Always
+
+        command: ["python"]
+        args:
+        - "-m"
+        - "pipelines.risk_metrics_calculator"
+        - "--all"
+
+        env:
+        # Database connection
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+
+        # Polygon API Key
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+
+        # FRED API Key (for treasury rates)
+        - name: FRED_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fred-api-secret
+              key: api-key
+
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

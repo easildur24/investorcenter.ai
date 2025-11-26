@@ -1,0 +1,93 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ic-score-news-sentiment-test
+  namespace: investorcenter
+  labels:
+    app: ic-score-news-sentiment
+    component: ic-score-pipeline
+    provider: polygon
+    phase: phase-4
+    job-type: test
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 1800  # 30 minutes timeout for test
+  ttlSecondsAfterFinished: 3600  # Keep job for 1 hour
+
+  template:
+    metadata:
+      labels:
+        app: ic-score-news-sentiment
+        component: ic-score-pipeline
+        job-type: test
+    spec:
+      restartPolicy: OnFailure
+
+      containers:
+      - name: news-sentiment-test
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.0.6-news-sentiment-fix
+        imagePullPolicy: Always
+
+        command: ["python"]
+        args:
+        - "/app/pipelines/news_sentiment_ingestion.py"
+        - "--hours"
+        - "24"  # Test with 24 hours
+
+        env:
+        # Polygon API Key
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+
+        # Database connection
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

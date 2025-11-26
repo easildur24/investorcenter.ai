@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ic-score-sec-financials-test-aapl
+  namespace: investorcenter
+  labels:
+    app: ic-score-sec-financials
+    component: ic-score-pipeline
+    provider: sec
+    phase: test
+spec:
+  # Don't retry automatically - we want to see if it works first time
+  backoffLimit: 0
+
+  # Job timeout: 10 minutes (single ticker should be fast)
+  activeDeadlineSeconds: 600
+
+  # Clean up completed job after 1 hour
+  ttlSecondsAfterFinished: 3600
+
+  template:
+    metadata:
+      labels:
+        app: ic-score-sec-financials
+        component: ic-score-pipeline
+        provider: sec
+        phase: test
+    spec:
+      restartPolicy: Never
+
+      containers:
+      - name: sec-financials-ingestion
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.0-eps-fix
+        imagePullPolicy: Always
+
+        command: ["python"]
+        args:
+        - "/app/pipelines/sec_financials_ingestion.py"
+        - "--ticker"
+        - "AAPL"
+
+        env:
+        # Database connection configuration
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+
+        # Python environment
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+
+        # Resource limits (lower for single ticker test)
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+        # Volume mounts for logs and temp files
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+
+      # Security context
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
