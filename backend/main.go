@@ -132,6 +132,9 @@ func main() {
 		{
 			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                // Get IC Score for a ticker
 			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory) // Get IC Score history
+			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)     // Get financial metrics from SEC filings
+			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                // Get risk metrics (Beta, Alpha, Sharpe)
+			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)   // Get technical indicators
 		}
 
 		// IC Scores admin endpoints (list all scores)

@@ -93,6 +93,107 @@ class HealthResponse(BaseModel):
     database_info: dict
 
 
+class FinancialMetricsResponse(BaseModel):
+    """Financial metrics response model for frontend display."""
+    ticker: str
+    period_end_date: Optional[date] = None
+    fiscal_year: Optional[int] = None
+    fiscal_quarter: Optional[int] = None
+
+    # Profitability Metrics
+    gross_margin: Optional[float] = None
+    operating_margin: Optional[float] = None
+    net_margin: Optional[float] = None
+    roe: Optional[float] = None
+    roa: Optional[float] = None
+
+    # Financial Health
+    debt_to_equity: Optional[float] = None
+    current_ratio: Optional[float] = None
+    quick_ratio: Optional[float] = None
+
+    # Valuation
+    pe_ratio: Optional[float] = None
+    pb_ratio: Optional[float] = None
+    ps_ratio: Optional[float] = None
+
+    # Growth (calculated from YoY comparison)
+    revenue_growth_yoy: Optional[float] = None
+    earnings_growth_yoy: Optional[float] = None
+
+    # Market Data
+    shares_outstanding: Optional[int] = None
+
+    # Metadata
+    statement_type: Optional[str] = None
+    data_as_of: Optional[date] = None
+
+    class Config:
+        from_attributes = True
+
+
+class RiskMetricsResponse(BaseModel):
+    """Risk metrics response model for frontend display."""
+    ticker: str
+    period: str = "1Y"
+    calculation_date: Optional[date] = None
+
+    # Risk Metrics
+    beta: Optional[float] = None
+    alpha: Optional[float] = None
+    sharpe_ratio: Optional[float] = None
+    sortino_ratio: Optional[float] = None
+    volatility: Optional[float] = None  # std_dev
+    max_drawdown: Optional[float] = None
+    var_95: Optional[float] = None  # var_5
+
+    # Returns
+    annualized_return: Optional[float] = None
+    downside_deviation: Optional[float] = None
+
+    # Data quality
+    data_points: Optional[int] = None
+
+    class Config:
+        from_attributes = True
+
+
+class TechnicalIndicatorsResponse(BaseModel):
+    """Technical indicators response model for frontend display."""
+    ticker: str
+    date: Optional[date] = None
+
+    # Moving Averages
+    sma_20: Optional[float] = None
+    sma_50: Optional[float] = None
+    sma_200: Optional[float] = None
+    ema_12: Optional[float] = None
+    ema_26: Optional[float] = None
+
+    # Oscillators
+    rsi_14: Optional[float] = None
+    macd: Optional[float] = None
+    macd_signal: Optional[float] = None
+    macd_histogram: Optional[float] = None
+
+    # Bollinger Bands
+    bb_upper: Optional[float] = None
+    bb_middle: Optional[float] = None
+    bb_lower: Optional[float] = None
+
+    # Other
+    atr_14: Optional[float] = None
+    adx_14: Optional[float] = None
+    stoch_k: Optional[float] = None
+    stoch_d: Optional[float] = None
+
+    # Current price for context
+    close_price: Optional[float] = None
+
+    class Config:
+        from_attributes = True
+
+
 # API Endpoints
 
 @app.get("/", include_in_schema=False)
@@ -100,13 +201,16 @@ async def root():
     """Root endpoint."""
     return {
         "service": "IC Score API",
-        "version": "1.0.0",
+        "version": "1.1.0",
         "endpoints": {
             "health": "/health",
             "score": "/api/scores/{ticker}",
             "history": "/api/scores/{ticker}/history",
             "top": "/api/scores/top",
-            "screener": "/api/scores/screener"
+            "screener": "/api/scores/screener",
+            "metrics": "/api/metrics/{ticker}",
+            "risk": "/api/risk/{ticker}",
+            "technical": "/api/technical/{ticker}"
         }
     }
 
@@ -354,6 +458,267 @@ async def screener(
     stocks = [ICScoreResponse(**row._asdict()) for row in rows]
 
     return TopStocksResponse(stocks=stocks, count=len(stocks))
+
+
+# ============================================================================
+# Financial Metrics Endpoints
+# ============================================================================
+
+@app.get("/api/metrics/{ticker}", response_model=FinancialMetricsResponse)
+async def get_financial_metrics(
+    ticker: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """Get latest financial metrics for a ticker.
+
+    Returns profitability ratios, financial health metrics, and growth rates
+    calculated from SEC filings data.
+
+    Args:
+        ticker: Stock ticker symbol.
+
+    Returns:
+        Financial metrics including margins, ratios, and growth rates.
+
+    Raises:
+        HTTPException: If ticker not found.
+    """
+    ticker = ticker.upper()
+
+    # Get latest quarterly or annual financials
+    query = text("""
+        WITH latest AS (
+            SELECT *
+            FROM financials
+            WHERE ticker = :ticker
+            ORDER BY period_end_date DESC
+            LIMIT 1
+        ),
+        prior_year AS (
+            SELECT revenue, eps_diluted, period_end_date
+            FROM financials
+            WHERE ticker = :ticker
+              AND period_end_date <= (SELECT period_end_date - INTERVAL '11 months' FROM latest)
+            ORDER BY period_end_date DESC
+            LIMIT 1
+        )
+        SELECT
+            l.*,
+            p.revenue as prior_revenue,
+            p.eps_diluted as prior_eps
+        FROM latest l
+        LEFT JOIN prior_year p ON TRUE
+    """)
+
+    result = await session.execute(query, {"ticker": ticker})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"Financial data not found for ticker {ticker}")
+
+    row_dict = row._asdict()
+
+    # Calculate YoY growth rates
+    revenue_growth = None
+    earnings_growth = None
+
+    if row_dict.get('prior_revenue') and row_dict.get('revenue'):
+        prior_rev = float(row_dict['prior_revenue'])
+        curr_rev = float(row_dict['revenue'])
+        if prior_rev > 0:
+            revenue_growth = ((curr_rev - prior_rev) / prior_rev) * 100
+
+    if row_dict.get('prior_eps') and row_dict.get('eps_diluted'):
+        prior_eps = float(row_dict['prior_eps'])
+        curr_eps = float(row_dict['eps_diluted'])
+        if prior_eps != 0:
+            earnings_growth = ((curr_eps - prior_eps) / abs(prior_eps)) * 100
+
+    return FinancialMetricsResponse(
+        ticker=ticker,
+        period_end_date=row_dict.get('period_end_date'),
+        fiscal_year=row_dict.get('fiscal_year'),
+        fiscal_quarter=row_dict.get('fiscal_quarter'),
+        gross_margin=float(row_dict['gross_margin']) if row_dict.get('gross_margin') else None,
+        operating_margin=float(row_dict['operating_margin']) if row_dict.get('operating_margin') else None,
+        net_margin=float(row_dict['net_margin']) if row_dict.get('net_margin') else None,
+        roe=float(row_dict['roe']) if row_dict.get('roe') else None,
+        roa=float(row_dict['roa']) if row_dict.get('roa') else None,
+        debt_to_equity=float(row_dict['debt_to_equity']) if row_dict.get('debt_to_equity') else None,
+        current_ratio=float(row_dict['current_ratio']) if row_dict.get('current_ratio') else None,
+        quick_ratio=float(row_dict['quick_ratio']) if row_dict.get('quick_ratio') else None,
+        pe_ratio=float(row_dict['pe_ratio']) if row_dict.get('pe_ratio') else None,
+        pb_ratio=float(row_dict['pb_ratio']) if row_dict.get('pb_ratio') else None,
+        ps_ratio=float(row_dict['ps_ratio']) if row_dict.get('ps_ratio') else None,
+        revenue_growth_yoy=revenue_growth,
+        earnings_growth_yoy=earnings_growth,
+        shares_outstanding=int(row_dict['shares_outstanding']) if row_dict.get('shares_outstanding') else None,
+        statement_type=row_dict.get('statement_type'),
+        data_as_of=row_dict.get('period_end_date')
+    )
+
+
+# ============================================================================
+# Risk Metrics Endpoints
+# ============================================================================
+
+@app.get("/api/risk/{ticker}", response_model=RiskMetricsResponse)
+async def get_risk_metrics(
+    ticker: str,
+    period: str = Query("1Y", description="Period for risk metrics (1Y, 3Y, 5Y)"),
+    session: AsyncSession = Depends(get_session)
+):
+    """Get risk metrics for a ticker.
+
+    Returns risk-adjusted performance metrics including Beta, Alpha,
+    Sharpe Ratio, and volatility measures.
+
+    Args:
+        ticker: Stock ticker symbol.
+        period: Time period (1Y, 3Y, 5Y).
+
+    Returns:
+        Risk metrics calculated over the specified period.
+
+    Raises:
+        HTTPException: If ticker not found.
+    """
+    ticker = ticker.upper()
+
+    query = text("""
+        SELECT
+            time,
+            ticker,
+            period,
+            alpha,
+            beta,
+            sharpe_ratio,
+            sortino_ratio,
+            std_dev,
+            max_drawdown,
+            var_5,
+            annualized_return,
+            downside_deviation,
+            data_points,
+            calculation_date
+        FROM risk_metrics
+        WHERE ticker = :ticker
+          AND period = :period
+        ORDER BY time DESC
+        LIMIT 1
+    """)
+
+    result = await session.execute(query, {"ticker": ticker, "period": period})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Risk metrics not found for ticker {ticker} with period {period}"
+        )
+
+    row_dict = row._asdict()
+
+    return RiskMetricsResponse(
+        ticker=ticker,
+        period=row_dict.get('period', period),
+        calculation_date=row_dict.get('time').date() if row_dict.get('time') else None,
+        beta=float(row_dict['beta']) if row_dict.get('beta') else None,
+        alpha=float(row_dict['alpha']) if row_dict.get('alpha') else None,
+        sharpe_ratio=float(row_dict['sharpe_ratio']) if row_dict.get('sharpe_ratio') else None,
+        sortino_ratio=float(row_dict['sortino_ratio']) if row_dict.get('sortino_ratio') else None,
+        volatility=float(row_dict['std_dev']) if row_dict.get('std_dev') else None,
+        max_drawdown=float(row_dict['max_drawdown']) if row_dict.get('max_drawdown') else None,
+        var_95=float(row_dict['var_5']) if row_dict.get('var_5') else None,
+        annualized_return=float(row_dict['annualized_return']) if row_dict.get('annualized_return') else None,
+        downside_deviation=float(row_dict['downside_deviation']) if row_dict.get('downside_deviation') else None,
+        data_points=int(row_dict['data_points']) if row_dict.get('data_points') else None
+    )
+
+
+# ============================================================================
+# Technical Indicators Endpoints
+# ============================================================================
+
+@app.get("/api/technical/{ticker}", response_model=TechnicalIndicatorsResponse)
+async def get_technical_indicators(
+    ticker: str,
+    session: AsyncSession = Depends(get_session)
+):
+    """Get latest technical indicators for a ticker.
+
+    Returns moving averages, oscillators (RSI, MACD), and Bollinger Bands.
+
+    Args:
+        ticker: Stock ticker symbol.
+
+    Returns:
+        Technical indicators for the ticker.
+
+    Raises:
+        HTTPException: If ticker not found.
+    """
+    ticker = ticker.upper()
+
+    query = text("""
+        SELECT
+            time,
+            ticker,
+            close,
+            sma_20,
+            sma_50,
+            sma_200,
+            ema_12,
+            ema_26,
+            rsi_14,
+            macd,
+            macd_signal,
+            macd_histogram,
+            bb_upper,
+            bb_middle,
+            bb_lower,
+            atr_14,
+            adx_14,
+            stoch_k,
+            stoch_d
+        FROM technical_indicators
+        WHERE ticker = :ticker
+        ORDER BY time DESC
+        LIMIT 1
+    """)
+
+    result = await session.execute(query, {"ticker": ticker})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Technical indicators not found for ticker {ticker}"
+        )
+
+    row_dict = row._asdict()
+
+    return TechnicalIndicatorsResponse(
+        ticker=ticker,
+        date=row_dict.get('time').date() if row_dict.get('time') else None,
+        sma_20=float(row_dict['sma_20']) if row_dict.get('sma_20') else None,
+        sma_50=float(row_dict['sma_50']) if row_dict.get('sma_50') else None,
+        sma_200=float(row_dict['sma_200']) if row_dict.get('sma_200') else None,
+        ema_12=float(row_dict['ema_12']) if row_dict.get('ema_12') else None,
+        ema_26=float(row_dict['ema_26']) if row_dict.get('ema_26') else None,
+        rsi_14=float(row_dict['rsi_14']) if row_dict.get('rsi_14') else None,
+        macd=float(row_dict['macd']) if row_dict.get('macd') else None,
+        macd_signal=float(row_dict['macd_signal']) if row_dict.get('macd_signal') else None,
+        macd_histogram=float(row_dict['macd_histogram']) if row_dict.get('macd_histogram') else None,
+        bb_upper=float(row_dict['bb_upper']) if row_dict.get('bb_upper') else None,
+        bb_middle=float(row_dict['bb_middle']) if row_dict.get('bb_middle') else None,
+        bb_lower=float(row_dict['bb_lower']) if row_dict.get('bb_lower') else None,
+        atr_14=float(row_dict['atr_14']) if row_dict.get('atr_14') else None,
+        adx_14=float(row_dict['adx_14']) if row_dict.get('adx_14') else None,
+        stoch_k=float(row_dict['stoch_k']) if row_dict.get('stoch_k') else None,
+        stoch_d=float(row_dict['stoch_d']) if row_dict.get('stoch_d') else None,
+        close_price=float(row_dict['close']) if row_dict.get('close') else None
+    )
 
 
 # Startup event

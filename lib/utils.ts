@@ -19,11 +19,13 @@ export function formatCurrency(amount: number): string {
 export function formatPercent(value: number | string): string {
   const num = typeof value === 'string' ? parseFloat(value) : value;
   if (isNaN(num)) return 'N/A';
+  // API returns percentages as whole numbers (e.g., 12.17 means 12.17%)
+  // Intl.NumberFormat with style: 'percent' multiplies by 100, so divide first
   return new Intl.NumberFormat('en-US', {
     style: 'percent',
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  }).format(num);
+  }).format(num / 100);
 }
 
 export function safeParseNumber(value: any, defaultValue: number = 0): number {
@@ -35,7 +37,12 @@ export function safeParseNumber(value: any, defaultValue: number = 0): number {
 }
 
 export function safeToFixed(value: any, decimals: number = 2): string {
-  const num = safeParseNumber(value, 0);
+  // Return N/A for null, undefined, or 'N/A' string values
+  if (value === null || value === undefined || value === 'N/A' || value === '') {
+    return 'N/A';
+  }
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  if (isNaN(num)) return 'N/A';
   return num.toFixed(decimals);
 }
 
