@@ -1,54 +1,60 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: ic-score-risk-metrics
+  name: ic-score-ttm-financials
   namespace: investorcenter
   labels:
-    app: ic-score-risk-metrics
+    app: ic-score-ttm-financials
     component: ic-score-pipeline
-    provider: calculated
-    phase: phase-3
+    phase: phase-2
 spec:
-  # Run daily at midnight UTC on weekdays (Tue-Sat after Mon-Fri market close)
-  # Order: price-update (10:30 PM) -> technical-indicators (11 PM) -> risk-metrics (midnight)
-  schedule: "0 0 * * 2-6"
+  # Run daily at 10:00 PM UTC (5:00 PM ET) - after SEC financials complete
+  schedule: "0 22 * * 1-5"
 
+  # Keep last 3 successful and 1 failed job for debugging
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
+
+  # Don't start new job if previous is still running
   concurrencyPolicy: Forbid
 
   jobTemplate:
     metadata:
       labels:
-        app: ic-score-risk-metrics
+        app: ic-score-ttm-financials
         component: ic-score-pipeline
-        provider: calculated
-        phase: phase-3
+        phase: phase-2
     spec:
+      # Retry failed jobs up to 2 times
       backoffLimit: 2
-      activeDeadlineSeconds: 14400  # 4 hours timeout
+
+      # Job timeout: 2 hours (TTM calculation is faster than data ingestion)
+      activeDeadlineSeconds: 7200
+
+      # Clean up completed jobs after 6 hours
       ttlSecondsAfterFinished: 21600
 
       template:
         metadata:
           labels:
-            app: ic-score-risk-metrics
+            app: ic-score-ttm-financials
             component: ic-score-pipeline
+            phase: phase-2
         spec:
           restartPolicy: OnFailure
 
           containers:
-          - name: risk-metrics-calculator
+          - name: ttm-financials-calculator
             image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
             imagePullPolicy: Always
 
             command: ["python"]
             args:
-            - "/app/pipelines/risk_metrics_calculator.py"
+            - "/app/pipelines/ttm_financials_calculator.py"
             - "--all"
 
             env:
-            # Database connection
+            # Database connection configuration
             - name: DB_HOST
               value: "postgres-simple-service"
             - name: DB_PORT
@@ -68,19 +74,22 @@ spec:
                   name: postgres-secret
                   key: password
 
+            # Python environment
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: PYTHONPATH
               value: "/app"
 
+            # Resource limits (moderate - calculation only, no API calls)
             resources:
               requests:
-                memory: "4Gi"
-                cpu: "2000m"
+                memory: "1Gi"
+                cpu: "500m"
               limits:
-                memory: "8Gi"
-                cpu: "4000m"
+                memory: "2Gi"
+                cpu: "1000m"
 
+            # Volume mounts for logs and temp files
             volumeMounts:
             - name: logs
               mountPath: /app/logs
@@ -93,6 +102,7 @@ spec:
           - name: tmp
             emptyDir: {}
 
+          # Security context
           securityContext:
             runAsNonRoot: true
             runAsUser: 1000

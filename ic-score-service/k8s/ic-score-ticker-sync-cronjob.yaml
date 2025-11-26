@@ -1,0 +1,54 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-ticker-sync
+  namespace: investorcenter
+  labels:
+    app: ic-score-ticker-sync
+spec:
+  # Run every Sunday at 2 AM UTC (weekly sync)
+  schedule: "0 2 * * 0"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            app: ic-score-ticker-sync
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: ticker-sync
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+            command:
+            - python3
+            - /app/scripts/sync_tickers_to_companies.py
+            - --priority-only
+            env:
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            resources:
+              requests:
+                memory: "256Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
