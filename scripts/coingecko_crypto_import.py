@@ -334,21 +334,15 @@ class CoinGeckoImporter:
                         self.stats['skipped'] += 1
                         continue
 
-                    # Check if crypto ticker exists (symbol must be unique across all asset types)
+                    # Check if this crypto ticker exists (using composite key: symbol + asset_type)
+                    # With the new schema, we can have both META stock and META crypto
                     cursor.execute(
-                        "SELECT id, asset_type FROM tickers WHERE symbol = %s",
+                        "SELECT id FROM tickers WHERE symbol = %s AND asset_type = 'crypto'",
                         (coin['symbol'],)
                     )
                     existing = cursor.fetchone()
 
                     if existing:
-                        # Check if it's a crypto ticker or different asset type
-                        if existing['asset_type'] != 'crypto':
-                            # Skip if symbol is already used by non-crypto asset
-                            logger.warning(f"Symbol {coin['symbol']} already exists as {existing['asset_type']}, skipping")
-                            self.stats['skipped'] += 1
-                            continue
-
                         # Update existing crypto ticker
                         cursor.execute("""
                             UPDATE tickers SET

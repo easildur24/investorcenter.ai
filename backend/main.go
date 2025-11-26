@@ -391,7 +391,7 @@ func searchSecurities(c *gin.Context) {
 		results[i] = gin.H{
 			"symbol":   stock.Symbol,
 			"name":     stock.Name,
-			"type":     "stock",
+			"type":     stock.AssetType,
 			"exchange": stock.Exchange,
 		}
 	}

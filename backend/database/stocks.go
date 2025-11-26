@@ -6,6 +6,8 @@ import (
 )
 
 // GetStockBySymbol retrieves stock information by symbol
+// When multiple assets have the same symbol (e.g., META stock and META crypto),
+// this prioritizes: stock > etf > index > crypto
 func GetStockBySymbol(symbol string) (*models.Stock, error) {
 	var stock models.Stock
 
@@ -22,6 +24,14 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 		       created_at, updated_at
 		FROM tickers
 		WHERE UPPER(symbol) = UPPER($1)
+		ORDER BY
+		  CASE asset_type
+		    WHEN 'stock' THEN 0
+		    WHEN 'etf' THEN 1
+		    WHEN 'index' THEN 2
+		    ELSE 3
+		  END
+		LIMIT 1
 	`
 
 	err := DB.Get(&stock, query, symbol)
@@ -33,6 +43,10 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 }
 
 // SearchStocks searches for stocks by symbol or name
+// Returns all matching assets, prioritizing:
+// 1. Exact symbol match (stocks before crypto)
+// 2. Symbol starts with query (stocks before crypto)
+// 3. Name contains query (stocks before crypto)
 func SearchStocks(query string, limit int) ([]models.Stock, error) {
 	var stocks []models.Stock
 
@@ -51,12 +65,21 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 		WHERE UPPER(symbol) LIKE UPPER($1)
 		   OR UPPER(name) LIKE UPPER($2)
 		ORDER BY
+		  -- First priority: match type (exact > starts with > contains)
 		  CASE
 		    WHEN UPPER(symbol) = UPPER($3) THEN 1
 		    WHEN UPPER(symbol) LIKE UPPER($4) THEN 2
 		    WHEN UPPER(name) LIKE UPPER($5) THEN 3
 		    ELSE 4
 		  END,
+		  -- Second priority: asset type (stock > etf > index > crypto)
+		  CASE asset_type
+		    WHEN 'stock' THEN 0
+		    WHEN 'etf' THEN 1
+		    WHEN 'index' THEN 2
+		    ELSE 3
+		  END,
+		  -- Third priority: alphabetical by symbol
 		  symbol
 		LIMIT $6
 	`
