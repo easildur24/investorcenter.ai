@@ -80,11 +80,11 @@ class TechnicalIndicatorsCalculator:
                 return [ticker.upper()]
 
             query = text("""
-                SELECT ticker
-                FROM stocks
-                WHERE ticker NOT LIKE '%-%'
-                  AND is_active = true
-                ORDER BY ticker
+                SELECT symbol AS ticker
+                FROM tickers
+                WHERE symbol NOT LIKE '%-%'
+                  AND active = true
+                ORDER BY symbol
                 LIMIT :limit
             """)
             result = await session.execute(query, {"limit": limit or 10000})

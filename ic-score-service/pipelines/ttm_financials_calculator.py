@@ -336,6 +336,15 @@ class TTMFinancialsCalculator:
         # Calculate TTM EPS using correct methodology
         eps_basic, eps_diluted = self.calculate_ttm_eps(annual_10k, quarters)
 
+        # FALLBACK: If complex EPS calculation failed but we have net_income and shares,
+        # calculate EPS simply as net_income / shares_outstanding
+        # This handles cases with fiscal year mismatches or missing prior year data
+        if eps_diluted is None or eps_basic is None:
+            # We'll calculate this after we get net_income from quarters
+            needs_eps_fallback = True
+        else:
+            needs_eps_fallback = False
+
         # For revenue and other metrics: Sum last 4 quarters (if we have them)
         # OR use annual 10-K if recent
         revenue = None
@@ -389,6 +398,17 @@ class TTMFinancialsCalculator:
         cash_and_equivalents = most_recent_q.get('cash_and_equivalents')
         short_term_debt = most_recent_q.get('short_term_debt')
         long_term_debt = most_recent_q.get('long_term_debt')
+
+        # EPS FALLBACK: Calculate from net_income / shares_outstanding if needed
+        if needs_eps_fallback and net_income is not None and shares_outstanding is not None and shares_outstanding > 0:
+            calculated_eps = round(net_income / shares_outstanding, 4)
+            if eps_basic is None:
+                eps_basic = calculated_eps
+            if eps_diluted is None:
+                eps_diluted = calculated_eps
+            logger.debug(
+                f"{ticker}: Used fallback EPS calculation (net_income/shares): ${calculated_eps:.4f}"
+            )
 
         # Determine TTM period
         if use_annual and annual_10k:

@@ -131,11 +131,12 @@ class RiskMetricsCalculator:
 
         async with self.db.session() as session:
             query = text("""
-                SELECT ticker
-                FROM stocks
-                WHERE ticker NOT LIKE '%-%'
-                  AND is_active = true
-                ORDER BY ticker
+                SELECT symbol AS ticker
+                FROM tickers
+                WHERE symbol NOT LIKE '%-%'
+                  AND active = true
+                  AND asset_type = 'stock'
+                ORDER BY symbol
                 LIMIT :limit
             """)
             result = await session.execute(query, {"limit": limit or 10000})

@@ -82,36 +82,36 @@ class SECFinancialsIngestion:
             if ticker:
                 # Single ticker
                 query = text("""
-                    SELECT ticker, cik
-                    FROM stocks
-                    WHERE ticker = :ticker AND cik IS NOT NULL
+                    SELECT symbol AS ticker, cik
+                    FROM tickers
+                    WHERE symbol = :ticker AND cik IS NOT NULL
                 """)
                 result = await session.execute(query, {"ticker": ticker.upper()})
             elif resume:
                 # Resume from stocks without recent financial data
                 query = text("""
-                    SELECT s.ticker, s.cik
-                    FROM stocks s
+                    SELECT s.symbol AS ticker, s.cik
+                    FROM tickers s
                     LEFT JOIN (
                         SELECT DISTINCT ticker
                         FROM financials
                         WHERE created_at > NOW() - INTERVAL '7 days'
-                    ) f ON s.ticker = f.ticker
+                    ) f ON s.symbol = f.ticker
                     WHERE s.cik IS NOT NULL
                       AND f.ticker IS NULL
-                      AND s.ticker NOT LIKE '%-%'
-                    ORDER BY s.ticker
+                      AND s.symbol NOT LIKE '%-%'
+                    ORDER BY s.symbol
                     LIMIT :limit
                 """)
                 result = await session.execute(query, {"limit": limit or 10000})
             else:
                 # All stocks or limited
                 query = text("""
-                    SELECT ticker, cik
-                    FROM stocks
+                    SELECT symbol AS ticker, cik
+                    FROM tickers
                     WHERE cik IS NOT NULL
-                      AND ticker NOT LIKE '%-%'
-                    ORDER BY ticker
+                      AND symbol NOT LIKE '%-%'
+                    ORDER BY symbol
                     LIMIT :limit
                 """)
                 result = await session.execute(query, {"limit": limit or 10000})

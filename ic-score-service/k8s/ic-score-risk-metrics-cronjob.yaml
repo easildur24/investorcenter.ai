@@ -39,7 +39,7 @@ spec:
 
           containers:
           - name: risk-metrics-calculator
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.6.2-risk-fix
             imagePullPolicy: Always
 
             command: ["python"]
@@ -75,11 +75,11 @@ spec:
 
             resources:
               requests:
-                memory: "4Gi"
-                cpu: "2000m"
+                memory: "512Mi"
+                cpu: "250m"
               limits:
-                memory: "8Gi"
-                cpu: "4000m"
+                memory: "2Gi"
+                cpu: "1000m"
 
             volumeMounts:
             - name: logs

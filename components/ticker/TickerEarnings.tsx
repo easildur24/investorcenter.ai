@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChartBarIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { ChartBarIcon } from '@heroicons/react/24/outline';
 import { safeToFixed, safeParseNumber, formatLargeNumber } from '@/lib/utils';
 
 interface TickerEarningsProps {
@@ -74,50 +74,43 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
           ))}
         </div>
       ) : earnings.length > 0 ? (
-        <div className="overflow-hidden">
+        <div className="overflow-x-auto -mx-6 px-6">
           {/* Table Header */}
-          <div className="grid grid-cols-5 gap-4 pb-3 mb-4 border-b border-gray-200 text-sm font-medium text-gray-500">
+          <div className="grid grid-cols-5 gap-2 pb-2 mb-3 border-b border-gray-200 text-xs font-medium text-gray-500 min-w-[320px]">
             <div>Period</div>
             <div className="text-right">EPS</div>
             <div className="text-right">Est.</div>
-            <div className="text-right">Surprise</div>
-            <div className="text-right">Revenue</div>
+            <div className="text-right">Surp.</div>
+            <div className="text-right">Rev.</div>
           </div>
 
           {/* Earnings Data */}
-          <div className="space-y-3">
-            {earnings.slice(0, 8).map((earning, index) => (
-              <div key={`${earning.year}-${earning.quarter}`} className="grid grid-cols-5 gap-4 items-center text-sm">
+          <div className="space-y-2 min-w-[320px]">
+            {earnings.slice(0, 8).map((earning) => (
+              <div key={`${earning.year}-${earning.quarter}`} className="grid grid-cols-5 gap-2 items-center text-xs">
                 <div>
                   <div className="font-medium text-gray-900">
                     {earning.quarter} {earning.year}
                   </div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-[10px] text-gray-500">
                     {formatDate(earning.reportDate)}
                   </div>
                 </div>
-                
+
                 <div className="text-right font-medium">
                   ${safeToFixed(earning.epsActual, 2)}
                 </div>
-                
+
                 <div className="text-right text-gray-600">
                   ${safeToFixed(earning.epsEstimate, 2)}
                 </div>
-                
+
                 <div className="text-right">
-                  <div className="flex items-center justify-end">
-                    {safeParseNumber(earning.epsSurprise) > 0 ? (
-                      <CheckCircleIcon className="h-4 w-4 text-green-500 mr-1" />
-                    ) : (
-                      <XCircleIcon className="h-4 w-4 text-red-500 mr-1" />
-                    )}
-                    <span className={safeParseNumber(earning.epsSurprise) > 0 ? 'text-green-600' : 'text-red-600'}>
-                      {safeToFixed(earning.epsSurprisePercent, 1)}%
-                    </span>
-                  </div>
+                  <span className={safeParseNumber(earning.epsSurprise) > 0 ? 'text-green-600' : 'text-red-600'}>
+                    {safeParseNumber(earning.epsSurprise) > 0 ? '✓' : '✗'} {safeToFixed(earning.epsSurprisePercent, 1)}%
+                  </span>
                 </div>
-                
+
                 <div className="text-right font-medium">
                   {formatLargeNumber(earning.revenueActual)}
                 </div>

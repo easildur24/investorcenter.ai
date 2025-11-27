@@ -36,6 +36,32 @@ Daily OHLCV (Open, High, Low, Close, Volume) price data for all tracked stocks.
 **CronJob:** `ic-score-daily-price-update`
 **History:** 10 years of historical data (backfilled)
 
+#### Historical Price Backfill
+
+For new deployments or when adding new tickers, use the historical price backfill script:
+
+```bash
+# Backfill all tickers with 10 years of data
+python -m pipelines.historical_price_backfill --all --resume
+
+# Backfill single ticker
+python -m pipelines.historical_price_backfill --ticker AAPL
+
+# Test on limited set first
+python -m pipelines.historical_price_backfill --limit 100 --resume
+```
+
+**Backfill Performance:**
+- Uses `tickers` table filtered for stocks + ETFs + ADRs + funds (~10,600 active tickers)
+- Expected time: ~2-4 hours with Polygon Business tier (unlimited req/sec)
+- `--resume` flag skips tickers that already have sufficient historical data
+
+**Database Indexes for Performance:**
+```sql
+-- Critical for backfill resume check
+CREATE INDEX idx_stock_prices_ticker_time ON stock_prices(ticker, time);
+```
+
 ---
 
 ### 2. Technical Indicators (`technical_indicators`)
@@ -344,24 +370,87 @@ Proprietary 10-factor stock scores.
 
 ---
 
-## User Data
+## Master Data Tables
 
-### 14. Companies (`companies`)
-Master list of tracked companies.
+### 14. Tickers (`tickers`) - Primary Master Table
+Master list of ALL tradeable assets from Polygon.io. This is the **source of truth** for the Go backend.
 
 | Column | Type | Description |
 |--------|------|-------------|
+| id | SERIAL | Primary key |
+| symbol | VARCHAR(50) | Ticker symbol (unique with asset_type) |
+| name | VARCHAR(255) | Company/asset name |
+| asset_type | VARCHAR(20) | 'stock', 'etf', 'crypto', 'index', etc. |
+| exchange | VARCHAR(50) | Exchange (NYSE, NASDAQ, etc.) |
+| cik | VARCHAR(20) | SEC CIK number |
+| active | BOOLEAN | Currently tradeable |
+| market | VARCHAR(20) | Market type ('stocks', 'crypto') |
+| locale | VARCHAR(10) | Region ('us') |
+
+**Data Source:** Polygon.io Tickers API
+**Update Cadency:** Daily via `polygon-ticker-update` CronJob
+**Row Count:** ~25,000 (includes stocks, ETFs, crypto, indexes)
+**Used By:** Go backend for ticker lookups, search, and display
+
+---
+
+### 15. Companies (`companies`) - IC Score Service Table
+**Subset of tickers** used by IC Score pipelines. Contains only securities that need IC Score calculations (stocks + ETFs).
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
 | ticker | VARCHAR(10) | Stock symbol (unique) |
 | name | VARCHAR(255) | Company name |
 | sector | VARCHAR(100) | GICS sector |
 | industry | VARCHAR(100) | Industry |
 | market_cap | BIGINT | Market capitalization |
 | exchange | VARCHAR(50) | Exchange (NYSE, NASDAQ) |
+| cik | VARCHAR(20) | SEC CIK number |
 | is_active | BOOLEAN | Currently tracked |
 
-**Data Source:** Polygon.io + Manual curation
+**Data Source:** Synced from `tickers` table via `sync_tickers_to_companies.py`
 **Update Cadency:** Weekly on Sundays at 2:00 AM UTC
 **CronJob:** `ic-score-ticker-sync`
+**Row Count:** ~10,000 (stocks + ETFs only, excludes indexes)
+**Used By:** All IC Score pipelines (price backfill, technical indicators, financials, etc.)
+
+### Relationship Between `tickers` and `companies`
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    tickers (~25,000)                     │
+│  ┌────────────┬────────────┬───────────┬──────────────┐ │
+│  │  stocks    │   ETFs     │  crypto   │   indexes    │ │
+│  │  (5,615)   │  (4,210)   │  (1,000)  │  (12,608)    │ │
+│  └─────┬──────┴─────┬──────┴───────────┴──────────────┘ │
+│        │            │                                    │
+│        └──────┬─────┘                                    │
+│               │ sync_tickers_to_companies.py             │
+│               ▼                                          │
+│  ┌────────────────────────┐                             │
+│  │   companies (~10,000)   │  ◄─── IC Score pipelines   │
+│  │   (stocks + ETFs)       │       use this table       │
+│  └────────────────────────┘                             │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Why Two Tables?**
+- `tickers`: Complete market data from Polygon (includes indexes which are calculated values with no price data)
+- `companies`: Curated subset for IC Score calculations (only securities with tradeable prices and SEC filings)
+
+**Sync Script:** `ic-score-service/scripts/sync_tickers_to_companies.py`
+```bash
+# Sync all missing tickers
+python scripts/sync_tickers_to_companies.py
+
+# Sync only priority stocks (active US stocks with CIK)
+python scripts/sync_tickers_to_companies.py --priority-only
+```
+
+---
+
+## User Data
 
 ---
 

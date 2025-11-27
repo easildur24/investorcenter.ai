@@ -138,13 +138,14 @@ class ICScoreCalculator:
         async with self.db.session() as session:
             if ticker:
                 query = text("""
-                    SELECT ticker, sector
-                    FROM stocks
-                    WHERE ticker = :ticker
+                    SELECT symbol AS ticker, sector
+                    FROM tickers
+                    WHERE symbol = :ticker
                 """)
                 result = await session.execute(query, {"ticker": ticker.upper()})
             else:
-                where_clauses = ["ticker NOT LIKE '%-%'", "is_active = true"]
+                # Only process stocks (not ETFs, indices, crypto, etc.)
+                where_clauses = ["symbol NOT LIKE '%-%'", "active = true", "asset_type = 'stock'"]
                 params = {}
 
                 if sector:
@@ -155,10 +156,10 @@ class ICScoreCalculator:
                     where_clauses.append("is_sp500 = true")
 
                 query_str = f"""
-                    SELECT ticker, sector
-                    FROM stocks
+                    SELECT symbol AS ticker, sector
+                    FROM tickers
                     WHERE {' AND '.join(where_clauses)}
-                    ORDER BY ticker
+                    ORDER BY symbol
                     LIMIT :limit
                 """
                 params['limit'] = limit or 10000
@@ -199,7 +200,7 @@ class ICScoreCalculator:
                 SELECT indicator_name, value
                 FROM technical_indicators
                 WHERE ticker = :ticker
-                  AND time >= NOW() - INTERVAL '7 days'
+                  AND time >= NOW() - INTERVAL '14 days'
                 ORDER BY time DESC
                 LIMIT 100
             """)
@@ -350,7 +351,42 @@ class ICScoreCalculator:
                 'prev_shares': int(prev_shares) if prev_shares else None
             }
 
-    def calculate_value_score(self, financial_data: Dict[str, Any], sector_data: Dict) -> Tuple[Optional[float], Dict]:
+    async def fetch_valuation_data(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch latest valuation ratios from valuation_ratios table.
+
+        This table contains TTM-based P/E, P/B, P/S ratios calculated by
+        the valuation_ratios_calculator pipeline using current stock prices.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT
+                    ttm_pe_ratio,
+                    ttm_pb_ratio,
+                    ttm_ps_ratio,
+                    stock_price,
+                    ttm_market_cap,
+                    calculation_date
+                FROM valuation_ratios
+                WHERE ticker = :ticker
+                ORDER BY calculation_date DESC
+                LIMIT 1
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                'pe_ratio': float(row[0]) if row[0] else None,
+                'pb_ratio': float(row[1]) if row[1] else None,
+                'ps_ratio': float(row[2]) if row[2] else None,
+                'stock_price': float(row[3]) if row[3] else None,
+                'market_cap': int(row[4]) if row[4] else None,
+                'calculation_date': row[5]
+            }
+
+    def calculate_value_score(self, valuation_data: Optional[Dict[str, Any]], sector_data: Dict) -> Tuple[Optional[float], Dict]:
         """Calculate value score based on P/E, P/B, P/S ratios vs sector median.
 
         Scoring methodology:
@@ -358,17 +394,20 @@ class ICScoreCalculator:
         - Scores normalized to 0-100 scale centered on benchmark values
         - P/E benchmark: ~15 (S&P 500 historical average)
         - P/B, P/S benchmarks: ~2 (typical fair value)
+
+        Args:
+            valuation_data: Dict with pe_ratio, pb_ratio, ps_ratio from valuation_ratios table
+            sector_data: Dict with sector median data (for future use)
         """
-        if not financial_data:
+        if not valuation_data:
             return None, {}
 
-        latest = financial_data.get('latest', {})
         metadata = {}
 
-        # Get valuation metrics
-        pe = latest.get('pe_ratio')
-        pb = latest.get('pb_ratio')
-        ps = latest.get('ps_ratio')
+        # Get valuation metrics from valuation_ratios table
+        pe = valuation_data.get('pe_ratio')
+        pb = valuation_data.get('pb_ratio')
+        ps = valuation_data.get('ps_ratio')
 
         if not any([pe, pb, ps]):
             return None, metadata
@@ -421,18 +460,23 @@ class ICScoreCalculator:
         # Calculate year-over-year growth rates
         scores = []
 
-        # Revenue growth
+        # Revenue growth (convert Decimal to float to avoid type errors)
         if historical[0].get('revenue') and historical[3].get('revenue'):
-            rev_growth = ((historical[0]['revenue'] / historical[3]['revenue']) - 1) * 100
-            # Normalize: 0% = 50, 20% = 100, -20% = 0
-            rev_score = max(0, min(100, 50 + rev_growth * growth_scale))
-            scores.append(rev_score)
-            metadata['revenue_growth_yoy'] = rev_growth
+            rev_current = float(historical[0]['revenue'])
+            rev_prior = float(historical[3]['revenue'])
+            if rev_prior > 0:
+                rev_growth = ((rev_current / rev_prior) - 1) * 100
+                # Normalize: 0% = 50, 20% = 100, -20% = 0
+                rev_score = max(0, min(100, 50 + rev_growth * growth_scale))
+                scores.append(rev_score)
+                metadata['revenue_growth_yoy'] = rev_growth
 
-        # EPS growth
+        # EPS growth (convert Decimal to float to avoid type errors)
         if historical[0].get('eps_diluted') and historical[3].get('eps_diluted'):
-            if historical[3]['eps_diluted'] > 0:
-                eps_growth = ((historical[0]['eps_diluted'] / historical[3]['eps_diluted']) - 1) * 100
+            eps_current = float(historical[0]['eps_diluted'])
+            eps_prior = float(historical[3]['eps_diluted'])
+            if eps_prior > 0:
+                eps_growth = ((eps_current / eps_prior) - 1) * 100
                 eps_score = max(0, min(100, 50 + eps_growth * growth_scale))
                 scores.append(eps_score)
                 metadata['eps_growth_yoy'] = eps_growth
@@ -732,6 +776,7 @@ class ICScoreCalculator:
         try:
             # Fetch all data sources
             financial_data = await self.fetch_financial_data(ticker)
+            valuation_data = await self.fetch_valuation_data(ticker)
             technical_data = await self.fetch_technical_data(ticker)
             insider_data = await self.fetch_insider_data(ticker)
             news_data = await self.fetch_news_sentiment_data(ticker)
@@ -742,8 +787,8 @@ class ICScoreCalculator:
             factor_scores = {}
             factor_metadata = {}
 
-            # Value score
-            value_score, value_meta = self.calculate_value_score(financial_data, {})
+            # Value score (uses valuation_ratios table for TTM P/E, P/B, P/S)
+            value_score, value_meta = self.calculate_value_score(valuation_data, {})
             if value_score is not None:
                 factor_scores['value'] = value_score
                 factor_metadata['value'] = value_meta

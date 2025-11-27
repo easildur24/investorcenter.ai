@@ -49,10 +49,38 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const dataPoints: ChartDataPoint[] = initialData.dataPoints;
   const prices = dataPoints.map(d => parseFloat(d.close));
   const volumes = dataPoints.map(d => d.volume);
-  const high = Math.max(...prices);
-  const low = Math.min(...prices);
-  const priceRange = high - low || 1;
+  const rawHigh = Math.max(...prices);
+  const rawLow = Math.min(...prices);
   const maxVolume = Math.max(...volumes);
+
+  // Calculate nice Y-axis ticks (round numbers like 250, 300, 350...)
+  const calculateNiceTicks = (min: number, max: number, tickCount: number = 5) => {
+    const range = max - min;
+    const roughStep = range / (tickCount - 1);
+
+    // Find a nice round step size
+    const magnitude = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const residual = roughStep / magnitude;
+    let niceStep: number;
+    if (residual <= 1.5) niceStep = magnitude;
+    else if (residual <= 3) niceStep = 2 * magnitude;
+    else if (residual <= 7) niceStep = 5 * magnitude;
+    else niceStep = 10 * magnitude;
+
+    // Calculate nice min and max
+    const niceMin = Math.floor(min / niceStep) * niceStep;
+    const niceMax = Math.ceil(max / niceStep) * niceStep;
+
+    // Generate ticks
+    const ticks: number[] = [];
+    for (let tick = niceMin; tick <= niceMax; tick += niceStep) {
+      ticks.push(tick);
+    }
+    return { ticks, min: niceMin, max: niceMax };
+  };
+
+  const { ticks: yTicks, min: low, max: high } = calculateNiceTicks(rawLow, rawHigh);
+  const priceRange = high - low || 1;
 
   // Use real current price, not chart data
   const firstPrice = prices[0];
@@ -63,27 +91,64 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const ma50 = useMemo(() => calculateSMA(prices, 50), [prices]);
   const ma200 = useMemo(() => calculateSMA(prices, 200), [prices]);
 
-  // Chart dimensions - adjusted for volume section
-  const totalChartHeight = showVolume ? 380 : 300;
-  const priceChartHeight = showVolume ? 260 : 300;
+  // Chart dimensions - adjusted for volume section and axis labels
+  const totalChartHeight = showVolume ? 420 : 340;
+  const priceChartHeight = showVolume ? 280 : 300;
   const volumeChartHeight = 80;
+  const xAxisHeight = 30;
   const chartWidth = 900;
-  const padding = 40;
-  const priceScale = (priceChartHeight - 2 * padding) / priceRange;
+  const paddingLeft = 60;  // More space for Y-axis labels
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 10;
+  const plotWidth = chartWidth - paddingLeft - paddingRight;
+  const plotHeight = priceChartHeight - paddingTop - paddingBottom;
+  const priceScale = plotHeight / priceRange;
   const volumeScale = volumeChartHeight / maxVolume;
+
+  // Generate X-axis date labels
+  const getDateLabels = () => {
+    if (dataPoints.length < 2) return [];
+    const period = initialData.period || '1Y';
+    let labelCount = 6;
+
+    const labels: { date: Date; x: number; label: string }[] = [];
+    const step = Math.floor(dataPoints.length / (labelCount - 1));
+
+    for (let i = 0; i < labelCount; i++) {
+      const index = Math.min(i * step, dataPoints.length - 1);
+      const point = dataPoints[index];
+      const date = new Date(point.timestamp);
+      const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+
+      // Format based on period
+      let label: string;
+      if (period === '1D' || period === '5D') {
+        label = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } else if (period === '1M' || period === '3M') {
+        label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } else {
+        label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      }
+      labels.push({ date, x, label });
+    }
+    return labels;
+  };
+
+  const dateLabels = getDateLabels();
 
   // Generate SVG paths for price line
   const pathData = dataPoints.map((point, index) => {
-    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
-    const y = priceChartHeight - padding - (parseFloat(point.close) - low) * priceScale;
+    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+    const y = paddingTop + plotHeight - (parseFloat(point.close) - low) * priceScale;
     return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
   }).join(' ');
 
   // Generate SVG path for 50-day MA
   const ma50PathData = ma50.map((value, index) => {
     if (value === null) return '';
-    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
-    const y = priceChartHeight - padding - (value - low) * priceScale;
+    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+    const y = paddingTop + plotHeight - (value - low) * priceScale;
     // Find the first non-null index to start the path
     const isFirst = ma50.slice(0, index).every(v => v === null);
     return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
@@ -92,18 +157,18 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   // Generate SVG path for 200-day MA
   const ma200PathData = ma200.map((value, index) => {
     if (value === null) return '';
-    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
-    const y = priceChartHeight - padding - (value - low) * priceScale;
+    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+    const y = paddingTop + plotHeight - (value - low) * priceScale;
     const isFirst = ma200.slice(0, index).every(v => v === null);
     return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
   }).filter(Boolean).join(' ');
 
   // Volume bar data
   const volumeBars = dataPoints.map((point, index) => {
-    const x = padding + (index / (dataPoints.length - 1)) * (chartWidth - 2 * padding);
-    const barWidth = Math.max(1, (chartWidth - 2 * padding) / dataPoints.length - 1);
+    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+    const barWidth = Math.max(1, plotWidth / dataPoints.length - 1);
     const barHeight = point.volume * volumeScale;
-    const y = priceChartHeight + volumeChartHeight - barHeight;
+    const y = priceChartHeight + xAxisHeight + volumeChartHeight - barHeight;
     const isUp = parseFloat(point.close) >= parseFloat(point.open);
     return { x: x - barWidth / 2, y, width: barWidth, height: barHeight, isUp };
   });
@@ -123,9 +188,10 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
     const handleMouseMove = (e: MouseEvent) => {
       const rect = chart.getBoundingClientRect();
       const x = e.clientX - rect.left;
+      const scaleX = chartWidth / rect.width;
 
       // Calculate which data point we're hovering over
-      const dataIndex = Math.round(((x - 40) / (chartWidth - 80)) * (dataPoints.length - 1));
+      const dataIndex = Math.round(((x * scaleX - paddingLeft) / plotWidth) * (dataPoints.length - 1));
 
       if (dataIndex >= 0 && dataIndex < dataPoints.length) {
         const point = dataPoints[dataIndex];
@@ -223,7 +289,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       chart.removeEventListener('mousemove', handleMouseMove);
       chart.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [dataPoints, chartWidth, symbol]);
+  }, [dataPoints, chartWidth, symbol, paddingLeft, plotWidth]);
 
   return (
     <div className="p-6">
@@ -281,30 +347,70 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       </div>
 
       {/* Enhanced Interactive SVG Chart */}
-      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: showVolume ? '380px' : '300px' }}>
+      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: showVolume ? '420px' : '340px' }}>
         <svg
           id="price-chart"
           width={chartWidth}
           height={totalChartHeight}
           className="w-full h-full cursor-crosshair"
           data-symbol={symbol}
-          data-chart-data={JSON.stringify(dataPoints)}
+          viewBox={`0 0 ${chartWidth} ${totalChartHeight}`}
+          preserveAspectRatio="xMidYMid meet"
         >
-          {/* Enhanced Grid */}
+          {/* Gradient definition */}
           <defs>
-            <pattern id="chartGrid" width="60" height="40" patternUnits="userSpaceOnUse">
-              <path d="M 60 0 L 0 0 0 40" fill="none" stroke="#f1f5f9" strokeWidth="1"/>
-            </pattern>
             <linearGradient id="priceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{stopColor: '#10b981', stopOpacity: 0.3}} />
-              <stop offset="100%" style={{stopColor: '#10b981', stopOpacity: 0.05}} />
+              <stop offset="0%" style={{stopColor: '#10b981', stopOpacity: 0.2}} />
+              <stop offset="100%" style={{stopColor: '#10b981', stopOpacity: 0.02}} />
             </linearGradient>
           </defs>
-          <rect width="100%" height={priceChartHeight} fill="url(#chartGrid)" />
+
+          {/* Background for plot area */}
+          <rect x={paddingLeft} y={paddingTop} width={plotWidth} height={plotHeight} fill="#fafafa" />
+
+          {/* Y-axis grid lines and labels */}
+          {yTicks.map((tick, i) => {
+            const y = paddingTop + plotHeight - (tick - low) * priceScale;
+            return (
+              <g key={`y-${i}`}>
+                <line
+                  x1={paddingLeft}
+                  y1={y}
+                  x2={chartWidth - paddingRight}
+                  y2={y}
+                  stroke="#e5e7eb"
+                  strokeWidth="1"
+                />
+                <text
+                  x={paddingLeft - 8}
+                  y={y + 4}
+                  textAnchor="end"
+                  className="fill-gray-500"
+                  style={{ fontSize: '12px' }}
+                >
+                  {tick >= 1000 ? `$${(tick / 1000).toFixed(0)}K` : `$${tick.toFixed(0)}`}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* X-axis date labels */}
+          {dateLabels.map((label, i) => (
+            <text
+              key={`x-${i}`}
+              x={label.x}
+              y={priceChartHeight + 18}
+              textAnchor="middle"
+              className="fill-gray-500"
+              style={{ fontSize: '11px' }}
+            >
+              {label.label}
+            </text>
+          ))}
 
           {/* Price area with gradient */}
           <path
-            d={`${pathData} L ${chartWidth - padding} ${priceChartHeight - padding} L ${padding} ${priceChartHeight - padding} Z`}
+            d={`${pathData} L ${chartWidth - paddingRight} ${paddingTop + plotHeight} L ${paddingLeft} ${paddingTop + plotHeight} Z`}
             fill="url(#priceGradient)"
             stroke="none"
           />
@@ -332,54 +438,41 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             />
           )}
 
-          {/* Enhanced price line */}
+          {/* Price line */}
           <path
             d={pathData}
             fill="none"
             stroke="#10b981"
-            strokeWidth="3"
+            strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="drop-shadow-sm"
           />
 
-          {/* Y-axis labels */}
-          <text x="10" y="30" className="text-sm fill-gray-700 font-semibold">${high.toFixed(2)}</text>
-          <text x="10" y={priceChartHeight - 15} className="text-sm fill-gray-700 font-semibold">${low.toFixed(2)}</text>
-
-          {/* Enhanced current price indicator */}
+          {/* Current price indicator dot */}
           <circle
-            cx={chartWidth - padding}
-            cy={priceChartHeight - padding - (currentPrice - low) * priceScale}
-            r="8"
+            cx={chartWidth - paddingRight}
+            cy={paddingTop + plotHeight - (currentPrice - low) * priceScale}
+            r="6"
             fill="#10b981"
             stroke="white"
-            strokeWidth="4"
-            className="drop-shadow-lg"
+            strokeWidth="3"
           />
-
-          {/* Current price label */}
-          <text
-            x={chartWidth - padding - 60}
-            y={priceChartHeight - padding - (currentPrice - low) * priceScale + 5}
-            className="text-sm fill-white font-bold"
-            textAnchor="end"
-          >
-            ${currentPrice.toFixed(2)}
-          </text>
 
           {/* Volume Bars Section */}
           {showVolume && (
             <g>
               {/* Volume divider line */}
               <line
-                x1={padding}
-                y1={priceChartHeight}
-                x2={chartWidth - padding}
-                y2={priceChartHeight}
+                x1={paddingLeft}
+                y1={priceChartHeight + xAxisHeight}
+                x2={chartWidth - paddingRight}
+                y2={priceChartHeight + xAxisHeight}
                 stroke="#e5e7eb"
                 strokeWidth="1"
               />
+
+              {/* Volume label */}
+              <text x={paddingLeft - 8} y={priceChartHeight + xAxisHeight + 15} textAnchor="end" className="fill-gray-400" style={{ fontSize: '10px' }}>Vol</text>
 
               {/* Volume bars */}
               {volumeBars.map((bar, index) => (
@@ -389,14 +482,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
                   y={bar.y}
                   width={bar.width}
                   height={bar.height}
-                  fill={bar.isUp ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)'}
-                  stroke={bar.isUp ? '#10b981' : '#ef4444'}
-                  strokeWidth="0.5"
+                  fill={bar.isUp ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'}
                 />
               ))}
-
-              {/* Volume label */}
-              <text x="10" y={priceChartHeight + 15} className="text-xs fill-gray-400">Volume</text>
             </g>
           )}
         </svg>

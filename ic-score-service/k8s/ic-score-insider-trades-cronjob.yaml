@@ -35,10 +35,11 @@ spec:
             component: ic-score-pipeline
         spec:
           restartPolicy: OnFailure
+          nodeName: ip-10-0-10-183.ec2.internal
 
           containers:
           - name: insider-trades-ingestion
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.6-insider-fix3
             imagePullPolicy: Always
 
             command: ["python"]
@@ -75,11 +76,11 @@ spec:
 
             resources:
               requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
                 memory: "1Gi"
                 cpu: "500m"
-              limits:
-                memory: "2Gi"
-                cpu: "1000m"
 
             volumeMounts:
             - name: logs

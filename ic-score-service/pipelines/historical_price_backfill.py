@@ -18,7 +18,7 @@ import logging
 import os
 import sys
 from datetime import datetime, timedelta
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 import asyncpg
 
@@ -89,7 +89,7 @@ class HistoricalPriceBackfill:
         self.polygon.close()
 
     async def get_tickers(self, limit: Optional[int] = None) -> List[str]:
-        """Get all tickers from companies table.
+        """Get all tickers from tickers table (stocks + ETFs only).
 
         Args:
             limit: Limit number of tickers.
@@ -98,42 +98,37 @@ class HistoricalPriceBackfill:
             List of ticker symbols.
         """
         query = """
-            SELECT DISTINCT ticker
-            FROM companies
-            WHERE ticker IS NOT NULL
-            ORDER BY ticker
+            SELECT DISTINCT symbol
+            FROM tickers
+            WHERE symbol IS NOT NULL
+              AND active = true
+              AND asset_type IN ('stock', 'etf', 'adr', 'fund')
+            ORDER BY symbol
         """
         if limit:
             query += f" LIMIT {limit}"
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query)
-            return [row['ticker'] for row in rows]
+            return [row['symbol'] for row in rows]
 
-    async def get_ticker_data_coverage(self, ticker: str) -> Tuple[int, Optional[datetime], Optional[datetime]]:
-        """Get existing data coverage for a ticker.
+    async def get_oldest_price_date(self, ticker: str) -> Optional[datetime]:
+        """Get the oldest price date for a ticker.
 
         Args:
             ticker: Stock ticker symbol.
 
         Returns:
-            Tuple of (row_count, oldest_date, newest_date).
+            Oldest price date or None if no data exists.
         """
         query = """
-            SELECT
-                COUNT(*) as count,
-                MIN(time) as oldest,
-                MAX(time) as newest
+            SELECT MIN(time) as oldest
             FROM stock_prices
             WHERE ticker = $1
         """
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow(query, ticker)
-            return (
-                row['count'],
-                row['oldest'],
-                row['newest']
-            )
+            return row['oldest'] if row else None
 
     async def should_skip_ticker(self, ticker: str) -> bool:
         """Check if ticker should be skipped (already has sufficient data).
@@ -147,13 +142,14 @@ class HistoricalPriceBackfill:
         if not self.resume:
             return False
 
-        count, oldest, newest = await self.get_ticker_data_coverage(ticker)
+        oldest = await self.get_oldest_price_date(ticker)
 
         # Skip if we already have data going back far enough
-        target_oldest = datetime.now() - timedelta(days=self.years * 365)
-
-        if count > 0 and oldest and oldest.replace(tzinfo=None) <= target_oldest:
-            return True
+        # If oldest is not None, there's at least one row
+        if oldest:
+            target_oldest = datetime.now() - timedelta(days=self.years * 365)
+            if oldest.replace(tzinfo=None) <= target_oldest:
+                return True
 
         return False
 
