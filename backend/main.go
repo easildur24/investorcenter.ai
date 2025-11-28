@@ -192,6 +192,12 @@ func main() {
 			analytics.GET("/screener", runStockScreener)
 		}
 
+		// Screener endpoints
+		screener := v1.Group("/screener")
+		{
+			screener.GET("/stocks", handlers.GetScreenerStocks)
+		}
+
 		// User endpoints (deprecated - use /auth routes instead)
 		users := v1.Group("/users")
 		{

@@ -234,6 +234,61 @@ class ApiClient {
     return this.request(`/analytics/screener${query}`);
   }
 
+  // Screener methods
+  async getScreenerStocks(params?: {
+    page?: number;
+    limit?: number;
+    sort?: string;
+    order?: 'asc' | 'desc';
+    sectors?: string;
+    market_cap_min?: number;
+    market_cap_max?: number;
+    pe_min?: number;
+    pe_max?: number;
+    dividend_yield_min?: number;
+    dividend_yield_max?: number;
+    revenue_growth_min?: number;
+    revenue_growth_max?: number;
+    ic_score_min?: number;
+    ic_score_max?: number;
+    asset_type?: string;
+  }) {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== '') {
+          queryParams.append(key, String(value));
+        }
+      });
+    }
+    const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
+    return this.request<{
+      data: Array<{
+        symbol: string;
+        name: string;
+        sector: string;
+        industry: string;
+        market_cap: number | null;
+        price: number | null;
+        pe_ratio: number | null;
+        pb_ratio: number | null;
+        ps_ratio: number | null;
+        roe: number | null;
+        revenue_growth: number | null;
+        dividend_yield: number | null;
+        beta: number | null;
+        ic_score: number | null;
+      }>;
+      meta: {
+        total: number;
+        page: number;
+        limit: number;
+        total_pages: number;
+        timestamp: string;
+      };
+    }>(`/screener/stocks${query}`);
+  }
+
   // Volume data methods (hybrid: database + real-time)
   async getTickerVolume(symbol: string, realtime: boolean = false) {
     return this.request<{

@@ -171,10 +171,8 @@ export default function ScreenerPage() {
         setFilteredStocks(result.data || []);
       } catch (error) {
         console.error('Error fetching stocks:', error);
-        // Use mock data for now
-        const mockStocks = generateMockStocks();
-        setStocks(mockStocks);
-        setFilteredStocks(mockStocks);
+        setStocks([]);
+        setFilteredStocks([]);
       } finally {
         setLoading(false);
       }
@@ -577,37 +575,4 @@ function FilterInput({
   }
 
   return null;
-}
-
-// Mock data generator for development
-function generateMockStocks(): Stock[] {
-  const symbols = [
-    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'META', 'NVDA', 'TSLA', 'BRK.B', 'JPM', 'JNJ',
-    'V', 'PG', 'UNH', 'HD', 'MA', 'DIS', 'PYPL', 'NFLX', 'ADBE', 'CRM',
-    'INTC', 'CSCO', 'PEP', 'ABT', 'TMO', 'NKE', 'MRK', 'WMT', 'VZ', 'T',
-  ];
-
-  const sectors = [
-    'Technology', 'Healthcare', 'Financial Services', 'Consumer Cyclical',
-    'Consumer Defensive', 'Industrials', 'Communication Services',
-  ];
-
-  return symbols.map(symbol => ({
-    symbol,
-    name: `${symbol} Inc.`,
-    sector: sectors[Math.floor(Math.random() * sectors.length)],
-    industry: 'Various',
-    market_cap: Math.random() * 2e12 + 10e9,
-    price: Math.random() * 500 + 50,
-    change_percent: (Math.random() - 0.5) * 10,
-    pe_ratio: Math.random() * 50 + 5,
-    pb_ratio: Math.random() * 10 + 1,
-    ps_ratio: Math.random() * 15 + 1,
-    roe: Math.random() * 40,
-    revenue_growth: (Math.random() - 0.3) * 50,
-    earnings_growth: (Math.random() - 0.3) * 60,
-    dividend_yield: Math.random() * 5,
-    beta: Math.random() * 1.5 + 0.5,
-    ic_score: Math.floor(Math.random() * 60 + 40),
-  }));
 }
