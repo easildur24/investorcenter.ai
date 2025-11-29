@@ -133,9 +133,18 @@ func main() {
 		{
 			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                // Get IC Score for a ticker
 			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory) // Get IC Score history
-			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)     // Get financial metrics from SEC filings
+			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)     // Get financial metrics from SEC filings (legacy)
 			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                // Get risk metrics (Beta, Alpha, Sharpe)
 			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)   // Get technical indicators
+
+			// Financial Statements endpoints (SEC EDGAR data)
+			financialsHandler := handlers.NewFinancialsHandler()
+			stocks.GET("/:ticker/financials/all", financialsHandler.GetAllFinancials)           // Get all financial statements summary
+			stocks.GET("/:ticker/financials/income", financialsHandler.GetIncomeStatements)     // Get income statements
+			stocks.GET("/:ticker/financials/balance", financialsHandler.GetBalanceSheets)       // Get balance sheets
+			stocks.GET("/:ticker/financials/cashflow", financialsHandler.GetCashFlowStatements) // Get cash flow statements
+			stocks.GET("/:ticker/financials/ratios", financialsHandler.GetRatios)               // Get financial ratios
+			stocks.POST("/:ticker/financials/refresh", financialsHandler.RefreshFinancials)     // Refresh financial data
 		}
 
 		// IC Scores admin endpoints (list all scores)
