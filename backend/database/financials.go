@@ -344,9 +344,15 @@ func abs(x float64) float64 {
 	return x
 }
 
+// companyMetadataRow is a helper struct for scanning partial company metadata
+type companyMetadataRow struct {
+	Name string `db:"name"`
+	CIK  string `db:"cik"`
+}
+
 // GetCompanyMetadata retrieves company metadata for a ticker
 func GetCompanyMetadata(ticker string) (*models.FinancialsMetadata, error) {
-	var stock models.Stock
+	var row companyMetadataRow
 	query := `
 		SELECT name, cik
 		FROM tickers
@@ -355,7 +361,7 @@ func GetCompanyMetadata(ticker string) (*models.FinancialsMetadata, error) {
 		LIMIT 1
 	`
 
-	err := DB.Get(&stock, query, ticker)
+	err := DB.Get(&row, query, ticker)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return nil, fmt.Errorf("ticker not found: %s", ticker)
@@ -364,12 +370,12 @@ func GetCompanyMetadata(ticker string) (*models.FinancialsMetadata, error) {
 	}
 
 	var cik *string
-	if stock.CIK != "" {
-		cik = &stock.CIK
+	if row.CIK != "" {
+		cik = &row.CIK
 	}
 
 	return &models.FinancialsMetadata{
-		CompanyName: stock.Name,
+		CompanyName: row.Name,
 		CIK:         cik,
 	}, nil
 }
@@ -442,4 +448,180 @@ func GetFinancialStatementsCount(ticker string, statementType models.StatementTy
 	}
 
 	return count, nil
+}
+
+// ICScoreRatioRecord represents a single period's ratio data from IC Score tables
+type ICScoreRatioRecord struct {
+	Ticker          string   `db:"ticker"`
+	CalculationDate string   `db:"calculation_date"`
+	StockPrice      *float64 `db:"stock_price"`
+	// Valuation ratios
+	TTMPERatio   *float64 `db:"ttm_pe_ratio"`
+	TTMPBRatio   *float64 `db:"ttm_pb_ratio"`
+	TTMPSRatio   *float64 `db:"ttm_ps_ratio"`
+	TTMMarketCap *int64   `db:"ttm_market_cap"`
+	// Profitability
+	GrossMargin     *float64 `db:"gross_margin"`
+	OperatingMargin *float64 `db:"operating_margin"`
+	NetMargin       *float64 `db:"net_margin"`
+	EBITDAMargin    *float64 `db:"ebitda_margin"`
+	// Returns
+	ROE  *float64 `db:"roe"`
+	ROA  *float64 `db:"roa"`
+	ROIC *float64 `db:"roic"`
+	// Liquidity
+	CurrentRatio *float64 `db:"current_ratio"`
+	QuickRatio   *float64 `db:"quick_ratio"`
+	// Leverage
+	DebtToEquity     *float64 `db:"debt_to_equity"`
+	DebtToAssets     *float64 `db:"debt_to_assets"`
+	InterestCoverage *float64 `db:"interest_coverage"`
+	// Valuation extended
+	EnterpriseValue *float64 `db:"enterprise_value"`
+	EVToRevenue     *float64 `db:"ev_to_revenue"`
+	EVToEBITDA      *float64 `db:"ev_to_ebitda"`
+	// Growth
+	RevenueGrowthYoY *float64 `db:"revenue_growth_yoy"`
+	EPSGrowthYoY     *float64 `db:"eps_growth_yoy"`
+	// Dividends
+	DividendYield *float64 `db:"dividend_yield"`
+	PayoutRatio   *float64 `db:"payout_ratio"`
+}
+
+// GetICScoreRatios retrieves financial ratios from IC Score tables (valuation_ratios + fundamental_metrics_extended)
+func GetICScoreRatios(ticker string, limit int) ([]ICScoreRatioRecord, error) {
+	if DB == nil {
+		return nil, fmt.Errorf("database not connected")
+	}
+
+	if limit <= 0 {
+		limit = 8
+	}
+
+	// Join valuation_ratios and fundamental_metrics_extended on ticker and calculation_date
+	query := `
+		SELECT
+			v.ticker,
+			v.calculation_date::text as calculation_date,
+			v.stock_price,
+			v.ttm_pe_ratio,
+			v.ttm_pb_ratio,
+			v.ttm_ps_ratio,
+			v.ttm_market_cap,
+			m.gross_margin,
+			m.operating_margin,
+			m.net_margin,
+			m.ebitda_margin,
+			m.roe,
+			m.roa,
+			m.roic,
+			m.current_ratio,
+			m.quick_ratio,
+			m.debt_to_equity,
+			CASE WHEN m.debt_to_equity IS NOT NULL THEN m.debt_to_equity / (1 + m.debt_to_equity) ELSE NULL END as debt_to_assets,
+			m.interest_coverage,
+			m.enterprise_value,
+			m.ev_to_revenue,
+			m.ev_to_ebitda,
+			m.revenue_growth_yoy,
+			m.eps_growth_yoy,
+			m.dividend_yield,
+			m.payout_ratio
+		FROM valuation_ratios v
+		LEFT JOIN fundamental_metrics_extended m
+			ON v.ticker = m.ticker AND v.calculation_date = m.calculation_date
+		WHERE UPPER(v.ticker) = UPPER($1)
+		ORDER BY v.calculation_date DESC
+		LIMIT $2
+	`
+
+	var records []ICScoreRatioRecord
+	err := DB.Select(&records, query, ticker, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get IC Score ratios: %w", err)
+	}
+
+	return records, nil
+}
+
+// ConvertICScoreRatiosToFinancialPeriods converts IC Score ratio records to the API response format
+func ConvertICScoreRatiosToFinancialPeriods(records []ICScoreRatioRecord) []models.FinancialPeriod {
+	periods := make([]models.FinancialPeriod, len(records))
+
+	for i, rec := range records {
+		data := make(map[string]interface{})
+
+		// Valuation ratios
+		if rec.TTMPERatio != nil {
+			data["price_to_earnings"] = *rec.TTMPERatio
+		}
+		if rec.TTMPBRatio != nil {
+			data["price_to_book"] = *rec.TTMPBRatio
+		}
+		if rec.TTMPSRatio != nil {
+			data["price_to_sales"] = *rec.TTMPSRatio
+		}
+		if rec.EVToEBITDA != nil {
+			data["enterprise_value_to_ebitda"] = *rec.EVToEBITDA
+		}
+
+		// Profitability margins (stored as decimals, convert to percentage)
+		if rec.GrossMargin != nil {
+			data["gross_margin"] = *rec.GrossMargin * 100
+		}
+		if rec.OperatingMargin != nil {
+			data["operating_margin"] = *rec.OperatingMargin * 100
+		}
+		if rec.NetMargin != nil {
+			data["net_profit_margin"] = *rec.NetMargin * 100
+		}
+
+		// Returns (stored as decimals, convert to percentage)
+		if rec.ROE != nil {
+			data["return_on_equity"] = *rec.ROE * 100
+		}
+		if rec.ROA != nil {
+			data["return_on_assets"] = *rec.ROA * 100
+		}
+		if rec.ROIC != nil {
+			data["return_on_invested_capital"] = *rec.ROIC * 100
+		}
+
+		// Liquidity ratios (already as ratios)
+		if rec.CurrentRatio != nil {
+			data["current_ratio"] = *rec.CurrentRatio
+		}
+		if rec.QuickRatio != nil {
+			data["quick_ratio"] = *rec.QuickRatio
+		}
+
+		// Leverage ratios
+		if rec.DebtToEquity != nil {
+			data["debt_to_equity"] = *rec.DebtToEquity
+		}
+		if rec.DebtToAssets != nil {
+			data["debt_to_assets"] = *rec.DebtToAssets * 100 // Convert to percentage
+		}
+		if rec.InterestCoverage != nil {
+			data["interest_coverage"] = *rec.InterestCoverage
+		}
+
+		// Parse the calculation_date to get fiscal year
+		// Format is YYYY-MM-DD
+		fiscalYear := 0
+		if len(rec.CalculationDate) >= 4 {
+			fmt.Sscanf(rec.CalculationDate, "%d", &fiscalYear)
+		}
+
+		periods[i] = models.FinancialPeriod{
+			FiscalYear:    fiscalYear,
+			FiscalQuarter: nil, // Ratios are typically not quarterly
+			PeriodEnd:     rec.CalculationDate,
+			FiledDate:     nil,
+			Data:          data,
+			YoYChange:     nil, // Could calculate if we have previous year data
+		}
+	}
+
+	return periods
 }

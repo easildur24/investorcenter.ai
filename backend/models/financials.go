@@ -73,12 +73,12 @@ type FinancialStatement struct {
 
 // FinancialPeriod represents a single period's financial data for API response
 type FinancialPeriod struct {
-	FiscalYear    int                     `json:"fiscal_year"`
-	FiscalQuarter *int                    `json:"fiscal_quarter,omitempty"`
-	PeriodEnd     string                  `json:"period_end"`
-	FiledDate     *string                 `json:"filed_date,omitempty"`
-	Data          map[string]interface{}  `json:"data"`
-	YoYChange     map[string]*float64     `json:"yoy_change,omitempty"`
+	FiscalYear    int                    `json:"fiscal_year"`
+	FiscalQuarter *int                   `json:"fiscal_quarter,omitempty"`
+	PeriodEnd     string                 `json:"period_end"`
+	FiledDate     *string                `json:"filed_date,omitempty"`
+	Data          map[string]interface{} `json:"data"`
+	YoYChange     map[string]*float64    `json:"yoy_change,omitempty"`
 }
 
 // FinancialsMetadata contains company metadata for financial statements
@@ -108,11 +108,11 @@ type FinancialsParams struct {
 
 // PolygonFinancialsResponse represents the Polygon.io financials API response
 type PolygonFinancialsResponse struct {
-	Status     string                  `json:"status"`
-	RequestID  string                  `json:"request_id"`
-	Count      int                     `json:"count"`
-	Results    []PolygonFinancialsData `json:"results"`
-	NextURL    *string                 `json:"next_url,omitempty"`
+	Status    string                  `json:"status"`
+	RequestID string                  `json:"request_id"`
+	Count     int                     `json:"count"`
+	Results   []PolygonFinancialsData `json:"results"`
+	NextURL   *string                 `json:"next_url,omitempty"`
 }
 
 // PolygonFinancialsData represents a single financial statement from Polygon.io
@@ -132,10 +132,10 @@ type PolygonFinancialsData struct {
 
 // PolygonFinancialsItems contains the financial statement data organized by statement type
 type PolygonFinancialsItems struct {
-	IncomeStatement       map[string]PolygonFinancialValue `json:"income_statement,omitempty"`
-	BalanceSheet          map[string]PolygonFinancialValue `json:"balance_sheet,omitempty"`
-	CashFlowStatement     map[string]PolygonFinancialValue `json:"cash_flow_statement,omitempty"`
-	ComprehensiveIncome   map[string]PolygonFinancialValue `json:"comprehensive_income,omitempty"`
+	IncomeStatement     map[string]PolygonFinancialValue `json:"income_statement,omitempty"`
+	BalanceSheet        map[string]PolygonFinancialValue `json:"balance_sheet,omitempty"`
+	CashFlowStatement   map[string]PolygonFinancialValue `json:"cash_flow_statement,omitempty"`
+	ComprehensiveIncome map[string]PolygonFinancialValue `json:"comprehensive_income,omitempty"`
 }
 
 // PolygonFinancialValue represents a single financial value from Polygon.io
@@ -172,21 +172,21 @@ type PolygonRatiosData struct {
 
 // Common income statement field mappings
 var IncomeStatementFields = map[string]string{
-	"revenues":                      "Total Revenue",
-	"cost_of_revenue":               "Cost of Revenue",
-	"gross_profit":                  "Gross Profit",
-	"operating_expenses":            "Operating Expenses",
+	"revenues":           "Total Revenue",
+	"cost_of_revenue":    "Cost of Revenue",
+	"gross_profit":       "Gross Profit",
+	"operating_expenses": "Operating Expenses",
 	"selling_general_and_administrative_expenses": "SG&A Expenses",
-	"research_and_development":      "R&D Expenses",
-	"operating_income_loss":         "Operating Income",
-	"interest_expense_operating":    "Interest Expense",
-	"income_loss_before_taxes":      "Pre-tax Income",
-	"income_tax_expense_benefit":    "Income Tax",
-	"net_income_loss":               "Net Income",
-	"basic_earnings_per_share":      "Basic EPS",
-	"diluted_earnings_per_share":    "Diluted EPS",
-	"basic_average_shares":          "Basic Shares Outstanding",
-	"diluted_average_shares":        "Diluted Shares Outstanding",
+	"research_and_development":                    "R&D Expenses",
+	"operating_income_loss":                       "Operating Income",
+	"interest_expense_operating":                  "Interest Expense",
+	"income_loss_before_taxes":                    "Pre-tax Income",
+	"income_tax_expense_benefit":                  "Income Tax",
+	"net_income_loss":                             "Net Income",
+	"basic_earnings_per_share":                    "Basic EPS",
+	"diluted_earnings_per_share":                  "Diluted EPS",
+	"basic_average_shares":                        "Basic Shares Outstanding",
+	"diluted_average_shares":                      "Diluted Shares Outstanding",
 }
 
 // Common balance sheet field mappings
@@ -215,19 +215,19 @@ var BalanceSheetFields = map[string]string{
 
 // Common cash flow statement field mappings
 var CashFlowFields = map[string]string{
-	"net_cash_flow":                     "Net Change in Cash",
+	"net_cash_flow": "Net Change in Cash",
 	"net_cash_flow_from_operating_activities": "Operating Cash Flow",
 	"net_cash_flow_from_investing_activities": "Investing Cash Flow",
 	"net_cash_flow_from_financing_activities": "Financing Cash Flow",
-	"depreciation_and_amortization":     "Depreciation & Amortization",
-	"capital_expenditure":               "Capital Expenditure",
-	"purchase_of_investment_securities": "Investment Purchases",
-	"sale_of_investment_securities":     "Investment Sales",
-	"payment_of_dividends":              "Dividends Paid",
-	"repurchase_of_common_stock":        "Stock Buybacks",
-	"issuance_of_common_stock":          "Stock Issuance",
-	"issuance_of_debt":                  "Debt Issuance",
-	"repayment_of_debt":                 "Debt Repayment",
+	"depreciation_and_amortization":           "Depreciation & Amortization",
+	"capital_expenditure":                     "Capital Expenditure",
+	"purchase_of_investment_securities":       "Investment Purchases",
+	"sale_of_investment_securities":           "Investment Sales",
+	"payment_of_dividends":                    "Dividends Paid",
+	"repurchase_of_common_stock":              "Stock Buybacks",
+	"issuance_of_common_stock":                "Stock Issuance",
+	"issuance_of_debt":                        "Debt Issuance",
+	"repayment_of_debt":                       "Debt Repayment",
 }
 
 // Financial ratio field mappings

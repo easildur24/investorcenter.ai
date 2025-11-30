@@ -276,22 +276,22 @@ type ScreenerStock struct {
 
 // ScreenerParams represents query parameters for the screener endpoint
 type ScreenerParams struct {
-	Page            int      `json:"page"`
-	Limit           int      `json:"limit"`
-	Sort            string   `json:"sort"`
-	Order           string   `json:"order"`
-	Sectors         []string `json:"sectors"`
-	MarketCapMin    *float64 `json:"market_cap_min"`
-	MarketCapMax    *float64 `json:"market_cap_max"`
-	PEMin           *float64 `json:"pe_min"`
-	PEMax           *float64 `json:"pe_max"`
+	Page             int      `json:"page"`
+	Limit            int      `json:"limit"`
+	Sort             string   `json:"sort"`
+	Order            string   `json:"order"`
+	Sectors          []string `json:"sectors"`
+	MarketCapMin     *float64 `json:"market_cap_min"`
+	MarketCapMax     *float64 `json:"market_cap_max"`
+	PEMin            *float64 `json:"pe_min"`
+	PEMax            *float64 `json:"pe_max"`
 	DividendYieldMin *float64 `json:"dividend_yield_min"`
 	DividendYieldMax *float64 `json:"dividend_yield_max"`
 	RevenueGrowthMin *float64 `json:"revenue_growth_min"`
 	RevenueGrowthMax *float64 `json:"revenue_growth_max"`
-	ICScoreMin      *float64 `json:"ic_score_min"`
-	ICScoreMax      *float64 `json:"ic_score_max"`
-	AssetType       string   `json:"asset_type"`
+	ICScoreMin       *float64 `json:"ic_score_min"`
+	ICScoreMax       *float64 `json:"ic_score_max"`
+	AssetType        string   `json:"asset_type"`
 }
 
 // ScreenerResponse represents the paginated response for the screener endpoint

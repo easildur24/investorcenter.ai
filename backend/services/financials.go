@@ -147,11 +147,38 @@ func (s *FinancialsService) GetCashFlowStatements(ctx context.Context, ticker st
 	return s.getStatements(ctx, ticker, models.StatementTypeCashFlow, timeframe, limit)
 }
 
-// GetRatios returns financial ratios for a ticker
+// GetRatios returns financial ratios for a ticker from IC Score calculated data
 func (s *FinancialsService) GetRatios(ctx context.Context, ticker string, timeframe models.Timeframe, limit int) (*models.FinancialsResponse, error) {
-	// Ratios come from a different endpoint and might need special handling
-	// For now, we can derive some ratios from existing statements
-	return s.getStatements(ctx, ticker, models.StatementTypeRatios, timeframe, limit)
+	// Get company metadata
+	metadata, err := database.GetCompanyMetadata(ticker)
+	if err != nil {
+		log.Printf("Warning: Failed to get metadata for %s: %v", ticker, err)
+		metadata = &models.FinancialsMetadata{
+			CompanyName: ticker,
+		}
+	}
+
+	// Get ratios from IC Score tables (valuation_ratios + fundamental_metrics_extended)
+	records, err := database.GetICScoreRatios(ticker, limit)
+	if err != nil {
+		log.Printf("Warning: Failed to get IC Score ratios for %s: %v", ticker, err)
+		return nil, fmt.Errorf("no financial ratios available for %s: %w", ticker, err)
+	}
+
+	if len(records) == 0 {
+		return nil, fmt.Errorf("no financial ratios data available for %s", ticker)
+	}
+
+	// Convert IC Score records to FinancialPeriod format
+	periods := database.ConvertICScoreRatiosToFinancialPeriods(records)
+
+	return &models.FinancialsResponse{
+		Ticker:        ticker,
+		StatementType: models.StatementTypeRatios,
+		Timeframe:     timeframe,
+		Periods:       periods,
+		Metadata:      *metadata,
+	}, nil
 }
 
 // getStatements is the generic method for retrieving financial statements

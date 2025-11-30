@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
 import { StatementType, Timeframe, statementTypeLabels } from '@/types/financials';
 import { FinancialsMetadata } from '@/types/financials';
 import { getAllFinancials } from '@/lib/api/financials';
@@ -13,7 +12,6 @@ import FinancialTable from '@/components/financials/FinancialTable';
 
 export default function FinancialsPage() {
   const params = useParams();
-  const router = useRouter();
   const ticker = (params.ticker as string).toUpperCase();
 
   const [activeTab, setActiveTab] = useState<StatementType>('income');

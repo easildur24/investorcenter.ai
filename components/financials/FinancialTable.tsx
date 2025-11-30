@@ -14,7 +14,6 @@ import { getFinancialStatements } from '@/lib/api/financials';
 import {
   formatFinancialValue,
   formatYoYChange,
-  extractTrendData,
   exportToCSV,
   downloadFile,
 } from '@/lib/formatters/financial';
@@ -161,9 +160,6 @@ interface FinancialTableRowProps {
 }
 
 function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
-  const trendData = extractTrendData(periods, row.key);
-  const hasTrend = trendData.length > 1;
-
   return (
     <tr className={cn('hover:bg-gray-50 transition-colors', row.bold && 'bg-gray-25')}>
       {/* Metric Name */}
@@ -191,7 +187,7 @@ function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
       {/* Period Values */}
       {periods.map((period, idx) => {
         const value = period.data[row.key];
-        const yoyChange = showYoY && period.yoy_change?.[row.key];
+        const yoyChange = showYoY ? period.yoy_change?.[row.key] : undefined;
         const formattedYoY = formatYoYChange(yoyChange);
 
         return (

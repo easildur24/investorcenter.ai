@@ -20,10 +20,10 @@ import (
 type FinancialsEndpoint string
 
 const (
-	EndpointIncomeStatements FinancialsEndpoint = "income-statements"
-	EndpointBalanceSheets    FinancialsEndpoint = "balance-sheets"
+	EndpointIncomeStatements   FinancialsEndpoint = "income-statements"
+	EndpointBalanceSheets      FinancialsEndpoint = "balance-sheets"
 	EndpointCashFlowStatements FinancialsEndpoint = "cash-flow-statements"
-	EndpointRatios           FinancialsEndpoint = "ratios"
+	EndpointRatios             FinancialsEndpoint = "ratios"
 )
 
 // PolygonFinancialsClient handles Polygon.io Financials API requests
@@ -86,12 +86,12 @@ func NewPolygonFinancialsClient() *PolygonFinancialsClient {
 
 // FinancialsRequestParams contains parameters for financials API requests
 type FinancialsRequestParams struct {
-	Ticker       string
-	Timeframe    string // "quarterly", "annual", "trailing_twelve_months"
-	FiscalYear   *int
+	Ticker        string
+	Timeframe     string // "quarterly", "annual", "trailing_twelve_months"
+	FiscalYear    *int
 	FiscalQuarter *int
-	Limit        int
-	Sort         string // e.g., "period_end.desc"
+	Limit         int
+	Sort          string // e.g., "period_end.desc"
 }
 
 // GetIncomeStatements fetches income statements from Polygon.io
