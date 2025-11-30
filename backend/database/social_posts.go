@@ -497,3 +497,13 @@ func GetLatestPostDate(ticker string) (time.Time, error) {
 
 	return latestDate.Time, nil
 }
+
+// GetPostCountByExternalID checks if a post exists by external ID
+func GetPostCountByExternalID(externalID string) (int, error) {
+	var count int
+	err := DB.QueryRow(
+		"SELECT COUNT(*) FROM social_posts WHERE external_post_id = $1",
+		externalID,
+	).Scan(&count)
+	return count, err
+}
