@@ -186,10 +186,10 @@ func main() {
 		sentiment := v1.Group("/sentiment")
 		{
 			// IMPORTANT: /trending must come before /:ticker to avoid matching "trending" as a ticker
-			sentiment.GET("/trending", handlers.GetTrendingSentiment)        // GET /api/v1/sentiment/trending?period=24h&limit=20
-			sentiment.GET("/:ticker", handlers.GetTickerSentiment)           // GET /api/v1/sentiment/AAPL
+			sentiment.GET("/trending", handlers.GetTrendingSentiment)             // GET /api/v1/sentiment/trending?period=24h&limit=20
+			sentiment.GET("/:ticker", handlers.GetTickerSentiment)                // GET /api/v1/sentiment/AAPL
 			sentiment.GET("/:ticker/history", handlers.GetTickerSentimentHistory) // GET /api/v1/sentiment/AAPL/history?days=30
-			sentiment.GET("/:ticker/posts", handlers.GetTickerPosts)         // GET /api/v1/sentiment/AAPL/posts?limit=10
+			sentiment.GET("/:ticker/posts", handlers.GetTickerPosts)              // GET /api/v1/sentiment/AAPL/posts?limit=10
 		}
 
 		// Portfolio endpoints

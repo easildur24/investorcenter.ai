@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"investorcenter-api/database"
+	"investorcenter-api/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -108,8 +109,9 @@ func GetTickerSentimentHistory(c *gin.Context) {
 // URL param: ticker (required)
 // Query params:
 //   - limit: number of posts (default: 10, max: 20)
+//   - sort: sort option (default: "recent", options: "recent", "engagement", "bullish", "bearish")
 //
-// Example: GET /api/sentiment/AAPL/posts?limit=10
+// Example: GET /api/sentiment/AAPL/posts?limit=10&sort=engagement
 func GetTickerPosts(c *gin.Context) {
 	ticker := strings.ToUpper(c.Param("ticker"))
 	if ticker == "" {
@@ -128,7 +130,21 @@ func GetTickerPosts(c *gin.Context) {
 		limit = 20
 	}
 
-	posts, err := database.GetRepresentativePostsForAPI(ticker, limit)
+	// Parse sort parameter
+	sortStr := c.DefaultQuery("sort", "recent")
+	var sort models.SocialPostSortOption
+	switch sortStr {
+	case "engagement":
+		sort = models.SortByEngagement
+	case "bullish":
+		sort = models.SortByBullish
+	case "bearish":
+		sort = models.SortByBearish
+	default:
+		sort = models.SortByRecent
+	}
+
+	posts, err := database.GetRepresentativePostsForAPI(ticker, sort, limit)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to fetch posts",

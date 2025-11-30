@@ -544,6 +544,10 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		return nil, fmt.Errorf("failed to get ticker sentiment: %w", err)
 	}
 
+	// Get company name from stocks table
+	var companyName sql.NullString
+	DB.QueryRow("SELECT name FROM stocks WHERE symbol = $1", ticker).Scan(&companyName)
+
 	// Get top subreddits
 	subredditQuery := `
 		SELECT subreddit, COUNT(*) as count
@@ -570,6 +574,45 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		topSubreddits = append(topSubreddits, sc)
 	}
 
+	// Calculate rank among all tickers (by post count in last 7 days)
+	rankQuery := `
+		WITH ticker_ranks AS (
+			SELECT ticker, COUNT(*) as post_count,
+				   ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) as rank
+			FROM social_posts
+			WHERE posted_at > NOW() - INTERVAL '7 days'
+			GROUP BY ticker
+		)
+		SELECT COALESCE(rank, 0) FROM ticker_ranks WHERE ticker = $1
+	`
+	var rank int
+	DB.QueryRow(rankQuery, ticker).Scan(&rank)
+
+	// Calculate rank change (compare current vs previous 7 day period)
+	rankChangeQuery := `
+		WITH current_ranks AS (
+			SELECT ticker, COUNT(*) as post_count,
+				   ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) as rank
+			FROM social_posts
+			WHERE posted_at > NOW() - INTERVAL '7 days'
+			GROUP BY ticker
+		),
+		previous_ranks AS (
+			SELECT ticker, COUNT(*) as post_count,
+				   ROW_NUMBER() OVER (ORDER BY COUNT(*) DESC) as rank
+			FROM social_posts
+			WHERE posted_at > NOW() - INTERVAL '14 days'
+			  AND posted_at <= NOW() - INTERVAL '7 days'
+			GROUP BY ticker
+		)
+		SELECT COALESCE(p.rank, 100) - COALESCE(c.rank, 100)
+		FROM current_ranks c
+		LEFT JOIN previous_ranks p ON c.ticker = p.ticker
+		WHERE c.ticker = $1
+	`
+	var rankChange int
+	DB.QueryRow(rankChangeQuery, ticker).Scan(&rankChange)
+
 	// Calculate percentages
 	var breakdown models.SentimentBreakdown
 	if totalCount > 0 {
@@ -585,7 +628,13 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		Breakdown:     breakdown,
 		PostCount24h:  count24h,
 		PostCount7d:   count7d,
+		Rank:          rank,
+		RankChange:    rankChange,
 		TopSubreddits: topSubreddits,
+	}
+
+	if companyName.Valid {
+		response.CompanyName = companyName.String
 	}
 
 	if lastUpdated.Valid {
@@ -697,6 +746,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 		)
 		SELECT
 			c.ticker,
+			COALESCE(s.name, '') as company_name,
 			c.score,
 			c.post_count,
 			COALESCE(
@@ -708,6 +758,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 			) as mention_delta
 		FROM current_period c
 		LEFT JOIN previous_period p ON c.ticker = p.ticker
+		LEFT JOIN stocks s ON c.ticker = s.symbol
 		WHERE c.post_count >= 3
 		ORDER BY c.post_count DESC
 		LIMIT $1
@@ -723,7 +774,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 	rank := 1
 	for rows.Next() {
 		var t models.TrendingTicker
-		err := rows.Scan(&t.Ticker, &t.Score, &t.PostCount, &t.MentionDelta)
+		err := rows.Scan(&t.Ticker, &t.CompanyName, &t.Score, &t.PostCount, &t.MentionDelta)
 		if err != nil {
 			continue
 		}
@@ -741,7 +792,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 }
 
 // GetRepresentativePostsForAPI returns posts formatted for the API response
-func GetRepresentativePostsForAPI(ticker string, limit int) (*models.RepresentativePostsResponse, error) {
+func GetRepresentativePostsForAPI(ticker string, sort models.SocialPostSortOption, limit int) (*models.RepresentativePostsResponse, error) {
 	if limit <= 0 {
 		limit = 10
 	}
@@ -749,26 +800,36 @@ func GetRepresentativePostsForAPI(ticker string, limit int) (*models.Representat
 		limit = 20
 	}
 
-	// Get a mix of high-engagement posts across sentiments
-	query := `
-		WITH ranked_posts AS (
-			SELECT
-				id, title, url, subreddit, upvotes, comment_count,
-				COALESCE(sentiment, 'neutral') as sentiment, posted_at,
-				ROW_NUMBER() OVER (
-					PARTITION BY COALESCE(sentiment, 'neutral')
-					ORDER BY (upvotes + comment_count * 2) DESC
-				) as rn
-			FROM social_posts
-			WHERE ticker = $1
-			  AND posted_at > NOW() - INTERVAL '7 days'
-		)
-		SELECT id, title, url, subreddit, upvotes, comment_count, sentiment, posted_at
-		FROM ranked_posts
-		WHERE rn <= $2
-		ORDER BY upvotes DESC
+	// Build ORDER BY and WHERE based on sort option
+	orderBy := "posted_at DESC" // default: recent
+	whereClause := ""
+
+	switch sort {
+	case models.SortByEngagement:
+		orderBy = "(upvotes + comment_count * 2 + award_count * 5) DESC"
+	case models.SortByBullish:
+		whereClause = "AND sentiment = 'bullish'"
+		orderBy = "sentiment_confidence DESC NULLS LAST, upvotes DESC"
+	case models.SortByBearish:
+		whereClause = "AND sentiment = 'bearish'"
+		orderBy = "sentiment_confidence DESC NULLS LAST, upvotes DESC"
+	case models.SortByRecent:
+		orderBy = "posted_at DESC"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			id, title, body_preview, url, source, subreddit,
+			upvotes, comment_count, award_count,
+			COALESCE(sentiment, 'neutral') as sentiment,
+			sentiment_confidence, flair, posted_at
+		FROM social_posts
+		WHERE ticker = $1
+		  AND posted_at > NOW() - INTERVAL '7 days'
+		  %s
+		ORDER BY %s
 		LIMIT $2
-	`
+	`, whereClause, orderBy)
 
 	rows, err := DB.Query(query, ticker, limit)
 	if err != nil {
@@ -779,10 +840,31 @@ func GetRepresentativePostsForAPI(ticker string, limit int) (*models.Representat
 	var posts []models.RepresentativePost
 	for rows.Next() {
 		var p models.RepresentativePost
-		err := rows.Scan(&p.ID, &p.Title, &p.URL, &p.Subreddit, &p.Upvotes, &p.CommentCount, &p.Sentiment, &p.PostedAt)
+		var bodyPreview, flair sql.NullString
+		var sentimentConfidence sql.NullFloat64
+		var postedAt time.Time
+
+		err := rows.Scan(
+			&p.ID, &p.Title, &bodyPreview, &p.URL, &p.Source, &p.Subreddit,
+			&p.Upvotes, &p.CommentCount, &p.AwardCount,
+			&p.Sentiment, &sentimentConfidence, &flair, &postedAt,
+		)
 		if err != nil {
 			continue
 		}
+
+		// Handle nullable fields
+		if bodyPreview.Valid {
+			p.BodyPreview = &bodyPreview.String
+		}
+		if sentimentConfidence.Valid {
+			p.SentimentConfidence = &sentimentConfidence.Float64
+		}
+		if flair.Valid {
+			p.Flair = &flair.String
+		}
+		p.PostedAt = postedAt.Format(time.RFC3339)
+
 		posts = append(posts, p)
 	}
 
@@ -791,9 +873,21 @@ func GetRepresentativePostsForAPI(ticker string, limit int) (*models.Representat
 	countQuery := `SELECT COUNT(*) FROM social_posts WHERE ticker = $1 AND posted_at > NOW() - INTERVAL '7 days'`
 	DB.QueryRow(countQuery, ticker).Scan(&total)
 
+	// Determine sort string for response
+	sortStr := "recent"
+	switch sort {
+	case models.SortByEngagement:
+		sortStr = "engagement"
+	case models.SortByBullish:
+		sortStr = "bullish"
+	case models.SortByBearish:
+		sortStr = "bearish"
+	}
+
 	return &models.RepresentativePostsResponse{
 		Ticker: ticker,
 		Posts:  posts,
 		Total:  total,
+		Sort:   sortStr,
 	}, nil
 }
