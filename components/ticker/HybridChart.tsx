@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 
 interface HybridChartProps {
   symbol: string;
@@ -35,6 +36,29 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const [showMA50, setShowMA50] = useState(false);
   const [showMA200, setShowMA200] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Handle Escape key to exit fullscreen
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    if (isFullscreen) {
+      document.addEventListener('keydown', handleEscape);
+      // Prevent body scroll when fullscreen
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
+  }, [isFullscreen]);
   if (!initialData?.dataPoints || initialData.dataPoints.length === 0) {
     return (
       <div className="p-6">
@@ -291,25 +315,41 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
     };
   }, [dataPoints, chartWidth, symbol, paddingLeft, plotWidth]);
 
-  return (
-    <div className="p-6">
+  const chartContent = (
+    <>
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-gray-900">Interactive Price Chart</h3>
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1" id="timeframe-buttons">
-          {timeframes.map((period) => (
-            <button
-              key={period}
-              className={`timeframe-btn px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                period === initialData.period
-                  ? 'bg-white text-primary-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-white'
-              }`}
-              data-period={period}
-              data-symbol={symbol}
-            >
-              {period}
-            </button>
-          ))}
+        <h3 className={`font-semibold text-gray-900 ${isFullscreen ? 'text-xl' : 'text-lg'}`}>
+          {isFullscreen && <span className="text-primary-600">{symbol}</span>}
+          {isFullscreen ? ' - ' : ''}Interactive Price Chart
+        </h3>
+        <div className="flex items-center gap-3">
+          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1" id="timeframe-buttons">
+            {timeframes.map((period) => (
+              <button
+                key={period}
+                className={`timeframe-btn px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  period === initialData.period
+                    ? 'bg-white text-primary-600 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
+                }`}
+                data-period={period}
+                data-symbol={symbol}
+              >
+                {period}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setIsFullscreen(!isFullscreen)}
+            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
+          >
+            {isFullscreen ? (
+              <ArrowsPointingInIcon className="h-5 w-5" />
+            ) : (
+              <ArrowsPointingOutIcon className="h-5 w-5" />
+            )}
+          </button>
         </div>
       </div>
 
@@ -548,7 +588,24 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           Last updated: {new Date().toLocaleTimeString()}
         </div>
       </div>
+    </>
+  );
 
+  // Fullscreen overlay
+  if (isFullscreen) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white overflow-auto">
+        <div className="min-h-screen p-6">
+          {chartContent}
+        </div>
+      </div>
+    );
+  }
+
+  // Normal view
+  return (
+    <div className="p-6">
+      {chartContent}
     </div>
   );
 }
