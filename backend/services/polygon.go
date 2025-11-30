@@ -1033,6 +1033,9 @@ func GetDaysFromPeriod(period string) int {
 		return 365
 	case "5Y":
 		return 1825
+	case "MAX":
+		// Return 20 years of data (maximum available history)
+		return 7300
 	default:
 		return 365
 	}
