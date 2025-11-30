@@ -37,6 +37,31 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const [showMA200, setShowMA200] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSP500, setShowSP500] = useState(false);
+  const [sp500Data, setSp500Data] = useState<ChartDataPoint[]>([]);
+  const [sp500Loading, setSp500Loading] = useState(false);
+
+  // Fetch S&P 500 data when comparison is enabled
+  useEffect(() => {
+    if (showSP500 && sp500Data.length === 0 && !sp500Loading) {
+      setSp500Loading(true);
+      const period = initialData.period || '1Y';
+      fetch(`/api/v1/tickers/SPY/chart?period=${period}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.data?.dataPoints) {
+            setSp500Data(data.data.dataPoints);
+          }
+        })
+        .catch(err => console.error('Failed to fetch S&P 500 data:', err))
+        .finally(() => setSp500Loading(false));
+    }
+  }, [showSP500, sp500Data.length, sp500Loading, initialData.period]);
+
+  // Reset S&P 500 data when period changes
+  useEffect(() => {
+    setSp500Data([]);
+  }, [initialData.period]);
 
   // Handle Escape key to exit fullscreen
   useEffect(() => {
@@ -189,6 +214,28 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
     const isFirst = ma200.slice(0, index).every(v => v === null);
     return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
   }).filter(Boolean).join(' ');
+
+  // Generate SVG path for S&P 500 comparison (normalized to start at same point as stock)
+  const sp500PathData = useMemo(() => {
+    if (!showSP500 || sp500Data.length === 0) return '';
+
+    // Normalize S&P 500 to stock's starting price and scale
+    const stockStartPrice = prices[0];
+    const sp500StartPrice = parseFloat(sp500Data[0]?.close || '0');
+    if (sp500StartPrice === 0) return '';
+
+    // Calculate the scaling factor: sp500 normalized price = stockStartPrice * (sp500Price / sp500StartPrice)
+    const sp500Prices = sp500Data.map(d => stockStartPrice * (parseFloat(d.close) / sp500StartPrice));
+
+    return sp500Prices.map((price, index) => {
+      // Map S&P 500 index to stock data index (in case they have different lengths)
+      const x = paddingLeft + (index / (sp500Prices.length - 1)) * plotWidth;
+      // Clamp price to visible range
+      const clampedPrice = Math.max(low, Math.min(high, price));
+      const y = paddingTop + plotHeight - (clampedPrice - low) * priceScale;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    }).join(' ');
+  }, [showSP500, sp500Data, prices, paddingLeft, plotWidth, paddingTop, plotHeight, low, high, priceScale]);
 
   // Volume bar data
   const volumeBars = dataPoints.map((point, index) => {
@@ -387,6 +434,17 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           <span className="text-sm text-gray-600">200-Day MA</span>
           {showMA200 && <span className="w-4 h-0.5 bg-orange-500"></span>}
         </label>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={showSP500}
+            onChange={(e) => setShowSP500(e.target.checked)}
+            className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+          />
+          <span className="text-sm text-gray-600">Compare S&P 500</span>
+          {showSP500 && <span className="w-4 h-0.5 bg-red-500"></span>}
+          {sp500Loading && <span className="text-xs text-gray-400">(loading...)</span>}
+        </label>
       </div>
 
       {/* Enhanced Interactive SVG Chart */}
@@ -466,6 +524,18 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
               stroke="#f97316"
               strokeWidth="2"
               strokeDasharray="4,4"
+              opacity="0.8"
+            />
+          )}
+
+          {/* S&P 500 Comparison Line */}
+          {showSP500 && sp500PathData && (
+            <path
+              d={sp500PathData}
+              fill="none"
+              stroke="#ef4444"
+              strokeWidth="2"
+              strokeDasharray="6,3"
               opacity="0.8"
             />
           )}
