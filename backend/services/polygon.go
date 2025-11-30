@@ -1024,6 +1024,11 @@ func GetDaysFromPeriod(period string) int {
 		return 90
 	case "6M":
 		return 180
+	case "YTD":
+		// Calculate days from January 1st of current year to today
+		now := time.Now()
+		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		return int(now.Sub(startOfYear).Hours()/24) + 1
 	case "1Y":
 		return 365
 	case "5Y":

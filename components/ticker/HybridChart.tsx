@@ -174,7 +174,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   });
 
   // Timeframe buttons with JavaScript for interactivity
-  const timeframes = ['1D', '5D', '1M', '3M', '6M', '1Y', '5Y'];
+  const timeframes = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '5Y'];
 
   // Initialize chart interactivity
   useEffect(() => {
