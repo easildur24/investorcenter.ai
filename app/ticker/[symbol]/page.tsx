@@ -6,6 +6,7 @@ import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
 import ICScoreCard from '@/components/ic-score/ICScoreCard';
+import SentimentCard from '@/components/sentiment/SentimentCard';
 import OverviewTab from '@/components/ticker/tabs/OverviewTab';
 import TechnicalTab from '@/components/ticker/tabs/TechnicalTab';
 import RiskTab from '@/components/ticker/tabs/RiskTab';
@@ -153,11 +154,16 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               </Suspense>
             </div>
 
-            {/* Right Column - IC Score, Fundamentals and Analysis */}
+            {/* Right Column - IC Score, Sentiment, Fundamentals and Analysis */}
             <div className="space-y-8">
               {/* IC Score Analysis - at top for visibility */}
               <Suspense fallback={<ICScoreSkeleton />}>
                 <ICScoreCard ticker={symbol} variant="compact" />
+              </Suspense>
+
+              {/* Social Sentiment Analysis */}
+              <Suspense fallback={<SentimentSkeleton />}>
+                <SentimentCard ticker={symbol} variant="compact" />
               </Suspense>
 
               {/* Comprehensive Key Metrics */}
@@ -185,6 +191,20 @@ function ICScoreSkeleton() {
       <div className="p-6 space-y-4">
         <div className="h-64 bg-gray-200 rounded"></div>
         <div className="h-64 bg-gray-200 rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+function SentimentSkeleton() {
+  return (
+    <div className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
+      <div className="h-6 w-32 bg-gray-200 rounded mb-4"></div>
+      <div className="h-20 bg-gray-200 rounded mb-4"></div>
+      <div className="h-3 bg-gray-200 rounded mb-4"></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="h-12 bg-gray-200 rounded"></div>
+        <div className="h-12 bg-gray-200 rounded"></div>
       </div>
     </div>
   );
