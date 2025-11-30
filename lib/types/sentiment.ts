@@ -32,11 +32,14 @@ export type SentimentLabel = 'bullish' | 'bearish' | 'neutral';
  */
 export interface SentimentResponse {
   ticker: string;
+  company_name?: string;            // Company name from stocks table
   score: number;                    // -1 to +1
   label: SentimentLabel;
   breakdown: SentimentBreakdown;
   post_count_24h: number;
   post_count_7d: number;
+  rank: number;                     // Current rank by activity
+  rank_change: number;              // Change from previous period (+/- or 0)
   top_subreddits: SubredditCount[];
   last_updated: string;             // ISO 8601
 }
@@ -67,6 +70,7 @@ export interface SentimentHistoryResponse {
  */
 export interface TrendingTicker {
   ticker: string;
+  company_name?: string;  // Company name from stocks table
   score: number;          // -1 to +1
   label: SentimentLabel;
   post_count: number;
@@ -89,21 +93,27 @@ export interface TrendingResponse {
 export interface RepresentativePost {
   id: number;
   title: string;
+  body_preview?: string;            // Preview of post body
   url: string;
+  source: string;                   // "reddit"
   subreddit: string;
   upvotes: number;
   comment_count: number;
+  award_count: number;
   sentiment: SentimentLabel;
-  posted_at: string;      // ISO 8601
+  sentiment_confidence?: number;    // 0 to 1
+  flair?: string;
+  posted_at: string;                // ISO 8601
 }
 
 /**
- * GET /api/v1/sentiment/:ticker/posts?limit=N
+ * GET /api/v1/sentiment/:ticker/posts?sort=recent|engagement|bullish|bearish&limit=N
  */
 export interface RepresentativePostsResponse {
   ticker: string;
   posts: RepresentativePost[];
   total: number;
+  sort: string;                     // Sort option that was applied
 }
 
 /**
@@ -193,4 +203,16 @@ export function formatCompactNumber(num: number): string {
 export function formatPercentageChange(delta: number): string {
   const sign = delta >= 0 ? '+' : '';
   return `${sign}${delta.toFixed(0)}%`;
+}
+
+/**
+ * Helper function to format rank change indicator
+ */
+export function formatRankChange(change: number): { text: string; color: string } {
+  if (change > 0) {
+    return { text: `↑${change}`, color: 'text-green-600' };
+  } else if (change < 0) {
+    return { text: `↓${Math.abs(change)}`, color: 'text-red-600' };
+  }
+  return { text: '—', color: 'text-gray-400' };
 }
