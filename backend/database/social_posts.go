@@ -507,3 +507,293 @@ func GetPostCountByExternalID(externalID string) (int, error) {
 	).Scan(&count)
 	return count, err
 }
+
+// GetTickerSentiment returns sentiment data for the API response
+func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
+	// Get sentiment breakdown and counts
+	query := `
+		SELECT
+			COALESCE(AVG(
+				CASE sentiment
+					WHEN 'bullish' THEN 1
+					WHEN 'bearish' THEN -1
+					ELSE 0
+				END
+			), 0) as score,
+			COUNT(*) FILTER (WHERE sentiment = 'bullish') as bullish_count,
+			COUNT(*) FILTER (WHERE sentiment = 'bearish') as bearish_count,
+			COUNT(*) FILTER (WHERE sentiment = 'neutral' OR sentiment IS NULL) as neutral_count,
+			COUNT(*) as total_count,
+			COUNT(*) FILTER (WHERE posted_at > NOW() - INTERVAL '24 hours') as count_24h,
+			COUNT(*) FILTER (WHERE posted_at > NOW() - INTERVAL '7 days') as count_7d,
+			MAX(posted_at) as last_updated
+		FROM social_posts
+		WHERE ticker = $1
+		  AND posted_at > NOW() - INTERVAL '30 days'
+	`
+
+	var score float64
+	var bullishCount, bearishCount, neutralCount, totalCount, count24h, count7d int
+	var lastUpdated sql.NullTime
+
+	err := DB.QueryRow(query, ticker).Scan(
+		&score, &bullishCount, &bearishCount, &neutralCount,
+		&totalCount, &count24h, &count7d, &lastUpdated,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticker sentiment: %w", err)
+	}
+
+	// Get top subreddits
+	subredditQuery := `
+		SELECT subreddit, COUNT(*) as count
+		FROM social_posts
+		WHERE ticker = $1
+		  AND posted_at > NOW() - INTERVAL '7 days'
+		GROUP BY subreddit
+		ORDER BY count DESC
+		LIMIT 5
+	`
+
+	rows, err := DB.Query(subredditQuery, ticker)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get top subreddits: %w", err)
+	}
+	defer rows.Close()
+
+	var topSubreddits []models.SubredditCount
+	for rows.Next() {
+		var sc models.SubredditCount
+		if err := rows.Scan(&sc.Subreddit, &sc.Count); err != nil {
+			continue
+		}
+		topSubreddits = append(topSubreddits, sc)
+	}
+
+	// Calculate percentages
+	var breakdown models.SentimentBreakdown
+	if totalCount > 0 {
+		breakdown.Bullish = float64(bullishCount) / float64(totalCount) * 100
+		breakdown.Bearish = float64(bearishCount) / float64(totalCount) * 100
+		breakdown.Neutral = float64(neutralCount) / float64(totalCount) * 100
+	}
+
+	response := &models.SentimentResponse{
+		Ticker:        ticker,
+		Score:         score,
+		Label:         models.GetSentimentLabel(score),
+		Breakdown:     breakdown,
+		PostCount24h:  count24h,
+		PostCount7d:   count7d,
+		TopSubreddits: topSubreddits,
+	}
+
+	if lastUpdated.Valid {
+		response.LastUpdated = lastUpdated.Time
+	} else {
+		response.LastUpdated = time.Now()
+	}
+
+	return response, nil
+}
+
+// GetSentimentHistory returns daily sentiment data for a ticker
+func GetSentimentHistory(ticker string, days int) (*models.SentimentHistoryResponse, error) {
+	if days <= 0 {
+		days = 7
+	}
+	if days > 90 {
+		days = 90
+	}
+
+	query := `
+		SELECT
+			DATE(posted_at) as date,
+			COALESCE(AVG(
+				CASE sentiment
+					WHEN 'bullish' THEN 1
+					WHEN 'bearish' THEN -1
+					ELSE 0
+				END
+			), 0) as score,
+			COUNT(*) as post_count,
+			COUNT(*) FILTER (WHERE sentiment = 'bullish') as bullish,
+			COUNT(*) FILTER (WHERE sentiment = 'bearish') as bearish,
+			COUNT(*) FILTER (WHERE sentiment = 'neutral' OR sentiment IS NULL) as neutral
+		FROM social_posts
+		WHERE ticker = $1
+		  AND posted_at > NOW() - $2::INTEGER * INTERVAL '1 day'
+		GROUP BY DATE(posted_at)
+		ORDER BY date ASC
+	`
+
+	rows, err := DB.Query(query, ticker, days)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get sentiment history: %w", err)
+	}
+	defer rows.Close()
+
+	var history []models.SentimentHistoryPoint
+	for rows.Next() {
+		var point models.SentimentHistoryPoint
+		var date time.Time
+		err := rows.Scan(&date, &point.Score, &point.PostCount, &point.Bullish, &point.Bearish, &point.Neutral)
+		if err != nil {
+			continue
+		}
+		point.Date = date.Format("2006-01-02")
+		history = append(history, point)
+	}
+
+	period := fmt.Sprintf("%dd", days)
+	return &models.SentimentHistoryResponse{
+		Ticker:  ticker,
+		Period:  period,
+		History: history,
+	}, nil
+}
+
+// GetTrendingTickers returns the most active tickers by social media activity
+func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, error) {
+	if limit <= 0 {
+		limit = 20
+	}
+	if limit > 50 {
+		limit = 50
+	}
+
+	// Determine interval based on period
+	interval := "24 hours"
+	previousInterval := "48 hours"
+	if period == "7d" {
+		interval = "7 days"
+		previousInterval = "14 days"
+	}
+
+	query := fmt.Sprintf(`
+		WITH current_period AS (
+			SELECT
+				ticker,
+				COALESCE(AVG(
+					CASE sentiment
+						WHEN 'bullish' THEN 1
+						WHEN 'bearish' THEN -1
+						ELSE 0
+					END
+				), 0) as score,
+				COUNT(*) as post_count
+			FROM social_posts
+			WHERE posted_at > NOW() - INTERVAL '%s'
+			GROUP BY ticker
+		),
+		previous_period AS (
+			SELECT
+				ticker,
+				COUNT(*) as post_count
+			FROM social_posts
+			WHERE posted_at > NOW() - INTERVAL '%s'
+			  AND posted_at <= NOW() - INTERVAL '%s'
+			GROUP BY ticker
+		)
+		SELECT
+			c.ticker,
+			c.score,
+			c.post_count,
+			COALESCE(
+				CASE WHEN p.post_count > 0
+					THEN ((c.post_count::float - p.post_count::float) / p.post_count::float) * 100
+					ELSE 100
+				END,
+				100
+			) as mention_delta
+		FROM current_period c
+		LEFT JOIN previous_period p ON c.ticker = p.ticker
+		WHERE c.post_count >= 3
+		ORDER BY c.post_count DESC
+		LIMIT $1
+	`, interval, previousInterval, interval)
+
+	rows, err := DB.Query(query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get trending tickers: %w", err)
+	}
+	defer rows.Close()
+
+	var tickers []models.TrendingTicker
+	rank := 1
+	for rows.Next() {
+		var t models.TrendingTicker
+		err := rows.Scan(&t.Ticker, &t.Score, &t.PostCount, &t.MentionDelta)
+		if err != nil {
+			continue
+		}
+		t.Label = models.GetSentimentLabel(t.Score)
+		t.Rank = rank
+		rank++
+		tickers = append(tickers, t)
+	}
+
+	return &models.TrendingResponse{
+		Period:    period,
+		Tickers:   tickers,
+		UpdatedAt: time.Now(),
+	}, nil
+}
+
+// GetRepresentativePostsForAPI returns posts formatted for the API response
+func GetRepresentativePostsForAPI(ticker string, limit int) (*models.RepresentativePostsResponse, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 20 {
+		limit = 20
+	}
+
+	// Get a mix of high-engagement posts across sentiments
+	query := `
+		WITH ranked_posts AS (
+			SELECT
+				id, title, url, subreddit, upvotes, comment_count,
+				COALESCE(sentiment, 'neutral') as sentiment, posted_at,
+				ROW_NUMBER() OVER (
+					PARTITION BY COALESCE(sentiment, 'neutral')
+					ORDER BY (upvotes + comment_count * 2) DESC
+				) as rn
+			FROM social_posts
+			WHERE ticker = $1
+			  AND posted_at > NOW() - INTERVAL '7 days'
+		)
+		SELECT id, title, url, subreddit, upvotes, comment_count, sentiment, posted_at
+		FROM ranked_posts
+		WHERE rn <= $2
+		ORDER BY upvotes DESC
+		LIMIT $2
+	`
+
+	rows, err := DB.Query(query, ticker, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get representative posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []models.RepresentativePost
+	for rows.Next() {
+		var p models.RepresentativePost
+		err := rows.Scan(&p.ID, &p.Title, &p.URL, &p.Subreddit, &p.Upvotes, &p.CommentCount, &p.Sentiment, &p.PostedAt)
+		if err != nil {
+			continue
+		}
+		posts = append(posts, p)
+	}
+
+	// Get total count
+	var total int
+	countQuery := `SELECT COUNT(*) FROM social_posts WHERE ticker = $1 AND posted_at > NOW() - INTERVAL '7 days'`
+	DB.QueryRow(countQuery, ticker).Scan(&total)
+
+	return &models.RepresentativePostsResponse{
+		Ticker: ticker,
+		Posts:  posts,
+		Total:  total,
+	}, nil
+}

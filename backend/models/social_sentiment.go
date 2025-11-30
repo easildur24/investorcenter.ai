@@ -90,3 +90,84 @@ type SentimentBreakdown struct {
 	Bearish float64 `json:"bearish"` // Percentage 0-100
 	Neutral float64 `json:"neutral"` // Percentage 0-100
 }
+
+// SentimentResponse for GET /api/sentiment/:ticker
+type SentimentResponse struct {
+	Ticker         string             `json:"ticker"`
+	Score          float64            `json:"score"`          // -1 to +1
+	Label          string             `json:"label"`          // "bullish", "bearish", "neutral"
+	Breakdown      SentimentBreakdown `json:"breakdown"`      // Percentage breakdown
+	PostCount24h   int                `json:"post_count_24h"` // Posts in last 24 hours
+	PostCount7d    int                `json:"post_count_7d"`  // Posts in last 7 days
+	TopSubreddits  []SubredditCount   `json:"top_subreddits"` // Most active subreddits
+	LastUpdated    time.Time          `json:"last_updated"`
+}
+
+// SubredditCount represents post count per subreddit
+type SubredditCount struct {
+	Subreddit string `json:"subreddit"`
+	Count     int    `json:"count"`
+}
+
+// SentimentHistoryPoint represents a single data point in sentiment history
+type SentimentHistoryPoint struct {
+	Date      string  `json:"date"`      // YYYY-MM-DD
+	Score     float64 `json:"score"`     // -1 to +1
+	PostCount int     `json:"post_count"`
+	Bullish   int     `json:"bullish"`
+	Bearish   int     `json:"bearish"`
+	Neutral   int     `json:"neutral"`
+}
+
+// SentimentHistoryResponse for GET /api/sentiment/:ticker/history
+type SentimentHistoryResponse struct {
+	Ticker  string                  `json:"ticker"`
+	Period  string                  `json:"period"` // "7d", "30d", "90d"
+	History []SentimentHistoryPoint `json:"history"`
+}
+
+// TrendingTicker represents a ticker in the trending list
+type TrendingTicker struct {
+	Ticker       string  `json:"ticker"`
+	Score        float64 `json:"score"`        // -1 to +1
+	Label        string  `json:"label"`        // "bullish", "bearish", "neutral"
+	PostCount    int     `json:"post_count"`   // Posts in period
+	MentionDelta float64 `json:"mention_delta"` // % change from previous period
+	Rank         int     `json:"rank"`
+}
+
+// TrendingResponse for GET /api/sentiment/trending
+type TrendingResponse struct {
+	Period   string           `json:"period"` // "24h", "7d"
+	Tickers  []TrendingTicker `json:"tickers"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
+// RepresentativePost is a curated post for display
+type RepresentativePost struct {
+	ID           int64     `json:"id"`
+	Title        string    `json:"title"`
+	URL          string    `json:"url"`
+	Subreddit    string    `json:"subreddit"`
+	Upvotes      int       `json:"upvotes"`
+	CommentCount int       `json:"comment_count"`
+	Sentiment    string    `json:"sentiment"`
+	PostedAt     time.Time `json:"posted_at"`
+}
+
+// RepresentativePostsResponse for GET /api/sentiment/:ticker/posts
+type RepresentativePostsResponse struct {
+	Ticker string               `json:"ticker"`
+	Posts  []RepresentativePost `json:"posts"`
+	Total  int                  `json:"total"`
+}
+
+// GetSentimentLabel converts a sentiment score to a human-readable label
+func GetSentimentLabel(score float64) string {
+	if score >= 0.2 {
+		return "bullish"
+	} else if score <= -0.2 {
+		return "bearish"
+	}
+	return "neutral"
+}
