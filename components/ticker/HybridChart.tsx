@@ -116,13 +116,16 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const ma200 = useMemo(() => calculateSMA(prices, 200), [prices]);
 
   // Chart dimensions - adjusted for volume section and axis labels
-  const totalChartHeight = showVolume ? 420 : 340;
-  const priceChartHeight = showVolume ? 280 : 300;
-  const volumeChartHeight = 80;
+  // In fullscreen mode, use larger dimensions
+  const baseChartHeight = isFullscreen ? 600 : (showVolume ? 420 : 340);
+  const basePriceChartHeight = isFullscreen ? 480 : (showVolume ? 280 : 300);
+  const volumeChartHeight = isFullscreen ? 100 : 80;
+  const totalChartHeight = showVolume ? baseChartHeight : (isFullscreen ? 520 : 340);
+  const priceChartHeight = showVolume ? basePriceChartHeight : (isFullscreen ? 480 : 300);
   const xAxisHeight = 30;
-  const chartWidth = 900;
-  const paddingLeft = 60;  // More space for Y-axis labels
-  const paddingRight = 20;
+  const chartWidth = isFullscreen ? 1600 : 900;
+  const paddingLeft = 70;  // More space for Y-axis labels
+  const paddingRight = 30;
   const paddingTop = 20;
   const paddingBottom = 10;
   const plotWidth = chartWidth - paddingLeft - paddingRight;
@@ -387,7 +390,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       </div>
 
       {/* Enhanced Interactive SVG Chart */}
-      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: showVolume ? '420px' : '340px' }}>
+      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: `${totalChartHeight}px` }}>
         <svg
           id="price-chart"
           width={chartWidth}
@@ -540,44 +543,73 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         </div>
       </div>
       
-      {/* Enhanced Statistics Grid */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-          <div className="text-blue-600 text-xs font-semibold uppercase tracking-wide">Current</div>
-          <div className="font-bold text-xl text-blue-900">${currentPrice.toFixed(2)}</div>
+      {/* Statistics - Compact in fullscreen, Grid in normal view */}
+      {isFullscreen ? (
+        <div className="mt-4 flex flex-wrap items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Current:</span>
+            <span className="font-bold text-blue-600">${currentPrice.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Change:</span>
+            <span className={`font-bold ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+              {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">High:</span>
+            <span className="font-bold text-green-600">${high.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Low:</span>
+            <span className="font-bold text-red-600">${low.toFixed(2)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-500">Avg Volume:</span>
+            <span className="font-bold text-purple-600">
+              {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
+            </span>
+          </div>
         </div>
-        <div className={`bg-gradient-to-br p-4 rounded-xl border ${
-          priceChange >= 0 
-            ? 'from-green-50 to-green-100 border-green-200' 
-            : 'from-red-50 to-red-100 border-red-200'
-        }`}>
-          <div className={`text-xs font-semibold uppercase tracking-wide ${
-            priceChange >= 0 ? 'text-green-600' : 'text-red-600'
+      ) : (
+        <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
+            <div className="text-blue-600 text-xs font-semibold uppercase tracking-wide">Current</div>
+            <div className="font-bold text-xl text-blue-900">${currentPrice.toFixed(2)}</div>
+          </div>
+          <div className={`bg-gradient-to-br p-4 rounded-xl border ${
+            priceChange >= 0
+              ? 'from-green-50 to-green-100 border-green-200'
+              : 'from-red-50 to-red-100 border-red-200'
           }`}>
-            Change
+            <div className={`text-xs font-semibold uppercase tracking-wide ${
+              priceChange >= 0 ? 'text-green-600' : 'text-red-600'
+            }`}>
+              Change
+            </div>
+            <div className={`font-bold text-lg ${
+              priceChange >= 0 ? 'text-green-900' : 'text-red-900'
+            }`}>
+              {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}
+              <div className="text-sm">({priceChangePercent.toFixed(2)}%)</div>
+            </div>
           </div>
-          <div className={`font-bold text-lg ${
-            priceChange >= 0 ? 'text-green-900' : 'text-red-900'
-          }`}>
-            {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}
-            <div className="text-sm">({priceChangePercent.toFixed(2)}%)</div>
+          <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
+            <div className="text-green-600 text-xs font-semibold uppercase tracking-wide">High</div>
+            <div className="font-bold text-lg text-green-900">${high.toFixed(2)}</div>
+          </div>
+          <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
+            <div className="text-red-600 text-xs font-semibold uppercase tracking-wide">Low</div>
+            <div className="font-bold text-lg text-red-900">${low.toFixed(2)}</div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
+            <div className="text-purple-600 text-xs font-semibold uppercase tracking-wide">Volume</div>
+            <div className="font-bold text-lg text-purple-900">
+              {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
+            </div>
           </div>
         </div>
-        <div className="bg-gradient-to-br from-green-50 to-green-100 p-4 rounded-xl border border-green-200">
-          <div className="text-green-600 text-xs font-semibold uppercase tracking-wide">High</div>
-          <div className="font-bold text-lg text-green-900">${high.toFixed(2)}</div>
-        </div>
-        <div className="bg-gradient-to-br from-red-50 to-red-100 p-4 rounded-xl border border-red-200">
-          <div className="text-red-600 text-xs font-semibold uppercase tracking-wide">Low</div>
-          <div className="font-bold text-lg text-red-900">${low.toFixed(2)}</div>
-        </div>
-        <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
-          <div className="text-purple-600 text-xs font-semibold uppercase tracking-wide">Volume</div>
-          <div className="font-bold text-lg text-purple-900">
-            {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
-          </div>
-        </div>
-      </div>
+      )}
       
       {/* Chart Info */}
       <div className="mt-4 flex justify-between items-center text-sm">
