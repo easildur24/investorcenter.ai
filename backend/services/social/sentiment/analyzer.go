@@ -11,9 +11,9 @@ import (
 // LexiconEntry represents a term from the sentiment_lexicon table
 type LexiconEntry struct {
 	Term      string
-	Sentiment string  // "bullish", "bearish", "modifier"
+	Sentiment string // "bullish", "bearish", "modifier"
 	Weight    float64
-	Category  string  // "slang", "options", "emoji", "negation", "amplifier", "reducer"
+	Category  string // "slang", "options", "emoji", "negation", "amplifier", "reducer"
 }
 
 // MatchedTerm represents a term found during analysis
@@ -26,9 +26,9 @@ type MatchedTerm struct {
 
 // Result contains the sentiment analysis output
 type Result struct {
-	Sentiment    string        // "bullish", "bearish", "neutral"
-	Score        float64       // -1.0 to 1.0
-	Confidence   float64       // 0.0 to 1.0
+	Sentiment    string  // "bullish", "bearish", "neutral"
+	Score        float64 // -1.0 to 1.0
+	Confidence   float64 // 0.0 to 1.0
 	MatchedTerms []MatchedTerm
 }
 

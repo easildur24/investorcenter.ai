@@ -16,8 +16,8 @@ func TestAnalyzer_Analyze(t *testing.T) {
 		"crash":         {Term: "crash", Sentiment: "bearish", Weight: 1.3, Category: "slang"},
 		"bullish":       {Term: "bullish", Sentiment: "bullish", Weight: 1.0, Category: "direct"},
 		"bearish":       {Term: "bearish", Sentiment: "bearish", Weight: 1.0, Category: "direct"},
-		"🚀":            {Term: "🚀", Sentiment: "bullish", Weight: 1.5, Category: "emoji"},
-		"📉":            {Term: "📉", Sentiment: "bearish", Weight: 1.3, Category: "emoji"},
+		"🚀":             {Term: "🚀", Sentiment: "bullish", Weight: 1.5, Category: "emoji"},
+		"📉":             {Term: "📉", Sentiment: "bearish", Weight: 1.3, Category: "emoji"},
 		"not":           {Term: "not", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
 		"very":          {Term: "very", Sentiment: "modifier", Weight: 1.3, Category: "amplifier"},
 		"extremely":     {Term: "extremely", Sentiment: "modifier", Weight: 1.5, Category: "amplifier"},
@@ -264,14 +264,14 @@ func TestTickerExtractor_IsValidTicker(t *testing.T) {
 
 func TestAnalyzer_NegationHandling(t *testing.T) {
 	analyzer := NewAnalyzerWithLexicon(map[string]LexiconEntry{
-		"bullish":  {Term: "bullish", Sentiment: "bullish", Weight: 1.0, Category: "direct"},
-		"bearish":  {Term: "bearish", Sentiment: "bearish", Weight: 1.0, Category: "direct"},
-		"not":      {Term: "not", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
-		"dont":     {Term: "dont", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
-		"never":    {Term: "never", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
-		"buy":      {Term: "buy", Sentiment: "bullish", Weight: 0.8, Category: "action"},
-		"sell":     {Term: "sell", Sentiment: "bearish", Weight: 0.8, Category: "action"},
-		"moon":     {Term: "moon", Sentiment: "bullish", Weight: 1.0, Category: "slang"},
+		"bullish":     {Term: "bullish", Sentiment: "bullish", Weight: 1.0, Category: "direct"},
+		"bearish":     {Term: "bearish", Sentiment: "bearish", Weight: 1.0, Category: "direct"},
+		"not":         {Term: "not", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
+		"dont":        {Term: "dont", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
+		"never":       {Term: "never", Sentiment: "modifier", Weight: -1.0, Category: "negation"},
+		"buy":         {Term: "buy", Sentiment: "bullish", Weight: 0.8, Category: "action"},
+		"sell":        {Term: "sell", Sentiment: "bearish", Weight: 0.8, Category: "action"},
+		"moon":        {Term: "moon", Sentiment: "bullish", Weight: 1.0, Category: "slang"},
 		"to the moon": {Term: "to the moon", Sentiment: "bullish", Weight: 1.5, Category: "slang"},
 	})
 

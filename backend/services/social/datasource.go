@@ -26,8 +26,8 @@ type FetchOptions struct {
 // NO Author field - privacy decision
 type RawPost struct {
 	ExternalID   string
-	Source       string    // "reddit", "stocktwits", etc.
-	Community    string    // Subreddit name or equivalent
+	Source       string // "reddit", "stocktwits", etc.
+	Community    string // Subreddit name or equivalent
 	Title        string
 	Body         string
 	URL          string
@@ -49,6 +49,6 @@ type ProcessedPost struct {
 	RawPost
 	Ticker              string
 	BodyPreview         string
-	Sentiment           string  // "bullish", "bearish", "neutral"
+	Sentiment           string // "bullish", "bearish", "neutral"
 	SentimentConfidence float64
 }

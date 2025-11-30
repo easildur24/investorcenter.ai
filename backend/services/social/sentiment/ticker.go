@@ -196,7 +196,7 @@ func (t *TickerExtractor) GetPrimaryTicker(mentions []TickerMention) string {
 		return mentions[0].Ticker
 	}
 
-	// Priority: in title > highest count
+	// Priority: in title > highest count > earliest position
 	var best *TickerMention
 	for i := range mentions {
 		m := &mentions[i]
@@ -217,6 +217,17 @@ func (t *TickerExtractor) GetPrimaryTicker(mentions []TickerMention) string {
 		// Then by mention count
 		if m.Count > best.Count {
 			best = m
+			continue
+		}
+		if m.Count < best.Count {
+			continue
+		}
+
+		// Tiebreaker: earliest position wins
+		if len(m.Positions) > 0 && len(best.Positions) > 0 {
+			if m.Positions[0] < best.Positions[0] {
+				best = m
+			}
 		}
 	}
 
