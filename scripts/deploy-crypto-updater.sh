@@ -10,8 +10,8 @@ AWS_ACCOUNT_ID="360358043271"
 ECR_REPO="investorcenter/crypto-price-updater"
 IMAGE_TAG="${1:-latest}"
 
-echo "📦 Building Docker image..."
-docker build -f Dockerfile.crypto-updater -t crypto-price-updater:${IMAGE_TAG} .
+echo "📦 Building Docker image for linux/amd64 (EKS)..."
+docker build --platform linux/amd64 -f Dockerfile.crypto-updater -t crypto-price-updater:${IMAGE_TAG} .
 
 echo "🏷️  Tagging image for ECR..."
 docker tag crypto-price-updater:${IMAGE_TAG} \

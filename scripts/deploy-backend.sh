@@ -61,9 +61,9 @@ echo ""
 echo "🏗️  Step 1: Building backend Docker image..."
 echo "============================================"
 
-# Build from backend directory
+# Build from backend directory for linux/amd64 platform (EKS runs on AMD64)
 cd backend
-docker build -t $IMAGE_NAME:$IMAGE_TAG .
+docker build --platform linux/amd64 -t $IMAGE_NAME:$IMAGE_TAG .
 
 echo ""
 echo "🔐 Step 2: Authenticating with ECR..."

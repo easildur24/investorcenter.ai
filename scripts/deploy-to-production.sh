@@ -63,8 +63,8 @@ echo ""
 echo "🏗️  Step 1: Building Polygon Ticker Updater image..."
 echo "===================================================="
 
-# Build the Polygon ticker updater image
-docker build -f docker/polygon-ticker-updater/Dockerfile -t polygon-ticker-updater:latest .
+# Build the Polygon ticker updater image for linux/amd64 platform (EKS runs on AMD64)
+docker build --platform linux/amd64 -f docker/polygon-ticker-updater/Dockerfile -t polygon-ticker-updater:latest .
 
 echo ""
 echo "🔐 Step 2: Authenticating with ECR..."
