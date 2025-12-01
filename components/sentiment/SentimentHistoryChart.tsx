@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -18,6 +18,8 @@ import { format, parseISO } from 'date-fns';
 import { getSentimentHistory } from '@/lib/api/sentiment';
 import { getSentimentScoreColor } from '@/lib/types/sentiment';
 import type { SentimentHistoryResponse, SentimentHistoryPoint } from '@/lib/types/sentiment';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { getChartColors, themeColors } from '@/lib/theme';
 
 interface SentimentHistoryChartProps {
   ticker: string;
@@ -35,6 +37,9 @@ export default function SentimentHistoryChart({
   height = 300,
   showPostCount = true,
 }: SentimentHistoryChartProps) {
+  const { resolvedTheme } = useTheme();
+  const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
+
   const [data, setData] = useState<SentimentHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,31 +109,31 @@ export default function SentimentHistoryChart({
       </div>
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
         <ComposedChart
           data={chartData}
           margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
             tickFormatter={(date) => format(date, 'MMM dd')}
-            tick={{ fontSize: 11 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 11, fill: chartColors.text }}
+            stroke={chartColors.text}
           />
           <YAxis
             yAxisId="left"
             domain={[-1, 1]}
-            tick={{ fontSize: 11 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 11, fill: chartColors.text }}
+            stroke={chartColors.text}
             tickFormatter={(value) => value.toFixed(1)}
           />
           {showPostCount && (
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 11 }}
-              stroke="#9ca3af"
+              tick={{ fontSize: 11, fill: chartColors.text }}
+              stroke={chartColors.text}
             />
           )}
           <Tooltip content={<CustomTooltip />} />
@@ -137,7 +142,7 @@ export default function SentimentHistoryChart({
           <ReferenceLine
             yAxisId="left"
             y={0}
-            stroke="#9ca3af"
+            stroke={chartColors.text}
             strokeDasharray="3 3"
           />
 
@@ -145,14 +150,14 @@ export default function SentimentHistoryChart({
           <ReferenceLine
             yAxisId="left"
             y={0.2}
-            stroke="#22c55e"
+            stroke={chartColors.positive}
             strokeDasharray="2 2"
             strokeOpacity={0.5}
           />
           <ReferenceLine
             yAxisId="left"
             y={-0.2}
-            stroke="#ef4444"
+            stroke={chartColors.negative}
             strokeDasharray="2 2"
             strokeOpacity={0.5}
           />
@@ -162,7 +167,7 @@ export default function SentimentHistoryChart({
             <Bar
               yAxisId="right"
               dataKey="post_count"
-              fill="#e5e7eb"
+              fill={resolvedTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
               opacity={0.6}
               barSize={20}
             />
@@ -233,9 +238,9 @@ function CustomTooltip({ active, payload }: TooltipProps) {
           <span className="text-ic-text-muted">Posts:</span>
           <span className="font-medium text-ic-text-primary">{data.post_count}</span>
         </div>
-        <div className="flex justify-between gap-4 pt-1 border-t border-gray-100">
-          <span className="text-green-600">Bullish: {data.bullish}</span>
-          <span className="text-red-600">Bearish: {data.bearish}</span>
+        <div className="flex justify-between gap-4 pt-1 border-t border-ic-border-subtle">
+          <span className="text-ic-positive">Bullish: {data.bullish}</span>
+          <span className="text-ic-negative">Bearish: {data.bearish}</span>
         </div>
       </div>
     </div>

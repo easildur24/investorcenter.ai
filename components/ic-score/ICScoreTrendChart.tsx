@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -16,6 +16,8 @@ import {
 import { format, parseISO } from 'date-fns';
 import { getICScoreColor, getICScoreRating } from '@/lib/types/ic-score';
 import type { ICScoreHistory } from '@/lib/types/ic-score';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { getChartColors, themeColors } from '@/lib/theme';
 
 interface ICScoreTrendChartProps {
   history: ICScoreHistory;
@@ -36,6 +38,9 @@ export default function ICScoreTrendChart({
   height = 300,
   showStats = true,
 }: ICScoreTrendChartProps) {
+  const { resolvedTheme } = useTheme();
+  const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
+
   // Prepare data for chart
   const chartData = history.history.map((point) => ({
     date: parseISO(point.date),
@@ -85,31 +90,31 @@ export default function ICScoreTrendChart({
       )}
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
         <ComposedChart
           data={chartData}
           margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
             tickFormatter={(date) => format(date, 'MMM dd')}
-            tick={{ fontSize: 12 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 12, fill: chartColors.text }}
+            stroke={chartColors.text}
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fontSize: 12 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 12, fill: chartColors.text }}
+            stroke={chartColors.text}
           />
           <Tooltip content={<CustomTooltip />} />
 
           {/* Reference lines for rating thresholds */}
           <ReferenceLine
             y={80}
-            stroke="#10b981"
+            stroke={themeColors.accent.positive}
             strokeDasharray="3 3"
-            label={{ value: 'Strong Buy', fontSize: 10, fill: '#10b981' }}
+            label={{ value: 'Strong Buy', fontSize: 10, fill: themeColors.accent.positive }}
           />
           <ReferenceLine
             y={65}
@@ -119,15 +124,15 @@ export default function ICScoreTrendChart({
           />
           <ReferenceLine
             y={50}
-            stroke="#eab308"
+            stroke={themeColors.accent.warning}
             strokeDasharray="3 3"
-            label={{ value: 'Hold', fontSize: 10, fill: '#eab308' }}
+            label={{ value: 'Hold', fontSize: 10, fill: themeColors.accent.warning }}
           />
           <ReferenceLine
             y={35}
-            stroke="#f97316"
+            stroke={themeColors.accent.orange}
             strokeDasharray="3 3"
-            label={{ value: 'Underperform', fontSize: 10, fill: '#f97316' }}
+            label={{ value: 'Underperform', fontSize: 10, fill: themeColors.accent.orange }}
           />
 
           {/* Area fill */}
@@ -178,12 +183,12 @@ interface StatCardProps {
 function StatCard({ label, value, trend, isPositive, isNegative }: StatCardProps) {
   const getTrendColor = () => {
     if (trend === undefined) return 'text-ic-text-muted';
-    return trend >= 0 ? 'text-green-600' : 'text-red-600';
+    return trend >= 0 ? 'text-ic-positive' : 'text-ic-negative';
   };
 
   const getValueColor = () => {
-    if (isPositive) return 'text-green-600';
-    if (isNegative) return 'text-red-600';
+    if (isPositive) return 'text-ic-positive';
+    if (isNegative) return 'text-ic-negative';
     return 'text-ic-text-primary';
   };
 
@@ -254,6 +259,8 @@ export function ICScoreSparkline({
   height = 60,
   showCurrentScore = true,
 }: ICScoreSparklineProps) {
+  const { resolvedTheme } = useTheme();
+
   const chartData = history.history.map((point) => ({
     score: point.score,
   }));
@@ -264,7 +271,7 @@ export function ICScoreSparkline({
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1">
-        <ResponsiveContainer width="100%" height={height}>
+        <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
           <LineChart data={chartData}>
             <Line
               type="monotone"

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { HeatmapTile, HeatmapData } from '@/lib/api/heatmap';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { themeColors } from '@/lib/theme';
 
 interface WatchListHeatmapProps {
   data: HeatmapData;
@@ -21,6 +23,13 @@ export default function WatchListHeatmap({
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+
+  // Theme-aware colors
+  const isDark = resolvedTheme === 'dark';
+  const strokeColor = isDark ? themeColors.dark.border : themeColors.light.border;
+  const strokeHighlight = isDark ? '#ffffff' : '#000000';
+  const neutralColor = isDark ? themeColors.dark.bgSecondary : themeColors.light.bgSecondary;
 
   useEffect(() => {
     if (!svgRef.current || !data.tiles.length) return;
@@ -46,8 +55,8 @@ export default function WatchListHeatmap({
 
     treemap(root);
 
-    // Color scale based on color metric
-    const colorScale = getColorScale(data.color_scheme, data.min_color_value, data.max_color_value);
+    // Color scale based on color metric (theme-aware)
+    const colorScale = getColorScale(data.color_scheme, data.min_color_value, data.max_color_value, neutralColor);
 
     const svg = d3.select(svgRef.current);
 
@@ -62,14 +71,14 @@ export default function WatchListHeatmap({
       .attr('width', (d: any) => d.x1 - d.x0)
       .attr('height', (d: any) => d.y1 - d.y0)
       .attr('fill', (d: any) => colorScale(d.data.color_value))
-      .attr('stroke', '#fff')
+      .attr('stroke', strokeColor)
       .attr('stroke-width', 2)
       .attr('rx', 4)
       .style('cursor', 'pointer')
       .on('mouseover', function(event: any, d: any) {
         // Highlight tile
         d3.select(this)
-          .attr('stroke', '#000')
+          .attr('stroke', strokeHighlight)
           .attr('stroke-width', 3);
 
         // Show tooltip
@@ -78,7 +87,7 @@ export default function WatchListHeatmap({
       .on('mouseout', function() {
         // Remove highlight
         d3.select(this)
-          .attr('stroke', '#fff')
+          .attr('stroke', strokeColor)
           .attr('stroke-width', 2);
 
         // Hide tooltip
@@ -121,7 +130,7 @@ export default function WatchListHeatmap({
         .text((d: any) => d.data.color_label);
     }
 
-  }, [data, width, height, router, onTileClick]);
+  }, [data, width, height, router, onTileClick, resolvedTheme, strokeColor, strokeHighlight, neutralColor]);
 
   const showTooltip = (event: any, tile: HeatmapTile) => {
     const tooltip = tooltipRef.current;
@@ -228,17 +237,22 @@ export default function WatchListHeatmap({
 
 // Helper functions
 
-function getColorScale(scheme: string, min: number, max: number) {
+function getColorScale(scheme: string, min: number, max: number, neutralColor: string) {
+  // Use theme accent colors for positive/negative
+  const positiveColor = themeColors.accent.positive;
+  const negativeColor = themeColors.accent.negative;
+  const blueColor = themeColors.accent.blue;
+
   switch (scheme) {
     case 'red_green':
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#EF4444', '#F3F4F6', '#10B981']);
+        .range([negativeColor, neutralColor, positiveColor]);
 
     case 'blue_red':
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#3B82F6', '#F3F4F6', '#EF4444']);
+        .range([blueColor, neutralColor, negativeColor]);
 
     case 'heatmap':
       return d3.scaleSequential(d3.interpolateRdYlGn)
@@ -247,7 +261,7 @@ function getColorScale(scheme: string, min: number, max: number) {
     default:
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#EF4444', '#F3F4F6', '#10B981']);
+        .range([negativeColor, neutralColor, positiveColor]);
   }
 }
 

@@ -1,9 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { formatFactorName } from '@/lib/types/ic-score';
 import type { ICScore, ICScoreFactor } from '@/lib/types/ic-score';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { getChartColors, themeColors } from '@/lib/theme';
 
 interface ICScoreFactorChartProps {
   factors: ICScore['factors'];
@@ -19,6 +21,9 @@ interface ICScoreFactorChartProps {
  * - Color-coded bars based on performance
  */
 export default function ICScoreFactorChart({ factors, height = 500 }: ICScoreFactorChartProps) {
+  const { resolvedTheme } = useTheme();
+  const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
+
   // Convert factors object to array for charting
   const factorData = Object.entries(factors).map(([key, factor]) => ({
     name: formatFactorName(key),
@@ -33,27 +38,33 @@ export default function ICScoreFactorChart({ factors, height = 500 }: ICScoreFac
 
   // Get color based on factor value
   const getBarColor = (value: number): string => {
-    if (value >= 80) return '#10b981'; // green-500
+    if (value >= 80) return themeColors.accent.positive; // green
     if (value >= 65) return '#84cc16'; // lime-500
-    if (value >= 50) return '#eab308'; // yellow-500
-    if (value >= 35) return '#f97316'; // orange-500
-    return '#ef4444'; // red-500
+    if (value >= 50) return themeColors.accent.warning; // yellow
+    if (value >= 35) return themeColors.accent.orange; // orange
+    return themeColors.accent.negative; // red
   };
 
   return (
     <div className="w-full">
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
         <BarChart
           data={factorData}
           layout="vertical"
           margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
         >
-          <XAxis type="number" domain={[0, 100]} />
+          <XAxis
+            type="number"
+            domain={[0, 100]}
+            tick={{ fill: chartColors.text }}
+            stroke={chartColors.text}
+          />
           <YAxis
             type="category"
             dataKey="name"
             width={150}
-            tick={{ fontSize: 13 }}
+            tick={{ fontSize: 13, fill: chartColors.text }}
+            stroke={chartColors.text}
           />
           <Tooltip content={<CustomTooltip />} />
           <Bar dataKey="value" radius={[0, 4, 4, 0]}>
@@ -155,11 +166,11 @@ export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
   factorData.sort((a, b) => b.contribution - a.contribution);
 
   const getBarColor = (value: number): string => {
-    if (value >= 80) return 'bg-green-500';
+    if (value >= 80) return 'bg-ic-positive';
     if (value >= 65) return 'bg-lime-500';
-    if (value >= 50) return 'bg-yellow-500';
+    if (value >= 50) return 'bg-ic-warning';
     if (value >= 35) return 'bg-orange-500';
-    return 'bg-red-500';
+    return 'bg-ic-negative';
   };
 
   return (

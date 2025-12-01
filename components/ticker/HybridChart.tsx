@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from 'react';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { getChartColors, themeColors } from '@/lib/theme';
 
 interface HybridChartProps {
   symbol: string;
@@ -33,6 +35,9 @@ function calculateSMA(data: number[], period: number): (number | null)[] {
 }
 
 export default function HybridChart({ symbol, initialData, currentPrice }: HybridChartProps) {
+  const { resolvedTheme } = useTheme();
+  const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
+
   const [showMA50, setShowMA50] = useState(false);
   const [showMA200, setShowMA200] = useState(false);
   const [showVolume, setShowVolume] = useState(true);
@@ -460,9 +465,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         >
           {/* Gradient definition */}
           <defs>
-            <linearGradient id="priceGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{stopColor: '#10b981', stopOpacity: 0.2}} />
-              <stop offset="100%" style={{stopColor: '#10b981', stopOpacity: 0.02}} />
+            <linearGradient id={`priceGradient-${resolvedTheme}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style={{stopColor: chartColors.positive, stopOpacity: 0.2}} />
+              <stop offset="100%" style={{stopColor: chartColors.positive, stopOpacity: 0.02}} />
             </linearGradient>
           </defs>
 
@@ -512,7 +517,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           {/* Price area with gradient */}
           <path
             d={`${pathData} L ${chartWidth - paddingRight} ${paddingTop + plotHeight} L ${paddingLeft} ${paddingTop + plotHeight} Z`}
-            fill="url(#priceGradient)"
+            fill={`url(#priceGradient-${resolvedTheme})`}
             stroke="none"
           />
 
@@ -521,7 +526,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             <path
               d={ma200PathData}
               fill="none"
-              stroke="#f97316"
+              stroke={themeColors.accent.orange}
               strokeWidth="2"
               strokeDasharray="4,4"
               opacity="0.8"
@@ -533,7 +538,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             <path
               d={sp500PathData}
               fill="none"
-              stroke="#ef4444"
+              stroke={chartColors.negative}
               strokeWidth="2"
               strokeDasharray="6,3"
               opacity="0.8"
@@ -545,7 +550,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             <path
               d={ma50PathData}
               fill="none"
-              stroke="#3b82f6"
+              stroke={chartColors.line}
               strokeWidth="2"
               opacity="0.8"
             />
@@ -555,7 +560,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           <path
             d={pathData}
             fill="none"
-            stroke="#10b981"
+            stroke={chartColors.positive}
             strokeWidth="2.5"
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -566,8 +571,8 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             cx={chartWidth - paddingRight}
             cy={paddingTop + plotHeight - (currentPrice - low) * priceScale}
             r="6"
-            fill="#10b981"
-            stroke="white"
+            fill={chartColors.positive}
+            stroke={resolvedTheme === 'dark' ? '#fff' : '#000'}
             strokeWidth="3"
           />
 
@@ -595,7 +600,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
                   y={bar.y}
                   width={bar.width}
                   height={bar.height}
-                  fill={bar.isUp ? 'rgba(16, 185, 129, 0.5)' : 'rgba(239, 68, 68, 0.5)'}
+                  fill={bar.isUp ? `${chartColors.positive}80` : `${chartColors.negative}80`}
                 />
               ))}
             </g>
