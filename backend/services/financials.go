@@ -14,12 +14,14 @@ import (
 // FinancialsService handles financial statement operations
 type FinancialsService struct {
 	polygonClient *PolygonFinancialsClient
+	icScoreClient *ICScoreClient
 }
 
 // NewFinancialsService creates a new financials service
 func NewFinancialsService() *FinancialsService {
 	return &FinancialsService{
 		polygonClient: NewPolygonFinancialsClient(),
+		icScoreClient: NewICScoreClient(),
 	}
 }
 
@@ -183,12 +185,6 @@ func (s *FinancialsService) GetRatios(ctx context.Context, ticker string, timefr
 
 // getStatements is the generic method for retrieving financial statements
 func (s *FinancialsService) getStatements(ctx context.Context, ticker string, statementType models.StatementType, timeframe models.Timeframe, limit int) (*models.FinancialsResponse, error) {
-	// Check if we need to ingest data first
-	if err := s.IngestFinancialsIfNeeded(ctx, ticker); err != nil {
-		log.Printf("Warning: Failed to ingest financials for %s: %v", ticker, err)
-		// Continue anyway - we might have cached data
-	}
-
 	// Get company metadata
 	metadata, err := database.GetCompanyMetadata(ticker)
 	if err != nil {
@@ -196,6 +192,18 @@ func (s *FinancialsService) getStatements(ctx context.Context, ticker string, st
 		metadata = &models.FinancialsMetadata{
 			CompanyName: ticker,
 		}
+	}
+
+	// For Annual and TTM, use IC Score API
+	if timeframe == models.TimeframeAnnual || timeframe == models.TimeframeTTM {
+		return s.getStatementsFromICScore(ticker, statementType, timeframe, limit, metadata)
+	}
+
+	// For Quarterly, use existing Polygon-based database
+	// Check if we need to ingest data first
+	if err := s.IngestFinancialsIfNeeded(ctx, ticker); err != nil {
+		log.Printf("Warning: Failed to ingest financials for %s: %v", ticker, err)
+		// Continue anyway - we might have cached data
 	}
 
 	// Get statements with YoY changes
@@ -216,6 +224,48 @@ func (s *FinancialsService) getStatements(ctx context.Context, ticker string, st
 		if err != nil {
 			return nil, fmt.Errorf("failed to get financial statements after ingestion: %w", err)
 		}
+	}
+
+	return &models.FinancialsResponse{
+		Ticker:        ticker,
+		StatementType: statementType,
+		Timeframe:     timeframe,
+		Periods:       periods,
+		Metadata:      *metadata,
+	}, nil
+}
+
+// getStatementsFromICScore fetches Annual or TTM financial data from IC Score API
+func (s *FinancialsService) getStatementsFromICScore(ticker string, statementType models.StatementType, timeframe models.Timeframe, limit int, metadata *models.FinancialsMetadata) (*models.FinancialsResponse, error) {
+	// Map statement type to API parameter
+	stmtTypeParam := "income"
+	switch statementType {
+	case models.StatementTypeBalanceSheet:
+		stmtTypeParam = "balance"
+	case models.StatementTypeCashFlow:
+		stmtTypeParam = "cashflow"
+	}
+
+	var apiResponse *ICScoreAPIResponse
+	var err error
+
+	if timeframe == models.TimeframeAnnual {
+		apiResponse, err = s.icScoreClient.GetAnnualFinancials(ticker, stmtTypeParam, limit)
+	} else {
+		apiResponse, err = s.icScoreClient.GetTTMFinancials(ticker, stmtTypeParam, limit)
+	}
+
+	if err != nil {
+		log.Printf("Warning: Failed to get %s financials from IC Score API for %s: %v", timeframe, ticker, err)
+		return nil, fmt.Errorf("no %s financial data available for %s: %w", timeframe, ticker, err)
+	}
+
+	// Convert API response to FinancialPeriod format
+	periods := ConvertToFinancialPeriods(apiResponse, statementType)
+
+	// Update metadata with company name from API if available
+	if apiResponse.Metadata.CompanyName != "" && metadata.CompanyName == ticker {
+		metadata.CompanyName = apiResponse.Metadata.CompanyName
 	}
 
 	return &models.FinancialsResponse{

@@ -201,13 +201,15 @@ async def root():
     """Root endpoint."""
     return {
         "service": "IC Score API",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "endpoints": {
             "health": "/health",
             "score": "/api/scores/{ticker}",
             "history": "/api/scores/{ticker}/history",
             "top": "/api/scores/top",
             "screener": "/api/scores/screener",
+            "financials_annual": "/api/financials/{ticker}/annual",
+            "financials_ttm": "/api/financials/{ticker}/ttm",
             "metrics": "/api/metrics/{ticker}",
             "risk": "/api/risk/{ticker}",
             "technical": "/api/technical/{ticker}"
@@ -458,6 +460,341 @@ async def screener(
     stocks = [ICScoreResponse(**row._asdict()) for row in rows]
 
     return TopStocksResponse(stocks=stocks, count=len(stocks))
+
+
+# ============================================================================
+# Financial Statements Endpoints (Annual/TTM)
+# ============================================================================
+
+class FinancialStatementItem(BaseModel):
+    """Single financial statement period."""
+    fiscal_year: int
+    fiscal_quarter: Optional[int] = None
+    period_end_date: date
+    filing_date: Optional[date] = None
+
+    # Income Statement
+    revenue: Optional[int] = None
+    cost_of_revenue: Optional[int] = None
+    gross_profit: Optional[int] = None
+    operating_expenses: Optional[int] = None
+    operating_income: Optional[int] = None
+    net_income: Optional[int] = None
+    eps_basic: Optional[float] = None
+    eps_diluted: Optional[float] = None
+    shares_outstanding: Optional[int] = None
+
+    # Balance Sheet
+    total_assets: Optional[int] = None
+    total_liabilities: Optional[int] = None
+    shareholders_equity: Optional[int] = None
+    cash_and_equivalents: Optional[int] = None
+    short_term_debt: Optional[int] = None
+    long_term_debt: Optional[int] = None
+
+    # Cash Flow
+    operating_cash_flow: Optional[int] = None
+    investing_cash_flow: Optional[int] = None
+    financing_cash_flow: Optional[int] = None
+    free_cash_flow: Optional[int] = None
+    capex: Optional[int] = None
+
+    # Calculated Ratios
+    gross_margin: Optional[float] = None
+    operating_margin: Optional[float] = None
+    net_margin: Optional[float] = None
+    roe: Optional[float] = None
+    roa: Optional[float] = None
+    current_ratio: Optional[float] = None
+    debt_to_equity: Optional[float] = None
+
+    # YoY Changes (optional)
+    yoy_change: Optional[dict] = None
+
+    class Config:
+        from_attributes = True
+
+
+class FinancialStatementsResponse(BaseModel):
+    """Financial statements response with multiple periods."""
+    ticker: str
+    statement_type: str  # "income", "balance", "cashflow"
+    timeframe: str  # "annual", "ttm"
+    periods: List[FinancialStatementItem]
+    metadata: dict = {}
+
+
+@app.get("/api/financials/{ticker}/annual")
+async def get_annual_financials(
+    ticker: str,
+    statement_type: str = Query("income", description="Statement type: income, balance, cashflow"),
+    limit: int = Query(8, ge=1, le=40, description="Number of periods to return"),
+    session: AsyncSession = Depends(get_session)
+):
+    """Get annual financial statements for a ticker.
+
+    Returns annual (10-K) financial data from SEC filings.
+
+    Args:
+        ticker: Stock ticker symbol.
+        statement_type: Type of statement (income, balance, cashflow).
+        limit: Number of periods to return.
+
+    Returns:
+        List of annual financial periods.
+    """
+    ticker = ticker.upper()
+
+    # Query annual financials (fiscal_quarter IS NULL = annual 10-K data)
+    query = text("""
+        SELECT
+            f.*,
+            py.revenue as prior_revenue,
+            py.net_income as prior_net_income,
+            py.eps_diluted as prior_eps_diluted,
+            py.operating_income as prior_operating_income
+        FROM financials f
+        LEFT JOIN financials py ON f.ticker = py.ticker
+            AND py.fiscal_year = f.fiscal_year - 1
+            AND py.fiscal_quarter IS NULL
+        WHERE f.ticker = :ticker
+            AND f.fiscal_quarter IS NULL
+        ORDER BY f.period_end_date DESC
+        LIMIT :limit
+    """)
+
+    result = await session.execute(query, {"ticker": ticker, "limit": limit})
+    rows = result.fetchall()
+
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No annual financial data found for ticker {ticker}"
+        )
+
+    periods = []
+    for row in rows:
+        row_dict = row._asdict()
+
+        # Calculate YoY changes
+        yoy_change = {}
+        if row_dict.get('prior_revenue') and row_dict.get('revenue'):
+            prior_rev = float(row_dict['prior_revenue'])
+            curr_rev = float(row_dict['revenue'])
+            if prior_rev != 0:
+                yoy_change['revenue'] = (curr_rev - prior_rev) / abs(prior_rev)
+
+        if row_dict.get('prior_net_income') and row_dict.get('net_income'):
+            prior_ni = float(row_dict['prior_net_income'])
+            curr_ni = float(row_dict['net_income'])
+            if prior_ni != 0:
+                yoy_change['net_income'] = (curr_ni - prior_ni) / abs(prior_ni)
+
+        if row_dict.get('prior_eps_diluted') and row_dict.get('eps_diluted'):
+            prior_eps = float(row_dict['prior_eps_diluted'])
+            curr_eps = float(row_dict['eps_diluted'])
+            if prior_eps != 0:
+                yoy_change['eps_diluted'] = (curr_eps - prior_eps) / abs(prior_eps)
+
+        if row_dict.get('prior_operating_income') and row_dict.get('operating_income'):
+            prior_oi = float(row_dict['prior_operating_income'])
+            curr_oi = float(row_dict['operating_income'])
+            if prior_oi != 0:
+                yoy_change['operating_income'] = (curr_oi - prior_oi) / abs(prior_oi)
+
+        periods.append(FinancialStatementItem(
+            fiscal_year=row_dict['fiscal_year'],
+            fiscal_quarter=None,
+            period_end_date=row_dict['period_end_date'],
+            filing_date=row_dict.get('filing_date'),
+            revenue=row_dict.get('revenue'),
+            cost_of_revenue=row_dict.get('cost_of_revenue'),
+            gross_profit=row_dict.get('gross_profit'),
+            operating_expenses=row_dict.get('operating_expenses'),
+            operating_income=row_dict.get('operating_income'),
+            net_income=row_dict.get('net_income'),
+            eps_basic=float(row_dict['eps_basic']) if row_dict.get('eps_basic') else None,
+            eps_diluted=float(row_dict['eps_diluted']) if row_dict.get('eps_diluted') else None,
+            shares_outstanding=row_dict.get('shares_outstanding'),
+            total_assets=row_dict.get('total_assets'),
+            total_liabilities=row_dict.get('total_liabilities'),
+            shareholders_equity=row_dict.get('shareholders_equity'),
+            cash_and_equivalents=row_dict.get('cash_and_equivalents'),
+            short_term_debt=row_dict.get('short_term_debt'),
+            long_term_debt=row_dict.get('long_term_debt'),
+            operating_cash_flow=row_dict.get('operating_cash_flow'),
+            investing_cash_flow=row_dict.get('investing_cash_flow'),
+            financing_cash_flow=row_dict.get('financing_cash_flow'),
+            free_cash_flow=row_dict.get('free_cash_flow'),
+            capex=row_dict.get('capex'),
+            gross_margin=float(row_dict['gross_margin']) if row_dict.get('gross_margin') else None,
+            operating_margin=float(row_dict['operating_margin']) if row_dict.get('operating_margin') else None,
+            net_margin=float(row_dict['net_margin']) if row_dict.get('net_margin') else None,
+            roe=float(row_dict['roe']) if row_dict.get('roe') else None,
+            roa=float(row_dict['roa']) if row_dict.get('roa') else None,
+            current_ratio=float(row_dict['current_ratio']) if row_dict.get('current_ratio') else None,
+            debt_to_equity=float(row_dict['debt_to_equity']) if row_dict.get('debt_to_equity') else None,
+            yoy_change=yoy_change if yoy_change else None
+        ))
+
+    # Get company name for metadata
+    meta_query = text("SELECT name FROM tickers WHERE UPPER(symbol) = UPPER(:ticker) LIMIT 1")
+    meta_result = await session.execute(meta_query, {"ticker": ticker})
+    meta_row = meta_result.fetchone()
+
+    return {
+        "ticker": ticker,
+        "statement_type": statement_type,
+        "timeframe": "annual",
+        "periods": [p.model_dump() for p in periods],
+        "metadata": {
+            "company_name": meta_row.name if meta_row else ticker
+        }
+    }
+
+
+@app.get("/api/financials/{ticker}/ttm")
+async def get_ttm_financials(
+    ticker: str,
+    statement_type: str = Query("income", description="Statement type: income, balance, cashflow"),
+    limit: int = Query(8, ge=1, le=40, description="Number of periods to return"),
+    session: AsyncSession = Depends(get_session)
+):
+    """Get TTM (Trailing Twelve Months) financial data for a ticker.
+
+    Returns TTM financial data calculated by summing the last 4 quarters.
+
+    Args:
+        ticker: Stock ticker symbol.
+        statement_type: Type of statement (income, balance, cashflow).
+        limit: Number of periods to return.
+
+    Returns:
+        List of TTM financial periods.
+    """
+    ticker = ticker.upper()
+
+    # Query TTM financials
+    query = text("""
+        SELECT
+            t.*,
+            pt.revenue as prior_revenue,
+            pt.net_income as prior_net_income,
+            pt.eps_diluted as prior_eps_diluted,
+            pt.operating_income as prior_operating_income
+        FROM ttm_financials t
+        LEFT JOIN ttm_financials pt ON t.ticker = pt.ticker
+            AND pt.ttm_period_end <= t.ttm_period_end - INTERVAL '11 months'
+            AND pt.ttm_period_end >= t.ttm_period_end - INTERVAL '13 months'
+        WHERE t.ticker = :ticker
+        ORDER BY t.calculation_date DESC
+        LIMIT :limit
+    """)
+
+    result = await session.execute(query, {"ticker": ticker, "limit": limit})
+    rows = result.fetchall()
+
+    if not rows:
+        raise HTTPException(
+            status_code=404,
+            detail=f"No TTM financial data found for ticker {ticker}"
+        )
+
+    periods = []
+    for row in rows:
+        row_dict = row._asdict()
+
+        # Calculate YoY changes
+        yoy_change = {}
+        if row_dict.get('prior_revenue') and row_dict.get('revenue'):
+            prior_rev = float(row_dict['prior_revenue'])
+            curr_rev = float(row_dict['revenue'])
+            if prior_rev != 0:
+                yoy_change['revenue'] = (curr_rev - prior_rev) / abs(prior_rev)
+
+        if row_dict.get('prior_net_income') and row_dict.get('net_income'):
+            prior_ni = float(row_dict['prior_net_income'])
+            curr_ni = float(row_dict['net_income'])
+            if prior_ni != 0:
+                yoy_change['net_income'] = (curr_ni - prior_ni) / abs(prior_ni)
+
+        if row_dict.get('prior_eps_diluted') and row_dict.get('eps_diluted'):
+            prior_eps = float(row_dict['prior_eps_diluted'])
+            curr_eps = float(row_dict['eps_diluted'])
+            if prior_eps != 0:
+                yoy_change['eps_diluted'] = (curr_eps - prior_eps) / abs(prior_eps)
+
+        if row_dict.get('prior_operating_income') and row_dict.get('operating_income'):
+            prior_oi = float(row_dict['prior_operating_income'])
+            curr_oi = float(row_dict['operating_income'])
+            if prior_oi != 0:
+                yoy_change['operating_income'] = (curr_oi - prior_oi) / abs(prior_oi)
+
+        # Extract fiscal year from the TTM period end date
+        fiscal_year = row_dict['ttm_period_end'].year
+
+        # Calculate margins from TTM data if not present
+        gross_margin = None
+        operating_margin = None
+        net_margin = None
+
+        if row_dict.get('revenue') and row_dict['revenue'] > 0:
+            if row_dict.get('gross_profit'):
+                gross_margin = float(row_dict['gross_profit']) / float(row_dict['revenue'])
+            if row_dict.get('operating_income'):
+                operating_margin = float(row_dict['operating_income']) / float(row_dict['revenue'])
+            if row_dict.get('net_income'):
+                net_margin = float(row_dict['net_income']) / float(row_dict['revenue'])
+
+        periods.append(FinancialStatementItem(
+            fiscal_year=fiscal_year,
+            fiscal_quarter=None,  # TTM doesn't have a quarter
+            period_end_date=row_dict['ttm_period_end'],
+            filing_date=row_dict.get('calculation_date'),
+            revenue=row_dict.get('revenue'),
+            cost_of_revenue=row_dict.get('cost_of_revenue'),
+            gross_profit=row_dict.get('gross_profit'),
+            operating_expenses=row_dict.get('operating_expenses'),
+            operating_income=row_dict.get('operating_income'),
+            net_income=row_dict.get('net_income'),
+            eps_basic=float(row_dict['eps_basic']) if row_dict.get('eps_basic') else None,
+            eps_diluted=float(row_dict['eps_diluted']) if row_dict.get('eps_diluted') else None,
+            shares_outstanding=row_dict.get('shares_outstanding'),
+            total_assets=row_dict.get('total_assets'),
+            total_liabilities=row_dict.get('total_liabilities'),
+            shareholders_equity=row_dict.get('shareholders_equity'),
+            cash_and_equivalents=row_dict.get('cash_and_equivalents'),
+            short_term_debt=row_dict.get('short_term_debt'),
+            long_term_debt=row_dict.get('long_term_debt'),
+            operating_cash_flow=row_dict.get('operating_cash_flow'),
+            investing_cash_flow=row_dict.get('investing_cash_flow'),
+            financing_cash_flow=row_dict.get('financing_cash_flow'),
+            free_cash_flow=row_dict.get('free_cash_flow'),
+            capex=row_dict.get('capex'),
+            gross_margin=gross_margin,
+            operating_margin=operating_margin,
+            net_margin=net_margin,
+            roe=None,  # TTM table doesn't have ROE
+            roa=None,  # TTM table doesn't have ROA
+            current_ratio=None,  # TTM table doesn't have current ratio
+            debt_to_equity=None,  # TTM table doesn't have debt_to_equity
+            yoy_change=yoy_change if yoy_change else None
+        ))
+
+    # Get company name for metadata
+    meta_query = text("SELECT name FROM tickers WHERE UPPER(symbol) = UPPER(:ticker) LIMIT 1")
+    meta_result = await session.execute(meta_query, {"ticker": ticker})
+    meta_row = meta_result.fetchone()
+
+    return {
+        "ticker": ticker,
+        "statement_type": statement_type,
+        "timeframe": "ttm",
+        "periods": [p.model_dump() for p in periods],
+        "metadata": {
+            "company_name": meta_row.name if meta_row else ticker
+        }
+    }
 
 
 # ============================================================================
