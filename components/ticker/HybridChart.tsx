@@ -701,7 +701,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   // Fullscreen overlay
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-ic-surface overflow-auto">
+      <div className="fixed inset-0 z-50 bg-ic-bg-primary overflow-auto">
         <div className="min-h-screen p-6">
           {chartContent}
         </div>
