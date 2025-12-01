@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ChartBarIcon, BellIcon } from '@heroicons/react/24/outline';
 import TickerSearch from '@/components/TickerSearch';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { ThemeToggle } from '@/lib/contexts/ThemeContext';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
@@ -72,6 +73,9 @@ export default function Header() {
             <div className="w-36 sm:w-auto">
               <TickerSearch />
             </div>
+
+            {/* Theme Toggle */}
+            <ThemeToggle />
 
             {/* Alerts Bell Icon - Only when logged in */}
             {user && (
