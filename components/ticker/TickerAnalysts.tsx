@@ -63,15 +63,13 @@ export default function TickerAnalysts({ symbol }: TickerAnalystsProps) {
   const getRatingColor = (rating: string) => {
     switch (rating.toLowerCase()) {
       case 'strong buy':
-        return 'text-green-700 bg-ic-positive-bg';
       case 'buy':
-        return 'text-ic-positive bg-green-50';
+        return 'text-ic-positive bg-ic-positive-bg';
       case 'hold':
-        return 'text-yellow-600 bg-yellow-50';
+        return 'text-ic-warning bg-ic-warning-bg';
       case 'sell':
-        return 'text-ic-negative bg-red-50';
       case 'strong sell':
-        return 'text-red-700 bg-ic-negative-bg';
+        return 'text-ic-negative bg-ic-negative-bg';
       default:
         return 'text-ic-text-muted bg-ic-bg-secondary';
     }
