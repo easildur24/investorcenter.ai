@@ -68,7 +68,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
                   Active
                 </span>
               ) : (
-                <span className="px-2 py-1 text-xs font-semibold bg-gray-600/20 text-ic-text-dim rounded border border-gray-500/50">
+                <span className="px-2 py-1 text-xs font-semibold bg-ic-bg-tertiary/20 text-ic-text-dim rounded border border-ic-border">
                   Inactive
                 </span>
               )}
@@ -166,7 +166,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             className={`p-2 rounded-lg transition-colors ${
               alert.is_active
                 ? 'bg-green-600/20 text-ic-positive hover:bg-green-600/30'
-                : 'bg-gray-600/20 text-ic-text-dim hover:bg-gray-600/30'
+                : 'bg-ic-bg-tertiary/20 text-ic-text-dim hover:bg-ic-bg-tertiary/30'
             }`}
             title={alert.is_active ? 'Deactivate' : 'Activate'}
           >

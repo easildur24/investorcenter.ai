@@ -85,7 +85,7 @@ export default function SentimentHistoryChart({
     <div className="w-full">
       {/* Period selector */}
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-medium text-gray-700">Sentiment History</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary">Sentiment History</h4>
         <div className="flex gap-1">
           {[7, 30, 90].map((d) => (
             <button
@@ -218,8 +218,8 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   const scoreColor = getSentimentScoreColor(data.score);
 
   return (
-    <div className="bg-white border border-ic-border-subtle rounded-lg shadow-lg p-3">
-      <p className="font-medium text-gray-900 text-sm mb-2">
+    <div className="bg-ic-surface border border-ic-border-subtle rounded-lg shadow-lg p-3">
+      <p className="font-medium text-ic-text-primary text-sm mb-2">
         {format(data.date, 'MMM dd, yyyy')}
       </p>
       <div className="space-y-1 text-xs">
@@ -231,7 +231,7 @@ function CustomTooltip({ active, payload }: TooltipProps) {
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-ic-text-muted">Posts:</span>
-          <span className="font-medium text-gray-900">{data.post_count}</span>
+          <span className="font-medium text-ic-text-primary">{data.post_count}</span>
         </div>
         <div className="flex justify-between gap-4 pt-1 border-t border-gray-100">
           <span className="text-green-600">Bullish: {data.bullish}</span>
@@ -249,14 +249,14 @@ function LoadingSkeleton({ height }: { height: number }) {
   return (
     <div className="animate-pulse">
       <div className="flex justify-between mb-4">
-        <div className="h-4 w-32 bg-gray-200 rounded" />
+        <div className="h-4 w-32 bg-ic-bg-tertiary rounded" />
         <div className="flex gap-1">
-          <div className="h-6 w-10 bg-gray-200 rounded" />
-          <div className="h-6 w-10 bg-gray-200 rounded" />
-          <div className="h-6 w-10 bg-gray-200 rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
         </div>
       </div>
-      <div className="bg-gray-200 rounded-lg" style={{ height }} />
+      <div className="bg-ic-bg-tertiary rounded-lg" style={{ height }} />
     </div>
   );
 }

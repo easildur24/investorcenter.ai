@@ -80,7 +80,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex items-center justify-center min-h-screen bg-ic-bg-secondary">
       <div className="w-full max-w-md p-8 bg-ic-surface rounded-lg shadow-md">
         <h1 className="text-2xl font-bold mb-2 text-center text-ic-text-primary">Reset Password</h1>
         <p className="text-sm text-ic-text-muted text-center mb-6">

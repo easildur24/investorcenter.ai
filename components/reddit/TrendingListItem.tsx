@@ -57,20 +57,20 @@ export default function TrendingListItem({
     if (popularityScore >= 90) return 'bg-red-100 text-red-800';
     if (popularityScore >= 70) return 'bg-yellow-100 text-yellow-800';
     if (popularityScore >= 50) return 'bg-blue-100 text-blue-800';
-    return 'bg-ic-surface text-gray-800';
+    return 'bg-ic-surface text-ic-text-primary';
   };
 
   const getProgressBarColor = () => {
     if (popularityScore >= 90) return 'bg-red-500';
     if (popularityScore >= 70) return 'bg-yellow-500';
     if (popularityScore >= 50) return 'bg-blue-500';
-    return 'bg-gray-400';
+    return 'bg-ic-bg-tertiary';
   };
 
   return (
     <Link href={`/ticker/${symbol}`}>
       <div
-        className="flex items-center justify-between p-4 hover:bg-gray-50 cursor-pointer border-b border-gray-200 transition-colors duration-150 group"
+        className="flex items-center justify-between p-4 hover:bg-ic-surface-hover cursor-pointer border-b border-ic-border-subtle transition-colors duration-150 group"
         onMouseEnter={() => setShowTooltip(true)}
         onMouseLeave={() => setShowTooltip(false)}
       >
@@ -84,7 +84,7 @@ export default function TrendingListItem({
           {/* Ticker & Company */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <span className="font-bold text-gray-900 text-lg">{symbol}</span>
+              <span className="font-bold text-ic-text-primary text-lg">{symbol}</span>
               <span className="text-xs px-2 py-0.5 rounded-full bg-ic-surface text-ic-text-muted">
                 #{currentRank}
               </span>
@@ -100,14 +100,14 @@ export default function TrendingListItem({
         <div className="flex items-center gap-6 ml-4">
           {/* Mentions */}
           <div className="text-right hidden sm:block">
-            <div className="text-sm font-semibold text-gray-900">{mentions.toLocaleString()}</div>
+            <div className="text-sm font-semibold text-ic-text-primary">{mentions.toLocaleString()}</div>
             <div className="text-xs text-ic-text-dim">mentions</div>
           </div>
 
           {/* Upvotes - Only show on larger screens */}
           {upvotes > 0 && (
             <div className="text-right hidden md:block">
-              <div className="text-sm font-semibold text-gray-900">{upvotes.toLocaleString()}</div>
+              <div className="text-sm font-semibold text-ic-text-primary">{upvotes.toLocaleString()}</div>
               <div className="text-xs text-ic-text-dim">upvotes</div>
             </div>
           )}
@@ -119,7 +119,7 @@ export default function TrendingListItem({
               <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreBadgeColor()}`}>
                 {popularityScore.toFixed(1)}
               </div>
-              <div className="mt-1 w-20 bg-gray-200 rounded-full h-1.5">
+              <div className="mt-1 w-20 bg-ic-bg-tertiary rounded-full h-1.5">
                 <div
                   className={`h-1.5 rounded-full ${getProgressBarColor()}`}
                   style={{ width: `${Math.min(popularityScore, 100)}%` }}
@@ -131,7 +131,7 @@ export default function TrendingListItem({
 
         {/* Hover Arrow */}
         <div className="ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-          <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-ic-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>
         </div>
