@@ -149,7 +149,7 @@ export function getStatusColor(status: string): string {
     case 'running':
       return 'text-yellow-600 bg-yellow-50';
     default:
-      return 'text-gray-600 bg-gray-50';
+      return 'text-ic-text-muted bg-ic-surface';
   }
 }
 
@@ -162,7 +162,7 @@ export function getHealthStatusColor(healthStatus: string): string {
     case 'critical':
       return 'text-red-600';
     default:
-      return 'text-gray-600';
+      return 'text-ic-text-muted';
   }
 }
 

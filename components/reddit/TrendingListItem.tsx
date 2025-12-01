@@ -57,7 +57,7 @@ export default function TrendingListItem({
     if (popularityScore >= 90) return 'bg-red-100 text-red-800';
     if (popularityScore >= 70) return 'bg-yellow-100 text-yellow-800';
     if (popularityScore >= 50) return 'bg-blue-100 text-blue-800';
-    return 'bg-gray-100 text-gray-800';
+    return 'bg-ic-surface text-gray-800';
   };
 
   const getProgressBarColor = () => {
@@ -85,13 +85,13 @@ export default function TrendingListItem({
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <span className="font-bold text-gray-900 text-lg">{symbol}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+              <span className="text-xs px-2 py-0.5 rounded-full bg-ic-surface text-ic-text-muted">
                 #{currentRank}
               </span>
               {getRankChangeDisplay()}
             </div>
             {companyName && (
-              <div className="text-sm text-gray-600 truncate">{companyName}</div>
+              <div className="text-sm text-ic-text-muted truncate">{companyName}</div>
             )}
           </div>
         </div>

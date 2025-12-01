@@ -63,8 +63,8 @@ export default function SentimentHistoryChart({
 
   if (error || !data || data.history.length === 0) {
     return (
-      <div className="flex items-center justify-center bg-gray-50 rounded-lg" style={{ height }}>
-        <p className="text-gray-500 text-sm">
+      <div className="flex items-center justify-center bg-ic-surface rounded-lg" style={{ height }}>
+        <p className="text-ic-text-dim text-sm">
           {error || 'No sentiment history available'}
         </p>
       </div>
@@ -94,7 +94,7 @@ export default function SentimentHistoryChart({
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 days === d
                   ? 'bg-ic-blue text-ic-text-primary'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
               }`}
             >
               {d}D
@@ -218,19 +218,19 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   const scoreColor = getSentimentScoreColor(data.score);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+    <div className="bg-white border border-ic-border-subtle rounded-lg shadow-lg p-3">
       <p className="font-medium text-gray-900 text-sm mb-2">
         {format(data.date, 'MMM dd, yyyy')}
       </p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Sentiment:</span>
+          <span className="text-ic-text-muted">Sentiment:</span>
           <span className="font-bold" style={{ color: scoreColor }}>
             {data.score >= 0 ? '+' : ''}{data.score.toFixed(2)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Posts:</span>
+          <span className="text-ic-text-muted">Posts:</span>
           <span className="font-medium text-gray-900">{data.post_count}</span>
         </div>
         <div className="flex justify-between gap-4 pt-1 border-t border-gray-100">
