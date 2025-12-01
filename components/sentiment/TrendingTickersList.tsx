@@ -55,11 +55,11 @@ export default function TrendingTickersList({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-ic-surface rounded-lg shadow-sm overflow-hidden">
       {/* Header with period toggle */}
       <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-ic-text-primary">
             Trending by Sentiment
           </h3>
           <div className="flex gap-1">
@@ -181,7 +181,7 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
 
       {/* Ticker info */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900">{ticker.ticker}</div>
+        <div className="font-semibold text-ic-text-primary">{ticker.ticker}</div>
         <div className="sm:hidden mt-1">
           <SentimentIndicator score={ticker.score} label={ticker.label} />
         </div>
@@ -199,7 +199,7 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
       </div>
 
       {/* Post count */}
-      <span className="w-20 text-right text-sm font-medium text-gray-900">
+      <span className="w-20 text-right text-sm font-medium text-ic-text-primary">
         {formatCompactNumber(ticker.post_count)}
       </span>
 
@@ -232,7 +232,7 @@ export function CompactTrendingList({ tickers, limit = 5 }: CompactTrendingListP
         >
           <div className="flex items-center gap-3">
             <span className="text-xs text-ic-text-muted w-4">{ticker.rank}</span>
-            <span className="font-medium text-gray-900">{ticker.ticker}</span>
+            <span className="font-medium text-ic-text-primary">{ticker.ticker}</span>
           </div>
           <div className="flex items-center gap-2">
             <SentimentIndicator score={ticker.score} label={ticker.label} />

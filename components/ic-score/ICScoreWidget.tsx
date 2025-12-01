@@ -76,7 +76,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
       <div className="px-6 py-4 bg-ic-surface border-b border-ic-border-subtle">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">InvestorCenter Score</h3>
+            <h3 className="text-lg font-semibold text-ic-text-primary">InvestorCenter Score</h3>
             <p className="text-sm text-ic-text-muted">Proprietary 10-factor analysis</p>
           </div>
           <div className="text-right">
@@ -116,7 +116,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
               className={`w-6 h-6 ${
                 i < stars
                   ? `fill-current ${colors.text}`
-                  : 'fill-gray-200 text-gray-200'
+                  : 'fill-ic-bg-tertiary text-ic-text-dim'
               }`}
             />
           ))}
@@ -171,7 +171,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
       <div className="px-6 py-4 bg-ic-surface border-t border-ic-border-subtle">
         <button
           onClick={() => setExpanded(!expanded)}
-          className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+          className="w-full flex items-center justify-between text-sm font-medium text-ic-text-secondary hover:text-ic-text-primary transition-colors"
         >
           <span>View Factor Breakdown</span>
           {expanded ? (
