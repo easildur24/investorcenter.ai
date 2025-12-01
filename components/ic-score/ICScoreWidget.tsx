@@ -73,11 +73,11 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
   return (
     <div className={`rounded-lg border ${colors.border} ${colors.bg} overflow-hidden`}>
       {/* Header */}
-      <div className="px-6 py-4 bg-white border-b border-gray-200">
+      <div className="px-6 py-4 bg-ic-surface border-b border-ic-border-subtle">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900">InvestorCenter Score</h3>
-            <p className="text-sm text-gray-600">Proprietary 10-factor analysis</p>
+            <p className="text-sm text-ic-text-muted">Proprietary 10-factor analysis</p>
           </div>
           <div className="text-right">
             <div className="text-xs text-ic-text-dim mb-1">
@@ -100,7 +100,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
 
         {/* Progress Bar */}
         <div className="max-w-md mx-auto mb-6">
-          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+          <div className="h-3 bg-ic-bg-tertiary rounded-full overflow-hidden">
             <div
               className={`h-full ${colors.progress} transition-all duration-500`}
               style={{ width: `${score}%` }}
@@ -131,7 +131,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
         {scoreChange && scoreChange.change !== 0 && (
           <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
             scoreChange.direction === 'up' ? 'bg-green-100 text-green-700' :
-            scoreChange.direction === 'down' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'
+            scoreChange.direction === 'down' ? 'bg-red-100 text-red-700' : 'bg-ic-surface text-ic-text-muted'
           }`}>
             {scoreChange.direction === 'up' && <TrendingUp className="w-4 h-4" />}
             {scoreChange.direction === 'down' && <TrendingDown className="w-4 h-4" />}
@@ -145,14 +145,14 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
 
         {/* Confidence Level */}
         {icScore.confidence_level && (
-          <div className="mt-4 text-sm text-gray-600">
+          <div className="mt-4 text-sm text-ic-text-muted">
             Confidence: <span className="font-medium">{icScore.confidence_level}</span>
           </div>
         )}
 
         {/* Sector Percentile */}
         {icScore.sector_percentile !== null && (
-          <div className="mt-2 text-sm text-gray-600">
+          <div className="mt-2 text-sm text-ic-text-muted">
             <span className="font-medium">{Math.round(icScore.sector_percentile)}</span>
             <sup>th</sup> percentile in sector
           </div>
@@ -168,7 +168,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
       </div>
 
       {/* Toggle Factor Breakdown Button */}
-      <div className="px-6 py-4 bg-white border-t border-gray-200">
+      <div className="px-6 py-4 bg-ic-surface border-t border-ic-border-subtle">
         <button
           onClick={() => setExpanded(!expanded)}
           className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"

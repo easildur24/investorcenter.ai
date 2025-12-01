@@ -251,7 +251,7 @@ export function getScoreColor(score: number | null): string {
  * Get background color class for a score
  */
 export function getScoreBgColor(score: number | null): string {
-  if (score === null) return 'bg-gray-100';
+  if (score === null) return 'bg-ic-surface';
 
   if (score >= 80) return 'bg-green-100';
   if (score >= 65) return 'bg-green-50';

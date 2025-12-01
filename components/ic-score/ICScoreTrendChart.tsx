@@ -188,7 +188,7 @@ function StatCard({ label, value, trend, isPositive, isNegative }: StatCardProps
   };
 
   return (
-    <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+    <div className="bg-ic-surface rounded-lg p-3 border border-ic-border-subtle">
       <div className="text-xs text-ic-text-dim mb-1">{label}</div>
       <div className={`text-lg font-bold ${getValueColor()}`}>{value}</div>
       {trend !== undefined && (
@@ -222,17 +222,17 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   const data = payload[0].payload;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
+    <div className="bg-ic-surface border border-ic-border-subtle rounded-lg shadow-lg p-3">
       <p className="font-semibold text-gray-900 text-sm mb-2">
         {format(data.date, 'MMM dd, yyyy')}
       </p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">IC Score:</span>
+          <span className="text-ic-text-muted">IC Score:</span>
           <span className="font-bold text-gray-900">{data.score.toFixed(1)}</span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Rating:</span>
+          <span className="text-ic-text-muted">Rating:</span>
           <span className="font-medium text-gray-900">{data.rating}</span>
         </div>
       </div>

@@ -46,7 +46,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.size_metric}
             onChange={(e) => handleChange('size_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
             <option value="market_cap">📊 Market Cap</option>
             <option value="volume">📈 Volume</option>
@@ -67,7 +67,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_metric}
             onChange={(e) => handleChange('color_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
             <option value="price_change_pct">💲 Price Change %</option>
             <option value="volume_change_pct">📊 Volume Change %</option>
@@ -87,7 +87,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.time_period}
             onChange={(e) => handleChange('time_period', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
             <option value="1D">1 Day</option>
             <option value="1W">1 Week</option>
@@ -111,7 +111,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_scheme}
             onChange={(e) => handleChange('color_scheme', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
             <option value="red_green">🔴 Red-Green</option>
             <option value="blue_red">🔵 Blue-Red</option>

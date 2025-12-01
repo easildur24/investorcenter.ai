@@ -12,7 +12,7 @@ const tabs: StatementType[] = ['income', 'balance_sheet', 'cash_flow', 'ratios']
 
 export default function StatementTabs({ activeTab, onChange }: StatementTabsProps) {
   return (
-    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg overflow-x-auto">
+    <div className="flex gap-1 p-1 bg-ic-surface rounded-lg overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab}

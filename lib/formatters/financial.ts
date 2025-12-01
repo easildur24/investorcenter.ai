@@ -97,7 +97,7 @@ export function formatYoYChange(change: number | null | undefined): {
     return {
       text: '—',
       color: 'text-ic-text-muted',
-      bgColor: 'bg-gray-50',
+      bgColor: 'bg-ic-surface',
     };
   }
 
