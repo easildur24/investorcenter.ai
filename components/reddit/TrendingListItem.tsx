@@ -43,7 +43,7 @@ export default function TrendingListItem({
         </span>
       );
     }
-    return <span className="text-gray-400">→</span>;
+    return <span className="text-ic-text-muted">→</span>;
   };
 
   const getScoreEmoji = () => {
@@ -77,7 +77,7 @@ export default function TrendingListItem({
         {/* Left Section: Rank, Ticker, Company */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           {/* Rank Number */}
-          <span className="text-gray-500 font-mono text-sm w-8 flex-shrink-0">
+          <span className="text-ic-text-dim font-mono text-sm w-8 flex-shrink-0">
             {rank}
           </span>
 
@@ -101,14 +101,14 @@ export default function TrendingListItem({
           {/* Mentions */}
           <div className="text-right hidden sm:block">
             <div className="text-sm font-semibold text-gray-900">{mentions.toLocaleString()}</div>
-            <div className="text-xs text-gray-500">mentions</div>
+            <div className="text-xs text-ic-text-dim">mentions</div>
           </div>
 
           {/* Upvotes - Only show on larger screens */}
           {upvotes > 0 && (
             <div className="text-right hidden md:block">
               <div className="text-sm font-semibold text-gray-900">{upvotes.toLocaleString()}</div>
-              <div className="text-xs text-gray-500">upvotes</div>
+              <div className="text-xs text-ic-text-dim">upvotes</div>
             </div>
           )}
 

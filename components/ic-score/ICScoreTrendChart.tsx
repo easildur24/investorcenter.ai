@@ -157,7 +157,7 @@ export default function ICScoreTrendChart({
       </ResponsiveContainer>
 
       {/* Period info */}
-      <div className="mt-2 text-xs text-gray-500 text-center">
+      <div className="mt-2 text-xs text-ic-text-dim text-center">
         {formatDate(chartData[0]?.date)} - {formatDate(chartData[chartData.length - 1]?.date)}
       </div>
     </div>
@@ -189,7 +189,7 @@ function StatCard({ label, value, trend, isPositive, isNegative }: StatCardProps
 
   return (
     <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
+      <div className="text-xs text-ic-text-dim mb-1">{label}</div>
       <div className={`text-lg font-bold ${getValueColor()}`}>{value}</div>
       {trend !== undefined && (
         <div className={`text-xs ${getTrendColor()} flex items-center gap-1 mt-1`}>
@@ -279,7 +279,7 @@ export function ICScoreSparkline({
       {showCurrentScore && (
         <div className="text-right">
           <div className="text-2xl font-bold text-gray-900">{currentScore.toFixed(0)}</div>
-          <div className="text-xs text-gray-500">IC Score</div>
+          <div className="text-xs text-ic-text-dim">IC Score</div>
         </div>
       )}
     </div>

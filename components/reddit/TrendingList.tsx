@@ -73,7 +73,7 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
     <div className="bg-white rounded-lg shadow-sm overflow-hidden">
       {/* Table Header */}
       <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden sm:block">
-        <div className="flex items-center justify-between text-xs font-medium text-gray-500 uppercase tracking-wider">
+        <div className="flex items-center justify-between text-xs font-medium text-ic-text-dim uppercase tracking-wider">
           <div className="flex items-center gap-4 flex-1">
             <span className="w-8">#</span>
             <span>Ticker</span>
@@ -107,7 +107,7 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
 
       {/* Footer Info */}
       {items.length > 0 && (
-        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
+        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-ic-text-dim">
           Showing {items.length} trending {items.length === 1 ? 'stock' : 'stocks'}
           {timeRange === '1' ? ' today' : ` over the last ${timeRange} days`}
         </div>

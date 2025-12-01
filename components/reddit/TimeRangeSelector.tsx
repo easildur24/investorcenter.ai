@@ -27,7 +27,7 @@ export default function TimeRangeSelector({ value, onChange }: TimeRangeSelector
               ${index === 0 ? 'rounded-l-lg' : ''}
               ${index === options.length - 1 ? 'rounded-r-lg' : ''}
               ${value === option.value
-                ? 'bg-primary-600 text-white hover:bg-primary-700'
+                ? 'bg-primary-600 text-ic-text-primary hover:bg-primary-700'
                 : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
               }
               ${index > 0 && value !== option.value ? '-ml-px' : ''}

@@ -67,7 +67,7 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('24h')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '24h'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-ic-blue text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -77,7 +77,7 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('7d')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '7d'
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-ic-blue text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -90,8 +90,8 @@ export default function TrendingTickersList({
       {/* Loading state */}
       {loading && (
         <div className="p-12 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500 text-sm">Loading trending tickers...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue mx-auto" />
+          <p className="mt-4 text-ic-text-dim text-sm">Loading trending tickers...</p>
         </div>
       )}
 
@@ -101,7 +101,7 @@ export default function TrendingTickersList({
           <p className="text-red-600">{error}</p>
           <button
             onClick={() => setPeriod(period)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-ic-blue text-white rounded-md hover:bg-blue-700"
           >
             Try Again
           </button>

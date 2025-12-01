@@ -65,7 +65,7 @@ export default function WatchListHeatmapPage() {
         <div className="flex flex-col items-center justify-center min-h-screen">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mb-4"></div>
           <div className="text-xl text-gray-700 font-medium">Loading heatmap...</div>
-          <div className="text-sm text-gray-500 mt-2">Fetching ticker data and calculating metrics</div>
+          <div className="text-sm text-ic-text-dim mt-2">Fetching ticker data and calculating metrics</div>
         </div>
       </ProtectedRoute>
     );
@@ -92,7 +92,7 @@ export default function WatchListHeatmapPage() {
           {/* Title & Info */}
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2 flex items-center gap-3">
+              <h1 className="text-4xl font-bold text-ic-text-primary mb-2 flex items-center gap-3">
                 <svg className="w-10 h-10 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
@@ -104,7 +104,7 @@ export default function WatchListHeatmapPage() {
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                     </svg>
-                    <strong className="text-white">{heatmapData.tile_count}</strong> tickers
+                    <strong className="text-ic-text-primary">{heatmapData.tile_count}</strong> tickers
                   </span>
                   <span className="text-gray-500">•</span>
                   <span className="inline-flex items-center gap-1">
@@ -152,7 +152,7 @@ export default function WatchListHeatmapPage() {
           </p>
           <button
             onClick={() => router.push(`/watchlist/${watchListId}`)}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 transition-colors"
+            className="inline-flex items-center px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover transition-colors"
           >
             <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />

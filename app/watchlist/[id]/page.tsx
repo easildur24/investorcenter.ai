@@ -110,7 +110,7 @@ export default function WatchListDetailPage() {
             {watchList.description && (
               <p className="text-gray-600 mt-2">{watchList.description}</p>
             )}
-            <p className="text-sm text-gray-500 mt-1">{watchList.item_count} tickers</p>
+            <p className="text-sm text-ic-text-dim mt-1">{watchList.item_count} tickers</p>
           </div>
           <div className="flex gap-3">
             <button
@@ -124,7 +124,7 @@ export default function WatchListDetailPage() {
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
             >
               + Add Ticker
             </button>
@@ -139,7 +139,7 @@ export default function WatchListDetailPage() {
 
         {watchList.items.length === 0 ? (
           <div className="text-center py-12 bg-gray-50 rounded-lg">
-            <svg className="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="mx-auto h-12 w-12 text-ic-text-muted mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No tickers yet</h3>
@@ -149,11 +149,11 @@ export default function WatchListDetailPage() {
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+              className="px-6 py-3 bg-ic-blue text-ic-text-primary rounded-lg hover:bg-ic-blue-hover font-medium"
             >
               + Add Your First Ticker
             </button>
-            <div className="mt-6 text-sm text-gray-500">
+            <div className="mt-6 text-sm text-ic-text-dim">
               <p>Examples: AAPL, TSLA, X:BTCUSD, X:ETHUSD</p>
             </div>
           </div>

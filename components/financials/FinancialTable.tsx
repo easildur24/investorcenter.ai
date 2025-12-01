@@ -84,7 +84,7 @@ export default function FinancialTable({
   if (error || periods.length === 0) {
     return (
       <div className="bg-gray-50 rounded-lg p-8 text-center">
-        <p className="text-gray-500">{error || 'No financial data available'}</p>
+        <p className="text-ic-text-dim">{error || 'No financial data available'}</p>
       </div>
     );
   }

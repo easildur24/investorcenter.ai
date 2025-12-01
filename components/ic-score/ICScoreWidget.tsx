@@ -80,10 +80,10 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
             <p className="text-sm text-gray-600">Proprietary 10-factor analysis</p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500 mb-1">
+            <div className="text-xs text-ic-text-dim mb-1">
               {icScore.factor_count} of 10 factors available
             </div>
-            <div className="text-xs text-gray-500">
+            <div className="text-xs text-ic-text-dim">
               {Math.round(icScore.data_completeness)}% data completeness
             </div>
           </div>
@@ -95,7 +95,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
         {/* Large Score Number */}
         <div className={`text-6xl font-bold ${colors.text} mb-4`}>
           {Math.round(score)}
-          <span className="text-2xl text-gray-400">/100</span>
+          <span className="text-2xl text-ic-text-muted">/100</span>
         </div>
 
         {/* Progress Bar */}
@@ -160,7 +160,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
 
         {/* Last Updated Timestamp */}
         {icScore.calculated_at && (
-          <div className="mt-4 flex items-center justify-center gap-1 text-xs text-gray-400">
+          <div className="mt-4 flex items-center justify-center gap-1 text-xs text-ic-text-muted">
             <Clock className="w-3 h-3" />
             <span>Updated {formatRelativeTime(icScore.calculated_at)}</span>
           </div>

@@ -81,7 +81,7 @@ export default function ICScoreGauge({
           >
             {Math.round(score)}
           </div>
-          <div className="text-sm text-gray-500 font-medium">IC Score</div>
+          <div className="text-sm text-ic-text-dim font-medium">IC Score</div>
         </div>
       )}
 

@@ -55,7 +55,7 @@ export default function SentimentGauge({
           <span className={`font-semibold ${config.text}`} style={{ color }}>
             {formatSentimentScore(score)}
           </span>
-          <span className={`${config.labelText} text-gray-500 capitalize`}>
+          <span className={`${config.labelText} text-ic-text-dim capitalize`}>
             {label}
           </span>
         </div>
@@ -64,7 +64,7 @@ export default function SentimentGauge({
       {/* Gauge bar */}
       <div className="relative">
         {/* Background gradient bar */}
-        <div className={`${config.height} rounded-full overflow-hidden bg-gradient-to-r from-red-500 via-gray-300 to-green-500`}>
+        <div className={`${config.height} rounded-full overflow-hidden bg-gradient-to-r from-ic-negative via-gray-300 to-ic-positive`}>
         </div>
 
         {/* Marker */}
@@ -80,9 +80,9 @@ export default function SentimentGauge({
 
         {/* Scale labels */}
         <div className="flex justify-between mt-1">
-          <span className="text-xs text-red-500">Bearish</span>
-          <span className="text-xs text-gray-400">Neutral</span>
-          <span className="text-xs text-green-500">Bullish</span>
+          <span className="text-xs text-ic-negative">Bearish</span>
+          <span className="text-xs text-ic-text-muted">Neutral</span>
+          <span className="text-xs text-ic-positive">Bullish</span>
         </div>
       </div>
     </div>

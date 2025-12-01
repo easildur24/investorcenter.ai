@@ -65,9 +65,9 @@ export default function FinancialsTab({ symbol }: FinancialsTabProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Financial Statements</h3>
+          <h3 className="text-lg font-semibold text-ic-text-primary">Financial Statements</h3>
           {metadata?.company_name && (
-            <p className="text-sm text-gray-500 mt-1">{metadata.company_name}</p>
+            <p className="text-sm text-ic-text-dim mt-1">{metadata.company_name}</p>
           )}
         </div>
         <TimeframePicker value={timeframe} onChange={setTimeframe} />
@@ -80,10 +80,10 @@ export default function FinancialsTab({ symbol }: FinancialsTabProps) {
 
       {/* Statement Description */}
       <div className="mb-4">
-        <h4 className="text-base font-medium text-gray-900">
+        <h4 className="text-base font-medium text-ic-text-primary">
           {statementTypeLabels[activeTab]}
         </h4>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-ic-text-dim mt-1">
           {getStatementDescription(activeTab)}
         </p>
       </div>

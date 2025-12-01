@@ -169,7 +169,7 @@ export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
           <div className="flex justify-between items-center text-sm">
             <span className="font-medium text-gray-700">{factor.name}</span>
             <span className="text-gray-600">
-              {factor.value.toFixed(1)} <span className="text-xs text-gray-400">/ 100</span>
+              {factor.value.toFixed(1)} <span className="text-xs text-ic-text-muted">/ 100</span>
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
@@ -180,7 +180,7 @@ export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
               style={{ width: `${factor.value}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs text-gray-500">
+          <div className="flex justify-between text-xs text-ic-text-dim">
             <span>Weight: {(factor.weight * 100).toFixed(0)}%</span>
             <span>Contributes: {factor.contribution.toFixed(1)}</span>
           </div>

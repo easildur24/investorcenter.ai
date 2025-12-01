@@ -65,7 +65,7 @@ export default function PostsList({
             Social Media Posts
           </h3>
           <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-500">Sort:</label>
+            <label className="text-sm text-ic-text-dim">Sort:</label>
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as PostSortOption)}
@@ -84,8 +84,8 @@ export default function PostsList({
       {/* Loading state */}
       {loading && (
         <div className="p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500 text-sm">Loading posts...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue mx-auto" />
+          <p className="mt-4 text-ic-text-dim text-sm">Loading posts...</p>
         </div>
       )}
 
@@ -99,8 +99,8 @@ export default function PostsList({
       {/* Empty state */}
       {!loading && !error && (!data || data.posts.length === 0) && (
         <div className="p-12 text-center">
-          <div className="text-gray-400 text-4xl mb-4">💬</div>
-          <p className="text-gray-500">No posts found for {ticker}</p>
+          <div className="text-ic-text-muted text-4xl mb-4">💬</div>
+          <p className="text-ic-text-dim">No posts found for {ticker}</p>
         </div>
       )}
 
@@ -115,7 +115,7 @@ export default function PostsList({
 
       {/* Footer */}
       {data && data.total > 0 && (
-        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
+        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-ic-text-dim">
           Showing {data.posts.length} of {data.total} posts
         </div>
       )}
@@ -150,7 +150,7 @@ function PostCard({ post }: PostCardProps) {
         </div>
 
         {/* Time */}
-        <span className="text-xs text-gray-400 whitespace-nowrap">
+        <span className="text-xs text-ic-text-muted whitespace-nowrap">
           {formatRelativeTime(post.posted_at)}
         </span>
       </div>
@@ -160,13 +160,13 @@ function PostCard({ post }: PostCardProps) {
         href={post.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block text-gray-900 font-medium hover:text-blue-600 transition-colors mb-2"
+        className="block text-gray-900 font-medium hover:text-ic-blue transition-colors mb-2"
       >
         {post.title}
       </a>
 
       {/* Engagement stats */}
-      <div className="flex items-center gap-4 text-sm text-gray-500">
+      <div className="flex items-center gap-4 text-sm text-ic-text-dim">
         <span className="flex items-center gap-1">
           <UpvoteIcon className="w-4 h-4" />
           {formatCompactNumber(post.upvotes)}
@@ -179,7 +179,7 @@ function PostCard({ post }: PostCardProps) {
           href={post.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 hover:underline ml-auto"
+          className="text-ic-blue hover:underline ml-auto"
         >
           View on Reddit
         </a>
@@ -218,7 +218,7 @@ export function CompactPostsList({ posts, limit = 3 }: CompactPostsListProps) {
             </span>
           </div>
           <p className="text-sm text-gray-900 line-clamp-2">{post.title}</p>
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+          <div className="flex items-center gap-3 mt-2 text-xs text-ic-text-dim">
             <span>{formatCompactNumber(post.upvotes)} upvotes</span>
             <span>{formatRelativeTime(post.posted_at)}</span>
           </div>
