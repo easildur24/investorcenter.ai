@@ -17,7 +17,7 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
 
   const formatChange = (change?: number, changePct?: number) => {
     if (change === undefined || changePct === undefined) return '-';
-    const color = change >= 0 ? 'text-green-600' : 'text-red-600';
+    const color = change >= 0 ? 'text-ic-positive' : 'text-ic-negative';
     const sign = change >= 0 ? '+' : '';
     return (
       <span className={color}>
@@ -51,42 +51,42 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full bg-white rounded-lg shadow">
-        <thead className="bg-gray-50">
+      <table className="w-full bg-ic-surface rounded-lg border border-ic-border">
+        <thead className="bg-ic-bg-secondary">
           <tr>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Symbol</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900">Name</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Price</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Change</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Target Buy</th>
-            <th className="px-4 py-3 text-right text-sm font-semibold text-gray-900">Target Sell</th>
-            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Alert</th>
-            <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900">Actions</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-ic-text-primary">Symbol</th>
+            <th className="px-4 py-3 text-left text-sm font-semibold text-ic-text-primary">Name</th>
+            <th className="px-4 py-3 text-right text-sm font-semibold text-ic-text-primary">Price</th>
+            <th className="px-4 py-3 text-right text-sm font-semibold text-ic-text-primary">Change</th>
+            <th className="px-4 py-3 text-right text-sm font-semibold text-ic-text-primary">Target Buy</th>
+            <th className="px-4 py-3 text-right text-sm font-semibold text-ic-text-primary">Target Sell</th>
+            <th className="px-4 py-3 text-center text-sm font-semibold text-ic-text-primary">Alert</th>
+            <th className="px-4 py-3 text-center text-sm font-semibold text-ic-text-primary">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y">
           {items.map((item) => {
             const alert = checkTargetAlert(item);
             return (
-              <tr key={item.symbol} className={`hover:bg-gray-50 ${alert ? alert.bgClass : ''}`}>
+              <tr key={item.symbol} className={`hover:bg-ic-surface-hover ${alert ? alert.bgClass : ''}`}>
                 <td className="px-4 py-3">
-                  <Link href={`/ticker/${item.symbol}`} className="text-blue-600 hover:underline font-medium">
+                  <Link href={`/ticker/${item.symbol}`} className="text-ic-blue hover:underline font-medium">
                     {item.symbol}
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-sm text-gray-900">{item.name}</td>
-                <td className="px-4 py-3 text-right font-medium text-gray-900">{formatPrice(item.current_price)}</td>
+                <td className="px-4 py-3 text-sm text-ic-text-primary">{item.name}</td>
+                <td className="px-4 py-3 text-right font-medium text-ic-text-primary">{formatPrice(item.current_price)}</td>
                 <td className="px-4 py-3 text-right">{formatChange(item.price_change, item.price_change_pct)}</td>
-                <td className="px-4 py-3 text-right text-sm text-gray-700">
+                <td className="px-4 py-3 text-right text-sm text-ic-text-secondary">
                   {item.target_buy_price ? (
-                    <span className={alert?.type === 'buy' ? 'font-bold text-green-700' : 'text-gray-700'}>
+                    <span className={alert?.type === 'buy' ? 'font-bold text-green-700' : 'text-ic-text-secondary'}>
                       {formatPrice(item.target_buy_price)}
                     </span>
                   ) : '-'}
                 </td>
-                <td className="px-4 py-3 text-right text-sm text-gray-700">
+                <td className="px-4 py-3 text-right text-sm text-ic-text-secondary">
                   {item.target_sell_price ? (
-                    <span className={alert?.type === 'sell' ? 'font-bold text-blue-700' : 'text-gray-700'}>
+                    <span className={alert?.type === 'sell' ? 'font-bold text-blue-700' : 'text-ic-text-secondary'}>
                       {formatPrice(item.target_sell_price)}
                     </span>
                   ) : '-'}
@@ -103,13 +103,13 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
                 <td className="px-4 py-3 text-center">
                   <button
                     onClick={() => onEdit(item.symbol)}
-                    className="text-blue-600 hover:underline text-sm mr-3"
+                    className="text-ic-blue hover:underline text-sm mr-3"
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => onRemove(item.symbol)}
-                    className="text-red-600 hover:underline text-sm"
+                    className="text-ic-negative hover:underline text-sm"
                   >
                     Remove
                   </button>

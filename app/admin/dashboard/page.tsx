@@ -194,22 +194,22 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-primary">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b border-gray-200">
+      <div className="bg-ic-surface border-b border-ic-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center gap-3">
-            <Activity className="w-8 h-8 text-blue-600" />
+            <Activity className="w-8 h-8 text-ic-blue" />
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1">Query and manage all data in the system</p>
+              <h1 className="text-3xl font-bold text-ic-text-primary">Admin Dashboard</h1>
+              <p className="text-ic-text-muted mt-1">Query and manage all data in the system</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="bg-white border-b border-gray-200">
+      <div className="bg-ic-surface border-b border-ic-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex gap-1 overflow-x-auto">
             {tabs.map((tab) => {
@@ -224,8 +224,8 @@ export default function AdminDashboardPage() {
                   }}
                   className={`flex items-center gap-2 px-4 py-3 border-b-2 font-medium text-sm whitespace-nowrap transition-colors ${
                     activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-ic-blue text-ic-blue'
+                      : 'border-transparent text-ic-text-muted hover:text-ic-text-secondary hover:border-ic-border'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -240,16 +240,16 @@ export default function AdminDashboardPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {activeTab !== 'stats' && (
-          <div className="bg-white rounded-lg shadow border border-gray-200 p-6 mb-6">
+          <div className="bg-ic-surface rounded-lg border border-ic-border p-6 mb-6">
             <form onSubmit={handleSearchSubmit} className="flex gap-4 items-center">
               <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-ic-text-dim w-5 h-5" />
                 <input
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder={`Search ${activeTab}...`}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  className="w-full pl-10 pr-4 py-2 border border-ic-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-ic-text-primary"
                 />
               </div>
               <button
@@ -265,21 +265,21 @@ export default function AdminDashboardPage() {
                     setSearch('');
                     setMeta({ ...meta, offset: 0 });
                   }}
-                  className="px-4 py-2 text-gray-600 hover:text-gray-900 transition-colors"
+                  className="px-4 py-2 text-ic-text-muted hover:text-ic-text-primary transition-colors"
                 >
                   Clear
                 </button>
               )}
               {(activeTab === 'fundamentals' || activeTab === 'sec-financials' || activeTab === 'ttm-financials' || activeTab === 'valuation-ratios') && (
-                <label className="flex items-center gap-2 px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                <label className="flex items-center gap-2 px-4 py-2 bg-ic-bg-secondary border border-ic-border rounded-lg cursor-pointer hover:bg-ic-surface-hover transition-colors">
                   <input
                     type="checkbox"
                     checked={hideDerivatives}
                     onChange={(e) => setHideDerivatives(e.target.checked)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-blue-600 border-ic-border rounded focus:ring-blue-500"
                   />
-                  <Filter className="w-4 h-4 text-gray-600" />
-                  <span className="text-sm text-gray-700 font-medium whitespace-nowrap">
+                  <Filter className="w-4 h-4 text-ic-text-muted" />
+                  <span className="text-sm text-ic-text-secondary font-medium whitespace-nowrap">
                     Hide derivatives
                   </span>
                 </label>
@@ -289,11 +289,11 @@ export default function AdminDashboardPage() {
         )}
 
         {/* Content */}
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+        <div className="bg-ic-surface rounded-lg border border-ic-border overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="text-gray-600 mt-4">Loading data...</p>
+              <p className="text-ic-text-muted mt-4">Loading data...</p>
             </div>
           ) : activeTab === 'stats' ? (
             <StatsView stats={stats} />
@@ -322,7 +322,7 @@ interface StatsViewProps {
 function StatsView({ stats }: StatsViewProps) {
   if (!stats) {
     return (
-      <div className="p-12 text-center text-gray-600">
+      <div className="p-12 text-center text-ic-text-muted">
         No statistics available
       </div>
     );
@@ -336,7 +336,7 @@ function StatsView({ stats }: StatsViewProps) {
 
   return (
     <div className="p-6">
-      <h2 className="text-xl font-bold text-gray-900 mb-6">Database Statistics</h2>
+      <h2 className="text-xl font-bold text-ic-text-primary mb-6">Database Statistics</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statItems.map((stat) => (
           <div key={stat.key} className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
@@ -361,7 +361,7 @@ interface DataTableProps {
 function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: DataTableProps) {
   if (data.length === 0) {
     return (
-      <div className="p-12 text-center text-gray-600">
+      <div className="p-12 text-center text-ic-text-muted">
         No data found
       </div>
     );
@@ -371,20 +371,20 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
     <>
       <div className="overflow-x-auto">
         <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-200">
+          <thead className="bg-ic-bg-secondary border-b border-ic-border">
             <tr>
               {Object.keys(data[0]).map((key) => (
-                <th key={key} className="px-6 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                <th key={key} className="px-6 py-3 text-left text-xs font-semibold text-ic-text-secondary uppercase tracking-wider">
                   {key.replace(/_/g, ' ')}
                 </th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-ic-border">
             {data.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
+              <tr key={idx} className="hover:bg-ic-surface-hover">
                 {Object.entries(row).map(([key, value]) => (
-                  <td key={key} className="px-6 py-4 text-sm text-gray-900 align-top">
+                  <td key={key} className="px-6 py-4 text-sm text-ic-text-primary align-top">
                     {formatValue(value, key)}
                   </td>
                 ))}
@@ -395,26 +395,26 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
       </div>
 
       {/* Pagination */}
-      <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+      <div className="px-6 py-4 bg-ic-bg-secondary border-t border-ic-border">
         <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-ic-text-muted">
             Showing {meta.offset + 1} to {Math.min(meta.offset + meta.limit, meta.total)} of {meta.total} results
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={() => onPageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
+              className="p-2 rounded hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed text-ic-text-secondary"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm text-gray-700">
+            <span className="text-sm text-ic-text-secondary">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={() => onPageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 rounded hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-gray-700"
+              className="p-2 rounded hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed text-ic-text-secondary"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -440,7 +440,7 @@ function ExpandableSummary({ text }: { text: string }) {
       </p>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="mt-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+        className="mt-1 text-xs text-ic-blue hover:text-blue-800 font-medium"
       >
         {isExpanded ? 'Show less' : 'Show more'}
       </button>
@@ -479,7 +479,7 @@ function formatValue(value: any, key?: string): React.ReactNode {
             {item}
           </span>
         ))}
-        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-ic-bg-secondary text-ic-text-secondary">
           +{value.length - 2} more
         </span>
       </div>
@@ -498,7 +498,7 @@ function formatValue(value: any, key?: string): React.ReactNode {
   }
   if (key === 'url') {
     return (
-      <a href={str} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 underline truncate block max-w-xs">
+      <a href={str} target="_blank" rel="noopener noreferrer" className="text-ic-blue hover:text-blue-800 underline truncate block max-w-xs">
         {str.length > 40 ? str.substring(0, 40) + '...' : str}
       </a>
     );

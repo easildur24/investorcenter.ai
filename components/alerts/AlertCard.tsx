@@ -64,42 +64,42 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             <div className="flex items-center gap-3 mb-2">
               <h3 className="text-lg font-semibold text-white">{alert.name}</h3>
               {alert.is_active ? (
-                <span className="px-2 py-1 text-xs font-semibold bg-green-600/20 text-green-400 rounded border border-green-500/50">
+                <span className="px-2 py-1 text-xs font-semibold bg-green-600/20 text-ic-positive rounded border border-green-500/50">
                   Active
                 </span>
               ) : (
-                <span className="px-2 py-1 text-xs font-semibold bg-gray-600/20 text-gray-400 rounded border border-gray-500/50">
+                <span className="px-2 py-1 text-xs font-semibold bg-gray-600/20 text-ic-text-dim rounded border border-gray-500/50">
                   Inactive
                 </span>
               )}
             </div>
 
             {alert.description && (
-              <p className="text-gray-400 text-sm mb-3">{alert.description}</p>
+              <p className="text-ic-text-dim text-sm mb-3">{alert.description}</p>
             )}
 
             {/* Alert Details */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
-                <div className="text-gray-500 mb-1">Symbol</div>
+                <div className="text-ic-text-muted mb-1">Symbol</div>
                 <div className="text-white font-medium">{alert.symbol}</div>
                 {alert.company_name && (
-                  <div className="text-gray-400 text-xs">{alert.company_name}</div>
+                  <div className="text-ic-text-dim text-xs">{alert.company_name}</div>
                 )}
               </div>
 
               <div>
-                <div className="text-gray-500 mb-1">Type</div>
+                <div className="text-ic-text-muted mb-1">Type</div>
                 <div className="text-white font-medium">{alertInfo?.label || alert.alert_type}</div>
               </div>
 
               <div>
-                <div className="text-gray-500 mb-1">Condition</div>
+                <div className="text-ic-text-muted mb-1">Condition</div>
                 <div className="text-white font-medium">{formatConditions(alert.conditions)}</div>
               </div>
 
               <div>
-                <div className="text-gray-500 mb-1">Frequency</div>
+                <div className="text-ic-text-muted mb-1">Frequency</div>
                 <div className="text-white font-medium">{frequencyInfo?.label || alert.frequency}</div>
               </div>
             </div>
@@ -108,17 +108,17 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             <div className="flex items-center gap-4 mt-3 text-sm">
               <div className="flex items-center gap-1">
                 {alert.notify_email ? (
-                  <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-ic-blue" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-ic-text-muted" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 )}
-                <span className={alert.notify_email ? 'text-blue-400' : 'text-gray-600'}>Email</span>
+                <span className={alert.notify_email ? 'text-ic-blue' : 'text-ic-text-muted'}>Email</span>
               </div>
 
               <div className="flex items-center gap-1">
@@ -127,16 +127,16 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                  <svg className="w-4 h-4 text-ic-text-muted" fill="currentColor" viewBox="0 0 20 20">
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 )}
-                <span className={alert.notify_in_app ? 'text-purple-400' : 'text-gray-600'}>In-App</span>
+                <span className={alert.notify_in_app ? 'text-purple-400' : 'text-ic-text-muted'}>In-App</span>
               </div>
             </div>
 
             {/* Trigger Stats */}
-            <div className="flex items-center gap-6 mt-3 text-xs text-gray-400">
+            <div className="flex items-center gap-6 mt-3 text-xs text-ic-text-dim">
               <div>
                 <span className="font-semibold text-white">{alert.trigger_count}</span> triggers
               </div>
@@ -152,7 +152,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
 
             {/* Watch List */}
             <div className="mt-3 text-xs">
-              <span className="text-gray-500">Watch List:</span>{' '}
+              <span className="text-ic-text-muted">Watch List:</span>{' '}
               <span className="text-gray-300">{alert.watch_list_name}</span>
             </div>
           </div>
@@ -165,8 +165,8 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             onClick={() => onToggleActive(alert)}
             className={`p-2 rounded-lg transition-colors ${
               alert.is_active
-                ? 'bg-green-600/20 text-green-400 hover:bg-green-600/30'
-                : 'bg-gray-600/20 text-gray-400 hover:bg-gray-600/30'
+                ? 'bg-green-600/20 text-ic-positive hover:bg-green-600/30'
+                : 'bg-gray-600/20 text-ic-text-dim hover:bg-gray-600/30'
             }`}
             title={alert.is_active ? 'Deactivate' : 'Activate'}
           >
@@ -185,7 +185,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
           {/* Edit */}
           <button
             onClick={() => onEdit(alert)}
-            className="p-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 transition-colors"
+            className="p-2 bg-blue-600/20 text-ic-blue rounded-lg hover:bg-blue-600/30 transition-colors"
             title="Edit"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -196,7 +196,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
           {/* Delete */}
           <button
             onClick={() => onDelete(alert.id)}
-            className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
+            className="p-2 bg-red-600/20 text-ic-negative rounded-lg hover:bg-red-600/30 transition-colors"
             title="Delete"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

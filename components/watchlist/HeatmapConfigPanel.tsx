@@ -33,11 +33,11 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
   };
 
   return (
-    <div className="bg-white p-6 rounded-lg shadow-lg mb-6 border border-gray-200">
+    <div className="bg-ic-surface p-6 rounded-lg border border-ic-border mb-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Size Metric */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1">
+          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
             </svg>
@@ -46,7 +46,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.size_metric}
             onChange={(e) => handleChange('size_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="market_cap">📊 Market Cap</option>
             <option value="volume">📈 Volume</option>
@@ -58,7 +58,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
 
         {/* Color Metric */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1">
+          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
             </svg>
@@ -67,7 +67,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_metric}
             onChange={(e) => handleChange('color_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="price_change_pct">💲 Price Change %</option>
             <option value="volume_change_pct">📊 Volume Change %</option>
@@ -78,7 +78,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
 
         {/* Time Period */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1">
+          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
@@ -87,7 +87,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.time_period}
             onChange={(e) => handleChange('time_period', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="1D">1 Day</option>
             <option value="1W">1 Week</option>
@@ -102,7 +102,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
 
         {/* Color Scheme */}
         <div>
-          <label className="block text-sm font-semibold text-gray-800 mb-2 flex items-center gap-1">
+          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg className="w-4 h-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
             </svg>
@@ -111,7 +111,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_scheme}
             onChange={(e) => handleChange('color_scheme', e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 bg-white hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="red_green">🔴 Red-Green</option>
             <option value="blue_red">🔵 Blue-Red</option>
@@ -135,21 +135,21 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
       {/* Save Config Modal */}
       {showSaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4 text-gray-900">💾 Save Heatmap Configuration</h3>
-            <p className="text-sm text-gray-600 mb-4">Give your configuration a memorable name</p>
+          <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-xl font-bold mb-4 text-ic-text-primary">💾 Save Heatmap Configuration</h3>
+            <p className="text-sm text-ic-text-muted mb-4">Give your configuration a memorable name</p>
             <input
               type="text"
               value={configName}
               onChange={(e) => setConfigName(e.target.value)}
               placeholder="e.g., Reddit Momentum Strategy"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 text-ic-text-primary"
               autoFocus
             />
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowSaveModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50 text-gray-700 font-medium transition-colors"
+                className="px-4 py-2 border border-ic-border rounded-md hover:bg-ic-surface-hover text-ic-text-secondary font-medium transition-colors"
               >
                 Cancel
               </button>

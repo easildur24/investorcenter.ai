@@ -118,13 +118,13 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
         />
 
         {/* Modal panel */}
-        <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+        <div className="inline-block align-bottom bg-ic-surface rounded-lg text-left overflow-hidden border border-ic-border transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+          <div className="bg-ic-surface px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Create Alert</h3>
+              <h3 className="text-lg font-semibold text-ic-text-primary">Create Alert</h3>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-500"
+                className="text-ic-text-dim hover:text-ic-text-muted"
               >
                 <XMarkIcon className="h-6 w-6" />
               </button>
@@ -132,20 +132,20 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
 
             {error && (
               <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                <p className="text-sm text-red-600">{error}</p>
+                <p className="text-sm text-ic-negative">{error}</p>
               </div>
             )}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               {/* Watch List Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Watch List <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                  Watch List <span className="text-ic-negative">*</span>
                 </label>
                 <select
                   value={selectedWatchList}
                   onChange={(e) => setSelectedWatchList(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                   required
                 >
                   {watchLists.map((wl) => (
@@ -158,13 +158,13 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
 
               {/* Symbol Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Symbol <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                  Symbol <span className="text-ic-negative">*</span>
                 </label>
                 <select
                   value={symbol}
                   onChange={(e) => setSymbol(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                   disabled={loadingItems}
                   required
                 >
@@ -179,28 +179,28 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
 
               {/* Alert Name */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Alert Name <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                  Alert Name <span className="text-ic-negative">*</span>
                 </label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g., AAPL Price Above $150"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                   required
                 />
               </div>
 
               {/* Alert Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
                   Alert Type
                 </label>
                 <select
                   value={alertType}
                   onChange={(e) => setAlertType(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                 >
                   {Object.entries(ALERT_TYPES).map(([key, info]) => (
                     <option key={key} value={key}>
@@ -212,8 +212,8 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
 
               {/* Threshold */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Threshold {alertType.includes('price') ? '(Price)' : '(Volume)'} <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                  Threshold {alertType.includes('price') ? '(Price)' : '(Volume)'} <span className="text-ic-negative">*</span>
                 </label>
                 <input
                   type="number"
@@ -221,20 +221,20 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                   value={threshold}
                   onChange={(e) => setThreshold(e.target.value)}
                   placeholder={alertType.includes('price') ? '150.00' : '1000000'}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                   required
                 />
               </div>
 
               {/* Frequency */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-ic-text-secondary mb-1">
                   Frequency
                 </label>
                 <select
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value as 'once' | 'daily' | 'always')}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-primary-500 focus:border-primary-500"
+                  className="w-full px-3 py-2 border border-ic-border rounded-md focus:ring-primary-500 focus:border-primary-500"
                 >
                   {Object.entries(ALERT_FREQUENCIES).map(([key, info]) => (
                     <option key={key} value={key}>
@@ -246,7 +246,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
 
               {/* Notification Settings */}
               <div className="space-y-2">
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-sm font-medium text-ic-text-secondary">
                   Notifications
                 </label>
                 <div className="flex items-center">
@@ -255,9 +255,9 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                     id="notify-email"
                     checked={notifyEmail}
                     onChange={(e) => setNotifyEmail(e.target.checked)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-ic-border rounded"
                   />
-                  <label htmlFor="notify-email" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="notify-email" className="ml-2 text-sm text-ic-text-secondary">
                     Email notifications
                   </label>
                 </div>
@@ -267,9 +267,9 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                     id="notify-app"
                     checked={notifyInApp}
                     onChange={(e) => setNotifyInApp(e.target.checked)}
-                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                    className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-ic-border rounded"
                   />
-                  <label htmlFor="notify-app" className="ml-2 text-sm text-gray-700">
+                  <label htmlFor="notify-app" className="ml-2 text-sm text-ic-text-secondary">
                     In-app notifications
                   </label>
                 </div>
@@ -280,7 +280,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                 <button
                   type="button"
                   onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-ic-text-secondary bg-ic-surface border border-ic-border rounded-md hover:bg-ic-surface-hover"
                   disabled={loading}
                 >
                   Cancel

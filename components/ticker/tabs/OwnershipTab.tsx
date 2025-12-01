@@ -88,12 +88,12 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
   if (loading) {
     return (
       <div className="p-6 animate-pulse">
-        <div className="h-6 bg-gray-200 rounded w-48 mb-6"></div>
+        <div className="h-6 bg-ic-bg-secondary rounded w-48 mb-6"></div>
         <div className="space-y-4">
           {[1, 2, 3, 4, 5].map((i) => (
-            <div key={i} className="bg-gray-100 rounded-lg p-4">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+            <div key={i} className="bg-ic-bg-secondary rounded-lg p-4">
+              <div className="h-4 bg-ic-bg-secondary rounded w-3/4 mb-2"></div>
+              <div className="h-4 bg-ic-bg-secondary rounded w-1/2"></div>
             </div>
           ))}
         </div>
@@ -104,41 +104,41 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
   if (error || !data) {
     return (
       <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Ownership</h3>
-        <p className="text-gray-500">{error || 'No ownership data available'}</p>
+        <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Ownership</h3>
+        <p className="text-ic-text-muted">{error || 'No ownership data available'}</p>
       </div>
     );
   }
 
   const renderSummaryCards = () => (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600 mb-1">Insider Ownership</div>
-        <div className="text-xl font-semibold text-gray-900">
+      <div className="bg-ic-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-ic-text-muted mb-1">Insider Ownership</div>
+        <div className="text-xl font-semibold text-ic-text-primary">
           {formatPercent(safeParseNumber(data.insider_ownership_percent))}
         </div>
       </div>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600 mb-1">Institutional Ownership</div>
-        <div className="text-xl font-semibold text-gray-900">
+      <div className="bg-ic-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-ic-text-muted mb-1">Institutional Ownership</div>
+        <div className="text-xl font-semibold text-ic-text-primary">
           {formatPercent(safeParseNumber(data.institutional_ownership_percent))}
         </div>
       </div>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600 mb-1">Insider Activity (30d)</div>
+      <div className="bg-ic-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-ic-text-muted mb-1">Insider Activity (30d)</div>
         <div className={cn(
           'text-xl font-semibold',
-          safeParseNumber(data.insider_net_activity_30d) >= 0 ? 'text-green-600' : 'text-red-600'
+          safeParseNumber(data.insider_net_activity_30d) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
         )}>
           {safeParseNumber(data.insider_net_activity_30d) >= 0 ? '+' : ''}
           {safeToFixed(safeParseNumber(data.insider_net_activity_30d) / 1000, 1)}K
         </div>
       </div>
-      <div className="bg-gray-50 rounded-lg p-4">
-        <div className="text-sm text-gray-600 mb-1">Institutional Activity (90d)</div>
+      <div className="bg-ic-bg-secondary rounded-lg p-4">
+        <div className="text-sm text-ic-text-muted mb-1">Institutional Activity (90d)</div>
         <div className={cn(
           'text-xl font-semibold',
-          safeParseNumber(data.institutional_net_activity_90d) >= 0 ? 'text-green-600' : 'text-red-600'
+          safeParseNumber(data.institutional_net_activity_90d) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
         )}>
           {safeParseNumber(data.institutional_net_activity_90d) >= 0 ? '+' : ''}
           {formatLargeNumber(data.institutional_net_activity_90d)}
@@ -152,7 +152,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
 
     if (trades.length === 0) {
       return (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-ic-text-muted">
           No recent insider trades available
         </div>
       );
@@ -162,7 +162,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-left text-sm text-gray-500 border-b">
+            <tr className="text-left text-sm text-ic-text-muted border-b border-ic-border">
               <th className="pb-3 font-medium">Date</th>
               <th className="pb-3 font-medium">Insider</th>
               <th className="pb-3 font-medium">Type</th>
@@ -171,15 +171,15 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
               <th className="pb-3 font-medium text-right">Value</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-ic-border">
             {trades.map((trade, index) => (
-              <tr key={index} className="hover:bg-gray-50">
-                <td className="py-3 text-gray-900">
+              <tr key={index} className="hover:bg-ic-surface-hover">
+                <td className="py-3 text-ic-text-primary">
                   {new Date(trade.transaction_date).toLocaleDateString()}
                 </td>
                 <td className="py-3">
-                  <div className="text-gray-900 font-medium">{trade.insider_name}</div>
-                  <div className="text-xs text-gray-500">{trade.insider_title}</div>
+                  <div className="text-ic-text-primary font-medium">{trade.insider_name}</div>
+                  <div className="text-xs text-ic-text-muted">{trade.insider_title}</div>
                 </td>
                 <td className="py-3">
                   <span className={cn(
@@ -191,13 +191,13 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
                     {trade.transaction_type}
                   </span>
                 </td>
-                <td className="py-3 text-right font-medium text-gray-900">
+                <td className="py-3 text-right font-medium text-ic-text-primary">
                   {trade.shares.toLocaleString()}
                 </td>
-                <td className="py-3 text-right text-gray-900">
+                <td className="py-3 text-right text-ic-text-primary">
                   ${safeToFixed(trade.price_per_share, 2)}
                 </td>
-                <td className="py-3 text-right font-medium text-gray-900">
+                <td className="py-3 text-right font-medium text-ic-text-primary">
                   {formatLargeNumber(trade.total_value)}
                 </td>
               </tr>
@@ -213,7 +213,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
 
     if (holders.length === 0) {
       return (
-        <div className="text-center py-8 text-gray-500">
+        <div className="text-center py-8 text-ic-text-muted">
           No institutional holdings data available
         </div>
       );
@@ -223,7 +223,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="text-left text-sm text-gray-500 border-b">
+            <tr className="text-left text-sm text-ic-text-muted border-b border-ic-border">
               <th className="pb-3 font-medium">Institution</th>
               <th className="pb-3 font-medium text-right">Shares</th>
               <th className="pb-3 font-medium text-right">Value</th>
@@ -231,29 +231,29 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
               <th className="pb-3 font-medium text-right">Change</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-ic-border">
             {holders.map((holder, index) => (
-              <tr key={index} className="hover:bg-gray-50">
+              <tr key={index} className="hover:bg-ic-surface-hover">
                 <td className="py-3">
-                  <div className="text-gray-900 font-medium">{holder.holder_name}</div>
-                  <div className="text-xs text-gray-500">
+                  <div className="text-ic-text-primary font-medium">{holder.holder_name}</div>
+                  <div className="text-xs text-ic-text-muted">
                     Filed: {new Date(holder.report_date).toLocaleDateString()}
                   </div>
                 </td>
-                <td className="py-3 text-right font-medium text-gray-900">
+                <td className="py-3 text-right font-medium text-ic-text-primary">
                   {holder.shares.toLocaleString()}
                 </td>
-                <td className="py-3 text-right text-gray-900">
+                <td className="py-3 text-right text-ic-text-primary">
                   {formatLargeNumber(holder.value)}
                 </td>
-                <td className="py-3 text-right text-gray-900">
+                <td className="py-3 text-right text-ic-text-primary">
                   {formatPercent(holder.percent_of_shares)}
                 </td>
                 <td className="py-3 text-right">
                   {holder.change_shares !== undefined && (
                     <div className={cn(
                       'font-medium',
-                      holder.change_shares >= 0 ? 'text-green-600' : 'text-red-600'
+                      holder.change_shares >= 0 ? 'text-ic-positive' : 'text-ic-negative'
                     )}>
                       {holder.change_shares >= 0 ? '+' : ''}
                       {holder.change_shares.toLocaleString()}
@@ -275,7 +275,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
 
   return (
     <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Ownership Analysis</h3>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-6">Ownership Analysis</h3>
 
       {/* Summary Cards */}
       {renderSummaryCards()}
@@ -287,8 +287,8 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
             viewType === 'insider'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-ic-blue text-white'
+              : 'bg-ic-bg-secondary text-ic-text-muted hover:bg-ic-surface-hover'
           )}
         >
           Insider Trades
@@ -298,8 +298,8 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
             viewType === 'institutional'
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              ? 'bg-ic-blue text-white'
+              : 'bg-ic-bg-secondary text-ic-text-muted hover:bg-ic-surface-hover'
           )}
         >
           Institutional Holdings

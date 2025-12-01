@@ -76,12 +76,12 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">Add Ticker</h2>
+      <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Add Ticker</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4 relative">
-            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="symbol">
+            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="symbol">
               Symbol *
             </label>
             <input
@@ -92,40 +92,40 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               onFocus={() => symbol && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
               placeholder="e.g., AAPL, TSLA, X:BTCUSD"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               required
               autoComplete="off"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-ic-text-muted mt-1">
               Use X: prefix for crypto (e.g., X:BTCUSD, X:ETHUSD)
             </p>
 
             {/* Autocomplete Dropdown */}
             {showResults && (
-              <div className="absolute z-50 mt-1 w-full bg-white shadow-xl max-h-60 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none border border-gray-200">
+              <div className="absolute z-50 mt-1 w-full bg-ic-surface border border-ic-border max-h-60 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
                 {isSearching ? (
-                  <div className="px-4 py-2 text-gray-500 text-sm">Searching...</div>
+                  <div className="px-4 py-2 text-ic-text-muted text-sm">Searching...</div>
                 ) : searchResults.length > 0 ? (
                   searchResults.map((result) => (
                     <button
                       key={result.symbol}
                       type="button"
                       onClick={() => handleSelectTicker(result.symbol)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0"
+                      className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-ic-border last:border-b-0"
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-gray-900 text-sm">{result.symbol}</div>
-                          <div className="text-sm text-gray-600 truncate">{result.name}</div>
+                          <div className="font-semibold text-ic-text-primary text-sm">{result.symbol}</div>
+                          <div className="text-sm text-ic-text-muted truncate">{result.name}</div>
                         </div>
-                        <div className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                        <div className="ml-2 text-xs text-ic-text-dim bg-ic-bg-secondary px-2 py-1 rounded">
                           {result.exchange}
                         </div>
                       </div>
                     </button>
                   ))
                 ) : symbol && !isSearching ? (
-                  <div className="px-4 py-3 text-gray-500 text-sm">
+                  <div className="px-4 py-3 text-ic-text-muted text-sm">
                     No results found for "{symbol}"
                   </div>
                 ) : null}
@@ -134,7 +134,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="notes">
+            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="notes">
               Notes (optional)
             </label>
             <textarea
@@ -142,13 +142,13 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Add personal notes about this ticker..."
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               rows={2}
             />
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="tags">
+            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="tags">
               Tags (optional)
             </label>
             <input
@@ -157,16 +157,16 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="e.g., tech, growth, dividend"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-ic-text-muted mt-1">
               Separate multiple tags with commas
             </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="targetBuy">
+              <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="targetBuy">
                 Target Buy Price
               </label>
               <input
@@ -176,11 +176,11 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                 value={targetBuy}
                 onChange={(e) => setTargetBuy(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="targetSell">
+              <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="targetSell">
                 Target Sell Price
               </label>
               <input
@@ -190,7 +190,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                 value={targetSell}
                 onChange={(e) => setTargetSell(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+                className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               />
             </div>
           </div>
@@ -203,7 +203,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-ic-border text-ic-text-secondary rounded hover:bg-ic-surface-hover"
             >
               Cancel
             </button>

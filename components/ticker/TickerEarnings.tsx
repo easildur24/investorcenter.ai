@@ -58,25 +58,25 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
   return (
     <div className="p-6">
       <div className="flex items-center mb-6">
-        <ChartBarIcon className="h-6 w-6 text-gray-400 mr-2" />
-        <h3 className="text-lg font-semibold text-gray-900">Earnings History</h3>
+        <ChartBarIcon className="h-6 w-6 text-ic-text-dim mr-2" />
+        <h3 className="text-lg font-semibold text-ic-text-primary">Earnings History</h3>
       </div>
 
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="flex justify-between items-center animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-20"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
+              <div className="h-4 bg-ic-border rounded w-20"></div>
+              <div className="h-4 bg-ic-border rounded w-16"></div>
+              <div className="h-4 bg-ic-border rounded w-16"></div>
+              <div className="h-4 bg-ic-border rounded w-16"></div>
             </div>
           ))}
         </div>
       ) : earnings.length > 0 ? (
         <div className="overflow-x-auto -mx-6 px-6">
           {/* Table Header */}
-          <div className="grid grid-cols-5 gap-2 pb-2 mb-3 border-b border-gray-200 text-xs font-medium text-gray-500 min-w-[320px]">
+          <div className="grid grid-cols-5 gap-2 pb-2 mb-3 border-b border-ic-border text-xs font-medium text-ic-text-muted min-w-[320px]">
             <div>Period</div>
             <div className="text-right">EPS</div>
             <div className="text-right">Est.</div>
@@ -89,10 +89,10 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
             {earnings.slice(0, 8).map((earning) => (
               <div key={`${earning.year}-${earning.quarter}`} className="grid grid-cols-5 gap-2 items-center text-xs">
                 <div>
-                  <div className="font-medium text-gray-900">
+                  <div className="font-medium text-ic-text-primary">
                     {earning.quarter} {earning.year}
                   </div>
-                  <div className="text-[10px] text-gray-500">
+                  <div className="text-[10px] text-ic-text-muted">
                     {formatDate(earning.reportDate)}
                   </div>
                 </div>
@@ -101,12 +101,12 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
                   ${safeToFixed(earning.epsActual, 2)}
                 </div>
 
-                <div className="text-right text-gray-600">
+                <div className="text-right text-ic-text-muted">
                   ${safeToFixed(earning.epsEstimate, 2)}
                 </div>
 
                 <div className="text-right">
-                  <span className={safeParseNumber(earning.epsSurprise) > 0 ? 'text-green-600' : 'text-red-600'}>
+                  <span className={safeParseNumber(earning.epsSurprise) > 0 ? 'text-ic-positive' : 'text-ic-negative'}>
                     {safeParseNumber(earning.epsSurprise) > 0 ? '✓' : '✗'} {safeToFixed(earning.epsSurprisePercent, 1)}%
                   </span>
                 </div>
@@ -119,21 +119,21 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
           </div>
 
           {/* Summary Stats */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 pt-4 border-t border-ic-border">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <div className="text-gray-500">Avg EPS Surprise</div>
+                <div className="text-ic-text-muted">Avg EPS Surprise</div>
                 <div className="font-medium">
-                  {earnings.length > 0 
+                  {earnings.length > 0
                     ? `${safeToFixed((earnings.slice(0, 4).reduce((sum, e) => sum + safeParseNumber(e.epsSurprisePercent), 0) / Math.min(4, earnings.length)), 1)}%`
                     : 'N/A'
                   }
                 </div>
               </div>
               <div>
-                <div className="text-gray-500">Beat Rate</div>
+                <div className="text-ic-text-muted">Beat Rate</div>
                 <div className="font-medium">
-                  {earnings.length > 0 
+                  {earnings.length > 0
                     ? `${Math.round((earnings.slice(0, 8).filter(e => safeParseNumber(e.epsSurprise) > 0).length / Math.min(8, earnings.length)) * 100)}%`
                     : 'N/A'
                   }
@@ -145,7 +145,7 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
       ) : (
         <div className="text-center py-8">
           <ChartBarIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No earnings data available</p>
+          <p className="text-ic-text-muted">No earnings data available</p>
         </div>
       )}
     </div>
