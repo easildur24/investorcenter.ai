@@ -56,11 +56,11 @@ export default function SentimentCard({
 
   if (variant === 'compact') {
     return (
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
         <div className="flex items-start justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Social Sentiment</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-semibold text-ic-text-primary">Social Sentiment</h3>
+            <p className="text-sm text-ic-text-muted">
               {data.post_count_7d} posts in 7 days
             </p>
           </div>
@@ -80,7 +80,7 @@ export default function SentimentCard({
           >
             {data.score >= 0 ? '+' : ''}{(data.score * 100).toFixed(0)}%
           </div>
-          <div className="text-sm font-medium text-gray-600 capitalize">
+          <div className="text-sm font-medium text-ic-text-muted capitalize">
             {data.label}
           </div>
         </div>
@@ -95,16 +95,16 @@ export default function SentimentCard({
         {/* Quick stats */}
         <div className="mt-4 grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className="text-lg font-semibold text-gray-900">
+            <div className="text-lg font-semibold text-ic-text-primary">
               {data.post_count_24h}
             </div>
-            <div className="text-xs text-gray-500">Posts (24h)</div>
+            <div className="text-xs text-ic-text-muted">Posts (24h)</div>
           </div>
           <div>
-            <div className="text-lg font-semibold text-gray-900">
+            <div className="text-lg font-semibold text-ic-text-primary">
               {data.top_subreddits.length}
             </div>
-            <div className="text-xs text-gray-500">Subreddits</div>
+            <div className="text-xs text-ic-text-muted">Subreddits</div>
           </div>
         </div>
 
@@ -114,7 +114,7 @@ export default function SentimentCard({
             {data.top_subreddits.slice(0, 3).map((sub) => (
               <span
                 key={sub.subreddit}
-                className="px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded-full"
+                className="px-2 py-1 text-xs bg-ic-bg-secondary text-ic-text-muted rounded-full"
               >
                 r/{sub.subreddit}
               </span>
@@ -123,7 +123,7 @@ export default function SentimentCard({
         )}
 
         {/* Last updated */}
-        <p className="text-xs text-gray-400 mt-4 text-center">
+        <p className="text-xs text-ic-text-dim mt-4 text-center">
           Updated {formatRelativeTime(data.last_updated)}
         </p>
       </div>
@@ -132,15 +132,15 @@ export default function SentimentCard({
 
   // Full variant
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+    <div className="bg-ic-surface rounded-lg border border-ic-border overflow-hidden">
       <div className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">
+            <h3 className="text-xl font-semibold text-ic-text-primary">
               Social Sentiment: {ticker}
             </h3>
-            <p className="text-sm text-gray-600 mt-1">
+            <p className="text-sm text-ic-text-muted mt-1">
               Based on {data.post_count_7d} posts from the past 7 days
             </p>
           </div>
@@ -161,7 +161,7 @@ export default function SentimentCard({
 
         {/* Breakdown */}
         <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">Breakdown</h4>
+          <h4 className="text-sm font-medium text-ic-text-secondary mb-2">Breakdown</h4>
           <SentimentBreakdownBar
             breakdown={data.breakdown}
             showLabels={true}
@@ -185,7 +185,7 @@ export default function SentimentCard({
         {/* Top subreddits */}
         {data.top_subreddits.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-gray-700 mb-2">
+            <h4 className="text-sm font-medium text-ic-text-secondary mb-2">
               Top Subreddits
             </h4>
             <div className="space-y-2">
@@ -194,10 +194,10 @@ export default function SentimentCard({
                   key={sub.subreddit}
                   className="flex items-center justify-between"
                 >
-                  <span className="text-sm text-gray-600">
+                  <span className="text-sm text-ic-text-muted">
                     r/{sub.subreddit}
                   </span>
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-ic-text-primary">
                     {sub.count} posts
                   </span>
                 </div>
@@ -207,7 +207,7 @@ export default function SentimentCard({
         )}
 
         {/* Footer */}
-        <div className="text-xs text-gray-400 text-center pt-4 border-t border-gray-100">
+        <div className="text-xs text-ic-text-dim text-center pt-4 border-t border-ic-border">
           Last updated {formatRelativeTime(data.last_updated)}
         </div>
       </div>
@@ -226,12 +226,12 @@ interface StatBoxProps {
 
 function StatBox({ label, value, trend }: StatBoxProps) {
   return (
-    <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
+    <div className="bg-ic-bg-secondary rounded-lg p-3 border border-ic-border">
+      <div className="text-xs text-ic-text-muted mb-1">{label}</div>
       <div className="flex items-center gap-2">
-        <span className="text-lg font-semibold text-gray-900">{value}</span>
-        {trend === 'up' && <span className="text-green-500">+</span>}
-        {trend === 'down' && <span className="text-red-500">-</span>}
+        <span className="text-lg font-semibold text-ic-text-primary">{value}</span>
+        {trend === 'up' && <span className="text-ic-positive">+</span>}
+        {trend === 'down' && <span className="text-ic-negative">-</span>}
       </div>
     </div>
   );
@@ -243,30 +243,30 @@ function StatBox({ label, value, trend }: StatBoxProps) {
 function LoadingSkeleton({ variant }: { variant: 'full' | 'compact' }) {
   if (variant === 'compact') {
     return (
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
-        <div className="h-6 w-32 bg-gray-200 rounded mb-4" />
-        <div className="h-20 bg-gray-200 rounded mb-4" />
-        <div className="h-3 bg-gray-200 rounded mb-4" />
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6 animate-pulse">
+        <div className="h-6 w-32 bg-ic-bg-secondary rounded mb-4" />
+        <div className="h-20 bg-ic-bg-secondary rounded mb-4" />
+        <div className="h-3 bg-ic-bg-secondary rounded mb-4" />
         <div className="grid grid-cols-2 gap-4">
-          <div className="h-12 bg-gray-200 rounded" />
-          <div className="h-12 bg-gray-200 rounded" />
+          <div className="h-12 bg-ic-bg-secondary rounded" />
+          <div className="h-12 bg-ic-bg-secondary rounded" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
-      <div className="h-8 w-48 bg-gray-200 rounded mb-6" />
-      <div className="h-32 bg-gray-200 rounded mb-6" />
-      <div className="h-4 bg-gray-200 rounded mb-6" />
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-6 animate-pulse">
+      <div className="h-8 w-48 bg-ic-bg-secondary rounded mb-6" />
+      <div className="h-32 bg-ic-bg-secondary rounded mb-6" />
+      <div className="h-4 bg-ic-bg-secondary rounded mb-6" />
       <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="h-16 bg-gray-200 rounded" />
-        <div className="h-16 bg-gray-200 rounded" />
+        <div className="h-16 bg-ic-bg-secondary rounded" />
+        <div className="h-16 bg-ic-bg-secondary rounded" />
       </div>
       <div className="space-y-2">
-        <div className="h-4 bg-gray-200 rounded w-3/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/2" />
+        <div className="h-4 bg-ic-bg-secondary rounded w-3/4" />
+        <div className="h-4 bg-ic-bg-secondary rounded w-1/2" />
       </div>
     </div>
   );
@@ -277,12 +277,12 @@ function LoadingSkeleton({ variant }: { variant: 'full' | 'compact' }) {
  */
 function ErrorState({ ticker, message }: { ticker: string; message: string | null }) {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-8 text-center">
-      <div className="text-gray-400 text-4xl mb-4">📊</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-8 text-center">
+      <div className="text-ic-text-dim text-4xl mb-4">📊</div>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
         Sentiment Not Available
       </h3>
-      <p className="text-gray-600 text-sm">
+      <p className="text-ic-text-muted text-sm">
         {message || `Unable to load sentiment data for ${ticker}`}
       </p>
     </div>
@@ -294,12 +294,12 @@ function ErrorState({ ticker, message }: { ticker: string; message: string | nul
  */
 function NoActivityState({ ticker }: { ticker: string }) {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-8 text-center">
-      <div className="text-gray-400 text-4xl mb-4">💬</div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-8 text-center">
+      <div className="text-ic-text-dim text-4xl mb-4">💬</div>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
         No Recent Activity
       </h3>
-      <p className="text-gray-600 text-sm">
+      <p className="text-ic-text-muted text-sm">
         No social media posts found for {ticker} in the last 7 days
       </p>
     </div>

@@ -284,12 +284,12 @@ export default function ScreenerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-primary">
       {/* Header */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-ic-surface border-b border-ic-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-2xl font-bold text-gray-900">Stock Screener</h1>
-          <p className="mt-1 text-gray-500">
+          <h1 className="text-2xl font-bold text-ic-text-primary">Stock Screener</h1>
+          <p className="mt-1 text-ic-text-muted">
             Filter and discover stocks based on fundamental metrics
           </p>
         </div>
@@ -298,16 +298,16 @@ export default function ScreenerPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Preset Screens */}
         <div className="mb-6">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">Quick Screens</h3>
+          <h3 className="text-sm font-medium text-ic-text-secondary mb-3">Quick Screens</h3>
           <div className="flex flex-wrap gap-2">
             {PRESET_SCREENS.map(preset => (
               <button
                 key={preset.id}
                 onClick={() => applyPreset(preset)}
-                className="px-4 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 bg-ic-surface border border-ic-border rounded-lg hover:bg-ic-surface-hover transition-colors"
               >
-                <div className="text-sm font-medium text-gray-900">{preset.name}</div>
-                <div className="text-xs text-gray-500">{preset.description}</div>
+                <div className="text-sm font-medium text-ic-text-primary">{preset.name}</div>
+                <div className="text-xs text-ic-text-muted">{preset.description}</div>
               </button>
             ))}
           </div>
@@ -319,12 +319,12 @@ export default function ScreenerPage() {
             'w-64 flex-shrink-0 transition-all',
             showFilters ? 'block' : 'hidden'
           )}>
-            <div className="bg-white rounded-lg shadow p-4">
+            <div className="bg-ic-surface rounded-lg border border-ic-border p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-gray-900">Filters</h3>
+                <h3 className="font-semibold text-ic-text-primary">Filters</h3>
                 <button
                   onClick={clearFilters}
-                  className="text-sm text-blue-600 hover:text-blue-700"
+                  className="text-sm text-ic-blue hover:text-ic-blue-hover transition-colors"
                 >
                   Clear All
                 </button>
@@ -345,17 +345,17 @@ export default function ScreenerPage() {
 
           {/* Results Table */}
           <div className="flex-1">
-            <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="bg-ic-surface rounded-lg border border-ic-border overflow-hidden">
               {/* Results Header */}
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+              <div className="px-4 py-3 border-b border-ic-border flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <button
                     onClick={() => setShowFilters(!showFilters)}
-                    className="text-sm text-gray-600 hover:text-gray-900"
+                    className="text-sm text-ic-text-muted hover:text-ic-text-primary transition-colors"
                   >
                     {showFilters ? 'Hide Filters' : 'Show Filters'}
                   </button>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-ic-text-muted">
                     {filteredStocks.length} stocks found
                   </span>
                 </div>
@@ -364,95 +364,95 @@ export default function ScreenerPage() {
               {/* Table */}
               {loading ? (
                 <div className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-4 text-gray-500">Loading stocks...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue mx-auto"></div>
+                  <p className="mt-4 text-ic-text-muted">Loading stocks...</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-ic-bg-secondary">
                       <tr>
                         <th
-                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('symbol')}
                         >
                           Symbol <SortIcon field="symbol" />
                         </th>
                         <th
-                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('name')}
                         >
                           Name <SortIcon field="name" />
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('market_cap')}
                         >
                           Market Cap <SortIcon field="market_cap" />
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('price')}
                         >
                           Price <SortIcon field="price" />
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('change_percent')}
                         >
                           Change <SortIcon field="change_percent" />
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('pe_ratio')}
                         >
                           P/E <SortIcon field="pe_ratio" />
                         </th>
                         <th
-                          className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('ic_score')}
                         >
                           IC Score <SortIcon field="ic_score" />
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-200">
+                    <tbody className="divide-y divide-ic-border-subtle">
                       {paginatedStocks.map(stock => (
-                        <tr key={stock.symbol} className="hover:bg-gray-50">
+                        <tr key={stock.symbol} className="hover:bg-ic-surface-hover transition-colors">
                           <td className="px-4 py-3">
                             <Link
                               href={`/ticker/${stock.symbol}`}
-                              className="font-medium text-blue-600 hover:text-blue-700"
+                              className="font-medium text-ic-blue hover:text-ic-blue-hover transition-colors"
                             >
                               {stock.symbol}
                             </Link>
                           </td>
-                          <td className="px-4 py-3 text-gray-900">
+                          <td className="px-4 py-3 text-ic-text-primary">
                             <div className="max-w-xs truncate">{stock.name}</div>
-                            <div className="text-xs text-gray-500">{stock.sector}</div>
+                            <div className="text-xs text-ic-text-muted">{stock.sector}</div>
                           </td>
-                          <td className="px-4 py-3 text-right text-gray-900">
+                          <td className="px-4 py-3 text-right text-ic-text-primary">
                             {formatLargeNumber(stock.market_cap)}
                           </td>
-                          <td className="px-4 py-3 text-right font-medium text-gray-900">
+                          <td className="px-4 py-3 text-right font-medium text-ic-text-primary">
                             ${safeToFixed(stock.price, 2)}
                           </td>
                           <td className={cn(
                             'px-4 py-3 text-right font-medium',
-                            stock.change_percent >= 0 ? 'text-green-600' : 'text-red-600'
+                            stock.change_percent >= 0 ? 'text-ic-positive' : 'text-ic-negative'
                           )}>
                             {stock.change_percent >= 0 ? '+' : ''}
                             {safeToFixed(stock.change_percent, 2)}%
                           </td>
-                          <td className="px-4 py-3 text-right text-gray-900">
+                          <td className="px-4 py-3 text-right text-ic-text-primary">
                             {safeToFixed(stock.pe_ratio, 1)}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <span className={cn(
                               'inline-flex px-2 py-0.5 rounded-full text-sm font-medium',
-                              stock.ic_score >= 70 ? 'bg-green-100 text-green-700' :
-                              stock.ic_score >= 40 ? 'bg-yellow-100 text-yellow-700' :
-                              'bg-red-100 text-red-700'
+                              stock.ic_score >= 70 ? 'bg-ic-positive-bg text-ic-positive' :
+                              stock.ic_score >= 40 ? 'bg-ic-warning-bg text-ic-warning' :
+                              'bg-ic-negative-bg text-ic-negative'
                             )}>
                               {stock.ic_score}
                             </span>
@@ -466,8 +466,8 @@ export default function ScreenerPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-                  <div className="text-sm text-gray-500">
+                <div className="px-4 py-3 border-t border-ic-border flex items-center justify-between">
+                  <div className="text-sm text-ic-text-muted">
                     Showing {(currentPage - 1) * itemsPerPage + 1} to{' '}
                     {Math.min(currentPage * itemsPerPage, filteredStocks.length)} of{' '}
                     {filteredStocks.length} results
@@ -476,17 +476,17 @@ export default function ScreenerPage() {
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="px-3 py-1 border border-gray-200 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      className="px-3 py-1 border border-ic-border rounded-md text-sm text-ic-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-ic-surface-hover transition-colors"
                     >
                       Previous
                     </button>
-                    <span className="px-3 py-1 text-sm text-gray-600">
+                    <span className="px-3 py-1 text-sm text-ic-text-muted">
                       Page {currentPage} of {totalPages}
                     </span>
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1 border border-gray-200 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                      className="px-3 py-1 border border-ic-border rounded-md text-sm text-ic-text-secondary disabled:opacity-50 disabled:cursor-not-allowed hover:bg-ic-surface-hover transition-colors"
                     >
                       Next
                     </button>
@@ -516,7 +516,7 @@ function FilterInput({
 
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">
           {filter.label}
         </label>
         <div className="space-y-1 max-h-40 overflow-y-auto">
@@ -532,9 +532,9 @@ function FilterInput({
                     onChange(selectedValues.filter((v: string) => v !== option.value));
                   }
                 }}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-ic-border text-ic-blue focus:ring-ic-blue"
               />
-              <span className="ml-2 text-sm text-gray-600">{option.label}</span>
+              <span className="ml-2 text-sm text-ic-text-muted">{option.label}</span>
             </label>
           ))}
         </div>
@@ -547,7 +547,7 @@ function FilterInput({
 
     return (
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">
           {filter.label}
         </label>
         <div className="flex gap-2 items-center">
@@ -556,19 +556,19 @@ function FilterInput({
             placeholder="Min"
             value={rangeValue.min ?? ''}
             onChange={(e) => onChange({ ...rangeValue, min: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-md"
+            className="w-20 px-2 py-1 text-sm border border-ic-border rounded-md bg-ic-input-bg text-ic-text-primary"
             step={filter.step}
           />
-          <span className="text-gray-400">-</span>
+          <span className="text-ic-text-dim">-</span>
           <input
             type="number"
             placeholder="Max"
             value={rangeValue.max ?? ''}
             onChange={(e) => onChange({ ...rangeValue, max: e.target.value ? Number(e.target.value) : undefined })}
-            className="w-20 px-2 py-1 text-sm border border-gray-200 rounded-md"
+            className="w-20 px-2 py-1 text-sm border border-ic-border rounded-md bg-ic-input-bg text-ic-text-primary"
             step={filter.step}
           />
-          {filter.suffix && <span className="text-sm text-gray-500">{filter.suffix}</span>}
+          {filter.suffix && <span className="text-sm text-ic-text-muted">{filter.suffix}</span>}
         </div>
       </div>
     );

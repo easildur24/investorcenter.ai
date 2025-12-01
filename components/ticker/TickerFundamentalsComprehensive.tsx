@@ -112,7 +112,7 @@ interface FundamentalsData {
       sharesOutstanding: number;
     };
   };
-  
+
   // Performance & Risk
   performance: {
     returns: {
@@ -177,7 +177,7 @@ interface FundamentalsData {
       epsNextFiscalYear: number;
     };
   };
-  
+
   // Other Metrics
   other: {
     management: {
@@ -226,12 +226,12 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
   useEffect(() => {
     // Always fetch real data from API now
     setLoading(true);
-    
+
     const fetchRealData = async () => {
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch(`/api/v1/fundamentals/${symbol}`);
         if (response.ok) {
           const result = await response.json();
@@ -693,16 +693,16 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
   // Show loading state
   if (loading) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-        <div className="px-6 py-6 border-b border-gray-200">
+      <div className="bg-ic-surface rounded-xl border border-ic-border">
+        <div className="px-6 py-6 border-b border-ic-border">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="bg-blue-100 rounded-lg p-3">
-                <ChartBarIcon className="h-6 w-6 text-blue-600" />
+                <ChartBarIcon className="h-6 w-6 text-ic-blue" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{symbol} Key Stats</h2>
-                <p className="text-gray-600">Loading comprehensive fundamental data...</p>
+                <h2 className="text-2xl font-bold text-ic-text-primary">{symbol} Key Stats</h2>
+                <p className="text-ic-text-muted">Loading comprehensive fundamental data...</p>
               </div>
             </div>
           </div>
@@ -721,17 +721,17 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
   // Show error state
   if (error) {
     return (
-      <div className="bg-white rounded-xl shadow-lg border border-gray-200">
-        <div className="px-6 py-6 border-b border-gray-200">
+      <div className="bg-ic-surface rounded-xl border border-ic-border">
+        <div className="px-6 py-6 border-b border-ic-border">
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center space-x-3">
               <div className="bg-red-100 rounded-lg p-3">
-                <ChartBarIcon className="h-6 w-6 text-red-600" />
+                <ChartBarIcon className="h-6 w-6 text-ic-negative" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{symbol} Key Stats</h2>
-                <p className="text-red-600">Error loading fundamental data: {error}</p>
-                <p className="text-gray-600 text-sm mt-1">Falling back to sample data</p>
+                <h2 className="text-2xl font-bold text-ic-text-primary">{symbol} Key Stats</h2>
+                <p className="text-ic-negative">Error loading fundamental data: {error}</p>
+                <p className="text-ic-text-muted text-sm mt-1">Falling back to sample data</p>
               </div>
             </div>
           </div>
@@ -742,7 +742,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
   const formatNumber = (value: number | null, type: 'currency' | 'percentage' | 'ratio' | 'number' = 'number') => {
     if (value === null || value === undefined) return '--';
-    
+
     switch (type) {
       case 'currency':
         if (Math.abs(value) >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
@@ -769,16 +769,16 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
     subtitle?: string;
     isPositive?: boolean;
   }) => (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow min-h-[100px] flex flex-col justify-between">
-      <div className="text-sm font-medium text-gray-600 mb-2 leading-tight">{title}</div>
+    <div className="bg-ic-surface border border-ic-border rounded-lg p-4 hover:bg-ic-surface-hover transition-shadow min-h-[100px] flex flex-col justify-between">
+      <div className="text-sm font-medium text-ic-text-muted mb-2 leading-tight">{title}</div>
       <div className={`text-lg font-bold leading-tight ${
-        isPositive === true ? 'text-green-600' : 
-        isPositive === false ? 'text-red-600' : 
-        'text-gray-900'
+        isPositive === true ? 'text-ic-positive' :
+        isPositive === false ? 'text-ic-negative' :
+        'text-ic-text-primary'
       }`}>
         {formatNumber(value, type)}
       </div>
-      {subtitle && <div className="text-xs text-gray-500 mt-1 leading-tight">{subtitle}</div>}
+      {subtitle && <div className="text-xs text-ic-text-dim mt-1 leading-tight">{subtitle}</div>}
     </div>
   );
 
@@ -788,10 +788,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
     subtitle: string;
   }) => (
     <div className="flex items-center space-x-3 mb-6">
-      <Icon className="h-5 w-5 text-blue-600" />
+      <Icon className="h-5 w-5 text-ic-blue" />
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        <p className="text-sm text-gray-600">{subtitle}</p>
+        <h3 className="text-lg font-semibold text-ic-text-primary">{title}</h3>
+        <p className="text-sm text-ic-text-muted">{subtitle}</p>
       </div>
     </div>
   );
@@ -800,17 +800,17 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
   // Remove the loading state since we have mock data to display
 
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200">
+    <div className="bg-ic-surface rounded-xl border border-ic-border">
       {/* Header */}
-      <div className="px-6 py-6 border-b border-gray-200">
+      <div className="px-6 py-6 border-b border-ic-border">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-3">
             <div className="bg-blue-100 rounded-lg p-3">
-              <ChartBarIcon className="h-6 w-6 text-blue-600" />
+              <ChartBarIcon className="h-6 w-6 text-ic-blue" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{symbol} Key Stats</h2>
-              <p className="text-gray-600">Comprehensive fundamental analysis and key metrics</p>
+              <h2 className="text-2xl font-bold text-ic-text-primary">{symbol} Key Stats</h2>
+              <p className="text-ic-text-muted">Comprehensive fundamental analysis and key metrics</p>
             </div>
           </div>
           <button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
@@ -819,13 +819,13 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
         </div>
 
         {/* Tabs */}
-        <div className="flex space-x-1 bg-gray-100 rounded-lg p-1">
+        <div className="flex space-x-1 bg-ic-bg-secondary rounded-lg p-1">
           <button
             onClick={() => setActiveTab('financials')}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
               activeTab === 'financials'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-ic-surface text-ic-blue border border-ic-border'
+                : 'text-ic-text-muted hover:text-ic-text-secondary'
             }`}
           >
             Financials
@@ -834,8 +834,8 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             onClick={() => setActiveTab('performance')}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
               activeTab === 'performance'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-ic-surface text-ic-blue border border-ic-border'
+                : 'text-ic-text-muted hover:text-ic-text-secondary'
             }`}
           >
             Performance, Risk and Estimates
@@ -844,8 +844,8 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             onClick={() => setActiveTab('other')}
             className={`flex-1 px-4 py-2 text-sm font-medium rounded-md transition-all ${
               activeTab === 'other'
-                ? 'bg-white text-blue-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-800'
+                ? 'bg-ic-surface text-ic-blue border border-ic-border'
+                : 'text-ic-text-muted hover:text-ic-text-secondary'
             }`}
           >
             Other Metrics
@@ -859,10 +859,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
         {activeTab === 'financials' && (
           <div className="space-y-8">
             {/* Income Statement */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={CurrencyDollarIcon}
-                title="Income Statement" 
+                title="Income Statement"
                 subtitle="Revenue, earnings, and profitability metrics"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -881,10 +881,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Balance Sheet */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ShieldCheckIcon}
-                title="Balance Sheet" 
+                title="Balance Sheet"
                 subtitle="Assets, liabilities, and equity position"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -899,10 +899,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Cash Flow */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ArrowTrendingUpIcon}
-                title="Cash Flow" 
+                title="Cash Flow"
                 subtitle="Operating, investing, and financing cash flows"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -918,10 +918,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Earnings Quality */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ShieldCheckIcon}
-                title="Earnings Quality" 
+                title="Earnings Quality"
                 subtitle="How well earnings translate to cash and long-term value"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -932,10 +932,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Profitability */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ArrowTrendingUpIcon}
-                title="Profitability" 
+                title="Profitability"
                 subtitle="Company's ability to generate profit from operations"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -945,10 +945,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Common Size Statements */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ChartBarIcon}
-                title="Common Size Statements" 
+                title="Common Size Statements"
                 subtitle="Key metrics normalized for comparison"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -964,10 +964,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
         {activeTab === 'performance' && (
           <div className="space-y-12">
             {/* Stock Price Performance */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={ArrowTrendingUpIcon}
-                title="Stock Price Performance" 
+                title="Stock Price Performance"
                 subtitle="Historical returns and price movements"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -986,10 +986,10 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
             </div>
 
             {/* Valuation */}
-            <div className="bg-gray-50 rounded-lg p-6">
-              <SectionHeader 
+            <div className="bg-ic-bg-secondary rounded-lg p-6">
+              <SectionHeader
                 icon={CurrencyDollarIcon}
-                title="Current Valuation" 
+                title="Current Valuation"
                 subtitle="Market valuation and trading multiples"
               />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1014,7 +1014,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Risk Metrics */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Risk Metrics</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Risk Metrics</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MetricCard title="Alpha (5Y)" value={displayData.performance.risk.alpha5Y} type="ratio" />
                 <MetricCard title="Beta (5Y)" value={displayData.performance.risk.beta5Y} type="ratio" />
@@ -1028,7 +1028,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Estimates */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Estimates</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Estimates</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard title="Revenue Estimates for Current Quarter" value={displayData.performance.estimates.revenueCurrentQuarter} type="currency" />
                 <MetricCard title="Revenue Estimates for Next Quarter" value={displayData.performance.estimates.revenueNextQuarter} type="currency" />
@@ -1043,7 +1043,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Dividends */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Dividends and Shares</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Dividends and Shares</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MetricCard title="Dividend Yield" value={displayData.performance.dividends.dividendYield} type="percentage" />
                 <MetricCard title="Dividend Yield (Forward)" value={displayData.performance.dividends.dividendYieldForward} type="percentage" />
@@ -1061,7 +1061,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
           <div className="space-y-8">
             {/* Management Effectiveness */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Management Effectiveness</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Management Effectiveness</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MetricCard title="Asset Utilization (TTM)" value={displayData.other.management.assetUtilization} type="ratio" />
                 <MetricCard title="Days Sales Outstanding (Quarterly)" value={displayData.other.management.daysSalesOutstanding} type="number" />
@@ -1073,7 +1073,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Liquidity and Solvency */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Liquidity And Solvency</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Liquidity And Solvency</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MetricCard title="Debt to Equity Ratio" value={displayData.other.liquidity.debtToEquityRatio} type="ratio" />
                 <MetricCard title="Free Cash Flow (Quarterly)" value={displayData.other.liquidity.freeCashFlowQuarterly} type="currency" />
@@ -1086,7 +1086,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Advanced Metrics */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Advanced Metrics</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Advanced Metrics</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <MetricCard title="Piotroski F Score (TTM)" value={displayData.other.advanced.piotroskiFScore} type="ratio" />
                 <MetricCard title="Sustainable Growth Rate (TTM)" value={displayData.other.advanced.sustainableGrowthRate} type="percentage" />
@@ -1099,7 +1099,7 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
 
             {/* Employee Metrics */}
             <div>
-              <h4 className="text-lg font-semibold text-gray-900 mb-4">Employee Count Metrics</h4>
+              <h4 className="text-lg font-semibold text-ic-text-primary mb-4">Employee Count Metrics</h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <MetricCard title="Total Employees (Annual)" value={displayData.other.employees.totalEmployees} type="number" />
                 <MetricCard title="Revenue Per Employee (Annual)" value={displayData.other.employees.revenuePerEmployee} type="currency" />

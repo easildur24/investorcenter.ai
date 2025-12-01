@@ -84,15 +84,15 @@ export default function RedditTrendingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-primary">
       {/* Header Section */}
-      <div className="bg-white border-b">
+      <div className="bg-ic-surface border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center gap-3 mb-2">
             <span className="text-3xl">🔥</span>
-            <h1 className="text-3xl font-bold text-gray-900">Trending on Reddit</h1>
+            <h1 className="text-3xl font-bold text-ic-text-primary">Trending on Reddit</h1>
           </div>
-          <p className="text-gray-600 mt-2">
+          <p className="text-ic-text-muted mt-2">
             Most mentioned stocks across r/wallstreetbets, r/stocks, and r/investing
           </p>
         </div>
@@ -100,15 +100,15 @@ export default function RedditTrendingPage() {
 
       {/* Controls Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+        <div className="bg-ic-surface rounded-lg shadow-sm p-4 mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
 
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-ic-text-muted">
               <span>Last updated: {getLastUpdatedText()}</span>
               <button
                 onClick={handleRefresh}
-                className="ml-2 p-1 hover:bg-gray-100 rounded"
+                className="ml-2 p-1 hover:bg-ic-surface-hover rounded"
                 title="Refresh data"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,13 +121,13 @@ export default function RedditTrendingPage() {
 
         {/* Main Content */}
         {loading && !data.length ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
+          <div className="bg-ic-surface rounded-lg shadow-sm p-12 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-            <p className="mt-4 text-gray-500">Loading trending stocks...</p>
+            <p className="mt-4 text-ic-text-muted">Loading trending stocks...</p>
           </div>
         ) : error ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <p className="text-red-600">{error}</p>
+          <div className="bg-ic-surface rounded-lg shadow-sm p-12 text-center">
+            <p className="text-ic-negative">{error}</p>
             <button
               onClick={handleRefresh}
               className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
@@ -136,8 +136,8 @@ export default function RedditTrendingPage() {
             </button>
           </div>
         ) : data.length === 0 ? (
-          <div className="bg-white rounded-lg shadow-sm p-12 text-center">
-            <p className="text-gray-500">No trending data available for this time range</p>
+          <div className="bg-ic-surface rounded-lg shadow-sm p-12 text-center">
+            <p className="text-ic-text-muted">No trending data available for this time range</p>
           </div>
         ) : (
           <TrendingList items={data} timeRange={timeRange} />

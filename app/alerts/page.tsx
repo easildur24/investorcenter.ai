@@ -134,7 +134,7 @@ function AlertsPageContent() {
             <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700 rounded-lg p-4 flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div className="text-sm">
-                  <span className="text-gray-400">Active Alerts: </span>
+                  <span className="text-ic-text-dim">Active Alerts: </span>
                   <span className="text-white font-semibold">
                     {limits.current_alert_rules} / {limits.max_alert_rules === -1 ? '∞' : limits.max_alert_rules}
                   </span>
@@ -167,7 +167,7 @@ function AlertsPageContent() {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'all'
                 ? 'bg-purple-600 text-white'
-                : 'bg-slate-800/50 text-gray-400 hover:text-white border border-slate-700'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
             }`}
           >
             All ({alerts.length})
@@ -177,7 +177,7 @@ function AlertsPageContent() {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'active'
                 ? 'bg-green-600 text-white'
-                : 'bg-slate-800/50 text-gray-400 hover:text-white border border-slate-700'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
             }`}
           >
             Active ({activeCount})
@@ -187,7 +187,7 @@ function AlertsPageContent() {
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'inactive'
                 ? 'bg-gray-600 text-white'
-                : 'bg-slate-800/50 text-gray-400 hover:text-white border border-slate-700'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
             }`}
           >
             Inactive ({inactiveCount})
@@ -219,14 +219,14 @@ function AlertsPageContent() {
             {filteredAlerts.length === 0 ? (
               <div className="text-center py-20">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
-                  <svg className="w-8 h-8 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-8 h-8 text-ic-text-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold text-white mb-2">
                   {filter === 'all' ? 'No alerts yet' : `No ${filter} alerts`}
                 </h3>
-                <p className="text-gray-400 mb-6">
+                <p className="text-ic-text-dim mb-6">
                   Create your first alert to get notified about price movements, volume spikes, or market events
                 </p>
                 <button

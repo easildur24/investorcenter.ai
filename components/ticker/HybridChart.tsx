@@ -87,9 +87,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   if (!initialData?.dataPoints || initialData.dataPoints.length === 0) {
     return (
       <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Price Chart</h3>
-        <div className="h-80 bg-gray-100 rounded-lg flex items-center justify-center">
-          <div className="text-gray-500">No chart data available</div>
+        <h3 className="text-lg font-semibold text-ic-text-primary mb-6">Price Chart</h3>
+        <div className="h-80 bg-ic-bg-secondary rounded-lg flex items-center justify-center">
+          <div className="text-ic-text-muted">No chart data available</div>
         </div>
       </div>
     );
@@ -330,11 +330,11 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
         // Update button states
         buttons.forEach(btn => {
-          btn.classList.remove('bg-white', 'text-primary-600', 'shadow-sm');
-          btn.classList.add('text-gray-600');
+          btn.classList.remove('bg-ic-surface', 'text-primary-600', 'shadow-sm');
+          btn.classList.add('text-ic-text-secondary');
         });
-        this.classList.add('bg-white', 'text-primary-600', 'shadow-sm');
-        this.classList.remove('text-gray-600');
+        this.classList.add('bg-ic-surface', 'text-primary-600', 'shadow-sm');
+        this.classList.remove('text-ic-text-secondary');
 
         // Show loading
         const originalText = this.textContent;
@@ -368,19 +368,19 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const chartContent = (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-gray-900 ${isFullscreen ? 'text-xl' : 'text-lg'}`}>
+        <h3 className={`font-semibold text-ic-text-primary ${isFullscreen ? 'text-xl' : 'text-lg'}`}>
           {isFullscreen && <span className="text-primary-600">{symbol}</span>}
           {isFullscreen ? ' - ' : ''}Interactive Price Chart
         </h3>
         <div className="flex items-center gap-3">
-          <div className="flex space-x-1 bg-gray-100 rounded-lg p-1" id="timeframe-buttons">
+          <div className="flex space-x-1 bg-ic-bg-secondary rounded-lg p-1" id="timeframe-buttons">
             {timeframes.map((period) => (
               <button
                 key={period}
                 className={`timeframe-btn px-3 py-1 text-sm font-medium rounded-md transition-colors ${
                   period === initialData.period
-                    ? 'bg-white text-primary-600 shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-white'
+                    ? 'bg-ic-surface text-primary-600 shadow-sm'
+                    : 'text-ic-text-secondary hover:text-ic-text-primary hover:bg-ic-surface-hover'
                 }`}
                 data-period={period}
                 data-symbol={symbol}
@@ -391,7 +391,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           </div>
           <button
             onClick={() => setIsFullscreen(!isFullscreen)}
-            className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 text-ic-text-muted hover:text-ic-text-secondary hover:bg-ic-surface-hover rounded-lg transition-colors"
             title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Fullscreen'}
           >
             {isFullscreen ? (
@@ -410,18 +410,18 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             type="checkbox"
             checked={showVolume}
             onChange={(e) => setShowVolume(e.target.checked)}
-            className="w-4 h-4 text-primary-600 rounded border-gray-300 focus:ring-primary-500"
+            className="w-4 h-4 text-primary-600 rounded border-ic-border focus:ring-primary-500"
           />
-          <span className="text-sm text-gray-600">Volume Bars</span>
+          <span className="text-sm text-ic-text-secondary">Volume Bars</span>
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
           <input
             type="checkbox"
             checked={showMA50}
             onChange={(e) => setShowMA50(e.target.checked)}
-            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 rounded border-ic-border focus:ring-blue-500"
           />
-          <span className="text-sm text-gray-600">50-Day MA</span>
+          <span className="text-sm text-ic-text-secondary">50-Day MA</span>
           {showMA50 && <span className="w-4 h-0.5 bg-blue-500"></span>}
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -429,9 +429,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             type="checkbox"
             checked={showMA200}
             onChange={(e) => setShowMA200(e.target.checked)}
-            className="w-4 h-4 text-orange-600 rounded border-gray-300 focus:ring-orange-500"
+            className="w-4 h-4 text-orange-600 rounded border-ic-border focus:ring-orange-500"
           />
-          <span className="text-sm text-gray-600">200-Day MA</span>
+          <span className="text-sm text-ic-text-secondary">200-Day MA</span>
           {showMA200 && <span className="w-4 h-0.5 bg-orange-500"></span>}
         </label>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -439,16 +439,16 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             type="checkbox"
             checked={showSP500}
             onChange={(e) => setShowSP500(e.target.checked)}
-            className="w-4 h-4 text-red-600 rounded border-gray-300 focus:ring-red-500"
+            className="w-4 h-4 text-red-600 rounded border-ic-border focus:ring-red-500"
           />
-          <span className="text-sm text-gray-600">Compare S&P 500</span>
+          <span className="text-sm text-ic-text-secondary">Compare S&P 500</span>
           {showSP500 && <span className="w-4 h-0.5 bg-red-500"></span>}
-          {sp500Loading && <span className="text-xs text-gray-400">(loading...)</span>}
+          {sp500Loading && <span className="text-xs text-ic-text-dim">(loading...)</span>}
         </label>
       </div>
 
       {/* Enhanced Interactive SVG Chart */}
-      <div className={`relative bg-white border rounded-lg overflow-hidden`} style={{ height: `${totalChartHeight}px` }}>
+      <div className={`relative bg-ic-surface border rounded-lg overflow-hidden`} style={{ height: `${totalChartHeight}px` }}>
         <svg
           id="price-chart"
           width={chartWidth}
@@ -467,7 +467,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           </defs>
 
           {/* Background for plot area */}
-          <rect x={paddingLeft} y={paddingTop} width={plotWidth} height={plotHeight} fill="#fafafa" />
+          <rect x={paddingLeft} y={paddingTop} width={plotWidth} height={plotHeight} fill="var(--ic-bg-secondary)" />
 
           {/* Y-axis grid lines and labels */}
           {yTicks.map((tick, i) => {
@@ -479,14 +479,14 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
                   y1={y}
                   x2={chartWidth - paddingRight}
                   y2={y}
-                  stroke="#e5e7eb"
+                  stroke="var(--ic-border)"
                   strokeWidth="1"
                 />
                 <text
                   x={paddingLeft - 8}
                   y={y + 4}
                   textAnchor="end"
-                  className="fill-gray-500"
+                  className="fill-ic-text-muted"
                   style={{ fontSize: '12px' }}
                 >
                   {tick >= 1000 ? `$${(tick / 1000).toFixed(0)}K` : `$${tick.toFixed(0)}`}
@@ -502,7 +502,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
               x={label.x}
               y={priceChartHeight + 18}
               textAnchor="middle"
-              className="fill-gray-500"
+              className="fill-ic-text-muted"
               style={{ fontSize: '11px' }}
             >
               {label.label}
@@ -580,12 +580,12 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
                 y1={priceChartHeight + xAxisHeight}
                 x2={chartWidth - paddingRight}
                 y2={priceChartHeight + xAxisHeight}
-                stroke="#e5e7eb"
+                stroke="var(--ic-border)"
                 strokeWidth="1"
               />
 
               {/* Volume label */}
-              <text x={paddingLeft - 8} y={priceChartHeight + xAxisHeight + 15} textAnchor="end" className="fill-gray-400" style={{ fontSize: '10px' }}>Vol</text>
+              <text x={paddingLeft - 8} y={priceChartHeight + xAxisHeight + 15} textAnchor="end" className="fill-ic-text-dim" style={{ fontSize: '10px' }}>Vol</text>
 
               {/* Volume bars */}
               {volumeBars.map((bar, index) => (
@@ -605,37 +605,37 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         {/* Hover tooltip placeholder */}
         <div
           id="chart-tooltip"
-          className="fixed z-30 bg-gray-900 text-white p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-gray-700"
+          className="fixed z-30 bg-ic-bg-tertiary text-white p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-ic-border"
           style={{ left: -200, top: -200, minWidth: '140px', fontFamily: 'monospace' }}
         >
-          <div id="tooltip-date" className="font-semibold mb-1 text-gray-300 text-xs"></div>
+          <div id="tooltip-date" className="font-semibold mb-1 text-ic-text-secondary text-xs"></div>
           <div id="tooltip-ohlc" className="leading-tight"></div>
         </div>
       </div>
-      
+
       {/* Statistics - Compact in fullscreen, Grid in normal view */}
       {isFullscreen ? (
         <div className="mt-4 flex flex-wrap items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Current:</span>
-            <span className="font-bold text-blue-600">${currentPrice.toFixed(2)}</span>
+            <span className="text-ic-text-muted">Current:</span>
+            <span className="font-bold text-ic-blue">${currentPrice.toFixed(2)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Change:</span>
-            <span className={`font-bold ${priceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            <span className="text-ic-text-muted">Change:</span>
+            <span className={`font-bold ${priceChange >= 0 ? 'text-ic-positive' : 'text-ic-negative'}`}>
               {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">High:</span>
-            <span className="font-bold text-green-600">${high.toFixed(2)}</span>
+            <span className="text-ic-text-muted">High:</span>
+            <span className="font-bold text-ic-positive">${high.toFixed(2)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Low:</span>
-            <span className="font-bold text-red-600">${low.toFixed(2)}</span>
+            <span className="text-ic-text-muted">Low:</span>
+            <span className="font-bold text-ic-negative">${low.toFixed(2)}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-500">Avg Volume:</span>
+            <span className="text-ic-text-muted">Avg Volume:</span>
             <span className="font-bold text-purple-600">
               {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
             </span>
@@ -680,13 +680,13 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           </div>
         </div>
       )}
-      
+
       {/* Chart Info */}
       <div className="mt-4 flex justify-between items-center text-sm">
-        <div className="text-gray-600">
+        <div className="text-ic-text-secondary">
           <span className="font-semibold">{initialData.period}</span> • {dataPoints.length} data points • Real-time from Polygon.io
         </div>
-        <div className="text-gray-500">
+        <div className="text-ic-text-muted">
           Last updated: {new Date().toLocaleTimeString()}
         </div>
       </div>
@@ -696,7 +696,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   // Fullscreen overlay
   if (isFullscreen) {
     return (
-      <div className="fixed inset-0 z-50 bg-white overflow-auto">
+      <div className="fixed inset-0 z-50 bg-ic-surface overflow-auto">
         <div className="min-h-screen p-6">
           {chartContent}
         </div>
