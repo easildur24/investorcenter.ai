@@ -172,7 +172,7 @@ export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
               {factor.value.toFixed(1)} <span className="text-xs text-ic-text-muted">/ 100</span>
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full bg-ic-bg-tertiary rounded-full h-2">
             <div
               className={`h-2 rounded-full transition-all duration-500 ${getBarColor(
                 factor.value

@@ -161,7 +161,7 @@ interface FinancialTableRowProps {
 
 function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
   return (
-    <tr className={cn('hover:bg-ic-surface-hover transition-colors', row.bold && 'bg-gray-25')}>
+    <tr className={cn('hover:bg-ic-surface-hover transition-colors', row.bold && 'bg-ic-surface')}>
       {/* Metric Name */}
       <td
         className={cn(
@@ -211,18 +211,18 @@ function FinancialTableSkeleton() {
   return (
     <div className="bg-ic-surface rounded-lg border border-ic-border-subtle overflow-hidden animate-pulse">
       <div className="p-2 border-b border-gray-100">
-        <div className="h-8 w-24 bg-gray-200 rounded ml-auto" />
+        <div className="h-8 w-24 bg-ic-bg-tertiary rounded ml-auto" />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="bg-ic-surface border-b border-ic-border-subtle">
               <th className="px-4 py-3 text-left">
-                <div className="h-4 w-24 bg-gray-200 rounded" />
+                <div className="h-4 w-24 bg-ic-bg-tertiary rounded" />
               </th>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <th key={i} className="px-4 py-3 text-right">
-                  <div className="h-4 w-16 bg-gray-200 rounded ml-auto" />
+                  <div className="h-4 w-16 bg-ic-bg-tertiary rounded ml-auto" />
                 </th>
               ))}
             </tr>
@@ -231,12 +231,12 @@ function FinancialTableSkeleton() {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
               <tr key={row}>
                 <td className="px-4 py-3">
-                  <div className="h-4 w-32 bg-gray-200 rounded" />
+                  <div className="h-4 w-32 bg-ic-bg-tertiary rounded" />
                 </td>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((col) => (
                   <td key={col} className="px-4 py-3 text-right">
-                    <div className="h-4 w-16 bg-gray-200 rounded ml-auto" />
-                    <div className="h-3 w-12 bg-gray-100 rounded ml-auto mt-1" />
+                    <div className="h-4 w-16 bg-ic-bg-tertiary rounded ml-auto" />
+                    <div className="h-3 w-12 bg-ic-surface rounded ml-auto mt-1" />
                   </td>
                 ))}
               </tr>

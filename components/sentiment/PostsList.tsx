@@ -57,11 +57,11 @@ export default function PostsList({
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-ic-surface rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
       <div className="px-4 py-4 border-b border-gray-200">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-ic-text-primary">
             Social Media Posts
           </h3>
           <div className="flex items-center gap-2">
@@ -160,7 +160,7 @@ function PostCard({ post }: PostCardProps) {
         href={post.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="block text-gray-900 font-medium hover:text-ic-blue transition-colors mb-2"
+        className="block text-ic-text-primary font-medium hover:text-ic-blue transition-colors mb-2"
       >
         {post.title}
       </a>
@@ -217,7 +217,7 @@ export function CompactPostsList({ posts, limit = 3 }: CompactPostsListProps) {
               {post.sentiment}
             </span>
           </div>
-          <p className="text-sm text-gray-900 line-clamp-2">{post.title}</p>
+          <p className="text-sm text-ic-text-primary line-clamp-2">{post.title}</p>
           <div className="flex items-center gap-3 mt-2 text-xs text-ic-text-dim">
             <span>{formatCompactNumber(post.upvotes)} upvotes</span>
             <span>{formatRelativeTime(post.posted_at)}</span>

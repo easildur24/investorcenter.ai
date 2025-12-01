@@ -129,12 +129,12 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
       <div className="animate-pulse">
         <div className="flex items-center justify-between">
           <div>
-            <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <div className="h-8 bg-ic-bg-tertiary rounded w-48 mb-2"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-32"></div>
           </div>
           <div className="text-right">
-            <div className="h-8 bg-gray-200 rounded w-24 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-20"></div>
+            <div className="h-8 bg-ic-bg-tertiary rounded w-24 mb-2"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-20"></div>
           </div>
         </div>
       </div>

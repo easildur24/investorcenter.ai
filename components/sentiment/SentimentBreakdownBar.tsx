@@ -64,7 +64,7 @@ export default function SentimentBreakdownBar({
         <div className="flex justify-between mt-2 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-ic-positive" />
-            <span className="text-gray-600">
+            <span className="text-ic-text-muted">
               Bullish
               {showPercentages && (
                 <span className="font-medium text-green-600 ml-1">
@@ -76,7 +76,7 @@ export default function SentimentBreakdownBar({
 
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-ic-text-muted" />
-            <span className="text-gray-600">
+            <span className="text-ic-text-muted">
               Neutral
               {showPercentages && (
                 <span className="font-medium text-ic-text-dim ml-1">
@@ -88,7 +88,7 @@ export default function SentimentBreakdownBar({
 
           <div className="flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-ic-negative" />
-            <span className="text-gray-600">
+            <span className="text-ic-text-muted">
               Bearish
               {showPercentages && (
                 <span className="font-medium text-red-600 ml-1">
@@ -116,7 +116,7 @@ export function CompactBreakdownBar({ breakdown }: CompactBreakdownBarProps) {
 
   if (total === 0) {
     return (
-      <div className="h-1.5 rounded-full bg-gray-200 w-full" />
+      <div className="h-1.5 rounded-full bg-ic-bg-tertiary w-full" />
     );
   }
 
@@ -134,7 +134,7 @@ export function CompactBreakdownBar({ breakdown }: CompactBreakdownBarProps) {
       )}
       {normalizedNeutral > 0 && (
         <div
-          className="bg-gray-300"
+          className="bg-ic-bg-tertiary"
           style={{ width: `${normalizedNeutral}%` }}
         />
       )}

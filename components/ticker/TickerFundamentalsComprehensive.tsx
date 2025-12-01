@@ -709,9 +709,9 @@ export default function TickerFundamentalsComprehensive({ symbol, data }: Ticker
         </div>
         <div className="p-6">
           <div className="animate-pulse">
-            <div className="h-4 bg-gray-300 rounded w-3/4 mb-4"></div>
-            <div className="h-4 bg-gray-300 rounded w-1/2 mb-4"></div>
-            <div className="h-4 bg-gray-300 rounded w-5/6"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-3/4 mb-4"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-1/2 mb-4"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-5/6"></div>
           </div>
         </div>
       </div>

@@ -58,16 +58,16 @@ export default function TickerTabs({ symbol, children, tabs, defaultTab }: Ticke
 export function TabSkeleton() {
   return (
     <div className="p-6 animate-pulse">
-      <div className="h-6 bg-gray-200 rounded w-48 mb-6"></div>
+      <div className="h-6 bg-ic-bg-tertiary rounded w-48 mb-6"></div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="bg-gray-100 rounded-lg p-4">
-            <div className="h-4 bg-gray-200 rounded w-20 mb-2"></div>
-            <div className="h-6 bg-gray-200 rounded w-16"></div>
+          <div key={i} className="bg-ic-surface rounded-lg p-4">
+            <div className="h-4 bg-ic-bg-tertiary rounded w-20 mb-2"></div>
+            <div className="h-6 bg-ic-bg-tertiary rounded w-16"></div>
           </div>
         ))}
       </div>
-      <div className="h-64 bg-gray-200 rounded"></div>
+      <div className="h-64 bg-ic-bg-tertiary rounded"></div>
     </div>
   );
 }

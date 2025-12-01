@@ -14,7 +14,7 @@ export default function OverviewTab({ symbol, chartData, currentPrice }: Overvie
   return (
     <div className="space-y-6 p-6">
       {/* Price Chart */}
-      <div className="bg-gray-50 rounded-lg -mx-6 -mt-6 mb-6">
+      <div className="bg-ic-surface rounded-lg -mx-6 -mt-6 mb-6">
         <HybridChart
           symbol={symbol}
           initialData={chartData}
@@ -25,12 +25,12 @@ export default function OverviewTab({ symbol, chartData, currentPrice }: Overvie
       {/* News & Earnings Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* News */}
-        <div className="bg-gray-50 rounded-lg">
+        <div className="bg-ic-surface rounded-lg">
           <TickerNews symbol={symbol} />
         </div>
 
         {/* Earnings */}
-        <div className="bg-gray-50 rounded-lg">
+        <div className="bg-ic-surface rounded-lg">
           <TickerEarnings symbol={symbol} />
         </div>
       </div>
