@@ -15,7 +15,7 @@ export default function TimeRangeSelector({ value, onChange }: TimeRangeSelector
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-sm font-medium text-gray-700">Time Range:</span>
+      <span className="text-sm font-medium text-ic-text-secondary">Time Range:</span>
       <div className="inline-flex rounded-md shadow-sm" role="group">
         {options.map((option, index) => (
           <button
@@ -28,7 +28,7 @@ export default function TimeRangeSelector({ value, onChange }: TimeRangeSelector
               ${index === options.length - 1 ? 'rounded-r-lg' : ''}
               ${value === option.value
                 ? 'bg-primary-600 text-ic-text-primary hover:bg-primary-700'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
+                : 'bg-ic-surface text-ic-text-secondary hover:bg-ic-surface-hover border border-ic-border'
               }
               ${index > 0 && value !== option.value ? '-ml-px' : ''}
               transition-colors duration-150

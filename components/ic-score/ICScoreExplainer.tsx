@@ -121,7 +121,7 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
     <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="ic-score-explainer" role="dialog" aria-modal="true">
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div className="fixed inset-0 bg-ic-bg-tertiary bg-opacity-75 transition-opacity" onClick={onClose}></div>
 
         {/* Modal panel */}
         <div className="inline-block align-bottom bg-ic-surface rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">

@@ -59,7 +59,7 @@ export default function PostsList({
   return (
     <div className="bg-ic-surface rounded-lg shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="px-4 py-4 border-b border-gray-200">
+      <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h3 className="text-lg font-semibold text-ic-text-primary">
             Social Media Posts
@@ -69,7 +69,7 @@ export default function PostsList({
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as PostSortOption)}
-              className="text-sm border border-gray-300 rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
+              className="text-sm border border-ic-border rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
             >
               {sortOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -106,7 +106,7 @@ export default function PostsList({
 
       {/* Posts list */}
       {!loading && !error && data && data.posts.length > 0 && (
-        <div className="divide-y divide-gray-100">
+        <div className="divide-y divide-ic-border-subtle">
           {data.posts.map((post) => (
             <PostCard key={post.id} post={post} />
           ))}
@@ -115,7 +115,7 @@ export default function PostsList({
 
       {/* Footer */}
       {data && data.total > 0 && (
-        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-ic-text-dim">
+        <div className="bg-ic-surface border-t border-ic-border-subtle px-4 py-3 text-sm text-ic-text-dim">
           Showing {data.posts.length} of {data.total} posts
         </div>
       )}
@@ -132,7 +132,7 @@ interface PostCardProps {
 
 function PostCard({ post }: PostCardProps) {
   return (
-    <div className="p-4 hover:bg-gray-50 transition-colors">
+    <div className="p-4 hover:bg-ic-surface-hover transition-colors">
       {/* Post header */}
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2 flex-wrap">
@@ -207,7 +207,7 @@ export function CompactPostsList({ posts, limit = 3 }: CompactPostsListProps) {
           href={post.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="block p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-colors"
+          className="block p-3 rounded-lg border border-ic-border-subtle hover:border-ic-border-subtle hover:bg-ic-surface-hover transition-colors"
         >
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs text-orange-600">r/{post.subreddit}</span>
