@@ -1,0 +1,166 @@
+/* =============================================================================
+   InvestorCenter Theme CSS Variables
+   =============================================================================
+   This file defines all colors for both light and dark modes.
+   Dark mode is the default theme.
+   ============================================================================= */
+
+/* =============================================================================
+   1. :root (Dark Mode - Default)
+   ============================================================================= */
+:root {
+  /* Backgrounds */
+  --ic-bg-primary: #09090B;
+  --ic-bg-secondary: #18181B;
+  --ic-bg-tertiary: #27272A;
+
+  /* Surfaces (cards, modals) */
+  --ic-surface: rgba(255, 255, 255, 0.03);
+  --ic-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --ic-border: rgba(255, 255, 255, 0.1);
+  --ic-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --ic-text-primary: #FAFAFA;
+  --ic-text-secondary: #D4D4D8;
+  --ic-text-muted: #A1A1AA;
+  --ic-text-dim: #71717A;
+
+  /* Header */
+  --ic-header-bg: rgba(9, 9, 11, 0.85);
+
+  /* Input fields */
+  --ic-input-bg: rgba(255, 255, 255, 0.06);
+  --ic-input-border: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================================
+   2. System preference: Light mode (when no manual override)
+   ============================================================================= */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    /* Backgrounds */
+    --ic-bg-primary: #FFFFFF;
+    --ic-bg-secondary: #F4F4F5;
+    --ic-bg-tertiary: #E4E4E7;
+
+    /* Surfaces (cards, modals) */
+    --ic-surface: rgba(0, 0, 0, 0.02);
+    --ic-surface-hover: rgba(0, 0, 0, 0.04);
+
+    /* Borders */
+    --ic-border: rgba(0, 0, 0, 0.1);
+    --ic-border-subtle: rgba(0, 0, 0, 0.05);
+
+    /* Text */
+    --ic-text-primary: #09090B;
+    --ic-text-secondary: #27272A;
+    --ic-text-muted: #52525B;
+    --ic-text-dim: #71717A;
+
+    /* Header */
+    --ic-header-bg: rgba(255, 255, 255, 0.85);
+
+    /* Input fields */
+    --ic-input-bg: rgba(0, 0, 0, 0.03);
+    --ic-input-border: rgba(0, 0, 0, 0.1);
+  }
+}
+
+/* =============================================================================
+   3. Manual override: Light mode
+   ============================================================================= */
+[data-theme="light"] {
+  /* Backgrounds */
+  --ic-bg-primary: #FFFFFF;
+  --ic-bg-secondary: #F4F4F5;
+  --ic-bg-tertiary: #E4E4E7;
+
+  /* Surfaces (cards, modals) */
+  --ic-surface: rgba(0, 0, 0, 0.02);
+  --ic-surface-hover: rgba(0, 0, 0, 0.04);
+
+  /* Borders */
+  --ic-border: rgba(0, 0, 0, 0.1);
+  --ic-border-subtle: rgba(0, 0, 0, 0.05);
+
+  /* Text */
+  --ic-text-primary: #09090B;
+  --ic-text-secondary: #27272A;
+  --ic-text-muted: #52525B;
+  --ic-text-dim: #71717A;
+
+  /* Header */
+  --ic-header-bg: rgba(255, 255, 255, 0.85);
+
+  /* Input fields */
+  --ic-input-bg: rgba(0, 0, 0, 0.03);
+  --ic-input-border: rgba(0, 0, 0, 0.1);
+}
+
+/* =============================================================================
+   4. Manual override: Dark mode
+   ============================================================================= */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --ic-bg-primary: #09090B;
+  --ic-bg-secondary: #18181B;
+  --ic-bg-tertiary: #27272A;
+
+  /* Surfaces (cards, modals) */
+  --ic-surface: rgba(255, 255, 255, 0.03);
+  --ic-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --ic-border: rgba(255, 255, 255, 0.1);
+  --ic-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --ic-text-primary: #FAFAFA;
+  --ic-text-secondary: #D4D4D8;
+  --ic-text-muted: #A1A1AA;
+  --ic-text-dim: #71717A;
+
+  /* Header */
+  --ic-header-bg: rgba(9, 9, 11, 0.85);
+
+  /* Input fields */
+  --ic-input-bg: rgba(255, 255, 255, 0.06);
+  --ic-input-border: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================================
+   5. Accent colors (same in both themes)
+   ============================================================================= */
+:root {
+  /* Primary accent */
+  --ic-blue: #3B82F6;
+  --ic-blue-hover: #2563EB;
+
+  /* Secondary accent */
+  --ic-cyan: #22D3EE;
+
+  /* Status colors */
+  --ic-positive: #34D399;
+  --ic-positive-bg: rgba(52, 211, 153, 0.1);
+
+  --ic-negative: #F87171;
+  --ic-negative-bg: rgba(248, 113, 113, 0.1);
+
+  --ic-warning: #FBBF24;
+  --ic-warning-bg: rgba(251, 191, 36, 0.1);
+
+  --ic-orange: #F97316;
+  --ic-orange-bg: rgba(249, 115, 22, 0.15);
+}
+
+/* =============================================================================
+   6. Base styles
+   ============================================================================= */
+body {
+  background-color: var(--ic-bg-primary);
+  color: var(--ic-text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}
