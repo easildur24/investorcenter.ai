@@ -62,7 +62,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
           {/* Alert Info */}
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-lg font-semibold text-white">{alert.name}</h3>
+              <h3 className="text-lg font-semibold text-ic-text-primary">{alert.name}</h3>
               {alert.is_active ? (
                 <span className="px-2 py-1 text-xs font-semibold bg-green-600/20 text-ic-positive rounded border border-green-500/50">
                   Active
@@ -82,7 +82,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <div className="text-ic-text-muted mb-1">Symbol</div>
-                <div className="text-white font-medium">{alert.symbol}</div>
+                <div className="text-ic-text-primary font-medium">{alert.symbol}</div>
                 {alert.company_name && (
                   <div className="text-ic-text-dim text-xs">{alert.company_name}</div>
                 )}
@@ -90,17 +90,17 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
 
               <div>
                 <div className="text-ic-text-muted mb-1">Type</div>
-                <div className="text-white font-medium">{alertInfo?.label || alert.alert_type}</div>
+                <div className="text-ic-text-primary font-medium">{alertInfo?.label || alert.alert_type}</div>
               </div>
 
               <div>
                 <div className="text-ic-text-muted mb-1">Condition</div>
-                <div className="text-white font-medium">{formatConditions(alert.conditions)}</div>
+                <div className="text-ic-text-primary font-medium">{formatConditions(alert.conditions)}</div>
               </div>
 
               <div>
                 <div className="text-ic-text-muted mb-1">Frequency</div>
-                <div className="text-white font-medium">{frequencyInfo?.label || alert.frequency}</div>
+                <div className="text-ic-text-primary font-medium">{frequencyInfo?.label || alert.frequency}</div>
               </div>
             </div>
 
@@ -138,7 +138,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             {/* Trigger Stats */}
             <div className="flex items-center gap-6 mt-3 text-xs text-ic-text-dim">
               <div>
-                <span className="font-semibold text-white">{alert.trigger_count}</span> triggers
+                <span className="font-semibold text-ic-text-primary">{alert.trigger_count}</span> triggers
               </div>
               {alert.last_triggered_at && (
                 <div>
@@ -185,7 +185,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
           {/* Edit */}
           <button
             onClick={() => onEdit(alert)}
-            className="p-2 bg-blue-600/20 text-ic-blue rounded-lg hover:bg-blue-600/30 transition-colors"
+            className="p-2 bg-ic-blue/20 text-ic-blue rounded-lg hover:bg-ic-blue/30 transition-colors"
             title="Edit"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

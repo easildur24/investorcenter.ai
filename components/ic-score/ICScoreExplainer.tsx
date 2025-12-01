@@ -128,12 +128,12 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
           {/* Header */}
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-semibold text-white">Understanding IC Score</h2>
+              <h2 className="text-xl font-semibold text-ic-text-primary">Understanding IC Score</h2>
               <p className="text-primary-100 text-sm">Our proprietary 10-factor investment analysis</p>
             </div>
             <button
               onClick={onClose}
-              className="text-white hover:text-primary-100 transition-colors"
+              className="text-ic-text-primary hover:text-ic-text-muted transition-colors"
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
@@ -185,7 +185,7 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
                             className="h-full bg-primary-500 rounded-full flex items-center justify-end pr-2"
                             style={{ width: `${factor.weight * 5}%` }}
                           >
-                            <span className="text-xs font-medium text-white">{factor.weight}%</span>
+                            <span className="text-xs font-medium text-ic-text-primary">{factor.weight}%</span>
                           </div>
                         </div>
                       </div>
@@ -241,7 +241,7 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
           <div className="bg-ic-bg-secondary px-6 py-4 flex justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded-lg hover:bg-ic-blue-hover transition-colors"
             >
               Got it
             </button>

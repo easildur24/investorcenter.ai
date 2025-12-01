@@ -287,7 +287,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
             viewType === 'insider'
-              ? 'bg-ic-blue text-white'
+              ? 'bg-ic-blue text-ic-text-primary'
               : 'bg-ic-bg-secondary text-ic-text-muted hover:bg-ic-surface-hover'
           )}
         >
@@ -298,7 +298,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-lg transition-colors',
             viewType === 'institutional'
-              ? 'bg-ic-blue text-white'
+              ? 'bg-ic-blue text-ic-text-primary'
               : 'bg-ic-bg-secondary text-ic-text-muted hover:bg-ic-surface-hover'
           )}
         >

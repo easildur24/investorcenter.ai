@@ -16,7 +16,7 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
 
         {/* Market type filters */}
         <div className="flex space-x-4 mb-6">
-          <button className="bg-ic-blue text-white px-4 py-2 rounded font-medium">ALL</button>
+          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">ALL</button>
           <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">CEX</button>
           <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">DEX</button>
         </div>
@@ -38,7 +38,7 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
         <h2 className="text-xl font-semibold text-ic-text-primary mb-6">{cryptoName} News</h2>
 
         <div className="flex space-x-4 mb-6">
-          <button className="bg-ic-blue text-white px-4 py-2 rounded font-medium">Top</button>
+          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">Top</button>
           <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">Latest</button>
         </div>
 

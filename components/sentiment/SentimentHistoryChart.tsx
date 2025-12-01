@@ -93,7 +93,7 @@ export default function SentimentHistoryChart({
               onClick={() => setDays(d)}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 days === d
-                  ? 'bg-ic-blue text-white'
+                  ? 'bg-ic-blue text-ic-text-primary'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >

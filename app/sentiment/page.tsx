@@ -69,7 +69,7 @@ function SentimentDashboardContent() {
             />
             <button
               type="submit"
-              className="px-6 py-2 bg-ic-blue text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="px-6 py-2 bg-ic-blue text-ic-text-primary rounded-lg hover:bg-ic-blue-hover transition-colors"
             >
               Search
             </button>

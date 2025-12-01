@@ -163,10 +163,10 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
       <div className="flex items-center space-x-4 mb-6">
         <h1 className="text-3xl font-bold text-ic-text-primary"># {cryptoName} price</h1>
         <span className="text-xl font-bold text-ic-text-secondary">{displaySymbol}</span>
-        <span className="bg-orange-500 text-white px-2 py-1 rounded text-sm font-bold">
+        <span className="bg-orange-500 text-ic-text-primary px-2 py-1 rounded text-sm font-bold">
           #1
         </span>
-        <button className="bg-ic-blue text-white px-3 py-1 rounded text-sm font-medium">
+        <button className="bg-ic-blue text-ic-text-primary px-3 py-1 rounded text-sm font-medium">
           6M
         </button>
       </div>

@@ -106,7 +106,7 @@ export default function RiskTab({ symbol }: RiskTabProps) {
               className={cn(
                 'px-3 py-1 text-sm rounded-md transition-colors',
                 period === p
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-ic-blue text-ic-text-primary'
                   : 'bg-ic-bg-secondary text-ic-text-muted hover:bg-ic-surface-hover'
               )}
             >

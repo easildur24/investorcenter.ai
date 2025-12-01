@@ -113,14 +113,14 @@ function AlertsPageContent() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold text-white mb-2">Alert Rules</h1>
+              <h1 className="text-4xl font-bold text-ic-text-primary mb-2">Alert Rules</h1>
               <p className="text-gray-300">
                 Manage your price, volume, and event alerts
               </p>
             </div>
             <button
               onClick={handleCreateClick}
-              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 font-semibold flex items-center gap-2 shadow-lg"
+              className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-ic-text-primary rounded-lg hover:from-purple-700 hover:to-blue-700 font-semibold flex items-center gap-2 shadow-lg"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -135,7 +135,7 @@ function AlertsPageContent() {
               <div className="flex items-center gap-4">
                 <div className="text-sm">
                   <span className="text-ic-text-dim">Active Alerts: </span>
-                  <span className="text-white font-semibold">
+                  <span className="text-ic-text-primary font-semibold">
                     {limits.current_alert_rules} / {limits.max_alert_rules === -1 ? '∞' : limits.max_alert_rules}
                   </span>
                 </div>
@@ -166,8 +166,8 @@ function AlertsPageContent() {
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'all'
-                ? 'bg-purple-600 text-white'
-                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
+                ? 'bg-ic-purple text-ic-text-primary'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-ic-text-primary border border-slate-700'
             }`}
           >
             All ({alerts.length})
@@ -176,8 +176,8 @@ function AlertsPageContent() {
             onClick={() => setFilter('active')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'active'
-                ? 'bg-green-600 text-white'
-                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
+                ? 'bg-ic-positive text-ic-text-primary'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-ic-text-primary border border-slate-700'
             }`}
           >
             Active ({activeCount})
@@ -186,8 +186,8 @@ function AlertsPageContent() {
             onClick={() => setFilter('inactive')}
             className={`px-4 py-2 rounded-lg font-medium transition-colors ${
               filter === 'inactive'
-                ? 'bg-gray-600 text-white'
-                : 'bg-slate-800/50 text-ic-text-dim hover:text-white border border-slate-700'
+                ? 'bg-ic-bg-tertiary text-ic-text-primary'
+                : 'bg-slate-800/50 text-ic-text-dim hover:text-ic-text-primary border border-slate-700'
             }`}
           >
             Inactive ({inactiveCount})
@@ -223,7 +223,7 @@ function AlertsPageContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold text-white mb-2">
+                <h3 className="text-xl font-semibold text-ic-text-primary mb-2">
                   {filter === 'all' ? 'No alerts yet' : `No ${filter} alerts`}
                 </h3>
                 <p className="text-ic-text-dim mb-6">
@@ -231,7 +231,7 @@ function AlertsPageContent() {
                 </p>
                 <button
                   onClick={handleCreateClick}
-                  className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-semibold"
+                  className="px-6 py-3 bg-ic-purple text-ic-text-primary rounded-lg hover:bg-ic-purple-hover font-semibold"
                 >
                   Create Your First Alert
                 </button>

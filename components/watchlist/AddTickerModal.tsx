@@ -75,7 +75,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Add Ticker</h2>
 
@@ -210,7 +210,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             <button
               type="submit"
               disabled={loading || !symbol}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed"
             >
               {loading ? 'Adding...' : 'Add Ticker'}
             </button>

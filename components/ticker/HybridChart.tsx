@@ -605,7 +605,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         {/* Hover tooltip placeholder */}
         <div
           id="chart-tooltip"
-          className="fixed z-30 bg-ic-bg-tertiary text-white p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-ic-border"
+          className="fixed z-30 bg-ic-bg-tertiary text-ic-text-primary p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-ic-border"
           style={{ left: -200, top: -200, minWidth: '140px', fontFamily: 'monospace' }}
         >
           <div id="tooltip-date" className="font-semibold mb-1 text-ic-text-secondary text-xs"></div>

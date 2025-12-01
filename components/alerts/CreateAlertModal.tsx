@@ -287,7 +287,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-md hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-4 py-2 text-sm font-medium text-ic-text-primary bg-ic-blue rounded-md hover:bg-ic-blue-hover disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={loading}
                 >
                   {loading ? 'Creating...' : 'Create Alert'}

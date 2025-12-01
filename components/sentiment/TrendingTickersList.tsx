@@ -67,7 +67,7 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('24h')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '24h'
-                  ? 'bg-ic-blue text-white'
+                  ? 'bg-ic-blue text-ic-text-primary'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -77,7 +77,7 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('7d')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '7d'
-                  ? 'bg-ic-blue text-white'
+                  ? 'bg-ic-blue text-ic-text-primary'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -101,7 +101,7 @@ export default function TrendingTickersList({
           <p className="text-red-600">{error}</p>
           <button
             onClick={() => setPeriod(period)}
-            className="mt-4 px-4 py-2 bg-ic-blue text-white rounded-md hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover"
           >
             Try Again
           </button>

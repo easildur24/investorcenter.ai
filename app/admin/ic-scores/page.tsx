@@ -144,7 +144,7 @@ export default function ICScoresAdminPage() {
             </div>
             <button
               type="submit"
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              className="px-6 py-2 bg-ic-blue text-ic-text-primary rounded-lg hover:bg-ic-blue-hover transition-colors font-medium"
             >
               Search
             </button>
@@ -167,7 +167,7 @@ export default function ICScoresAdminPage() {
         <div className="bg-ic-surface rounded-lg shadow border border-ic-border overflow-hidden">
           {loading ? (
             <div className="p-12 text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ic-blue mx-auto"></div>
               <p className="text-ic-text-muted mt-4">Loading IC Scores...</p>
             </div>
           ) : scores.length === 0 ? (
@@ -345,7 +345,7 @@ export default function ICScoresAdminPage() {
 
       {/* Details Modal */}
       {selectedTicker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 z-50 flex items-center justify-center p-4">
           <div className="bg-ic-surface rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
             {/* Modal Header */}
             <div className="sticky top-0 bg-ic-surface border-b border-ic-border px-6 py-4 flex items-center justify-between">
@@ -364,7 +364,7 @@ export default function ICScoresAdminPage() {
             <div className="p-6">
               {loadingDetails ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-ic-blue"></div>
                 </div>
               ) : detailedScore ? (
                 <div className="space-y-6">

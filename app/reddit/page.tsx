@@ -130,7 +130,7 @@ export default function RedditTrendingPage() {
             <p className="text-ic-negative">{error}</p>
             <button
               onClick={handleRefresh}
-              className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
+              className="mt-4 px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover"
             >
               Try Again
             </button>
