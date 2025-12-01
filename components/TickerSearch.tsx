@@ -130,7 +130,7 @@ export default function TickerSearch() {
       <form onSubmit={handleSubmit}>
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-2 sm:pl-3 flex items-center pointer-events-none">
-            <MagnifyingGlassIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+            <MagnifyingGlassIcon className="h-4 w-4 sm:h-5 sm:w-5 text-ic-text-dim" />
           </div>
           <input
             type="text"
@@ -145,48 +145,48 @@ export default function TickerSearch() {
             autoCapitalize="characters"
             spellCheck="false"
             enterKeyHint="search"
-            className="block w-full pl-7 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-sm sm:text-base border border-gray-300 rounded-lg leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+            className="block w-full pl-7 sm:pl-10 pr-2 sm:pr-3 py-1.5 sm:py-2 text-sm sm:text-base border border-ic-input-border rounded-lg leading-5 bg-ic-input-bg text-ic-text-primary placeholder-ic-text-dim focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-ic-blue transition-all"
           />
         </div>
       </form>
 
       {/* Search Results Dropdown */}
       {showResults && (
-        <div className="absolute z-50 mt-1 w-full bg-white shadow-xl max-h-80 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none border border-gray-200">
+        <div className="absolute z-50 mt-1 w-full bg-ic-bg-primary shadow-xl max-h-80 rounded-lg py-1 text-base ring-1 ring-ic-border overflow-auto focus:outline-none border border-ic-border">
           {isLoading ? (
-            <div className="px-4 py-2 text-gray-500">Searching...</div>
+            <div className="px-4 py-2 text-ic-text-muted">Searching...</div>
           ) : results.length > 0 ? (
             results.map((result) => (
               <button
                 key={result.symbol}
                 onClick={() => handleSelectTicker(result.symbol, result.name)}
-                className="w-full text-left px-4 py-3 hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors border-b border-gray-100 last:border-b-0"
+                className="w-full text-left px-4 py-3 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors border-b border-ic-border-subtle last:border-b-0"
               >
                 <div className="flex justify-between items-center">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-gray-900 text-sm">{result.symbol}</div>
-                    <div className="text-sm text-gray-600 truncate">{result.name}</div>
+                    <div className="font-semibold text-ic-text-primary text-sm">{result.symbol}</div>
+                    <div className="text-sm text-ic-text-secondary truncate">{result.name}</div>
                   </div>
-                  <div className="ml-2 text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                  <div className="ml-2 text-xs text-ic-text-dim bg-ic-bg-tertiary px-2 py-1 rounded">
                     {result.exchange}
                   </div>
                 </div>
               </button>
             ))
           ) : query && !isLoading ? (
-            <div className="px-4 py-3 text-gray-500">
+            <div className="px-4 py-3 text-ic-text-muted">
               No results found. Press Enter to view &quot;{query.toUpperCase()}&quot;
             </div>
           ) : showRecentSearches ? (
             <div className="py-2">
               <div className="flex items-center justify-between px-4 py-1">
-                <div className="flex items-center gap-1 text-xs text-gray-400">
+                <div className="flex items-center gap-1 text-xs text-ic-text-dim">
                   <ClockIcon className="h-3 w-3" />
                   <span>Recent searches</span>
                 </div>
                 <button
                   onClick={handleClearRecent}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  className="text-xs text-ic-text-dim hover:text-ic-text-secondary transition-colors"
                 >
                   Clear all
                 </button>
@@ -195,16 +195,16 @@ export default function TickerSearch() {
                 <button
                   key={item.symbol}
                   onClick={() => handleSelectTicker(item.symbol, item.name)}
-                  className="w-full text-left px-4 py-2 hover:bg-primary-50 focus:bg-primary-50 focus:outline-none transition-colors group"
+                  className="w-full text-left px-4 py-2 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors group"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-gray-900 text-sm">{item.symbol}</div>
-                      <div className="text-xs text-gray-500 truncate">{item.name}</div>
+                      <div className="font-semibold text-ic-text-primary text-sm">{item.symbol}</div>
+                      <div className="text-xs text-ic-text-muted truncate">{item.name}</div>
                     </div>
                     <button
                       onClick={(e) => handleRemoveRecentItem(e, item.symbol)}
-                      className="ml-2 p-1 text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="ml-2 p-1 text-ic-text-dim hover:text-ic-text-secondary opacity-0 group-hover:opacity-100 transition-opacity"
                       aria-label={`Remove ${item.symbol} from recent searches`}
                     >
                       <XMarkIcon className="h-4 w-4" />
@@ -215,13 +215,13 @@ export default function TickerSearch() {
             </div>
           ) : !query ? (
             <div className="px-4 py-3">
-              <div className="text-xs text-gray-400 mb-2">Popular stocks:</div>
+              <div className="text-xs text-ic-text-dim mb-2">Popular stocks:</div>
               <div className="flex flex-wrap gap-2">
                 {['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN'].map((symbol) => (
                   <button
                     key={symbol}
                     onClick={() => handleSelectTicker(symbol)}
-                    className="text-xs bg-primary-100 text-primary-700 px-2 py-1 rounded hover:bg-primary-200 transition-colors"
+                    className="text-xs bg-ic-surface text-ic-blue px-2 py-1 rounded hover:bg-ic-surface-hover transition-colors"
                   >
                     {symbol}
                   </button>

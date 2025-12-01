@@ -12,14 +12,14 @@ export default function Header() {
   const [showDropdown, setShowDropdown] = useState(false);
 
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className="bg-ic-header-bg backdrop-blur-md border-b border-ic-border">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link href="/" className="flex items-center">
-                <ChartBarIcon className="h-8 w-8 text-primary-600" />
-                <span className="ml-2 text-xl font-bold text-gray-900">InvestorCenter</span>
+                <ChartBarIcon className="h-8 w-8 text-ic-blue" />
+                <span className="ml-2 text-xl font-bold text-ic-text-primary">InvestorCenter</span>
               </Link>
             </div>
 
@@ -27,25 +27,25 @@ export default function Header() {
             <div className="hidden md:ml-6 md:flex md:space-x-8">
               <Link
                 href="/"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Home
               </Link>
               <Link
                 href="/screener"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Screener
               </Link>
               <Link
                 href="/crypto"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Crypto
               </Link>
               <Link
                 href="/reddit"
-                className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
               >
                 Reddit Trends
               </Link>
@@ -53,13 +53,13 @@ export default function Header() {
                 <>
                   <Link
                     href="/watchlist"
-                    className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                    className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Watch Lists
                   </Link>
                   <Link
                     href="/alerts"
-                    className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
+                    className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
                   >
                     Alerts
                   </Link>
@@ -81,7 +81,7 @@ export default function Header() {
             {user && (
               <Link
                 href="/alerts"
-                className="relative p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+                className="relative p-2 text-ic-text-muted hover:text-ic-text-primary rounded-full hover:bg-ic-surface transition-colors"
                 title="Alerts"
               >
                 <BellIcon className="h-6 w-6" />
@@ -93,7 +93,7 @@ export default function Header() {
               <div className="relative">
                 <button
                   onClick={() => setShowDropdown(!showDropdown)}
-                  className="flex items-center gap-2 text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  className="flex items-center gap-2 text-ic-text-secondary hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   <span>{user.full_name}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,60 +102,60 @@ export default function Header() {
                 </button>
 
                 {showDropdown && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10 border border-gray-200">
+                  <div className="absolute right-0 mt-2 w-48 bg-ic-bg-primary rounded-md shadow-lg py-1 z-10 border border-ic-border">
                     <Link
                       href="/watchlist"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       My Watch Lists
                     </Link>
                     <Link
                       href="/alerts"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       My Alerts
                     </Link>
                     <Link
                       href="/settings/profile"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       Settings
                     </Link>
-                    <div className="border-t border-gray-200 my-1"></div>
-                    <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    <div className="border-t border-ic-border my-1"></div>
+                    <div className="px-4 py-2 text-xs font-semibold text-ic-text-dim uppercase">
                       Admin
                     </div>
                     <Link
                       href="/admin/dashboard"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       Dashboard
                     </Link>
                     <Link
                       href="/admin/cronjobs"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       Cronjob Monitoring
                     </Link>
                     <Link
                       href="/admin/ic-scores"
-                      className="block px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                       onClick={() => setShowDropdown(false)}
                     >
                       IC Score Admin
                     </Link>
-                    <div className="border-t border-gray-200 my-1"></div>
+                    <div className="border-t border-ic-border my-1"></div>
                     <button
                       onClick={() => {
                         setShowDropdown(false);
                         logout();
                       }}
-                      className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
                     >
                       Logout
                     </button>
@@ -164,10 +164,10 @@ export default function Header() {
               </div>
             ) : (
               <>
-                <Link href="/auth/login" className="text-gray-500 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium">
+                <Link href="/auth/login" className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
                   Login
                 </Link>
-                <Link href="/auth/signup" className="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+                <Link href="/auth/signup" className="bg-ic-blue hover:bg-ic-blue-hover text-ic-text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors">
                   Get Started
                 </Link>
               </>

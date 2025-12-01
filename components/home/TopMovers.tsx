@@ -91,20 +91,20 @@ export default function TopMovers() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Top Movers</h2>
+          <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         </div>
         <div className="animate-pulse space-y-4">
-          <div className="flex space-x-4 border-b">
+          <div className="flex space-x-4 border-b border-ic-border">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-8 bg-gray-200 rounded w-24 mb-2"></div>
+              <div key={i} className="h-8 bg-ic-bg-tertiary rounded w-24 mb-2"></div>
             ))}
           </div>
           {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex justify-between items-center py-2">
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
-              <div className="h-4 bg-gray-200 rounded w-20"></div>
+              <div className="h-4 bg-ic-bg-tertiary rounded w-16"></div>
+              <div className="h-4 bg-ic-bg-tertiary rounded w-20"></div>
             </div>
           ))}
         </div>
@@ -114,11 +114,11 @@ export default function TopMovers() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Top Movers</h2>
-        <div className="text-red-600 text-sm">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+        <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Top Movers</h2>
+        <div className="text-ic-negative text-sm">
           <p>Error loading market movers: {error}</p>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ic-text-muted mt-2">
             This will work once the backend is running with market data access.
           </p>
         </div>
@@ -129,26 +129,26 @@ export default function TopMovers() {
   const currentData = getCurrentData();
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Top Movers</h2>
+        <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         {lastUpdated && (
-          <span className="text-xs text-gray-500">
+          <span className="text-xs text-ic-text-muted">
             Updated {formatRelativeTime(lastUpdated)}
           </span>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-1 border-b border-gray-200 mb-4">
+      <div className="flex space-x-1 border-b border-ic-border mb-4">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
               activeTab === tab.id
-                ? 'text-primary-600 bg-primary-50 border-b-2 border-primary-600 -mb-px'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'text-ic-blue bg-ic-surface-hover border-b-2 border-ic-blue -mb-px'
+                : 'text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover'
             }`}
           >
             {tab.icon}
@@ -160,30 +160,30 @@ export default function TopMovers() {
       {/* Stock List */}
       <div className="space-y-1">
         {currentData.length === 0 ? (
-          <p className="text-gray-500 text-sm py-4 text-center">No data available</p>
+          <p className="text-ic-text-muted text-sm py-4 text-center">No data available</p>
         ) : (
           currentData.map((stock) => (
             <Link
               key={stock.symbol}
               href={`/ticker/${stock.symbol}`}
-              className="flex justify-between items-center py-2.5 px-2 -mx-2 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex justify-between items-center py-2.5 px-2 -mx-2 rounded-lg hover:bg-ic-surface-hover transition-colors"
             >
               <div className="flex items-center gap-3">
-                <span className="font-semibold text-gray-900 w-14">{stock.symbol}</span>
-                <span className="text-sm text-gray-500">
+                <span className="font-semibold text-ic-text-primary w-14">{stock.symbol}</span>
+                <span className="text-sm text-ic-text-muted">
                   ${safeToFixed(stock.price, 2)}
                 </span>
               </div>
 
               <div className="flex items-center gap-3">
                 {activeTab === 'active' && (
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-ic-text-dim">
                     Vol: {formatVolume(stock.volume)}
                   </span>
                 )}
                 <div
                   className={`flex items-center text-sm font-medium ${
-                    stock.changePercent >= 0 ? 'text-green-600' : 'text-red-600'
+                    stock.changePercent >= 0 ? 'text-ic-positive' : 'text-ic-negative'
                   }`}
                 >
                   {stock.changePercent >= 0 ? (
@@ -203,10 +203,10 @@ export default function TopMovers() {
       </div>
 
       {/* Link to screener */}
-      <div className="mt-4 pt-3 border-t border-gray-100">
+      <div className="mt-4 pt-3 border-t border-ic-border-subtle">
         <Link
           href="/screener"
-          className="text-sm text-primary-600 hover:text-primary-700 font-medium"
+          className="text-sm text-ic-blue hover:text-ic-blue-hover font-medium transition-colors"
         >
           View all stocks in Screener →
         </Link>
