@@ -106,7 +106,7 @@ export function MultiSourceBadge({
     >
       {config.label}
       {sources.length > 1 && (
-        <span className="text-gray-400">+{sources.length - 1}</span>
+        <span className="text-ic-text-muted">+{sources.length - 1}</span>
       )}
     </span>
   );

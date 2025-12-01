@@ -23,13 +23,13 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 text-gray-900">Create Watch List</h2>
+    <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Create Watch List</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="name">
+            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="name">
               Name *
             </label>
             <input
@@ -37,7 +37,7 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue text-ic-text-primary"
               placeholder="e.g., Tech Stocks, Growth Portfolio"
               required
               maxLength={255}
@@ -45,14 +45,14 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2 text-gray-700" htmlFor="description">
+            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="description">
               Description (optional)
             </label>
             <textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue text-ic-text-primary"
               placeholder="Add notes about this watch list..."
               rows={3}
             />
@@ -62,14 +62,14 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-ic-border text-ic-text-secondary rounded hover:bg-ic-surface-hover"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading || !name}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed"
             >
               {loading ? 'Creating...' : 'Create'}
             </button>

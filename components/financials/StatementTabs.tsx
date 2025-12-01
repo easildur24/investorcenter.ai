@@ -12,7 +12,7 @@ const tabs: StatementType[] = ['income', 'balance_sheet', 'cash_flow', 'ratios']
 
 export default function StatementTabs({ activeTab, onChange }: StatementTabsProps) {
   return (
-    <div className="flex gap-1 p-1 bg-gray-100 rounded-lg overflow-x-auto">
+    <div className="flex gap-1 p-1 bg-ic-surface rounded-lg overflow-x-auto">
       {tabs.map((tab) => (
         <button
           key={tab}
@@ -20,8 +20,8 @@ export default function StatementTabs({ activeTab, onChange }: StatementTabsProp
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-all',
             activeTab === tab
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              ? 'bg-ic-surface text-ic-blue shadow-sm'
+              : 'text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover'
           )}
         >
           {statementTypeLabels[tab]}

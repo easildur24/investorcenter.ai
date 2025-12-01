@@ -83,8 +83,8 @@ export default function FinancialTable({
 
   if (error || periods.length === 0) {
     return (
-      <div className="bg-gray-50 rounded-lg p-8 text-center">
-        <p className="text-gray-500">{error || 'No financial data available'}</p>
+      <div className="bg-ic-surface rounded-lg p-8 text-center">
+        <p className="text-ic-text-dim">{error || 'No financial data available'}</p>
       </div>
     );
   }
@@ -95,12 +95,12 @@ export default function FinancialTable({
   );
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+    <div className="bg-ic-surface rounded-lg border border-ic-border-subtle overflow-hidden">
       {/* Export Button */}
       <div className="flex justify-end p-2 border-b border-gray-100">
         <button
           onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover rounded-md transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -123,14 +123,14 @@ export default function FinancialTable({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-sm font-semibold text-gray-900 min-w-[200px]">
+            <tr className="bg-ic-surface border-b border-ic-border-subtle">
+              <th className="sticky left-0 bg-ic-surface px-4 py-3 text-left text-sm font-semibold text-ic-text-primary min-w-[200px]">
                 Metric
               </th>
               {periods.map((period, idx) => (
                 <th
                   key={idx}
-                  className="px-4 py-3 text-right text-sm font-semibold text-gray-900 min-w-[120px]"
+                  className="px-4 py-3 text-right text-sm font-semibold text-ic-text-primary min-w-[120px]"
                 >
                   {formatPeriodLabel(period, timeframe)}
                 </th>
@@ -161,11 +161,11 @@ interface FinancialTableRowProps {
 
 function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
   return (
-    <tr className={cn('hover:bg-gray-50 transition-colors', row.bold && 'bg-gray-25')}>
+    <tr className={cn('hover:bg-ic-surface-hover transition-colors', row.bold && 'bg-ic-surface')}>
       {/* Metric Name */}
       <td
         className={cn(
-          'sticky left-0 bg-white px-4 py-3 text-sm text-gray-900',
+          'sticky left-0 bg-ic-surface px-4 py-3 text-sm text-ic-text-primary',
           row.bold && 'font-semibold',
           row.indent && `pl-${4 + row.indent * 4}`
         )}
@@ -209,20 +209,20 @@ function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
 
 function FinancialTableSkeleton() {
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden animate-pulse">
+    <div className="bg-ic-surface rounded-lg border border-ic-border-subtle overflow-hidden animate-pulse">
       <div className="p-2 border-b border-gray-100">
-        <div className="h-8 w-24 bg-gray-200 rounded ml-auto" />
+        <div className="h-8 w-24 bg-ic-bg-tertiary rounded ml-auto" />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="bg-gray-50 border-b border-gray-200">
+            <tr className="bg-ic-surface border-b border-ic-border-subtle">
               <th className="px-4 py-3 text-left">
-                <div className="h-4 w-24 bg-gray-200 rounded" />
+                <div className="h-4 w-24 bg-ic-bg-tertiary rounded" />
               </th>
               {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
                 <th key={i} className="px-4 py-3 text-right">
-                  <div className="h-4 w-16 bg-gray-200 rounded ml-auto" />
+                  <div className="h-4 w-16 bg-ic-bg-tertiary rounded ml-auto" />
                 </th>
               ))}
             </tr>
@@ -231,12 +231,12 @@ function FinancialTableSkeleton() {
             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((row) => (
               <tr key={row}>
                 <td className="px-4 py-3">
-                  <div className="h-4 w-32 bg-gray-200 rounded" />
+                  <div className="h-4 w-32 bg-ic-bg-tertiary rounded" />
                 </td>
                 {[1, 2, 3, 4, 5, 6, 7, 8].map((col) => (
                   <td key={col} className="px-4 py-3 text-right">
-                    <div className="h-4 w-16 bg-gray-200 rounded ml-auto" />
-                    <div className="h-3 w-12 bg-gray-100 rounded ml-auto mt-1" />
+                    <div className="h-4 w-16 bg-ic-bg-tertiary rounded ml-auto" />
+                    <div className="h-3 w-12 bg-ic-surface rounded ml-auto mt-1" />
                   </td>
                 ))}
               </tr>

@@ -4,6 +4,7 @@ import './globals.css'
 import Header from '@/components/Header'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import { ToastProvider } from '@/lib/hooks/useToast'
+import { ThemeProvider, themeInitScript } from '@/lib/contexts/ThemeContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -18,14 +19,20 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <meta name="theme-color" content="#09090B" />
+      </head>
       <body className={inter.className}>
-        <AuthProvider>
-          <ToastProvider>
-            <Header />
-            <main>{children}</main>
-          </ToastProvider>
-        </AuthProvider>
+        <ThemeProvider defaultTheme="system">
+          <AuthProvider>
+            <ToastProvider>
+              <Header />
+              <main>{children}</main>
+            </ToastProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

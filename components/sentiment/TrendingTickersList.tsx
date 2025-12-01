@@ -55,11 +55,11 @@ export default function TrendingTickersList({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+    <div className="bg-ic-surface rounded-lg shadow-sm overflow-hidden">
       {/* Header with period toggle */}
-      <div className="px-4 py-4 border-b border-gray-200">
+      <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-ic-text-primary">
             Trending by Sentiment
           </h3>
           <div className="flex gap-1">
@@ -67,8 +67,8 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('24h')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '24h'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-ic-blue text-ic-text-primary'
+                  : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
               }`}
             >
               24h
@@ -77,8 +77,8 @@ export default function TrendingTickersList({
               onClick={() => setPeriod('7d')}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
                 period === '7d'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-ic-blue text-ic-text-primary'
+                  : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
               }`}
             >
               7d
@@ -90,8 +90,8 @@ export default function TrendingTickersList({
       {/* Loading state */}
       {loading && (
         <div className="p-12 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-gray-500 text-sm">Loading trending tickers...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue mx-auto" />
+          <p className="mt-4 text-ic-text-dim text-sm">Loading trending tickers...</p>
         </div>
       )}
 
@@ -101,7 +101,7 @@ export default function TrendingTickersList({
           <p className="text-red-600">{error}</p>
           <button
             onClick={() => setPeriod(period)}
-            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="mt-4 px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover"
           >
             Try Again
           </button>
@@ -111,7 +111,7 @@ export default function TrendingTickersList({
       {/* Empty state */}
       {!loading && !error && (!data || data.tickers.length === 0) && (
         <div className="p-12 text-center">
-          <p className="text-gray-500">No trending data available</p>
+          <p className="text-ic-text-dim">No trending data available</p>
         </div>
       )}
 
@@ -119,8 +119,8 @@ export default function TrendingTickersList({
       {!loading && !error && data && data.tickers.length > 0 && (
         <>
           {/* Table header */}
-          <div className="bg-gray-50 border-b border-gray-200 px-4 py-3 hidden sm:block">
-            <div className="flex items-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+          <div className="bg-ic-surface border-b border-ic-border-subtle px-4 py-3 hidden sm:block">
+            <div className="flex items-center text-xs font-medium text-ic-text-dim uppercase tracking-wider">
               <span className="w-12 text-center">#</span>
               <span className="flex-1">Ticker</span>
               <span className="w-28 text-center">Sentiment</span>
@@ -144,7 +144,7 @@ export default function TrendingTickersList({
 
       {/* Footer */}
       {data && data.tickers.length > 0 && (
-        <div className="bg-gray-50 border-t border-gray-200 px-4 py-3 text-sm text-gray-500">
+        <div className="bg-ic-surface border-t border-ic-border-subtle px-4 py-3 text-sm text-ic-text-dim">
           Showing {data.tickers.length} trending tickers ({period})
         </div>
       )}
@@ -166,7 +166,7 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
   return (
     <Link
       href={`/ticker/${ticker.ticker}`}
-      className="flex items-center px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+      className="flex items-center px-4 py-3 hover:bg-ic-surface transition-colors cursor-pointer"
       onClick={(e) => {
         if (onClick) {
           e.preventDefault();
@@ -175,13 +175,13 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
       }}
     >
       {/* Rank */}
-      <span className="w-12 text-center text-sm font-medium text-gray-500">
+      <span className="w-12 text-center text-sm font-medium text-ic-text-dim">
         {ticker.rank}
       </span>
 
       {/* Ticker info */}
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-gray-900">{ticker.ticker}</div>
+        <div className="font-semibold text-ic-text-primary">{ticker.ticker}</div>
         <div className="sm:hidden mt-1">
           <SentimentIndicator score={ticker.score} label={ticker.label} />
         </div>
@@ -199,7 +199,7 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
       </div>
 
       {/* Post count */}
-      <span className="w-20 text-right text-sm font-medium text-gray-900">
+      <span className="w-20 text-right text-sm font-medium text-ic-text-primary">
         {formatCompactNumber(ticker.post_count)}
       </span>
 
@@ -228,15 +228,15 @@ export function CompactTrendingList({ tickers, limit = 5 }: CompactTrendingListP
         <Link
           key={ticker.ticker}
           href={`/ticker/${ticker.ticker}`}
-          className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 transition-colors"
+          className="flex items-center justify-between p-2 rounded-lg hover:bg-ic-surface transition-colors"
         >
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-400 w-4">{ticker.rank}</span>
-            <span className="font-medium text-gray-900">{ticker.ticker}</span>
+            <span className="text-xs text-ic-text-muted w-4">{ticker.rank}</span>
+            <span className="font-medium text-ic-text-primary">{ticker.ticker}</span>
           </div>
           <div className="flex items-center gap-2">
             <SentimentIndicator score={ticker.score} label={ticker.label} />
-            <span className="text-xs text-gray-500">
+            <span className="text-xs text-ic-text-dim">
               {formatCompactNumber(ticker.post_count)}
             </span>
           </div>

@@ -96,8 +96,8 @@ export function formatYoYChange(change: number | null | undefined): {
   if (change === null || change === undefined || isNaN(change)) {
     return {
       text: '—',
-      color: 'text-gray-400',
-      bgColor: 'bg-gray-50',
+      color: 'text-ic-text-muted',
+      bgColor: 'bg-ic-surface',
     };
   }
 
@@ -171,11 +171,11 @@ export function getValueColor(
   positiveIsGood: boolean = true
 ): string {
   if (value === null || value === undefined) {
-    return 'text-gray-500';
+    return 'text-ic-text-dim';
   }
 
   if (value === 0) {
-    return 'text-gray-600';
+    return 'text-ic-text-muted';
   }
 
   const isPositive = value > 0;

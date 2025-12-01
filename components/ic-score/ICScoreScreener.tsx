@@ -83,12 +83,12 @@ export default function ICScoreScreener() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-secondary">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 shadow-sm">
+      <div className="bg-ic-surface border-b border-ic-border shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <h1 className="text-3xl font-bold text-gray-900">IC Score Stock Screener</h1>
-          <p className="mt-2 text-gray-600">
+          <h1 className="text-3xl font-bold text-ic-text-primary">IC Score Stock Screener</h1>
+          <p className="mt-2 text-ic-text-muted">
             Filter and discover stocks based on our proprietary IC Score ranking system
           </p>
         </div>
@@ -106,7 +106,7 @@ export default function ICScoreScreener() {
           <div className="lg:col-span-3">
             {/* Results count */}
             <div className="mb-4 flex items-center justify-between">
-              <div className="text-sm text-gray-600">
+              <div className="text-sm text-ic-text-muted">
                 {loading ? (
                   'Loading...'
                 ) : (
@@ -118,7 +118,7 @@ export default function ICScoreScreener() {
               </div>
               <button
                 onClick={() => window.location.reload()}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-ic-blue hover:text-ic-blue font-medium"
               >
                 Reset Filters
               </button>
@@ -126,7 +126,7 @@ export default function ICScoreScreener() {
 
             {/* Error state */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+              <div className="bg-ic-negative-bg border border-ic-border rounded-lg p-4 text-ic-negative">
                 {error}
               </div>
             )}
@@ -192,12 +192,12 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
   ];
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-4 space-y-6 sticky top-4">
-      <h3 className="font-semibold text-gray-900">Filters</h3>
+    <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-4 space-y-6 sticky top-4">
+      <h3 className="font-semibold text-ic-text-primary">Filters</h3>
 
       {/* IC Score range */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">
           IC Score Range
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -210,7 +210,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
             onChange={(e) =>
               onFilterChange({ minScore: e.target.value ? Number(e.target.value) : undefined })
             }
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-ic-border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           />
           <input
             type="number"
@@ -221,14 +221,14 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
             onChange={(e) =>
               onFilterChange({ maxScore: e.target.value ? Number(e.target.value) : undefined })
             }
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-ic-border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
 
       {/* Rating filter */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Rating</label>
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">Rating</label>
         <div className="space-y-2">
           {ratingOptions.map((rating) => (
             <label key={rating} className="flex items-center text-sm">
@@ -243,7 +243,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
                 }}
                 className="mr-2 rounded text-blue-600 focus:ring-blue-500"
               />
-              <span className="text-gray-700">{rating}</span>
+              <span className="text-ic-text-secondary">{rating}</span>
             </label>
           ))}
         </div>
@@ -251,7 +251,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
 
       {/* Sector filter */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Sector</label>
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">Sector</label>
         <select
           multiple
           size={6}
@@ -260,7 +260,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
             const selected = Array.from(e.target.selectedOptions, (option) => option.value);
             onFilterChange({ sector: selected });
           }}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+          className="w-full px-3 py-2 border border-ic-border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
         >
           {sectorOptions.map((sector) => (
             <option key={sector} value={sector}>
@@ -268,12 +268,12 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
             </option>
           ))}
         </select>
-        <p className="text-xs text-gray-500 mt-1">Hold Ctrl/Cmd to select multiple</p>
+        <p className="text-xs text-ic-text-muted mt-1">Hold Ctrl/Cmd to select multiple</p>
       </div>
 
       {/* Market cap filter */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-ic-text-secondary mb-2">
           Market Cap ($B)
         </label>
         <div className="grid grid-cols-2 gap-2">
@@ -286,7 +286,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
                 minMarketCap: e.target.value ? Number(e.target.value) * 1e9 : undefined,
               })
             }
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-ic-border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           />
           <input
             type="number"
@@ -297,7 +297,7 @@ function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
                 maxMarketCap: e.target.value ? Number(e.target.value) * 1e9 : undefined,
               })
             }
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
+            className="px-3 py-2 border border-ic-border rounded-md text-sm focus:ring-blue-500 focus:border-blue-500"
           />
         </div>
       </div>
@@ -317,38 +317,38 @@ interface ResultsTableProps {
 
 function ResultsTable({ stocks, sortBy, sortOrder, onSort }: ResultsTableProps) {
   const SortIcon = ({ column }: { column: string }) => {
-    if (sortBy !== column) return <span className="text-gray-400">↕</span>;
+    if (sortBy !== column) return <span className="text-ic-text-dim">↕</span>;
     return sortOrder === 'desc' ? <span>↓</span> : <span>↑</span>;
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+    <div className="bg-ic-surface rounded-lg shadow border border-ic-border overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+        <table className="min-w-full divide-y divide-ic-border">
+          <thead className="bg-ic-bg-secondary">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider">
                 Ticker
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider">
                 Company
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
+                className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:text-ic-text-secondary"
                 onClick={() => onSort('score')}
               >
                 <span className="flex items-center gap-1">
                   IC Score <SortIcon column="score" />
                 </span>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider">
                 Rating
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider">
                 Price
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
+                className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:text-ic-text-secondary"
                 onClick={() => onSort('change')}
               >
                 <span className="flex items-center gap-1">
@@ -356,30 +356,30 @@ function ResultsTable({ stocks, sortBy, sortOrder, onSort }: ResultsTableProps) 
                 </span>
               </th>
               <th
-                className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:text-gray-700"
+                className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:text-ic-text-secondary"
                 onClick={() => onSort('marketCap')}
               >
                 <span className="flex items-center gap-1">
                   Market Cap <SortIcon column="marketCap" />
                 </span>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-ic-text-muted uppercase tracking-wider">
                 Sector
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-ic-surface divide-y divide-ic-border">
             {stocks.map((stock) => (
-              <tr key={stock.ticker} className="hover:bg-gray-50 cursor-pointer">
+              <tr key={stock.ticker} className="hover:bg-ic-surface-hover cursor-pointer">
                 <td className="px-6 py-4 whitespace-nowrap">
                   <a
                     href={`/ticker/${stock.ticker}`}
-                    className="text-blue-600 font-semibold hover:underline"
+                    className="text-ic-blue font-semibold hover:underline"
                   >
                     {stock.ticker}
                   </a>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-ic-text-primary">
                   {stock.companyName}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -388,7 +388,7 @@ function ResultsTable({ stocks, sortBy, sortOrder, onSort }: ResultsTableProps) 
                       className="w-12 h-2 rounded-full"
                       style={{ backgroundColor: getICScoreColor(stock.score) }}
                     />
-                    <span className="font-bold text-gray-900">{stock.score.toFixed(0)}</span>
+                    <span className="font-bold text-ic-text-primary">{stock.score.toFixed(0)}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -400,23 +400,23 @@ function ResultsTable({ stocks, sortBy, sortOrder, onSort }: ResultsTableProps) 
                     {stock.rating}
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-ic-text-primary">
                   ${stock.price.toFixed(2)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span
                     className={
-                      stock.changePercent >= 0 ? 'text-green-600' : 'text-red-600'
+                      stock.changePercent >= 0 ? 'text-ic-positive' : 'text-ic-negative'
                     }
                   >
                     {stock.changePercent >= 0 ? '+' : ''}
                     {stock.changePercent.toFixed(2)}%
                   </span>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-ic-text-primary">
                   ${(stock.marketCap / 1e9).toFixed(2)}B
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-ic-text-muted">
                   {stock.sector}
                 </td>
               </tr>
@@ -447,17 +447,17 @@ function Pagination({ offset, limit, total, onPageChange }: PaginationProps) {
       <button
         onClick={() => onPageChange('prev')}
         disabled={offset === 0}
-        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-2 border border-ic-border rounded-md text-sm font-medium text-ic-text-secondary bg-ic-surface hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Previous
       </button>
-      <span className="text-sm text-gray-700">
+      <span className="text-sm text-ic-text-secondary">
         Page {currentPage} of {totalPages}
       </span>
       <button
         onClick={() => onPageChange('next')}
         disabled={offset + limit >= total}
-        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="px-4 py-2 border border-ic-border rounded-md text-sm font-medium text-ic-text-secondary bg-ic-surface hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
       >
         Next
       </button>
@@ -470,10 +470,10 @@ function Pagination({ offset, limit, total, onPageChange }: PaginationProps) {
  */
 function LoadingTable() {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-8 animate-pulse">
+    <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-8 animate-pulse">
       <div className="space-y-3">
         {[...Array(10)].map((_, i) => (
-          <div key={i} className="h-12 bg-gray-200 rounded"></div>
+          <div key={i} className="h-12 bg-ic-bg-secondary rounded"></div>
         ))}
       </div>
     </div>

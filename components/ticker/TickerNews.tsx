@@ -68,28 +68,28 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
   }, [symbol]);
 
   const getSentimentColor = (sentiment: string | undefined) => {
-    if (!sentiment) return 'text-gray-600 bg-gray-50';
-    
+    if (!sentiment) return 'text-ic-text-muted bg-ic-bg-secondary';
+
     switch (sentiment.toLowerCase()) {
       case 'positive':
-        return 'text-green-600 bg-green-50';
+        return 'text-ic-positive bg-ic-positive-bg';
       case 'negative':
-        return 'text-red-600 bg-red-50';
+        return 'text-ic-negative bg-ic-negative-bg';
       default:
-        return 'text-gray-600 bg-gray-50';
+        return 'text-ic-text-muted bg-ic-bg-secondary';
     }
   };
 
   const formatTimeAgo = (dateString: string) => {
     if (!dateString) return 'Unknown';
-    
+
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'Unknown';
-    
+
     const now = new Date();
     const diffInMs = now.getTime() - date.getTime();
     const diffInHours = Math.floor(diffInMs / (1000 * 60 * 60));
-    
+
     if (diffInHours < 1) return 'Just now';
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
@@ -105,7 +105,7 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
   const startIndex = (currentPage - 1) * articlesPerPage;
   const endIndex = startIndex + articlesPerPage;
   const currentArticles = news.slice(startIndex, endIndex);
-  
+
 
   const goToPage = (page: number) => {
     setCurrentPage(page);
@@ -117,30 +117,30 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
     <div className="p-6" id="news-section">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
-          <NewspaperIcon className="h-6 w-6 text-gray-400 mr-2" />
-          <h3 className="text-lg font-semibold text-gray-900">News & Analysis</h3>
+          <NewspaperIcon className="h-6 w-6 text-ic-text-dim mr-2" />
+          <h3 className="text-lg font-semibold text-ic-text-primary">News & Analysis</h3>
           {totalArticles > 0 && (
-            <span className="ml-3 text-sm text-gray-500">
+            <span className="ml-3 text-sm text-ic-text-muted">
               {totalArticles} articles
             </span>
           )}
         </div>
-        
+
         {/* Pagination Controls - Top Right */}
         {totalPages > 1 && (
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-500">Page {currentPage} of {totalPages}</span>
+            <span className="text-sm text-ic-text-muted">Page {currentPage} of {totalPages}</span>
             <button
               onClick={() => goToPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm font-medium text-ic-text-muted bg-ic-surface border border-ic-border rounded-md hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               ←
             </button>
             <button
               onClick={() => goToPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="px-3 py-1 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-3 py-1 text-sm font-medium text-ic-text-muted bg-ic-surface border border-ic-border rounded-md hover:bg-ic-surface-hover disabled:opacity-50 disabled:cursor-not-allowed"
             >
               →
             </button>
@@ -151,17 +151,17 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
       {loading ? (
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="border-b border-gray-100 pb-4 animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
-              <div className="h-3 bg-gray-200 rounded w-2/3"></div>
+            <div key={i} className="border-b border-ic-border pb-4 animate-pulse">
+              <div className="h-4 bg-ic-border rounded w-3/4 mb-2"></div>
+              <div className="h-3 bg-ic-border rounded w-full mb-1"></div>
+              <div className="h-3 bg-ic-border rounded w-2/3"></div>
             </div>
           ))}
         </div>
       ) : currentArticles && currentArticles.length > 0 ? (
         <div className="space-y-4">
           {currentArticles.map((article) => (
-            <article key={article.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-sm transition-shadow">
+            <article key={article.id} className="border border-ic-border rounded-lg p-4 hover:shadow-sm transition-shadow">
               {/* Compact article layout */}
               <div className="flex gap-3">
                 {article.image_url && (
@@ -190,9 +190,9 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
                         }}
                       />
                     )}
-                    <span className="font-medium text-gray-600">{article.publisher?.name || article.source || 'Unknown'}</span>
-                    <span className="text-gray-400">•</span>
-                    <span className="text-gray-500">{formatTimeAgo(article.published_utc || article.publishedAt || '')}</span>
+                    <span className="font-medium text-ic-text-muted">{article.publisher?.name || article.source || 'Unknown'}</span>
+                    <span className="text-ic-text-dim">•</span>
+                    <span className="text-ic-text-muted">{formatTimeAgo(article.published_utc || article.publishedAt || '')}</span>
                     {(() => {
                       const insight = article.insights?.find(i => i.ticker?.toUpperCase() === symbol.toUpperCase());
                       const sentiment = insight?.sentiment || article.sentiment;
@@ -209,27 +209,27 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
                     href={article.article_url || article.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sm font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2"
+                    className="text-sm font-semibold text-ic-text-primary hover:text-ic-blue transition-colors line-clamp-2"
                   >
                     {article.title}
                   </a>
 
                   {/* Description - truncated */}
-                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">
+                  <p className="text-xs text-ic-text-muted mt-1 line-clamp-2">
                     {article.description || article.summary}
                   </p>
                 </div>
               </div>
 
               {/* Compact footer */}
-              <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-ic-border">
                 {/* Related tickers - compact */}
                 <div className="flex flex-wrap gap-1">
                   {article.tickers?.slice(0, 4).map((ticker, index) => (
                     <span
                       key={index}
                       className={`px-1.5 py-0.5 rounded text-xs font-medium ${
-                        ticker === symbol ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'
+                        ticker === symbol ? 'bg-blue-100 text-blue-700' : 'bg-ic-bg-secondary text-ic-text-muted'
                       }`}
                     >
                       {ticker}
@@ -241,7 +241,7 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
                   href={article.article_url || article.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap"
+                  className="text-xs text-ic-blue hover:text-blue-800 font-medium whitespace-nowrap"
                 >
                   Read →
                 </a>
@@ -251,8 +251,8 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
         </div>
       ) : (
         <div className="text-center py-8">
-          <NewspaperIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">No recent news available</p>
+          <NewspaperIcon className="h-12 w-12 text-ic-text-dim mx-auto mb-4" />
+          <p className="text-ic-text-muted">No recent news available</p>
         </div>
       )}
 

@@ -34,8 +34,8 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
+    <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md">
         <h2 className="text-2xl font-bold mb-4">Edit {symbol}</h2>
 
         <form onSubmit={handleSubmit}>
@@ -47,7 +47,7 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
               id="notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue"
               rows={3}
             />
           </div>
@@ -62,7 +62,7 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
               value={tags}
               onChange={(e) => setTags(e.target.value)}
               placeholder="e.g., tech, growth"
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue"
             />
           </div>
 
@@ -77,7 +77,7 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
                 step="0.01"
                 value={targetBuy}
                 onChange={(e) => setTargetBuy(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue"
               />
             </div>
             <div>
@@ -90,7 +90,7 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
                 step="0.01"
                 value={targetSell}
                 onChange={(e) => setTargetSell(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-ic-blue"
               />
             </div>
           </div>
@@ -99,14 +99,14 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+              className="px-4 py-2 border border-ic-border rounded hover:bg-ic-surface-hover"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed"
             >
               {loading ? 'Saving...' : 'Save'}
             </button>

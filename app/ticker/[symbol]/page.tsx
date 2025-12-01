@@ -93,10 +93,10 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
 
   if (!tickerData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <h2 className="text-red-800 font-semibold">Failed to Load Data</h2>
-          <p className="text-red-600 mt-2">Could not fetch data for {symbol}</p>
+          <p className="text-ic-negative mt-2">Could not fetch data for {symbol}</p>
         </div>
       </div>
     );
@@ -105,9 +105,9 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
   const currentPrice = parseFloat(tickerData.summary.price.price);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-primary">
       {/* Ticker Overview Header with Real-time Updates */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-ic-surface shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {tickerData.summary.stock.isCrypto ? (
             <CryptoTickerHeader symbol={symbol} initialData={tickerData.summary} />
@@ -167,12 +167,12 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               </Suspense>
 
               {/* Comprehensive Key Metrics */}
-              <div className="bg-white rounded-lg shadow">
+              <div className="bg-ic-surface rounded-lg shadow">
                 <TickerFundamentals symbol={symbol} />
               </div>
 
               {/* Analyst Ratings */}
-              <div className="bg-white rounded-lg shadow">
+              <div className="bg-ic-surface rounded-lg shadow">
                 <TickerAnalysts symbol={symbol} />
               </div>
             </div>
@@ -186,11 +186,11 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
 // Loading Skeletons
 function ICScoreSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden animate-pulse">
-      <div className="bg-gray-300 h-24"></div>
+    <div className="bg-ic-surface rounded-xl shadow-lg border border-ic-border overflow-hidden animate-pulse">
+      <div className="bg-ic-bg-secondary h-24"></div>
       <div className="p-6 space-y-4">
-        <div className="h-64 bg-gray-200 rounded"></div>
-        <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="h-64 bg-ic-bg-secondary rounded"></div>
+        <div className="h-64 bg-ic-bg-secondary rounded"></div>
       </div>
     </div>
   );
@@ -198,13 +198,13 @@ function ICScoreSkeleton() {
 
 function SentimentSkeleton() {
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-6 animate-pulse">
-      <div className="h-6 w-32 bg-gray-200 rounded mb-4"></div>
-      <div className="h-20 bg-gray-200 rounded mb-4"></div>
-      <div className="h-3 bg-gray-200 rounded mb-4"></div>
+    <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-6 animate-pulse">
+      <div className="h-6 w-32 bg-ic-bg-secondary rounded mb-4"></div>
+      <div className="h-20 bg-ic-bg-secondary rounded mb-4"></div>
+      <div className="h-3 bg-ic-bg-secondary rounded mb-4"></div>
       <div className="grid grid-cols-2 gap-4">
-        <div className="h-12 bg-gray-200 rounded"></div>
-        <div className="h-12 bg-gray-200 rounded"></div>
+        <div className="h-12 bg-ic-bg-secondary rounded"></div>
+        <div className="h-12 bg-ic-bg-secondary rounded"></div>
       </div>
     </div>
   );

@@ -35,22 +35,22 @@ export default function MarketOverview() {
     };
 
     fetchMarketData();
-    
+
     // Refresh data every 30 seconds
     const interval = setInterval(fetchMarketData, 30000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Market Overview</h2>
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+        <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
             <div key={i} className="flex justify-between items-center">
-              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
+              <div className="h-4 bg-ic-bg-tertiary rounded w-1/3"></div>
+              <div className="h-4 bg-ic-bg-tertiary rounded w-1/4"></div>
             </div>
           ))}
         </div>
@@ -60,11 +60,11 @@ export default function MarketOverview() {
 
   if (error) {
     return (
-      <div className="bg-white rounded-lg shadow p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Market Overview</h2>
-        <div className="text-red-600 text-sm">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+        <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
+        <div className="text-ic-negative text-sm">
           <p>Error loading market data: {error}</p>
-          <p className="text-gray-500 mt-2">
+          <p className="text-ic-text-muted mt-2">
             Note: This will work once the Go backend is deployed and running.
           </p>
         </div>
@@ -73,32 +73,32 @@ export default function MarketOverview() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">Market Overview</h2>
-        <span className="text-xs text-gray-500">
+        <h2 className="text-lg font-semibold text-ic-text-primary">Market Overview</h2>
+        <span className="text-xs text-ic-text-muted">
           Last updated: {new Date().toLocaleTimeString()}
         </span>
       </div>
-      
+
       <div className="space-y-4">
         {indices.map((index) => (
-          <div key={index.symbol} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
+          <div key={index.symbol} className="flex justify-between items-center py-2 border-b border-ic-border-subtle last:border-b-0">
             <div>
-              <div className="font-medium text-gray-900">{index.name}</div>
-              <div className="text-sm text-gray-500">{index.symbol}</div>
+              <div className="font-medium text-ic-text-primary">{index.name}</div>
+              <div className="text-sm text-ic-text-muted">{index.symbol}</div>
             </div>
-            
+
             <div className="text-right">
-              <div className="font-semibold text-gray-900">
-                ${safeParseNumber(index.price).toLocaleString('en-US', { 
-                  minimumFractionDigits: 2, 
-                  maximumFractionDigits: 2 
+              <div className="font-semibold text-ic-text-primary">
+                ${safeParseNumber(index.price).toLocaleString('en-US', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2
                 })}
               </div>
-              
+
               <div className={`flex items-center text-sm ${
-                safeParseNumber(index.change) >= 0 ? 'text-green-600' : 'text-red-600'
+                safeParseNumber(index.change) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
               }`}>
                 {safeParseNumber(index.change) >= 0 ? (
                   <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
@@ -106,7 +106,7 @@ export default function MarketOverview() {
                   <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
                 )}
                 <span>
-                  {safeParseNumber(index.change) >= 0 ? '+' : ''}{safeToFixed(index.change, 2)} 
+                  {safeParseNumber(index.change) >= 0 ? '+' : ''}{safeToFixed(index.change, 2)}
                   ({safeParseNumber(index.changePercent) >= 0 ? '+' : ''}{safeToFixed(index.changePercent, 2)}%)
                 </span>
               </div>

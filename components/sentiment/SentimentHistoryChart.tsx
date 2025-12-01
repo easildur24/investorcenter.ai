@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   LineChart,
   Line,
@@ -18,6 +18,8 @@ import { format, parseISO } from 'date-fns';
 import { getSentimentHistory } from '@/lib/api/sentiment';
 import { getSentimentScoreColor } from '@/lib/types/sentiment';
 import type { SentimentHistoryResponse, SentimentHistoryPoint } from '@/lib/types/sentiment';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { getChartColors, themeColors } from '@/lib/theme';
 
 interface SentimentHistoryChartProps {
   ticker: string;
@@ -35,6 +37,9 @@ export default function SentimentHistoryChart({
   height = 300,
   showPostCount = true,
 }: SentimentHistoryChartProps) {
+  const { resolvedTheme } = useTheme();
+  const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
+
   const [data, setData] = useState<SentimentHistoryResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -63,8 +68,8 @@ export default function SentimentHistoryChart({
 
   if (error || !data || data.history.length === 0) {
     return (
-      <div className="flex items-center justify-center bg-gray-50 rounded-lg" style={{ height }}>
-        <p className="text-gray-500 text-sm">
+      <div className="flex items-center justify-center bg-ic-surface rounded-lg" style={{ height }}>
+        <p className="text-ic-text-dim text-sm">
           {error || 'No sentiment history available'}
         </p>
       </div>
@@ -85,7 +90,7 @@ export default function SentimentHistoryChart({
     <div className="w-full">
       {/* Period selector */}
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-medium text-gray-700">Sentiment History</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary">Sentiment History</h4>
         <div className="flex gap-1">
           {[7, 30, 90].map((d) => (
             <button
@@ -93,8 +98,8 @@ export default function SentimentHistoryChart({
               onClick={() => setDays(d)}
               className={`px-3 py-1 text-xs rounded-md transition-colors ${
                 days === d
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-ic-blue text-ic-text-primary'
+                  : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
               }`}
             >
               {d}D
@@ -104,31 +109,31 @@ export default function SentimentHistoryChart({
       </div>
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={height}>
+      <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
         <ComposedChart
           data={chartData}
           margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
             tickFormatter={(date) => format(date, 'MMM dd')}
-            tick={{ fontSize: 11 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 11, fill: chartColors.text }}
+            stroke={chartColors.text}
           />
           <YAxis
             yAxisId="left"
             domain={[-1, 1]}
-            tick={{ fontSize: 11 }}
-            stroke="#9ca3af"
+            tick={{ fontSize: 11, fill: chartColors.text }}
+            stroke={chartColors.text}
             tickFormatter={(value) => value.toFixed(1)}
           />
           {showPostCount && (
             <YAxis
               yAxisId="right"
               orientation="right"
-              tick={{ fontSize: 11 }}
-              stroke="#9ca3af"
+              tick={{ fontSize: 11, fill: chartColors.text }}
+              stroke={chartColors.text}
             />
           )}
           <Tooltip content={<CustomTooltip />} />
@@ -137,7 +142,7 @@ export default function SentimentHistoryChart({
           <ReferenceLine
             yAxisId="left"
             y={0}
-            stroke="#9ca3af"
+            stroke={chartColors.text}
             strokeDasharray="3 3"
           />
 
@@ -145,14 +150,14 @@ export default function SentimentHistoryChart({
           <ReferenceLine
             yAxisId="left"
             y={0.2}
-            stroke="#22c55e"
+            stroke={chartColors.positive}
             strokeDasharray="2 2"
             strokeOpacity={0.5}
           />
           <ReferenceLine
             yAxisId="left"
             y={-0.2}
-            stroke="#ef4444"
+            stroke={chartColors.negative}
             strokeDasharray="2 2"
             strokeOpacity={0.5}
           />
@@ -162,7 +167,7 @@ export default function SentimentHistoryChart({
             <Bar
               yAxisId="right"
               dataKey="post_count"
-              fill="#e5e7eb"
+              fill={resolvedTheme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}
               opacity={0.6}
               barSize={20}
             />
@@ -218,24 +223,24 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   const scoreColor = getSentimentScoreColor(data.score);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-      <p className="font-medium text-gray-900 text-sm mb-2">
+    <div className="bg-ic-surface border border-ic-border-subtle rounded-lg shadow-lg p-3">
+      <p className="font-medium text-ic-text-primary text-sm mb-2">
         {format(data.date, 'MMM dd, yyyy')}
       </p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Sentiment:</span>
+          <span className="text-ic-text-muted">Sentiment:</span>
           <span className="font-bold" style={{ color: scoreColor }}>
             {data.score >= 0 ? '+' : ''}{data.score.toFixed(2)}
           </span>
         </div>
         <div className="flex justify-between gap-4">
-          <span className="text-gray-600">Posts:</span>
-          <span className="font-medium text-gray-900">{data.post_count}</span>
+          <span className="text-ic-text-muted">Posts:</span>
+          <span className="font-medium text-ic-text-primary">{data.post_count}</span>
         </div>
-        <div className="flex justify-between gap-4 pt-1 border-t border-gray-100">
-          <span className="text-green-600">Bullish: {data.bullish}</span>
-          <span className="text-red-600">Bearish: {data.bearish}</span>
+        <div className="flex justify-between gap-4 pt-1 border-t border-ic-border-subtle">
+          <span className="text-ic-positive">Bullish: {data.bullish}</span>
+          <span className="text-ic-negative">Bearish: {data.bearish}</span>
         </div>
       </div>
     </div>
@@ -249,14 +254,14 @@ function LoadingSkeleton({ height }: { height: number }) {
   return (
     <div className="animate-pulse">
       <div className="flex justify-between mb-4">
-        <div className="h-4 w-32 bg-gray-200 rounded" />
+        <div className="h-4 w-32 bg-ic-bg-tertiary rounded" />
         <div className="flex gap-1">
-          <div className="h-6 w-10 bg-gray-200 rounded" />
-          <div className="h-6 w-10 bg-gray-200 rounded" />
-          <div className="h-6 w-10 bg-gray-200 rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
+          <div className="h-6 w-10 bg-ic-bg-tertiary rounded" />
         </div>
       </div>
-      <div className="bg-gray-200 rounded-lg" style={{ height }} />
+      <div className="bg-ic-bg-tertiary rounded-lg" style={{ height }} />
     </div>
   );
 }

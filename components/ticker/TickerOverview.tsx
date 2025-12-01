@@ -118,8 +118,8 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
         <h3 className="text-red-800 font-semibold">Error Loading Data</h3>
-        <p className="text-red-600 text-sm mt-1">{error}</p>
-        <p className="text-red-500 text-xs mt-2">Check browser console for details</p>
+        <p className="text-ic-negative text-sm mt-1">{error}</p>
+        <p className="text-ic-negative text-xs mt-2">Check browser console for details</p>
       </div>
     );
   }
@@ -129,12 +129,12 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
       <div className="animate-pulse">
         <div className="flex items-center justify-between">
           <div>
-            <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-32"></div>
+            <div className="h-8 bg-ic-bg-tertiary rounded w-48 mb-2"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-32"></div>
           </div>
           <div className="text-right">
-            <div className="h-8 bg-gray-200 rounded w-24 mb-2"></div>
-            <div className="h-4 bg-gray-200 rounded w-20"></div>
+            <div className="h-8 bg-ic-bg-tertiary rounded w-24 mb-2"></div>
+            <div className="h-4 bg-ic-bg-tertiary rounded w-20"></div>
           </div>
         </div>
       </div>
@@ -154,11 +154,11 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
     <div>
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-ic-text-primary">
             {stock.symbol}
           </h1>
-          <p className="text-lg text-gray-600">{stock.name}</p>
-          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+          <p className="text-lg text-ic-text-muted">{stock.name}</p>
+          <div className="flex items-center space-x-4 text-sm text-ic-text-dim mt-1">
             <span>{stock.exchange}</span>
             <span>•</span>
             <span>{stock.sector}</span>
@@ -168,11 +168,11 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
         </div>
 
         <div className="text-right">
-          <div className="text-3xl font-bold text-gray-900">
+          <div className="text-3xl font-bold text-ic-text-primary">
             ${safeToFixed(price.price, 2)}
           </div>
           <div className={`flex items-center justify-end text-lg font-medium ${
-            isPositive ? 'text-green-600' : 'text-red-600'
+            isPositive ? 'text-ic-positive' : 'text-ic-negative'
           }`}>
             {isPositive ? (
               <ArrowTrendingUpIcon className="h-5 w-5 mr-1" />
@@ -184,28 +184,28 @@ export default function TickerOverview({ symbol }: TickerOverviewProps) {
               ({isPositive ? '+' : ''}{safeToFixed(price.changePercent, 2)}%)
             </span>
           </div>
-          <div className="text-sm text-gray-500 mt-1">
+          <div className="text-sm text-ic-text-dim mt-1">
             Volume: {safeToFixed(safeParseNumber(price.volume) / 1000000, 1)}M
           </div>
         </div>
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-200">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-ic-border-subtle">
         <div className="text-center">
-          <div className="text-sm text-gray-500">52W High</div>
+          <div className="text-sm text-ic-text-dim">52W High</div>
           <div className="font-semibold">${safeToFixed(keyMetrics.week52High, 2)}</div>
         </div>
         <div className="text-center">
-          <div className="text-sm text-gray-500">52W Low</div>
+          <div className="text-sm text-ic-text-dim">52W Low</div>
           <div className="font-semibold">${safeToFixed(keyMetrics.week52Low, 2)}</div>
         </div>
         <div className="text-center">
-          <div className="text-sm text-gray-500">P/E Ratio</div>
+          <div className="text-sm text-ic-text-dim">P/E Ratio</div>
           <div className="font-semibold">{safeToFixed(keyMetrics.trailingPE, 1)}</div>
         </div>
         <div className="text-center">
-          <div className="text-sm text-gray-500">Market Cap</div>
+          <div className="text-sm text-ic-text-dim">Market Cap</div>
           <div className="font-semibold">{formatLargeNumber(keyMetrics.marketCap)}</div>
         </div>
       </div>

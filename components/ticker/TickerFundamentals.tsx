@@ -97,14 +97,14 @@ interface MetricValueProps {
   colorClass?: string;
 }
 
-function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-gray-900' }: MetricValueProps) {
+function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-ic-text-primary' }: MetricValueProps) {
   const config = metricConfigs[metricType];
 
   // Check if value is null/undefined/N/A
   if (value === null || value === undefined || value === 'N/A' || value === '') {
     return (
       <span
-        className="text-gray-400 cursor-help"
+        className="text-ic-text-dim cursor-help"
         title={config.tooltip}
       >
         {config.nullMessage}
@@ -117,7 +117,7 @@ function MetricValue({ value, metricType = 'default', formatter, colorClass = 't
   if (numValue === 0 && metricType === 'debt') {
     return (
       <span
-        className="text-green-600 cursor-help"
+        className="text-ic-positive cursor-help"
         title="Company has no reported debt - this is typically a positive indicator"
       >
         {config.zeroMessage}
@@ -132,7 +132,7 @@ function MetricValue({ value, metricType = 'default', formatter, colorClass = 't
   if (displayValue === 'N/A') {
     return (
       <span
-        className="text-gray-400 cursor-help"
+        className="text-ic-text-dim cursor-help"
         title={config.tooltip}
       >
         {config.nullMessage}
@@ -260,12 +260,12 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   if (loading) {
     return (
       <div className="p-6">
-        <div className="h-6 bg-gray-200 rounded w-32 mb-4 animate-pulse"></div>
+        <div className="h-6 bg-ic-border rounded w-32 mb-4 animate-pulse"></div>
         <div className="space-y-3">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="flex justify-between animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-24"></div>
-              <div className="h-4 bg-gray-200 rounded w-16"></div>
+              <div className="h-4 bg-ic-border rounded w-24"></div>
+              <div className="h-4 bg-ic-border rounded w-16"></div>
             </div>
           ))}
         </div>
@@ -276,8 +276,8 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   if (!fundamentals || !keyMetrics) {
     return (
       <div className="p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Key Metrics</h3>
-        <p className="text-gray-500">No fundamental data available</p>
+        <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Key Metrics</h3>
+        <p className="text-ic-text-muted">No fundamental data available</p>
       </div>
     );
   }
@@ -287,28 +287,28 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900">Key Metrics</h3>
+        <h3 className="text-lg font-semibold text-ic-text-primary">Key Metrics</h3>
         {dataFetchedAt && (
-          <span className="text-xs text-gray-400" title={dataFetchedAt.toLocaleString()}>
+          <span className="text-xs text-ic-text-dim" title={dataFetchedAt.toLocaleString()}>
             Updated {formatRelativeTime(dataFetchedAt)}
           </span>
         )}
       </div>
-      
+
       {/* Valuation Metrics */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">Valuation</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Valuation</h4>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">P/E Ratio</span>
+            <span className="text-ic-text-muted">P/E Ratio</span>
             <MetricValue value={fundamentals.pe} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Price/Book</span>
+            <span className="text-ic-text-muted">Price/Book</span>
             <MetricValue value={fundamentals.pb} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Price/Sales</span>
+            <span className="text-ic-text-muted">Price/Sales</span>
             <MetricValue value={fundamentals.ps} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
           </div>
         </div>
@@ -316,22 +316,22 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Profitability */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">Profitability</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Profitability</h4>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">ROE</span>
+            <span className="text-ic-text-muted">ROE</span>
             <MetricValue value={fundamentals.roe} metricType="ratio" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">ROA</span>
+            <span className="text-ic-text-muted">ROA</span>
             <MetricValue value={fundamentals.roa} metricType="ratio" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Gross Margin</span>
+            <span className="text-ic-text-muted">Gross Margin</span>
             <MetricValue value={fundamentals.grossMargin} metricType="margin" formatter={formatPercent} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Net Margin</span>
+            <span className="text-ic-text-muted">Net Margin</span>
             <MetricValue value={fundamentals.netMargin} metricType="margin" formatter={formatPercent} />
           </div>
         </div>
@@ -339,14 +339,14 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Financial Health */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">Financial Health</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Financial Health</h4>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">Debt/Equity</span>
+            <span className="text-ic-text-muted">Debt/Equity</span>
             <MetricValue value={fundamentals.debtToEquity} metricType="debt" formatter={(v) => safeToFixed(v, 1)} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Current Ratio</span>
+            <span className="text-ic-text-muted">Current Ratio</span>
             <MetricValue value={fundamentals.currentRatio} metricType="ratio" formatter={(v) => safeToFixed(v, 1)} />
           </div>
         </div>
@@ -354,33 +354,33 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Performance */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">Performance</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Performance</h4>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">YTD Change</span>
+            <span className="text-ic-text-muted">YTD Change</span>
             <MetricValue
               value={keyMetrics.ytdChange}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-green-600' : 'text-red-600'}
+              colorClass={safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
             />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Revenue Growth</span>
+            <span className="text-ic-text-muted">Revenue Growth</span>
             <MetricValue
               value={keyMetrics.revenueGrowth1Y}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}
+              colorClass={safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
             />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Earnings Growth</span>
+            <span className="text-ic-text-muted">Earnings Growth</span>
             <MetricValue
               value={keyMetrics.earningsGrowth1Y}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0 ? 'text-green-600' : 'text-red-600'}
+              colorClass={safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
             />
           </div>
         </div>
@@ -388,14 +388,14 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Market Data */}
       <div>
-        <h4 className="text-sm font-medium text-gray-700 mb-3 uppercase tracking-wide">Market Data</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Market Data</h4>
         <div className="space-y-3">
           <div className="flex justify-between">
-            <span className="text-gray-600">Beta</span>
+            <span className="text-ic-text-muted">Beta</span>
             <MetricValue value={keyMetrics.beta} metricType="market" formatter={(v) => safeToFixed(v, 2)} />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Avg Volume</span>
+            <span className="text-ic-text-muted">Avg Volume</span>
             <MetricValue
               value={keyMetrics.averageVolume}
               metricType="market"
@@ -403,7 +403,7 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
             />
           </div>
           <div className="flex justify-between">
-            <span className="text-gray-600">Shares Out</span>
+            <span className="text-ic-text-muted">Shares Out</span>
             <MetricValue
               value={keyMetrics.sharesOutstanding}
               metricType="market"

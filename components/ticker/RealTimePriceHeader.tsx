@@ -105,22 +105,22 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
   const getMarketStatusDisplay = () => {
     if (isCrypto) {
       return (
-        <span className="text-green-600 text-sm">
+        <span className="text-ic-positive text-sm">
           • Live (24/7)
         </span>
       );
     }
-    
+
     if (isMarketOpen) {
       return (
-        <span className="text-green-600 text-sm">
+        <span className="text-ic-positive text-sm">
           • Market Open
         </span>
       );
     }
-    
+
     return (
-      <span className="text-gray-500 text-sm">
+      <span className="text-ic-text-dim text-sm">
         • Market Closed
       </span>
     );
@@ -128,9 +128,9 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
 
   const getPriceChangeColor = () => {
     const change = parseFloat(currentPrice.change);
-    if (change > 0) return 'text-green-600';
-    if (change < 0) return 'text-red-600';
-    return 'text-gray-600';
+    if (change > 0) return 'text-ic-positive';
+    if (change < 0) return 'text-ic-negative';
+    return 'text-ic-text-muted';
   };
 
   const getPriceChangeIcon = () => {
@@ -143,10 +143,10 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
   return (
     <div className="flex items-center justify-between">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-3xl font-bold text-ic-text-primary">
           {initialData.stock.name} ({initialData.stock.symbol})
         </h1>
-        <div className="flex items-center space-x-2 text-gray-600">
+        <div className="flex items-center space-x-2 text-ic-text-muted">
           <span>{initialData.stock.exchange}</span>
           {initialData.stock.sector && (
             <>
@@ -158,7 +158,7 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
           {initialData.stock.isCrypto && (
             <>
               <span>•</span>
-              <span className="text-blue-600 font-medium">Crypto</span>
+              <span className="text-ic-blue font-medium">Crypto</span>
             </>
           )}
         </div>
@@ -167,11 +167,11 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
       <div className="text-right">
         <div className="flex items-center justify-end">
           <div className={`text-3xl font-bold transition-colors duration-1000 ${
-            flashColor === 'green' 
-              ? 'text-green-600' 
-              : flashColor === 'red' 
-              ? 'text-red-600'
-              : 'text-gray-900'
+            flashColor === 'green'
+              ? 'text-ic-positive'
+              : flashColor === 'red'
+              ? 'text-ic-negative'
+              : 'text-ic-text-primary'
           }`}>
             ${formatPrice(currentPrice.price)}
           </div>
