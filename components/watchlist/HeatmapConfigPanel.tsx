@@ -46,7 +46,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.size_metric}
             onChange={(e) => handleChange('size_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="market_cap">📊 Market Cap</option>
             <option value="volume">📈 Volume</option>
@@ -67,7 +67,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_metric}
             onChange={(e) => handleChange('color_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="price_change_pct">💲 Price Change %</option>
             <option value="volume_change_pct">📊 Volume Change %</option>
@@ -87,7 +87,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.time_period}
             onChange={(e) => handleChange('time_period', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="1D">1 Day</option>
             <option value="1W">1 Week</option>
@@ -111,7 +111,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <select
             value={settings.color_scheme}
             onChange={(e) => handleChange('color_scheme', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
+            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-gray-400 transition-colors"
           >
             <option value="red_green">🔴 Red-Green</option>
             <option value="blue_red">🔵 Blue-Red</option>
@@ -124,7 +124,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
           <div className="flex items-end">
             <button
               onClick={() => setShowSaveModal(true)}
-              className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
+              className="w-full px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover focus:outline-none focus:ring-2 focus:ring-ic-blue focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
             >
               💾 Save Config
             </button>
@@ -134,7 +134,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
 
       {/* Save Config Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
+        <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
           <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-xl font-bold mb-4 text-ic-text-primary">💾 Save Heatmap Configuration</h3>
             <p className="text-sm text-ic-text-muted mb-4">Give your configuration a memorable name</p>
@@ -143,7 +143,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
               value={configName}
               onChange={(e) => setConfigName(e.target.value)}
               placeholder="e.g., Reddit Momentum Strategy"
-              className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 text-ic-text-primary"
+              className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue mb-4 text-ic-text-primary"
               autoFocus
             />
             <div className="flex gap-2 justify-end">
@@ -156,7 +156,7 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
               <button
                 onClick={handleSave}
                 disabled={!configName}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium transition-colors"
+                className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed font-medium transition-colors"
               >
                 Save
               </button>

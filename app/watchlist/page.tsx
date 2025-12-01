@@ -60,7 +60,7 @@ export default function WatchListDashboard() {
           <h1 className="text-3xl font-bold">My Watch Lists</h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
           >
             + Create Watch List
           </button>
@@ -79,7 +79,7 @@ export default function WatchListDashboard() {
             <p className="text-ic-text-muted mb-4">You don't have any watch lists yet.</p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-6 py-3 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
             >
               Create Your First Watch List
             </button>
@@ -120,14 +120,14 @@ export default function WatchListDashboard() {
                   <div className="flex gap-2">
                     <Link
                       href={`/watchlist/${watchList.id}`}
-                      className="flex-1 text-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      className="flex-1 text-center px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
                     >
                       View
                     </Link>
                     {!watchList.is_default && (
                       <button
                         onClick={() => handleDeleteWatchList(watchList.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                        className="px-4 py-2 bg-ic-negative text-ic-text-primary rounded hover:bg-ic-negative-hover"
                       >
                         Delete
                       </button>

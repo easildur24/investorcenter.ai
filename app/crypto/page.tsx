@@ -174,7 +174,7 @@ export default function CryptoPage() {
             <p className="text-ic-text-muted">{error}</p>
             <button
               onClick={() => fetchCryptoData(currentPage)}
-              className="mt-4 px-4 py-2 bg-ic-blue text-white rounded-md hover:bg-ic-blue/90"
+              className="mt-4 px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue/90"
             >
               Retry
             </button>
@@ -312,7 +312,7 @@ export default function CryptoPage() {
 
         {/* Loading indicator during refresh */}
         {loading && cryptoData && (
-          <div className="fixed bottom-4 right-4 bg-ic-blue text-white px-4 py-2 rounded-md shadow-lg">
+          <div className="fixed bottom-4 right-4 bg-ic-blue text-ic-text-primary px-4 py-2 rounded-md shadow-lg">
             <div className="flex items-center space-x-2">
               <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
               <span className="text-sm">Updating prices...</span>
@@ -350,7 +350,7 @@ export default function CryptoPage() {
                     onClick={() => goToPage(pageNumber)}
                     className={`px-3 py-2 text-sm font-medium rounded-md ${
                       cryptoData.meta.page === pageNumber
-                        ? 'bg-ic-blue text-white'
+                        ? 'bg-ic-blue text-ic-text-primary'
                         : 'text-ic-text-secondary bg-ic-surface border border-ic-border hover:bg-ic-surface-hover'
                     }`}
                   >

@@ -175,7 +175,7 @@ export function getICScoreRatingColor(rating: ICScoreRating): string {
     case 'Sell':
       return 'text-red-600 bg-red-50 border-red-200';
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return 'text-ic-text-muted bg-ic-surface border-ic-border-subtle';
   }
 }
 

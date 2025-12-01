@@ -100,7 +100,7 @@ export default function FinancialTable({
       <div className="flex justify-end p-2 border-b border-gray-100">
         <button
           onClick={handleExport}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover rounded-md transition-colors"
         >
           <svg
             className="w-4 h-4"
@@ -161,7 +161,7 @@ interface FinancialTableRowProps {
 
 function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
   return (
-    <tr className={cn('hover:bg-gray-50 transition-colors', row.bold && 'bg-gray-25')}>
+    <tr className={cn('hover:bg-ic-surface-hover transition-colors', row.bold && 'bg-gray-25')}>
       {/* Metric Name */}
       <td
         className={cn(

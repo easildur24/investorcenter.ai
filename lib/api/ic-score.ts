@@ -238,7 +238,7 @@ export function getLetterGrade(score: number | null): string {
  * @returns Tailwind color class
  */
 export function getScoreColor(score: number | null): string {
-  if (score === null) return 'text-gray-400';
+  if (score === null) return 'text-ic-text-muted';
 
   if (score >= 80) return 'text-green-600';
   if (score >= 65) return 'text-green-500';

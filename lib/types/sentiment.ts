@@ -136,9 +136,9 @@ export function getSentimentLabelColor(label: SentimentLabel): string {
     case 'bearish':
       return 'text-red-600 bg-red-50 border-red-200';
     case 'neutral':
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return 'text-ic-text-muted bg-ic-surface border-ic-border-subtle';
     default:
-      return 'text-gray-600 bg-gray-50 border-gray-200';
+      return 'text-ic-text-muted bg-ic-surface border-ic-border-subtle';
   }
 }
 
@@ -214,5 +214,5 @@ export function formatRankChange(change: number): { text: string; color: string 
   } else if (change < 0) {
     return { text: `↓${Math.abs(change)}`, color: 'text-red-600' };
   }
-  return { text: '—', color: 'text-gray-400' };
+  return { text: '—', color: 'text-ic-text-muted' };
 }

@@ -106,7 +106,7 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
             <button
               type="submit"
               disabled={loading}
-              className="px-4 py-2 bg-ic-blue text-white rounded hover:bg-ic-blue-hover disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed"
             >
               {loading ? 'Saving...' : 'Save'}
             </button>
