@@ -20,7 +20,7 @@ export default function StatementTabs({ activeTab, onChange }: StatementTabsProp
           className={cn(
             'px-4 py-2 text-sm font-medium rounded-md whitespace-nowrap transition-all',
             activeTab === tab
-              ? 'bg-white text-blue-600 shadow-sm'
+              ? 'bg-ic-surface text-ic-blue shadow-sm'
               : 'text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover'
           )}
         >

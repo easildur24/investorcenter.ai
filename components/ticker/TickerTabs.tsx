@@ -24,7 +24,7 @@ export default function TickerTabs({ symbol, children, tabs, defaultTab }: Ticke
   return (
     <div className="w-full">
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 bg-white rounded-t-lg">
+      <div className="border-b border-ic-border-subtle bg-ic-surface rounded-t-lg">
         <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
           {tabs.map((tab) => (
             <button
@@ -47,7 +47,7 @@ export default function TickerTabs({ symbol, children, tabs, defaultTab }: Ticke
       </div>
 
       {/* Tab Content */}
-      <div className="bg-white rounded-b-lg shadow">
+      <div className="bg-ic-surface rounded-b-lg shadow">
         {children[activeIndex]}
       </div>
     </div>

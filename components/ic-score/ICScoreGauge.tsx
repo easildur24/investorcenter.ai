@@ -76,7 +76,7 @@ export default function ICScoreGauge({
       {showLabel && (
         <div className="mt-2 text-center">
           <div
-            className="font-bold text-gray-900"
+            className="font-bold text-ic-text-primary"
             style={{ fontSize: config.fontSize }}
           >
             {Math.round(score)}
@@ -117,7 +117,7 @@ function RatingBadge({ rating, size = 'text-base' }: RatingBadgeProps) {
       case 'Sell':
         return 'bg-red-100 text-red-800 border-red-300';
       default:
-        return 'bg-gray-100 text-gray-800 border-gray-300';
+        return 'bg-ic-surface text-ic-text-primary border-ic-border';
     }
   };
 

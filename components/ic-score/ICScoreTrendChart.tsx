@@ -177,14 +177,14 @@ interface StatCardProps {
 
 function StatCard({ label, value, trend, isPositive, isNegative }: StatCardProps) {
   const getTrendColor = () => {
-    if (trend === undefined) return 'text-gray-600';
+    if (trend === undefined) return 'text-ic-text-muted';
     return trend >= 0 ? 'text-green-600' : 'text-red-600';
   };
 
   const getValueColor = () => {
     if (isPositive) return 'text-green-600';
     if (isNegative) return 'text-red-600';
-    return 'text-gray-900';
+    return 'text-ic-text-primary';
   };
 
   return (
@@ -223,17 +223,17 @@ function CustomTooltip({ active, payload }: TooltipProps) {
 
   return (
     <div className="bg-ic-surface border border-ic-border-subtle rounded-lg shadow-lg p-3">
-      <p className="font-semibold text-gray-900 text-sm mb-2">
+      <p className="font-semibold text-ic-text-primary text-sm mb-2">
         {format(data.date, 'MMM dd, yyyy')}
       </p>
       <div className="space-y-1 text-xs">
         <div className="flex justify-between gap-4">
           <span className="text-ic-text-muted">IC Score:</span>
-          <span className="font-bold text-gray-900">{data.score.toFixed(1)}</span>
+          <span className="font-bold text-ic-text-primary">{data.score.toFixed(1)}</span>
         </div>
         <div className="flex justify-between gap-4">
           <span className="text-ic-text-muted">Rating:</span>
-          <span className="font-medium text-gray-900">{data.rating}</span>
+          <span className="font-medium text-ic-text-primary">{data.rating}</span>
         </div>
       </div>
     </div>
@@ -278,7 +278,7 @@ export function ICScoreSparkline({
       </div>
       {showCurrentScore && (
         <div className="text-right">
-          <div className="text-2xl font-bold text-gray-900">{currentScore.toFixed(0)}</div>
+          <div className="text-2xl font-bold text-ic-text-primary">{currentScore.toFixed(0)}</div>
           <div className="text-xs text-ic-text-dim">IC Score</div>
         </div>
       )}

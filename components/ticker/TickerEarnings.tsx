@@ -144,7 +144,7 @@ export default function TickerEarnings({ symbol }: TickerEarningsProps) {
         </div>
       ) : (
         <div className="text-center py-8">
-          <ChartBarIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <ChartBarIcon className="h-12 w-12 text-ic-text-dim mx-auto mb-4" />
           <p className="text-ic-text-muted">No earnings data available</p>
         </div>
       )}

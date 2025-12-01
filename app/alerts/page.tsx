@@ -114,7 +114,7 @@ function AlertsPageContent() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-4xl font-bold text-ic-text-primary mb-2">Alert Rules</h1>
-              <p className="text-gray-300">
+              <p className="text-ic-text-dim">
                 Manage your price, volume, and event alerts
               </p>
             </div>

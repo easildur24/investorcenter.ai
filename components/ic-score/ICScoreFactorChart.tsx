@@ -66,7 +66,7 @@ export default function ICScoreFactorChart({ factors, height = 500 }: ICScoreFac
 
       {/* Legend */}
       <div className="mt-4 px-6">
-        <div className="flex flex-wrap gap-4 text-xs text-gray-600">
+        <div className="flex flex-wrap gap-4 text-xs text-ic-text-muted">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-green-500"></div>
             <span>Strong Buy (80-100)</span>
@@ -116,20 +116,20 @@ function CustomTooltip({ active, payload }: TooltipProps) {
   const data = payload[0].payload;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-3">
-      <p className="font-semibold text-gray-900 text-sm mb-2">{data.name}</p>
-      <div className="space-y-1 text-xs text-gray-600">
+    <div className="bg-ic-surface border border-ic-border-subtle rounded-lg shadow-lg p-3">
+      <p className="font-semibold text-ic-text-primary text-sm mb-2">{data.name}</p>
+      <div className="space-y-1 text-xs text-ic-text-muted">
         <div className="flex justify-between gap-4">
           <span>Score:</span>
-          <span className="font-medium text-gray-900">{data.value.toFixed(1)}/100</span>
+          <span className="font-medium text-ic-text-primary">{data.value.toFixed(1)}/100</span>
         </div>
         <div className="flex justify-between gap-4">
           <span>Weight:</span>
-          <span className="font-medium text-gray-900">{(data.weight * 100).toFixed(0)}%</span>
+          <span className="font-medium text-ic-text-primary">{(data.weight * 100).toFixed(0)}%</span>
         </div>
         <div className="flex justify-between gap-4">
           <span>Contribution:</span>
-          <span className="font-medium text-gray-900">{data.contribution.toFixed(1)}</span>
+          <span className="font-medium text-ic-text-primary">{data.contribution.toFixed(1)}</span>
         </div>
       </div>
     </div>
@@ -167,8 +167,8 @@ export function ICScoreFactorList({ factors }: ICScoreFactorListProps) {
       {factorData.map((factor, index) => (
         <div key={index} className="space-y-1">
           <div className="flex justify-between items-center text-sm">
-            <span className="font-medium text-gray-700">{factor.name}</span>
-            <span className="text-gray-600">
+            <span className="font-medium text-ic-text-secondary">{factor.name}</span>
+            <span className="text-ic-text-muted">
               {factor.value.toFixed(1)} <span className="text-xs text-ic-text-muted">/ 100</span>
             </span>
           </div>

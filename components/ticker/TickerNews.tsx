@@ -251,7 +251,7 @@ export default function TickerNews({ symbol }: TickerNewsProps) {
         </div>
       ) : (
         <div className="text-center py-8">
-          <NewspaperIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <NewspaperIcon className="h-12 w-12 text-ic-text-dim mx-auto mb-4" />
           <p className="text-ic-text-muted">No recent news available</p>
         </div>
       )}

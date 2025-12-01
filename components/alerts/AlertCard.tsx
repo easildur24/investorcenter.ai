@@ -153,7 +153,7 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             {/* Watch List */}
             <div className="mt-3 text-xs">
               <span className="text-ic-text-muted">Watch List:</span>{' '}
-              <span className="text-gray-300">{alert.watch_list_name}</span>
+              <span className="text-ic-text-dim">{alert.watch_list_name}</span>
             </div>
           </div>
         </div>

@@ -127,7 +127,7 @@ export default function TickerAnalysts({ symbol }: TickerAnalystsProps) {
         </div>
       ) : (
         <div className="text-center py-8">
-          <UserGroupIcon className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+          <UserGroupIcon className="h-12 w-12 text-ic-text-dim mx-auto mb-4" />
           <p className="text-ic-text-muted">No analyst data available</p>
         </div>
       )}

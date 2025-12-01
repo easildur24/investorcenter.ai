@@ -139,7 +139,7 @@ export default function ICScoresAdminPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search by ticker symbol..."
-                className="w-full pl-10 pr-4 py-2 border border-ic-border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-ic-text-primary"
+                className="w-full pl-10 pr-4 py-2 border border-ic-border rounded-lg focus:ring-2 focus:ring-ic-blue focus:border-blue-500 text-ic-text-primary"
               />
             </div>
             <button
@@ -376,7 +376,7 @@ export default function ICScoresAdminPage() {
                         <div className={`text-5xl font-bold ${getScoreColor(detailedScore.overall_score)} mt-2`}>
                           {Math.round(detailedScore.overall_score)}
                         </div>
-                        <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-white border border-blue-200">
+                        <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-ic-surface border border-blue-200">
                           {detailedScore.rating}
                         </div>
                       </div>
