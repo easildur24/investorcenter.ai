@@ -91,7 +91,7 @@ export default function TopMovers() {
 
   if (loading) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         </div>
@@ -114,7 +114,7 @@ export default function TopMovers() {
 
   if (error) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Top Movers</h2>
         <div className="text-ic-negative text-sm">
           <p>Error loading market movers: {error}</p>
@@ -129,7 +129,7 @@ export default function TopMovers() {
   const currentData = getCurrentData();
 
   return (
-    <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         {lastUpdated && (

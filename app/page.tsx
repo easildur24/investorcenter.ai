@@ -7,27 +7,37 @@ export default function Home() {
     <div className="min-h-screen bg-ic-bg-primary">
 
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
+      <div className="relative overflow-hidden" style={{ background: 'var(--ic-hero-bg)' }}>
+        {/* Decorative blur circles */}
+        <div
+          className="absolute top-20 left-10 w-72 h-72 rounded-full blur-3xl"
+          style={{ background: 'var(--ic-blur-circle)' }}
+        />
+        <div
+          className="absolute bottom-10 right-20 w-96 h-96 rounded-full blur-3xl"
+          style={{ background: 'var(--ic-blur-circle)' }}
+        />
+
+        <div className="max-w-7xl mx-auto relative">
           <div className="relative z-10 pb-8 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
             <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
               <div className="sm:text-center lg:text-left">
-                <h1 className="text-4xl tracking-tight font-extrabold text-ic-text-primary sm:text-5xl md:text-6xl">
-                  <span className="block xl:inline">Professional</span>{' '}
-                  <span className="block text-ic-blue xl:inline">Financial Analytics</span>
+                <h1 className="text-4xl tracking-tight font-extrabold sm:text-5xl md:text-6xl">
+                  <span className="block xl:inline text-ic-text-primary">Professional</span>{' '}
+                  <span className="block xl:inline" style={{ color: 'var(--ic-hero-text-accent)' }}>Financial Analytics</span>
                 </h1>
-                <p className="mt-3 text-base text-ic-text-muted sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
+                <p className="mt-3 text-base sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0" style={{ color: 'var(--ic-hero-text-body)' }}>
                   Access comprehensive financial data, interactive charts, and powerful analytics tools.
                   Make informed investment decisions with institutional-grade research and insights.
                 </p>
                 <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                  <div className="rounded-md shadow">
-                    <button className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-ic-text-primary bg-ic-blue hover:bg-ic-blue-hover md:py-4 md:text-lg md:px-10 transition-colors">
+                  <div className="rounded-md shadow-lg">
+                    <button className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md bg-ic-blue hover:bg-ic-blue-hover text-white md:py-4 md:text-lg md:px-10 transition-colors">
                       Start Free Trial
                     </button>
                   </div>
                   <div className="mt-3 sm:mt-0 sm:ml-3">
-                    <button className="w-full flex items-center justify-center px-8 py-3 border border-ic-border text-base font-medium rounded-md text-ic-text-secondary bg-ic-surface hover:bg-ic-surface-hover md:py-4 md:text-lg md:px-10 transition-colors">
+                    <button className="w-full flex items-center justify-center px-8 py-3 border border-ic-border text-base font-medium rounded-md bg-ic-surface text-ic-text-secondary hover:bg-ic-surface-hover md:py-4 md:text-lg md:px-10 transition-colors" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
                       Watch Demo
                     </button>
                   </div>
@@ -36,11 +46,18 @@ export default function Home() {
             </main>
           </div>
         </div>
-        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-          <div className="h-56 w-full bg-gradient-to-r from-ic-blue to-ic-blue-hover sm:h-72 md:h-96 lg:w-full lg:h-full flex items-center justify-center">
-            <div className="text-ic-text-primary text-center">
-              <ArrowTrendingUpIcon className="h-24 w-24 mx-auto mb-4 opacity-80" />
-              <p className="text-lg font-medium">Interactive Charts & Analytics</p>
+        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2 flex items-center justify-center p-8">
+          <div
+            className="h-56 w-full sm:h-72 md:h-96 lg:h-full max-w-md rounded-2xl flex items-center justify-center backdrop-blur-sm border border-ic-border"
+            style={{
+              background: 'var(--ic-surface)',
+              boxShadow: 'var(--ic-shadow-card)'
+            }}
+          >
+            <div className="text-center p-8">
+              <ArrowTrendingUpIcon className="h-24 w-24 mx-auto mb-4 text-ic-blue" />
+              <p className="text-lg font-medium text-ic-text-primary">Interactive Charts & Analytics</p>
+              <p className="text-sm text-ic-text-muted mt-2">Real-time data visualization</p>
             </div>
           </div>
         </div>

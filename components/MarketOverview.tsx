@@ -44,7 +44,7 @@ export default function MarketOverview() {
 
   if (loading) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
@@ -60,7 +60,7 @@ export default function MarketOverview() {
 
   if (error) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="text-ic-negative text-sm">
           <p>Error loading market data: {error}</p>
@@ -73,7 +73,7 @@ export default function MarketOverview() {
   }
 
   return (
-    <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
+    <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-ic-text-primary">Market Overview</h2>
         <span className="text-xs text-ic-text-muted">
