@@ -1058,6 +1058,116 @@ async def get_technical_indicators(
     )
 
 
+# ============================================================================
+# NEWS SENTIMENT ENDPOINTS
+# ============================================================================
+
+class NewsArticleResponse(BaseModel):
+    """News article with sentiment analysis response."""
+    id: int
+    title: str
+    url: str
+    source: str
+    published_at: datetime
+    summary: Optional[str] = None
+    author: Optional[str] = None
+    tickers: Optional[List[str]] = None
+    sentiment_score: Optional[float] = None  # -100 to +100
+    sentiment_label: Optional[str] = None    # Positive, Negative, Neutral
+    relevance_score: Optional[float] = None  # 0 to 100
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class NewsResponse(BaseModel):
+    """News articles response."""
+    ticker: str
+    articles: List[NewsArticleResponse]
+    count: int
+
+
+@app.get("/api/news/{ticker}", response_model=NewsResponse)
+async def get_ticker_news(
+    ticker: str,
+    limit: int = Query(default=30, ge=1, le=100, description="Number of articles to return"),
+    days: int = Query(default=30, ge=1, le=365, description="Days of history to fetch")
+):
+    """
+    Get news articles with AI sentiment analysis for a ticker.
+
+    Returns articles from the news_articles table with:
+    - sentiment_score: -100 (very negative) to +100 (very positive)
+    - sentiment_label: Positive, Negative, or Neutral
+    - relevance_score: 0-100 how relevant the article is to the ticker
+    """
+    ticker = ticker.upper()
+    logger.info(f"Fetching news for ticker: {ticker}")
+
+    try:
+        db = get_database()
+        cutoff_date = datetime.now() - timedelta(days=days)
+
+        # Query news_articles table for articles mentioning this ticker
+        query = text("""
+            SELECT
+                id,
+                title,
+                url,
+                source,
+                published_at,
+                summary,
+                author,
+                tickers,
+                sentiment_score,
+                sentiment_label,
+                relevance_score,
+                image_url
+            FROM news_articles
+            WHERE :ticker = ANY(tickers)
+              AND published_at >= :cutoff_date
+            ORDER BY published_at DESC
+            LIMIT :limit
+        """)
+
+        result = await db.fetch_all(query, {
+            "ticker": ticker,
+            "cutoff_date": cutoff_date,
+            "limit": limit
+        })
+
+        articles = []
+        for row in result:
+            row_dict = dict(row._mapping)
+            articles.append(NewsArticleResponse(
+                id=row_dict['id'],
+                title=row_dict['title'],
+                url=row_dict['url'],
+                source=row_dict['source'],
+                published_at=row_dict['published_at'],
+                summary=row_dict.get('summary'),
+                author=row_dict.get('author'),
+                tickers=row_dict.get('tickers'),
+                sentiment_score=float(row_dict['sentiment_score']) if row_dict.get('sentiment_score') else None,
+                sentiment_label=row_dict.get('sentiment_label'),
+                relevance_score=float(row_dict['relevance_score']) if row_dict.get('relevance_score') else None,
+                image_url=row_dict.get('image_url')
+            ))
+
+        logger.info(f"Found {len(articles)} news articles for {ticker}")
+
+        return NewsResponse(
+            ticker=ticker,
+            articles=articles,
+            count=len(articles)
+        )
+
+    except Exception as e:
+        logger.error(f"Error fetching news for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # Startup event
 @app.on_event("startup")
 async def startup_event():

@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 
 interface NewsArticle {
-  id?: string;
+  id?: string | number;
   title: string;
-  description: string;
-  author: string;
+  description?: string;
+  author?: string;
   article_url: string;
   published_utc: string;
   image_url?: string;
@@ -17,15 +17,21 @@ interface NewsArticle {
   tickers?: string[];
   publisher?: {
     name: string;
-    homepage_url: string;
-    logo_url: string;
-    favicon_url: string;
+    homepage_url?: string;
+    logo_url?: string;
+    favicon_url?: string;
   };
+  // Polygon API fields (fallback)
   insights?: Array<{
     ticker: string;
     sentiment: string;
     sentiment_reasoning: string;
   }>;
+  // IC Score AI sentiment fields (primary)
+  sentiment_score?: number;    // -100 to +100 (from FinBERT AI analysis)
+  sentiment_label?: string;    // "Positive", "Negative", "Neutral"
+  relevance_score?: number;    // 0 to 100
+  // Backward compatibility
   summary?: string;
   source?: string;
   url?: string;
@@ -65,7 +71,13 @@ function getSentimentBgClass(sentiment: Sentiment): string {
   }
 }
 
-function generateConfidence(article: NewsArticle, symbol: string): number {
+function getConfidence(article: NewsArticle, symbol: string): number {
+  // Primary: Use IC Score AI sentiment_score (-100 to +100)
+  if (article.sentiment_score !== undefined && article.sentiment_score !== null) {
+    return Math.round(Math.abs(article.sentiment_score));
+  }
+
+  // Fallback: Try Polygon insights
   const insight = article.insights?.find(
     (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
   );
@@ -75,22 +87,17 @@ function generateConfidence(article: NewsArticle, symbol: string): number {
     let confidence = 50;
     if (reasoning.includes('strong') || reasoning.includes('significant')) confidence += 15;
     if (reasoning.includes('clear') || reasoning.includes('definite')) confidence += 10;
-    if (reasoning.includes('likely') || reasoning.includes('expected')) confidence += 5;
     if (reasoning.length > 100) confidence += 10;
-    if (reasoning.length > 200) confidence += 5;
     return Math.min(95, Math.max(35, confidence));
   }
 
-  const sentiment = article.insights?.find(
-    (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-  )?.sentiment || article.sentiment;
-
+  const sentiment = insight?.sentiment || article.sentiment;
   if (sentiment) {
     const lower = sentiment.toLowerCase();
-    if (lower === 'positive' || lower === 'negative') return 65 + Math.floor(Math.random() * 20);
+    if (lower === 'positive' || lower === 'negative') return 65;
   }
 
-  return 45 + Math.floor(Math.random() * 20);
+  return 50;
 }
 
 export default function TickerNewsPage() {
@@ -156,6 +163,11 @@ export default function TickerNewsPage() {
   };
 
   const getArticleSentiment = (article: NewsArticle): Sentiment => {
+    // Primary: Use IC Score AI sentiment_label
+    if (article.sentiment_label) {
+      return getSentimentFromApi(article.sentiment_label);
+    }
+    // Fallback: Try Polygon insights
     const insight = article.insights?.find(
       (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
     );
@@ -223,7 +235,7 @@ export default function TickerNewsPage() {
             <div className="space-y-4">
               {currentArticles.map((article, i) => {
                 const sentiment = getArticleSentiment(article);
-                const confidence = generateConfidence(article, symbol);
+                const confidence = getConfidence(article, symbol);
                 const source = article.publisher?.name || article.source || 'Unknown';
                 const timeAgo = formatTimeAgo(article.published_utc || article.publishedAt || '');
                 const fullDate = formatDate(article.published_utc || article.publishedAt || '');

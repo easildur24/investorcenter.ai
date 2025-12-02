@@ -137,6 +137,56 @@ func (c *ICScoreClient) GetTTMFinancials(ticker string, statementType string, li
 	return &result, nil
 }
 
+// ICScoreNewsArticle represents a news article with AI sentiment analysis from IC Score service
+type ICScoreNewsArticle struct {
+	ID             int64    `json:"id"`
+	Title          string   `json:"title"`
+	URL            string   `json:"url"`
+	Source         string   `json:"source"`
+	PublishedAt    string   `json:"published_at"`
+	Summary        *string  `json:"summary"`
+	Author         *string  `json:"author"`
+	Tickers        []string `json:"tickers"`
+	SentimentScore *float64 `json:"sentiment_score"` // -100 to +100
+	SentimentLabel *string  `json:"sentiment_label"` // Positive, Negative, Neutral
+	RelevanceScore *float64 `json:"relevance_score"` // 0 to 100
+	ImageURL       *string  `json:"image_url"`
+}
+
+// ICScoreNewsResponse represents the response from the IC Score news endpoint
+type ICScoreNewsResponse struct {
+	Ticker   string               `json:"ticker"`
+	Articles []ICScoreNewsArticle `json:"articles"`
+	Count    int                  `json:"count"`
+}
+
+// GetNews fetches news articles with AI sentiment from IC Score service
+func (c *ICScoreClient) GetNews(ticker string, limit int, days int) (*ICScoreNewsResponse, error) {
+	url := fmt.Sprintf("%s/api/news/%s?limit=%d&days=%d", c.baseURL, ticker, limit, days)
+
+	resp, err := c.httpClient.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call IC Score API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("no news data found for %s", ticker)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("IC Score API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result ICScoreNewsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode IC Score API response: %w", err)
+	}
+
+	return &result, nil
+}
+
 // ConvertToFinancialPeriods converts IC Score API response to models.FinancialPeriod
 func ConvertToFinancialPeriods(apiResponse *ICScoreAPIResponse, statementType models.StatementType) []models.FinancialPeriod {
 	periods := make([]models.FinancialPeriod, len(apiResponse.Periods))

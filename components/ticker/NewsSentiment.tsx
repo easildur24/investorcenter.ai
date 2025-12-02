@@ -7,10 +7,10 @@ interface NewsSentimentProps {
 }
 
 interface NewsArticle {
-  id?: string;
+  id?: string | number;
   title: string;
-  description: string;
-  author: string;
+  description?: string;
+  author?: string;
   article_url: string;
   published_utc: string;
   image_url?: string;
@@ -18,15 +18,21 @@ interface NewsArticle {
   tickers?: string[];
   publisher?: {
     name: string;
-    homepage_url: string;
-    logo_url: string;
-    favicon_url: string;
+    homepage_url?: string;
+    logo_url?: string;
+    favicon_url?: string;
   };
+  // Polygon API fields (fallback)
   insights?: Array<{
     ticker: string;
     sentiment: string;
     sentiment_reasoning: string;
   }>;
+  // IC Score AI sentiment fields (primary)
+  sentiment_score?: number;    // -100 to +100 (from FinBERT AI analysis)
+  sentiment_label?: string;    // "Positive", "Negative", "Neutral"
+  relevance_score?: number;    // 0 to 100
+  // Backward compatibility
   summary?: string;
   source?: string;
   url?: string;
@@ -66,38 +72,38 @@ function getSentimentBgClass(sentiment: Sentiment): string {
   }
 }
 
-// Generate a confidence score based on sentiment reasoning length and keywords
-function generateConfidence(article: NewsArticle, symbol: string): number {
+// Get confidence from sentiment_score or generate fallback
+function getConfidence(article: NewsArticle, symbol: string): number {
+  // Primary: Use IC Score AI sentiment_score (-100 to +100)
+  // Convert absolute value to percentage (0-100 scale)
+  if (article.sentiment_score !== undefined && article.sentiment_score !== null) {
+    // |sentiment_score| gives us the confidence level
+    // -80 = 80% confident it's negative, +60 = 60% confident it's positive
+    return Math.round(Math.abs(article.sentiment_score));
+  }
+
+  // Fallback: Try Polygon insights
   const insight = article.insights?.find(
     (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
   );
 
   if (insight?.sentiment_reasoning) {
-    // Base confidence on reasoning quality
     const reasoning = insight.sentiment_reasoning;
     let confidence = 50;
-
-    // Stronger language increases confidence
     if (reasoning.includes('strong') || reasoning.includes('significant')) confidence += 15;
     if (reasoning.includes('clear') || reasoning.includes('definite')) confidence += 10;
-    if (reasoning.includes('likely') || reasoning.includes('expected')) confidence += 5;
     if (reasoning.length > 100) confidence += 10;
-    if (reasoning.length > 200) confidence += 5;
-
     return Math.min(95, Math.max(35, confidence));
   }
 
-  // Fallback: generate based on sentiment presence
-  const sentiment = article.insights?.find(
-    (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-  )?.sentiment || article.sentiment;
-
+  // Last resort: generate based on sentiment presence
+  const sentiment = insight?.sentiment || article.sentiment;
   if (sentiment) {
     const lower = sentiment.toLowerCase();
-    if (lower === 'positive' || lower === 'negative') return 65 + Math.floor(Math.random() * 20);
+    if (lower === 'positive' || lower === 'negative') return 65;
   }
 
-  return 45 + Math.floor(Math.random() * 20);
+  return 50; // Default neutral confidence
 }
 
 export default function NewsSentiment({ symbol }: NewsSentimentProps) {
@@ -146,6 +152,11 @@ export default function NewsSentiment({ symbol }: NewsSentimentProps) {
   };
 
   const getArticleSentiment = (article: NewsArticle): Sentiment => {
+    // Primary: Use IC Score AI sentiment_label
+    if (article.sentiment_label) {
+      return getSentimentFromApi(article.sentiment_label);
+    }
+    // Fallback: Try Polygon insights
     const insight = article.insights?.find(
       (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
     );
@@ -204,7 +215,7 @@ export default function NewsSentiment({ symbol }: NewsSentimentProps) {
       {/* News Items */}
       {news.map((article, i) => {
         const sentiment = getArticleSentiment(article);
-        const confidence = generateConfidence(article, symbol);
+        const confidence = getConfidence(article, symbol);
         const source = article.publisher?.name || article.source || 'Unknown';
         const time = formatTimeAgo(article.published_utc || article.publishedAt || '');
 
