@@ -1,8 +1,8 @@
 'use client';
 
 import HybridChart from '@/components/ticker/HybridChart';
-import TickerNews from '@/components/ticker/TickerNews';
-import TickerEarnings from '@/components/ticker/TickerEarnings';
+import NewsSentiment from '@/components/ticker/NewsSentiment';
+import EarningsHistory from '@/components/ticker/EarningsHistory';
 
 interface OverviewTabProps {
   symbol: string;
@@ -22,18 +22,11 @@ export default function OverviewTab({ symbol, chartData, currentPrice }: Overvie
         />
       </div>
 
-      {/* News & Earnings Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* News */}
-        <div className="bg-ic-surface rounded-lg">
-          <TickerNews symbol={symbol} />
-        </div>
+      {/* News & Sentiment - Full Width */}
+      <NewsSentiment symbol={symbol} />
 
-        {/* Earnings */}
-        <div className="bg-ic-surface rounded-lg">
-          <TickerEarnings symbol={symbol} />
-        </div>
-      </div>
+      {/* Earnings History - Full Width */}
+      <EarningsHistory symbol={symbol} />
     </div>
   );
 }
