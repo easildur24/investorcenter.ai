@@ -4,6 +4,15 @@ const nextConfig = {
   experimental: {
     outputFileTracingRoot: undefined,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api.polygon.io',
+        pathname: '/v1/reference/company-branding/**',
+      },
+    ],
+  },
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '/api/v1',
   },

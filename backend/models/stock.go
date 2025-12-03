@@ -34,6 +34,7 @@ type Stock struct {
 	PrimaryExchangeCode string `json:"primaryExchangeCode,omitempty" db:"primary_exchange_code"`
 	PolygonType         string `json:"polygonType,omitempty" db:"polygon_type"`
 	LastUpdatedUTC      string `json:"lastUpdatedUtc,omitempty" db:"last_updated_utc"`
+	LogoURL             string `json:"logoUrl,omitempty" db:"logo_url"`
 }
 
 // StockPrice represents current and historical price data
@@ -260,10 +261,11 @@ type KeyMetrics struct {
 type ScreenerStock struct {
 	Symbol        string   `json:"symbol" db:"symbol"`
 	Name          string   `json:"name" db:"name"`
-	Sector        string   `json:"sector" db:"sector"`
-	Industry      string   `json:"industry" db:"industry"`
+	Sector        *string  `json:"sector" db:"sector"`
+	Industry      *string  `json:"industry" db:"industry"`
 	MarketCap     *float64 `json:"market_cap" db:"market_cap"`
 	Price         *float64 `json:"price" db:"price"`
+	ChangePercent *float64 `json:"change_percent" db:"change_percent"`
 	PERatio       *float64 `json:"pe_ratio" db:"pe_ratio"`
 	PBRatio       *float64 `json:"pb_ratio" db:"pb_ratio"`
 	PSRatio       *float64 `json:"ps_ratio" db:"ps_ratio"`

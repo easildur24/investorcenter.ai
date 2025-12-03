@@ -256,6 +256,9 @@ class SECClient:
         # Correct fiscal years before calculating metrics
         self._correct_fiscal_years(financials)
 
+        # Correct shares_outstanding if reported in millions
+        self._correct_shares_outstanding(financials)
+
         # Calculate derived metrics
         for financial in financials[:num_periods]:
             self._calculate_metrics(financial)
@@ -359,6 +362,42 @@ class SECClient:
 
         if corrected_count > 0:
             logger.info(f"Corrected {corrected_count} fiscal year values")
+
+    def _correct_shares_outstanding(self, financials: List[Dict[str, Any]]) -> None:
+        """Correct shares_outstanding if reported in millions.
+
+        Some companies (like MCD, PEP) report shares_outstanding in millions instead
+        of absolute shares in their SEC XBRL filings. This method detects and
+        corrects such cases by comparing against revenue to determine scale.
+
+        Detection heuristic: If shares_outstanding < 10,000 but revenue > 1B,
+        the shares are likely in millions and should be multiplied by 1,000,000.
+
+        Args:
+            financials: List of financial records to correct in-place.
+        """
+        corrected_count = 0
+        for financial in financials:
+            shares = financial.get('shares_outstanding')
+            revenue = financial.get('revenue')
+
+            # Skip if no shares data
+            if shares is None:
+                continue
+
+            # Check if shares appear to be in millions
+            # Heuristic: shares < 10,000 and revenue > 1 billion
+            if shares < 10000 and revenue and revenue > 1_000_000_000:
+                # Shares likely reported in millions, correct to actual count
+                corrected_shares = int(shares * 1_000_000)
+                financial['shares_outstanding'] = corrected_shares
+                logger.debug(
+                    f"Corrected shares_outstanding from {shares} (millions) to {corrected_shares:,}"
+                )
+                corrected_count += 1
+
+        if corrected_count > 0:
+            logger.info(f"Corrected {corrected_count} shares_outstanding values from millions to actual")
 
     def _calculate_metrics(self, financial: Dict[str, Any]) -> None:
         """Calculate financial ratios and metrics in-place.

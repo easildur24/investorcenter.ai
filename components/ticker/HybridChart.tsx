@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { getChartColors, themeColors } from '@/lib/theme';
@@ -18,6 +18,12 @@ interface ChartDataPoint {
   low: string;
   close: string;
   volume: number;
+}
+
+interface ChartData {
+  dataPoints: ChartDataPoint[];
+  period: string;
+  count: number;
 }
 
 // Calculate Simple Moving Average
@@ -46,12 +52,65 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const [sp500Data, setSp500Data] = useState<ChartDataPoint[]>([]);
   const [sp500Loading, setSp500Loading] = useState(false);
 
+  // Client-side chart data state with caching
+  const [chartData, setChartData] = useState<ChartData>({
+    dataPoints: initialData?.dataPoints || [],
+    period: initialData?.period || '1Y',
+    count: initialData?.count || 0,
+  });
+  const [selectedPeriod, setSelectedPeriod] = useState(initialData?.period || '1Y');
+  const [isLoading, setIsLoading] = useState(false);
+  const chartCache = useRef<Map<string, ChartData>>(new Map());
+
+  // Initialize cache with initial data
+  useEffect(() => {
+    if (initialData?.dataPoints && initialData.period) {
+      chartCache.current.set(initialData.period, {
+        dataPoints: initialData.dataPoints,
+        period: initialData.period,
+        count: initialData.count || initialData.dataPoints.length,
+      });
+    }
+  }, [initialData]);
+
+  // Fetch chart data for a period (with caching)
+  const fetchChartData = useCallback(async (period: string) => {
+    // Check cache first
+    const cached = chartCache.current.get(period);
+    if (cached) {
+      setChartData(cached);
+      setSelectedPeriod(period);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=${period}`);
+      const result = await response.json();
+
+      if (result.data?.dataPoints) {
+        const newData: ChartData = {
+          dataPoints: result.data.dataPoints,
+          period: period,
+          count: result.data.count || result.data.dataPoints.length,
+        };
+        // Cache the result
+        chartCache.current.set(period, newData);
+        setChartData(newData);
+        setSelectedPeriod(period);
+      }
+    } catch (error) {
+      console.error('Failed to fetch chart data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [symbol]);
+
   // Fetch S&P 500 data when comparison is enabled
   useEffect(() => {
     if (showSP500 && sp500Data.length === 0 && !sp500Loading) {
       setSp500Loading(true);
-      const period = initialData.period || '1Y';
-      fetch(`/api/v1/tickers/SPY/chart?period=${period}`)
+      fetch(`/api/v1/tickers/SPY/chart?period=${selectedPeriod}`)
         .then(res => res.json())
         .then(data => {
           if (data.data?.dataPoints) {
@@ -61,12 +120,12 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
         .catch(err => console.error('Failed to fetch S&P 500 data:', err))
         .finally(() => setSp500Loading(false));
     }
-  }, [showSP500, sp500Data.length, sp500Loading, initialData.period]);
+  }, [showSP500, sp500Data.length, sp500Loading, selectedPeriod]);
 
   // Reset S&P 500 data when period changes
   useEffect(() => {
     setSp500Data([]);
-  }, [initialData.period]);
+  }, [selectedPeriod]);
 
   // Handle Escape key to exit fullscreen
   useEffect(() => {
@@ -89,18 +148,20 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       document.body.style.overflow = '';
     };
   }, [isFullscreen]);
-  if (!initialData?.dataPoints || initialData.dataPoints.length === 0) {
+  if (!chartData?.dataPoints || chartData.dataPoints.length === 0) {
     return (
       <div className="p-6">
         <h3 className="text-lg font-semibold text-ic-text-primary mb-6">Price Chart</h3>
         <div className="h-80 bg-ic-bg-secondary rounded-lg flex items-center justify-center">
-          <div className="text-ic-text-muted">No chart data available</div>
+          <div className="text-ic-text-muted">
+            {isLoading ? 'Loading chart data...' : 'No chart data available'}
+          </div>
         </div>
       </div>
     );
   }
 
-  const dataPoints: ChartDataPoint[] = initialData.dataPoints;
+  const dataPoints: ChartDataPoint[] = chartData.dataPoints;
   const prices = dataPoints.map(d => parseFloat(d.close));
   const volumes = dataPoints.map(d => d.volume);
   const rawHigh = Math.max(...prices);
@@ -166,7 +227,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   // Generate X-axis date labels
   const getDateLabels = () => {
     if (dataPoints.length < 2) return [];
-    const period = initialData.period || '1Y';
+    const period = selectedPeriod;
     let labelCount = 6;
 
     const labels: { date: Date; x: number; label: string }[] = [];
@@ -255,11 +316,10 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   // Timeframe buttons with JavaScript for interactivity
   const timeframes = ['1D', '5D', '1M', '3M', '6M', 'YTD', '1Y', '5Y', 'MAX'];
 
-  // Initialize chart interactivity
+  // Initialize chart tooltip interactivity
   useEffect(() => {
     const chart = document.getElementById('price-chart');
     const tooltip = document.getElementById('chart-tooltip');
-    const buttons = document.querySelectorAll('.timeframe-btn');
 
     if (!chart || !tooltip) return;
 
@@ -327,48 +387,12 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
     chart.addEventListener('mousemove', handleMouseMove);
     chart.addEventListener('mouseleave', handleMouseLeave);
 
-    // Add timeframe button functionality
-    buttons.forEach(button => {
-      const handleClick = async function(this: HTMLElement) {
-        const period = this.dataset.period;
-        const btnSymbol = this.dataset.symbol;
-
-        // Update button states
-        buttons.forEach(btn => {
-          btn.classList.remove('bg-ic-surface', 'text-primary-600', 'shadow-sm');
-          btn.classList.add('text-ic-text-secondary');
-        });
-        this.classList.add('bg-ic-surface', 'text-primary-600', 'shadow-sm');
-        this.classList.remove('text-ic-text-secondary');
-
-        // Show loading
-        const originalText = this.textContent;
-        this.textContent = '...';
-
-        try {
-          // Fetch new data
-          const response = await fetch(`/api/v1/tickers/${btnSymbol}/chart?period=${period}`);
-          const result = await response.json();
-
-          if (result.data?.dataPoints) {
-            // Reload the page with new period
-            window.location.search = `?period=${period}`;
-          }
-        } catch (error) {
-          console.error('Failed to fetch chart data:', error);
-          this.textContent = originalText || period || '';
-        }
-      };
-
-      button.addEventListener('click', handleClick);
-    });
-
     // Cleanup event listeners on unmount
     return () => {
       chart.removeEventListener('mousemove', handleMouseMove);
       chart.removeEventListener('mouseleave', handleMouseLeave);
     };
-  }, [dataPoints, chartWidth, symbol, paddingLeft, plotWidth]);
+  }, [dataPoints, chartWidth, paddingLeft, plotWidth]);
 
   const chartContent = (
     <>
@@ -382,15 +406,15 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             {timeframes.map((period) => (
               <button
                 key={period}
-                className={`timeframe-btn px-3 py-1 text-sm font-medium rounded-md transition-colors ${
-                  period === initialData.period
+                onClick={() => fetchChartData(period)}
+                disabled={isLoading}
+                className={`px-3 py-1 text-sm font-medium rounded-md transition-colors ${
+                  period === selectedPeriod
                     ? 'bg-ic-surface text-primary-600 shadow-sm'
                     : 'text-ic-text-secondary hover:text-ic-text-primary hover:bg-ic-surface-hover'
-                }`}
-                data-period={period}
-                data-symbol={symbol}
+                } ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                {period}
+                {isLoading && period === selectedPeriod ? '...' : period}
               </button>
             ))}
           </div>
@@ -454,6 +478,12 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
       {/* Enhanced Interactive SVG Chart */}
       <div className={`relative bg-ic-surface border rounded-lg overflow-hidden`} style={{ height: `${totalChartHeight}px` }}>
+        {/* Loading overlay */}
+        {isLoading && (
+          <div className="absolute inset-0 bg-ic-bg-primary/50 flex items-center justify-center z-10">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+          </div>
+        )}
         <svg
           id="price-chart"
           width={chartWidth}
@@ -689,7 +719,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       {/* Chart Info */}
       <div className="mt-4 flex justify-between items-center text-sm">
         <div className="text-ic-text-secondary">
-          <span className="font-semibold">{initialData.period}</span> • {dataPoints.length} data points • Real-time from Polygon.io
+          <span className="font-semibold">{selectedPeriod}</span> • {dataPoints.length} data points • Local database
         </div>
         <div className="text-ic-text-muted">
           Last updated: {new Date().toLocaleTimeString()}

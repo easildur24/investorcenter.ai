@@ -150,29 +150,54 @@ export function ThemeProvider({
 }
 
 // ============================================================================
-// ThemeToggle Component
+// ThemeToggle Component (Three-way: Auto → Light → Dark)
 // ============================================================================
 
 export function ThemeToggle() {
-  const { resolvedTheme, toggleTheme } = useTheme();
+  const { theme, setTheme } = useTheme();
+
+  // Cycle through: system → light → dark → system
+  const cycleTheme = () => {
+    if (theme === 'system') {
+      setTheme('light');
+    } else if (theme === 'light') {
+      setTheme('dark');
+    } else {
+      setTheme('system');
+    }
+  };
+
+  const getIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <Sun className="h-4 w-4" />;
+      case 'dark':
+        return <Moon className="h-4 w-4" />;
+      default:
+        return <Monitor className="h-4 w-4" />;
+    }
+  };
+
+  const getLabel = () => {
+    switch (theme) {
+      case 'light':
+        return 'Light';
+      case 'dark':
+        return 'Dark';
+      default:
+        return 'Auto';
+    }
+  };
 
   return (
     <button
-      onClick={toggleTheme}
+      onClick={cycleTheme}
       className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-ic-surface border border-ic-border text-ic-text-secondary hover:bg-ic-surface-hover hover:text-ic-text-primary transition-colors"
-      aria-label={`Switch to ${resolvedTheme === 'dark' ? 'light' : 'dark'} theme`}
+      aria-label={`Current theme: ${theme}. Click to change.`}
+      title={theme === 'system' ? 'Following system preference' : `${theme} mode`}
     >
-      {resolvedTheme === 'dark' ? (
-        <>
-          <Sun className="h-4 w-4" />
-          <span className="text-sm">Light</span>
-        </>
-      ) : (
-        <>
-          <Moon className="h-4 w-4" />
-          <span className="text-sm">Dark</span>
-        </>
-      )}
+      {getIcon()}
+      <span className="text-sm">{getLabel()}</span>
     </button>
   );
 }

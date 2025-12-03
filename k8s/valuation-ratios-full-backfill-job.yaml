@@ -1,0 +1,66 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: valuation-ratios-full-backfill
+  namespace: investorcenter
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400  # 4 hours max
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: valuation-ratios
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.2.2-shares-fix
+        imagePullPolicy: Always
+        command: ["python", "-m", "pipelines.valuation_ratios_calculator", "--all"]
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}

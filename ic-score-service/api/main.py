@@ -1092,7 +1092,8 @@ class NewsResponse(BaseModel):
 async def get_ticker_news(
     ticker: str,
     limit: int = Query(default=30, ge=1, le=100, description="Number of articles to return"),
-    days: int = Query(default=30, ge=1, le=365, description="Days of history to fetch")
+    days: int = Query(default=30, ge=1, le=365, description="Days of history to fetch"),
+    session: AsyncSession = Depends(get_session)
 ):
     """
     Get news articles with AI sentiment analysis for a ticker.
@@ -1106,7 +1107,6 @@ async def get_ticker_news(
     logger.info(f"Fetching news for ticker: {ticker}")
 
     try:
-        db = get_database()
         cutoff_date = datetime.now() - timedelta(days=days)
 
         # Query news_articles table for articles mentioning this ticker
@@ -1131,15 +1131,16 @@ async def get_ticker_news(
             LIMIT :limit
         """)
 
-        result = await db.fetch_all(query, {
+        result = await session.execute(query, {
             "ticker": ticker,
             "cutoff_date": cutoff_date,
             "limit": limit
         })
+        rows = result.fetchall()
 
         articles = []
-        for row in result:
-            row_dict = dict(row._mapping)
+        for row in rows:
+            row_dict = row._asdict()
             articles.append(NewsArticleResponse(
                 id=row_dict['id'],
                 title=row_dict['title'],

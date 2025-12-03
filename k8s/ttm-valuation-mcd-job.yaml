@@ -1,0 +1,83 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ttm-valuation-mcd
+  namespace: investorcenter
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: ttm-valuation
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.2.2-shares-fix
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.ttm_financials_calculator import TTMFinancialsCalculator
+          from pipelines.valuation_ratios_calculator import ValuationRatiosCalculator
+
+          async def main():
+              print("=== TTM for MCD ===")
+              ttm_calc = TTMFinancialsCalculator()
+              success = await ttm_calc.process_ticker('MCD')
+              print(f"MCD TTM: {'SUCCESS' if success else 'FAILED'}")
+
+              print("\n=== Valuation Ratios for MCD ===")
+              val_calc = ValuationRatiosCalculator()
+              success = await val_calc.process_ticker('MCD')
+              print(f"MCD Valuation: {'SUCCESS' if success else 'FAILED'}")
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}

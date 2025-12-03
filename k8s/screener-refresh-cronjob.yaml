@@ -1,0 +1,39 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: screener-data-refresh
+  namespace: investorcenter
+spec:
+  # Run daily at 11:45 PM UTC (after daily-price-update at 10:30 PM)
+  schedule: "45 23 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: screener-refresh
+            image: postgres:15
+            command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Refreshing screener_data materialized view..."
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "REFRESH MATERIALIZED VIEW CONCURRENTLY screener_data;"
+              echo "Refresh complete!"
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) as total, COUNT(price) as with_price, COUNT(market_cap) as with_market_cap FROM screener_data;"
+            envFrom:
+            - secretRef:
+                name: postgres-secret
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "500m"

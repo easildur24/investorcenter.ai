@@ -145,8 +145,8 @@ class Financial(Base):
     operating_expenses: Mapped[Optional[int]] = mapped_column(BigInteger)
     operating_income: Mapped[Optional[int]] = mapped_column(BigInteger)
     net_income: Mapped[Optional[int]] = mapped_column(BigInteger)
-    eps_basic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    eps_diluted: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    eps_basic: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    eps_diluted: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
     shares_outstanding: Mapped[Optional[int]] = mapped_column(BigInteger)
 
     # Balance Sheet
@@ -165,18 +165,18 @@ class Financial(Base):
     capex: Mapped[Optional[int]] = mapped_column(BigInteger)
 
     # Calculated Metrics
-    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    pb_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    ps_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    current_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    quick_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    gross_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    operating_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
+    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    pb_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    ps_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    current_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    quick_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roic: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    gross_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    operating_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
 
     # Metadata
     sec_filing_url: Mapped[Optional[str]] = mapped_column(String(500))

@@ -236,28 +236,33 @@ func (p *PolygonClient) GetDailyData(symbol string, days int) ([]models.ChartDat
 	return p.GetHistoricalData(symbol, "day", from.Format("2006-01-02"), to.Format("2006-01-02"))
 }
 
+// TickerBranding represents company branding info from Polygon
+type TickerBranding struct {
+	LogoURL string `json:"logo_url"`
+	IconURL string `json:"icon_url"`
+}
+
 // TickerDetailsResponse represents ticker details
 type TickerDetailsResponse struct {
 	Status    string `json:"status"`
 	RequestID string `json:"request_id"`
 	Results   struct {
-		Ticker         string `json:"ticker"`
-		Name           string `json:"name"`
-		Market         string `json:"market"`
-		Locale         string `json:"locale"`
-		PrimaryExch    string `json:"primary_exchange"`
-		Type           string `json:"type"`
-		Active         bool   `json:"active"`
-		CurrencyName   string `json:"currency_name"`
-		CIK            string `json:"cik"`
-		Composite      string `json:"composite_figi"`
-		ShareClass     string `json:"share_class_figi"`
-		Description    string `json:"description"`
-		HomepageURL    string `json:"homepage_url"`
-		TotalEmployees int    `json:"total_employees"`
-		ListDate       string `json:"list_date"`
-		LogoURL        string `json:"branding.logo_url"`
-		IconURL        string `json:"branding.icon_url"`
+		Ticker         string         `json:"ticker"`
+		Name           string         `json:"name"`
+		Market         string         `json:"market"`
+		Locale         string         `json:"locale"`
+		PrimaryExch    string         `json:"primary_exchange"`
+		Type           string         `json:"type"`
+		Active         bool           `json:"active"`
+		CurrencyName   string         `json:"currency_name"`
+		CIK            string         `json:"cik"`
+		Composite      string         `json:"composite_figi"`
+		ShareClass     string         `json:"share_class_figi"`
+		Description    string         `json:"description"`
+		HomepageURL    string         `json:"homepage_url"`
+		TotalEmployees int            `json:"total_employees"`
+		ListDate       string         `json:"list_date"`
+		Branding       TickerBranding `json:"branding"`
 	} `json:"results"`
 }
 

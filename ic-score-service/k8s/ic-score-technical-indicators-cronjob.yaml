@@ -35,11 +35,11 @@ spec:
             component: ic-score-pipeline
         spec:
           restartPolicy: OnFailure
-          nodeName: ip-10-0-10-183.ec2.internal
+          # Removed static nodeName - let scheduler place pod on any available node
 
           containers:
           - name: technical-indicators-calculator
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.3-tech-daily
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.4-tech-fix
             imagePullPolicy: Always
 
             command: ["python"]

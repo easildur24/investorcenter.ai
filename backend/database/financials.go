@@ -16,7 +16,7 @@ func GetTickerIDBySymbol(symbol string) (int, error) {
 	query := `
 		SELECT id FROM tickers
 		WHERE UPPER(symbol) = UPPER($1)
-		AND asset_type = 'stock'
+		AND asset_type IN ('CS', 'stock', 'PFD', 'ETF')
 		LIMIT 1
 	`
 	err := DB.Get(&tickerID, query, symbol)

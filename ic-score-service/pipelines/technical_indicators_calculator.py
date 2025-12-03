@@ -30,8 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from tqdm import tqdm
 
 from database.database import get_database
-from models import StockPrice, TechnicalIndicator
-from pipelines.utils.polygon_client import PolygonClient
+from models import TechnicalIndicator
 
 # Setup logging with configurable log directory
 LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
@@ -53,7 +52,6 @@ class TechnicalIndicatorsCalculator:
 
     def __init__(self):
         """Initialize the calculator."""
-        self.polygon_client = PolygonClient()
         self.db = get_database()
 
         # Track progress
@@ -68,6 +66,9 @@ class TechnicalIndicatorsCalculator:
     ) -> List[str]:
         """Get list of stocks to process from database.
 
+        Only returns tickers that have price data in stock_prices table,
+        excluding index tickers (I:*) and other unsupported asset types.
+
         Args:
             limit: Maximum number of stocks to process.
             ticker: Single ticker to process.
@@ -79,18 +80,24 @@ class TechnicalIndicatorsCalculator:
             if ticker:
                 return [ticker.upper()]
 
+            # Query tickers that have at least 20 days of price data (minimum for indicators)
+            # Exclude index tickers (I:*), crypto (X:*), and other special tickers
             query = text("""
-                SELECT symbol AS ticker
-                FROM tickers
-                WHERE symbol NOT LIKE '%-%'
-                  AND active = true
-                ORDER BY symbol
+                SELECT DISTINCT sp.ticker
+                FROM stock_prices sp
+                WHERE sp.interval = '1day'
+                  AND sp.ticker NOT LIKE 'I:%'
+                  AND sp.ticker NOT LIKE 'X:%'
+                  AND sp.ticker NOT LIKE '%-%'
+                GROUP BY sp.ticker
+                HAVING COUNT(*) >= 20
+                ORDER BY sp.ticker
                 LIMIT :limit
             """)
             result = await session.execute(query, {"limit": limit or 10000})
             tickers = [row[0] for row in result.fetchall()]
 
-        logger.info(f"Found {len(tickers)} stocks to process")
+        logger.info(f"Found {len(tickers)} stocks with sufficient price data to process")
         return tickers
 
     def calculate_technical_indicators(self, df: pd.DataFrame) -> Dict[str, Any]:
@@ -110,9 +117,19 @@ class TechnicalIndicatorsCalculator:
         df = df.sort_values('date').reset_index(drop=True)
 
         try:
+            # Ensure required columns exist
+            required_cols = ['close']
+            for col in required_cols:
+                if col not in df.columns:
+                    logger.error(f"Missing required column: {col}")
+                    return {}
+
             # Convert to numpy arrays for TA-Lib (must be float64)
             close_prices = df['close'].astype('float64').values
-            volume_data = df['volume'].astype('float64').values
+
+            # Handle optional volume column (some data sources may not have it)
+            has_volume = 'volume' in df.columns and df['volume'].notna().any()
+            volume_data = df['volume'].astype('float64').values if has_volume else None
 
             # RSI (14-day)
             rsi = talib.RSI(close_prices, timeperiod=14)
@@ -142,9 +159,11 @@ class TechnicalIndicatorsCalculator:
             current_bb_middle = bb_middle[-1] if len(bb_middle) > 0 and not pd.isna(bb_middle[-1]) else None
             current_bb_lower = bb_lower[-1] if len(bb_lower) > 0 and not pd.isna(bb_lower[-1]) else None
 
-            # Volume moving average (20-day)
-            volume_ma = talib.SMA(volume_data, timeperiod=20)
-            current_volume_ma = volume_ma[-1] if len(volume_ma) > 0 and not pd.isna(volume_ma[-1]) else None
+            # Volume moving average (20-day) - only if volume data is available
+            current_volume_ma = None
+            if volume_data is not None:
+                volume_ma = talib.SMA(volume_data, timeperiod=20)
+                current_volume_ma = volume_ma[-1] if len(volume_ma) > 0 and not pd.isna(volume_ma[-1]) else None
 
             # Momentum metrics
             current_price = df['close'].iloc[-1]
@@ -242,9 +261,10 @@ class TechnicalIndicatorsCalculator:
                 return False
 
             # Insert with ON CONFLICT DO UPDATE (use __table__ for Core-style insert)
+            # Note: stock_prices has unique constraint on (ticker, time, interval)
             stmt = pg_insert(StockPrice.__table__).values(records)
             stmt = stmt.on_conflict_do_update(
-                index_elements=['time', 'ticker'],
+                index_elements=['ticker', 'time', 'interval'],
                 set_={
                     'open': stmt.excluded.open,
                     'high': stmt.excluded.high,
@@ -260,6 +280,7 @@ class TechnicalIndicatorsCalculator:
 
         except Exception as e:
             logger.error(f"{ticker}: Error storing price data: {e}", exc_info=True)
+            await session.rollback()
             return False
 
     async def store_indicators(
@@ -311,7 +332,36 @@ class TechnicalIndicatorsCalculator:
 
         except Exception as e:
             logger.error(f"{ticker}: Error storing indicators: {e}", exc_info=True)
+            await session.rollback()
             return False
+
+    async def get_prices_from_db(self, ticker: str, session: AsyncSession, days: int = 1150) -> pd.DataFrame:
+        """Fetch price data from stock_prices table.
+
+        Args:
+            ticker: Stock ticker symbol.
+            session: Database session.
+            days: Number of days of data to fetch.
+
+        Returns:
+            DataFrame with OHLCV data.
+        """
+        query = text("""
+            SELECT time as date, open, high, low, close, volume
+            FROM stock_prices
+            WHERE ticker = :ticker
+              AND interval = '1day'
+            ORDER BY time DESC
+            LIMIT :days
+        """)
+        result = await session.execute(query, {"ticker": ticker, "days": days})
+        rows = result.fetchall()
+
+        if not rows:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(rows, columns=['date', 'open', 'high', 'low', 'close', 'volume'])
+        return df
 
     async def process_ticker(self, ticker: str, session: AsyncSession) -> bool:
         """Process a single ticker: fetch prices, calculate indicators, store data.
@@ -324,22 +374,12 @@ class TechnicalIndicatorsCalculator:
             True if successful.
         """
         try:
-            # Fetch 3 years of price data (756 trading days)
-            prices = self.polygon_client.get_daily_prices(ticker, days=1150)
+            # Read prices from database (already backfilled with 10 years of data)
+            df = await self.get_prices_from_db(ticker, session, days=1150)
 
-            if not prices or len(prices) < 20:
-                logger.warning(f"{ticker}: Insufficient price data")
+            if df.empty or len(df) < 20:
+                logger.warning(f"{ticker}: Insufficient price data in database")
                 return False
-
-            # Convert to DataFrame
-            df = pd.DataFrame(prices)
-            df.rename(columns={
-                'o': 'open',
-                'h': 'high',
-                'l': 'low',
-                'c': 'close',
-                'v': 'volume'
-            }, inplace=True)
 
             # Calculate technical indicators
             indicators = self.calculate_technical_indicators(df)
@@ -348,15 +388,18 @@ class TechnicalIndicatorsCalculator:
                 logger.warning(f"{ticker}: No indicators calculated")
                 return False
 
-            # Store price data
-            await self.store_price_data(ticker, prices, session)
+            # Note: Skip storing price data - we already have 15M+ rows from historical_price_backfill
+            # The technical indicators calculator only needs to read prices and store indicators
 
             # Store indicators
-            await self.store_indicators(ticker, indicators, session)
+            success = await self.store_indicators(ticker, indicators, session)
+            if not success:
+                logger.warning(f"{ticker}: Failed to store indicators")
+                return False
 
             await session.commit()
 
-            logger.info(f"{ticker}: Successfully processed {len(prices)} days, {len(indicators)} indicators")
+            logger.info(f"{ticker}: Successfully processed {len(df)} days, {len(indicators)} indicators")
             return True
 
         except Exception as e:
@@ -441,9 +484,6 @@ class TechnicalIndicatorsCalculator:
         logger.info(f"Success: {self.success_count}")
         logger.info(f"Errors: {self.error_count}")
         logger.info(f"Success Rate: {(self.success_count/self.processed_count*100):.1f}%")
-
-        # Close clients
-        self.polygon_client.close()
 
 
 def main():

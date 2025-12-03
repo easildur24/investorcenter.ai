@@ -143,7 +143,7 @@ const PRESET_SCREENS = [
   },
 ];
 
-type SortField = 'symbol' | 'name' | 'market_cap' | 'price' | 'change_percent' | 'pe_ratio' | 'ic_score';
+type SortField = 'symbol' | 'name' | 'market_cap' | 'price' | 'change_percent' | 'pe_ratio' | 'dividend_yield' | 'revenue_growth' | 'ic_score';
 type SortDirection = 'asc' | 'desc';
 
 export default function ScreenerPage() {
@@ -410,6 +410,18 @@ export default function ScreenerPage() {
                         </th>
                         <th
                           className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
+                          onClick={() => handleSort('dividend_yield')}
+                        >
+                          Div Yield <SortIcon field="dividend_yield" />
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
+                          onClick={() => handleSort('revenue_growth')}
+                        >
+                          Rev Growth <SortIcon field="revenue_growth" />
+                        </th>
+                        <th
+                          className="px-4 py-3 text-right text-xs font-medium text-ic-text-muted uppercase tracking-wider cursor-pointer hover:bg-ic-bg-tertiary transition-colors"
                           onClick={() => handleSort('ic_score')}
                         >
                           IC Score <SortIcon field="ic_score" />
@@ -446,6 +458,15 @@ export default function ScreenerPage() {
                           </td>
                           <td className="px-4 py-3 text-right text-ic-text-primary">
                             {safeToFixed(stock.pe_ratio, 1)}
+                          </td>
+                          <td className="px-4 py-3 text-right text-ic-text-primary">
+                            {stock.dividend_yield ? `${safeToFixed(stock.dividend_yield, 2)}%` : '—'}
+                          </td>
+                          <td className={cn(
+                            'px-4 py-3 text-right',
+                            stock.revenue_growth >= 0 ? 'text-ic-positive' : 'text-ic-negative'
+                          )}>
+                            {stock.revenue_growth ? `${stock.revenue_growth >= 0 ? '+' : ''}${safeToFixed(stock.revenue_growth, 1)}%` : '—'}
                           </td>
                           <td className="px-4 py-3 text-right">
                             <span className={cn(

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { useRealTimePrice } from '@/lib/hooks/useRealTimePrice';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
 
@@ -14,6 +15,7 @@ interface RealTimePriceHeaderProps {
       sector: string;
       assetType: string;
       isCrypto: boolean;
+      logoUrl?: string;
     };
     price: {
       price: string;
@@ -142,25 +144,47 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
 
   return (
     <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold text-ic-text-primary">
-          {initialData.stock.name} ({initialData.stock.symbol})
-        </h1>
-        <div className="flex items-center space-x-2 text-ic-text-muted">
-          <span>{initialData.stock.exchange}</span>
-          {initialData.stock.sector && (
-            <>
-              <span>•</span>
-              <span>{initialData.stock.sector}</span>
-            </>
-          )}
-          {getMarketStatusDisplay()}
-          {initialData.stock.isCrypto && (
-            <>
-              <span>•</span>
-              <span className="text-ic-blue font-medium">Crypto</span>
-            </>
-          )}
+      <div className="flex items-center gap-4">
+        {/* Company Logo */}
+        {initialData.stock.logoUrl ? (
+          <div className="w-12 h-12 relative flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg p-1">
+            <Image
+              src={`/api/v1/logos/${initialData.stock.symbol}`}
+              alt={`${initialData.stock.name} logo`}
+              fill
+              className="object-contain"
+              unoptimized
+            />
+          </div>
+        ) : (
+          <div className="w-12 h-12 flex-shrink-0 bg-gradient-to-br from-blue-500 to-blue-700 rounded-lg flex items-center justify-center">
+            <span className="text-lg font-bold text-white">
+              {initialData.stock.symbol.length <= 2
+                ? initialData.stock.symbol
+                : initialData.stock.symbol.charAt(0)}
+            </span>
+          </div>
+        )}
+        <div>
+          <h1 className="text-3xl font-bold text-ic-text-primary">
+            {initialData.stock.name} ({initialData.stock.symbol})
+          </h1>
+          <div className="flex items-center space-x-2 text-ic-text-muted">
+            <span>{initialData.stock.exchange}</span>
+            {initialData.stock.sector && (
+              <>
+                <span>•</span>
+                <span>{initialData.stock.sector}</span>
+              </>
+            )}
+            {getMarketStatusDisplay()}
+            {initialData.stock.isCrypto && (
+              <>
+                <span>•</span>
+                <span className="text-ic-blue font-medium">Crypto</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
       

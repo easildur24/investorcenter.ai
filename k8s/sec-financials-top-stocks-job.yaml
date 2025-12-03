@@ -1,0 +1,92 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-financials-top-stocks
+  namespace: investorcenter
+  labels:
+    app: ic-score-sec-financials
+    component: ic-score-pipeline
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 14400  # 4 hours
+  ttlSecondsAfterFinished: 86400
+  template:
+    metadata:
+      labels:
+        app: ic-score-sec-financials
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: sec-financials-ingestion
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.1.0-financials
+        imagePullPolicy: Always
+        command: ["python"]
+        # Process top 200 stocks by market cap that are missing financials
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.sec_financials_ingestion import SECFinancialsIngestion
+
+          # Top stocks missing SEC financials (by market cap)
+          tickers = [
+              'NVDA', 'MSFT', 'META', 'TSLA', 'LLY', 'WMT', 'JPM', 'V', 'ORCL', 'JNJ',
+              'MA', 'XOM', 'NFLX', 'PLTR', 'PG', 'KO', 'IBM', 'MS', 'WFC', 'MU',
+              'MRK', 'PM', 'RTX', 'TMUS', 'MCD', 'TMO', 'RY', 'SHOP', 'PEP', 'ISRG',
+              'LRCX', 'INTC', 'LIN', 'T', 'UBER', 'QCOM', 'NEE', 'INTU', 'VZ', 'TJX',
+              'NOW', 'SCHW', 'KLAC', 'TXN', 'SPGI', 'PFE', 'TD', 'WELL', 'SYK', 'UNP'
+          ]
+
+          async def main():
+              for ticker in tickers:
+                  try:
+                      print(f"Processing {ticker}...")
+                      ingestion = SECFinancialsIngestion()
+                      await ingestion.run(ticker=ticker)
+                  except Exception as e:
+                      print(f"Error processing {ticker}: {e}")
+              print("Done processing all tickers!")
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}

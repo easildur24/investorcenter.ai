@@ -126,6 +126,25 @@ class ValuationRatiosCalculator:
             logger.error(f"{ticker}: Error fetching Polygon price: {e}")
             return None
 
+    async def get_ticker_market_cap(self, ticker: str) -> Optional[float]:
+        """Get market cap from tickers table.
+
+        Args:
+            ticker: Stock ticker symbol.
+
+        Returns:
+            Market cap value, or None if not found.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT market_cap
+                FROM tickers
+                WHERE symbol = :ticker AND market_cap IS NOT NULL AND market_cap > 0
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+            return float(row[0]) if row else None
+
     async def get_ttm_financials(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Get latest TTM financial data for a stock.
 
@@ -174,7 +193,8 @@ class ValuationRatiosCalculator:
         self,
         ticker: str,
         price_data: Dict[str, Any],
-        ttm_data: Dict[str, Any]
+        ttm_data: Dict[str, Any],
+        tickers_market_cap: Optional[float] = None
     ) -> Optional[Dict[str, Any]]:
         """Calculate valuation ratios using Polygon price and TTM financials.
 
@@ -182,6 +202,7 @@ class ValuationRatiosCalculator:
             ticker: Stock ticker symbol.
             price_data: Latest stock price data from Polygon.
             ttm_data: TTM financial data.
+            tickers_market_cap: Market cap from tickers table (fallback for shares calculation).
 
         Returns:
             Dictionary of calculated ratios, or None if insufficient data.
@@ -201,16 +222,31 @@ class ValuationRatiosCalculator:
             }
 
             # Calculate market cap
+            # If shares_outstanding is missing, use tickers_market_cap and derive shares
             if shares_outstanding and shares_outstanding > 0:
                 market_cap = int(stock_price * shares_outstanding)
                 ratios['ttm_market_cap'] = market_cap
+            elif tickers_market_cap and tickers_market_cap > 0 and stock_price > 0:
+                # Fallback: use market cap from tickers table
+                market_cap = int(tickers_market_cap)
+                ratios['ttm_market_cap'] = market_cap
+                # Calculate implied shares from market cap
+                shares_outstanding = int(tickers_market_cap / stock_price)
+                logger.info(f"{ticker}: Using market cap from tickers table, derived shares: {shares_outstanding:,}")
             else:
-                logger.warning(f"{ticker}: No shares outstanding data")
+                logger.warning(f"{ticker}: No shares outstanding or market cap data")
                 market_cap = None
                 ratios['ttm_market_cap'] = None
 
             # P/E Ratio (using TTM EPS)
             eps = ttm_data.get('eps_diluted')
+            net_income = ttm_data.get('net_income')
+
+            # Fallback: Calculate EPS from net_income / shares if EPS is missing
+            if (eps is None or eps == 0) and net_income and shares_outstanding and shares_outstanding > 0:
+                eps = net_income / shares_outstanding
+                logger.info(f"{ticker}: Calculated EPS from net_income/shares: {eps:.2f}")
+
             if eps and eps > 0:
                 pe_ratio = stock_price / eps
                 ratios['ttm_pe_ratio'] = round(pe_ratio, 2)
@@ -322,8 +358,11 @@ class ValuationRatiosCalculator:
                 logger.warning(f"{ticker}: No price data from Polygon")
                 return False
 
+            # Get market cap from tickers table (fallback for shares calculation)
+            tickers_market_cap = await self.get_ticker_market_cap(ticker)
+
             # Calculate ratios
-            ratios = self.calculate_ratios(ticker, price_data, ttm_data)
+            ratios = self.calculate_ratios(ticker, price_data, ttm_data, tickers_market_cap)
             if not ratios:
                 return False
 
@@ -331,12 +370,13 @@ class ValuationRatiosCalculator:
             success = await self.store_ratios(ratios)
 
             if success:
+                market_cap_str = f"${ratios.get('ttm_market_cap'):,}" if ratios.get('ttm_market_cap') else "N/A"
                 logger.info(
                     f"{ticker}: Updated ratios - "
                     f"P/E: {ratios.get('ttm_pe_ratio')}, "
                     f"P/B: {ratios.get('ttm_pb_ratio')}, "
                     f"P/S: {ratios.get('ttm_ps_ratio')}, "
-                    f"Market Cap: ${ratios.get('ttm_market_cap'):,} "
+                    f"Market Cap: {market_cap_str} "
                     f"Price: ${ratios['stock_price']}"
                 )
 

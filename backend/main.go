@@ -217,6 +217,9 @@ func main() {
 			screener.GET("/stocks", handlers.GetScreenerStocks)
 		}
 
+		// Logo proxy endpoint (proxies logos from Polygon.io with API key)
+		v1.GET("/logos/:symbol", handlers.ProxyLogo)
+
 		// User endpoints (deprecated - use /auth routes instead)
 		users := v1.Group("/users")
 		{

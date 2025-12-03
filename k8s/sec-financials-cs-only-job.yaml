@@ -1,0 +1,97 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-financials-cs-only
+  namespace: investorcenter
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 43200  # 12 hours
+  ttlSecondsAfterFinished: 21600
+  template:
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: sec-financials-ingestion
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.1.0-financials
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.sec_financials_ingestion import SECFinancialsIngestion
+
+          # High-priority large-cap US stocks missing financials
+          tickers = [
+              'MCD', 'LOW', 'PGR', 'PANW', 'VRTX', 'KKR', 'MCK', 'PH', 'LMT',
+              'MELI', 'SO', 'MO', 'SBUX', 'NEM', 'NKE', 'TT', 'MMM', 'MMC',
+              'ICE', 'WM', 'PNC', 'USB', 'TFC', 'ADP', 'GILD', 'MDLZ', 'SHW',
+              'ZTS', 'CME', 'REGN', 'KLAC', 'CDNS', 'SNPS', 'ADSK', 'MAR',
+              'APH', 'AFL', 'MSI', 'ORLY', 'AZO', 'EOG', 'CL', 'SLB', 'PSA',
+              'HUM', 'CARR', 'WELL', 'DLR', 'SPG', 'O'
+          ]
+
+          async def main():
+              pipeline = SECFinancialsIngestion()
+              for ticker in tickers:
+                  print(f"\n=== Processing {ticker} ===")
+                  try:
+                      stocks = await pipeline.get_stocks_to_process(ticker=ticker)
+                      if stocks:
+                          await pipeline.process_stocks(stocks, show_progress=False)
+                      else:
+                          print(f"{ticker}: No CIK found")
+                  except Exception as e:
+                      print(f"{ticker}: Error - {e}")
+
+              print(f"\n=== Complete ===")
+              print(f"Success: {pipeline.success_count}")
+              print(f"Errors: {pipeline.error_count}")
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "2Gi"
+            cpu: "1000m"
+          limits:
+            memory: "4Gi"
+            cpu: "2000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}

@@ -62,10 +62,10 @@ func GetScreenerStocks(c *gin.Context) {
 func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 	params := models.ScreenerParams{
 		Page:      1,
-		Limit:     50,
+		Limit:     20000, // High default for client-side filtering
 		Sort:      "market_cap",
 		Order:     "desc",
-		AssetType: "stock",
+		AssetType: "CS",
 	}
 
 	// Page
@@ -73,10 +73,10 @@ func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 		params.Page = page
 	}
 
-	// Limit (max 100)
-	if limit, err := strconv.Atoi(c.DefaultQuery("limit", "50")); err == nil && limit > 0 {
-		if limit > 100 {
-			limit = 100
+	// Limit (max 20000 for client-side filtering screener)
+	if limit, err := strconv.Atoi(c.DefaultQuery("limit", "20000")); err == nil && limit > 0 {
+		if limit > 20000 {
+			limit = 20000
 		}
 		params.Limit = limit
 	}

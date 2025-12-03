@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sic-code-backfill
+  namespace: investorcenter
+spec:
+  backoffLimit: 1
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: sic-code-fetcher
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+        imagePullPolicy: Always
+        command: ["python", "/app/scripts/fetch_sic_codes.py", "--limit", "2500"]
+        env:
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        - name: DB_HOST
+          value: "postgres-simple-service.investorcenter.svc.cluster.local"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"

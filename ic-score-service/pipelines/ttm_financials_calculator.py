@@ -399,6 +399,19 @@ class TTMFinancialsCalculator:
         short_term_debt = most_recent_q.get('short_term_debt')
         long_term_debt = most_recent_q.get('long_term_debt')
 
+        # EPS SANITY CHECK: Detect stock split issues where EPS sign doesn't match net_income sign
+        # This happens when historical EPS values weren't adjusted for stock splits
+        if not needs_eps_fallback and net_income is not None and eps_diluted is not None:
+            # If net_income and EPS have opposite signs, the calculation is wrong (likely stock split)
+            if (net_income > 0 and eps_diluted < 0) or (net_income < 0 and eps_diluted > 0):
+                logger.warning(
+                    f"{ticker}: EPS sign mismatch detected (net_income={net_income:,}, eps={eps_diluted:.4f}) "
+                    f"- likely stock split issue, will use fallback calculation"
+                )
+                needs_eps_fallback = True
+                eps_basic = None
+                eps_diluted = None
+
         # EPS FALLBACK: Calculate from net_income / shares_outstanding if needed
         if needs_eps_fallback and net_income is not None and shares_outstanding is not None and shares_outstanding > 0:
             calculated_eps = round(net_income / shares_outstanding, 4)

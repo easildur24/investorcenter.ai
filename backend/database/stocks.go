@@ -21,6 +21,7 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
 		       COALESCE(asset_type, 'stock') as asset_type,
+		       COALESCE(logo_url, '') as logo_url,
 		       created_at, updated_at
 		FROM tickers
 		WHERE UPPER(symbol) = UPPER($1)

@@ -213,10 +213,11 @@ class HistoricalPriceBackfill:
             return 0
 
         # Use ON CONFLICT to handle duplicates
+        # Note: unique constraint is on (ticker, time, interval)
         query = """
             INSERT INTO stock_prices (time, ticker, open, high, low, close, volume, vwap, interval)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (time, ticker) DO UPDATE SET
+            ON CONFLICT (ticker, time, interval) DO UPDATE SET
                 open = EXCLUDED.open,
                 high = EXCLUDED.high,
                 low = EXCLUDED.low,

@@ -8,59 +8,33 @@ import (
 )
 
 // ValidScreenerSortColumns defines valid columns for sorting in the screener
+// Uses screener_data materialized view for fast queries
 var ValidScreenerSortColumns = map[string]string{
-	"symbol":         "t.symbol",
-	"name":           "t.name",
-	"market_cap":     "t.market_cap",
-	"price":          "lp.price",
-	"pe_ratio":       "lv.ttm_pe_ratio",
-	"pb_ratio":       "lv.ttm_pb_ratio",
-	"ps_ratio":       "lv.ttm_ps_ratio",
-	"roe":            "lm.roe",
-	"revenue_growth": "lm.revenue_growth_yoy",
-	"dividend_yield": "lm.dividend_yield",
-	"beta":           "lm.beta",
-	"ic_score":       "lic.ic_score",
+	"symbol":         "symbol",
+	"name":           "name",
+	"market_cap":     "market_cap",
+	"price":          "current_price",
+	"pe_ratio":       "pe_ratio",
+	"pb_ratio":       "price_to_book",
+	"ps_ratio":       "price_to_sales",
+	"roe":            "roe",
+	"revenue_growth": "revenue_growth",
+	"dividend_yield": "dividend_yield",
+	"beta":           "roe",        // placeholder - beta not in view
+	"ic_score":       "market_cap", // placeholder - ic_score not in view
 }
 
 // GetScreenerStocks retrieves stocks for the screener with filtering and pagination
+// Uses screener_data materialized view for fast queries (<100ms vs 2-3 minutes)
 func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, int, error) {
 	if DB == nil {
 		return nil, 0, fmt.Errorf("database not connected")
 	}
 
-	// Build the base query with CTEs
-	baseQuery := `
-		WITH latest_prices AS (
-			SELECT DISTINCT ON (ticker)
-				ticker, close as price
-			FROM stock_prices
-			ORDER BY ticker, time DESC
-		),
-		latest_valuation AS (
-			SELECT DISTINCT ON (ticker)
-				ticker, ttm_pe_ratio, ttm_pb_ratio, ttm_ps_ratio
-			FROM valuation_ratios
-			ORDER BY ticker, calculation_date DESC
-		),
-		latest_metrics AS (
-			SELECT DISTINCT ON (ticker)
-				ticker, revenue_growth_yoy, dividend_yield, roe, beta
-			FROM fundamental_metrics_extended
-			ORDER BY ticker, calculation_date DESC
-		),
-		latest_ic_scores AS (
-			SELECT DISTINCT ON (ticker)
-				ticker, overall_score as ic_score
-			FROM ic_scores
-			ORDER BY ticker, date DESC
-		)
-	`
-
-	// Build WHERE conditions
-	conditions := []string{"t.asset_type = $1", "t.active = true"}
-	args := []interface{}{params.AssetType}
-	argIndex := 2
+	// Build WHERE conditions using screener_data materialized view
+	conditions := []string{}
+	args := []interface{}{}
+	argIndex := 1
 
 	// Sector filter
 	if len(params.Sectors) > 0 {
@@ -70,75 +44,79 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 			args = append(args, sector)
 			argIndex++
 		}
-		conditions = append(conditions, fmt.Sprintf("t.sector IN (%s)", strings.Join(placeholders, ", ")))
+		conditions = append(conditions, fmt.Sprintf("sector IN (%s)", strings.Join(placeholders, ", ")))
 	}
 
 	// Market cap filters
 	if params.MarketCapMin != nil {
-		conditions = append(conditions, fmt.Sprintf("t.market_cap >= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("market_cap >= $%d", argIndex))
 		args = append(args, *params.MarketCapMin)
 		argIndex++
 	}
 	if params.MarketCapMax != nil {
-		conditions = append(conditions, fmt.Sprintf("t.market_cap <= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("market_cap <= $%d", argIndex))
 		args = append(args, *params.MarketCapMax)
 		argIndex++
 	}
 
 	// P/E ratio filters
 	if params.PEMin != nil {
-		conditions = append(conditions, fmt.Sprintf("lv.ttm_pe_ratio >= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("pe_ratio >= $%d", argIndex))
 		args = append(args, *params.PEMin)
 		argIndex++
 	}
 	if params.PEMax != nil {
-		conditions = append(conditions, fmt.Sprintf("lv.ttm_pe_ratio <= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("pe_ratio <= $%d", argIndex))
 		args = append(args, *params.PEMax)
 		argIndex++
 	}
 
 	// Dividend yield filters
 	if params.DividendYieldMin != nil {
-		conditions = append(conditions, fmt.Sprintf("lm.dividend_yield >= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("dividend_yield >= $%d", argIndex))
 		args = append(args, *params.DividendYieldMin)
 		argIndex++
 	}
 	if params.DividendYieldMax != nil {
-		conditions = append(conditions, fmt.Sprintf("lm.dividend_yield <= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("dividend_yield <= $%d", argIndex))
 		args = append(args, *params.DividendYieldMax)
 		argIndex++
 	}
 
 	// Revenue growth filters
 	if params.RevenueGrowthMin != nil {
-		conditions = append(conditions, fmt.Sprintf("lm.revenue_growth_yoy >= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("revenue_growth >= $%d", argIndex))
 		args = append(args, *params.RevenueGrowthMin)
 		argIndex++
 	}
 	if params.RevenueGrowthMax != nil {
-		conditions = append(conditions, fmt.Sprintf("lm.revenue_growth_yoy <= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("revenue_growth <= $%d", argIndex))
 		args = append(args, *params.RevenueGrowthMax)
 		argIndex++
 	}
 
 	// IC Score filters
 	if params.ICScoreMin != nil {
-		conditions = append(conditions, fmt.Sprintf("lic.ic_score >= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("ic_score >= $%d", argIndex))
 		args = append(args, *params.ICScoreMin)
 		argIndex++
 	}
 	if params.ICScoreMax != nil {
-		conditions = append(conditions, fmt.Sprintf("lic.ic_score <= $%d", argIndex))
+		conditions = append(conditions, fmt.Sprintf("ic_score <= $%d", argIndex))
 		args = append(args, *params.ICScoreMax)
 		argIndex++
 	}
 
-	whereClause := strings.Join(conditions, " AND ")
+	// Build WHERE clause
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
 
 	// Determine sort column
 	sortColumn, ok := ValidScreenerSortColumns[params.Sort]
 	if !ok {
-		sortColumn = "t.market_cap"
+		sortColumn = "market_cap"
 	}
 
 	// Validate order
@@ -147,17 +125,8 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 		order = "ASC"
 	}
 
-	// Count query
-	countQuery := fmt.Sprintf(`
-		%s
-		SELECT COUNT(*)
-		FROM tickers t
-		LEFT JOIN latest_prices lp ON t.symbol = lp.ticker
-		LEFT JOIN latest_valuation lv ON t.symbol = lv.ticker
-		LEFT JOIN latest_metrics lm ON t.symbol = lm.ticker
-		LEFT JOIN latest_ic_scores lic ON t.symbol = lic.ticker
-		WHERE %s
-	`, baseQuery, whereClause)
+	// Count query - simple single table scan
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM screener_data %s", whereClause)
 
 	var total int
 	err := DB.Get(&total, countQuery, args...)
@@ -168,33 +137,29 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 	// Calculate offset
 	offset := (params.Page - 1) * params.Limit
 
-	// Data query
+	// Data query - simple single table scan with pagination
 	dataQuery := fmt.Sprintf(`
-		%s
 		SELECT
-			t.symbol,
-			t.name,
-			COALESCE(t.sector, '') as sector,
-			COALESCE(t.industry, '') as industry,
-			t.market_cap,
-			lp.price,
-			lv.ttm_pe_ratio as pe_ratio,
-			lv.ttm_pb_ratio as pb_ratio,
-			lv.ttm_ps_ratio as ps_ratio,
-			lm.roe,
-			lm.revenue_growth_yoy as revenue_growth,
-			lm.dividend_yield,
-			lm.beta,
-			lic.ic_score
-		FROM tickers t
-		LEFT JOIN latest_prices lp ON t.symbol = lp.ticker
-		LEFT JOIN latest_valuation lv ON t.symbol = lv.ticker
-		LEFT JOIN latest_metrics lm ON t.symbol = lm.ticker
-		LEFT JOIN latest_ic_scores lic ON t.symbol = lic.ticker
-		WHERE %s
+			symbol,
+			name,
+			sector,
+			industry,
+			market_cap,
+			current_price as price,
+			change_percent,
+			pe_ratio,
+			price_to_book as pb_ratio,
+			price_to_sales as ps_ratio,
+			roe,
+			revenue_growth,
+			dividend_yield,
+			0.0 as beta,
+			0.0 as ic_score
+		FROM screener_data
+		%s
 		ORDER BY %s %s NULLS LAST
 		LIMIT $%d OFFSET $%d
-	`, baseQuery, whereClause, sortColumn, order, argIndex, argIndex+1)
+	`, whereClause, sortColumn, order, argIndex, argIndex+1)
 
 	args = append(args, params.Limit, offset)
 
