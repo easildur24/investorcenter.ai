@@ -85,7 +85,7 @@ class DailyPriceUpdate:
         self.polygon.close()
 
     async def get_tickers(self, limit: Optional[int] = None) -> List[str]:
-        """Get all tickers from companies table.
+        """Get all tickers from tickers table (high-quality stocks + ETFs only).
 
         Args:
             limit: Limit number of tickers.
@@ -94,17 +94,20 @@ class DailyPriceUpdate:
             List of ticker symbols.
         """
         query = """
-            SELECT DISTINCT ticker
-            FROM companies
-            WHERE ticker IS NOT NULL AND is_active = true
-            ORDER BY ticker
+            SELECT DISTINCT symbol
+            FROM tickers
+            WHERE symbol IS NOT NULL
+              AND active = true
+              AND asset_type IN ('CS', 'ETF')
+              AND exchange IN ('XNAS', 'XNYS', 'XASE', 'ARCX', 'BATS')
+            ORDER BY symbol
         """
         if limit:
             query += f" LIMIT {limit}"
 
         async with self.pool.acquire() as conn:
             rows = await conn.fetch(query)
-            return [row['ticker'] for row in rows]
+            return [row['symbol'] for row in rows]
 
     def fetch_prices(self, ticker: str) -> Optional[List[dict]]:
         """Fetch recent prices from Polygon.
@@ -169,7 +172,7 @@ class DailyPriceUpdate:
         query = """
             INSERT INTO stock_prices (time, ticker, open, high, low, close, volume, vwap, interval)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (time, ticker) DO UPDATE SET
+            ON CONFLICT (ticker, time, interval) DO UPDATE SET
                 open = EXCLUDED.open,
                 high = EXCLUDED.high,
                 low = EXCLUDED.low,

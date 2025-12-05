@@ -1,16 +1,15 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: ic-score-insider-trades
+  name: reddit-ai-processor
   namespace: investorcenter
   labels:
-    app: ic-score-insider-trades
-    component: ic-score-pipeline
-    provider: sec
-    phase: phase-3
+    app: reddit-ai-processor
+    component: social-sentiment
+    version: v2
 spec:
-  # Run hourly during market hours on weekdays (9am-4pm ET = 2pm-9pm UTC)
-  schedule: "0 14-21 * * 1-5"
+  # Run every hour (same frequency as collector)
+  schedule: "30 * * * *"
 
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
@@ -19,33 +18,35 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        app: ic-score-insider-trades
-        component: ic-score-pipeline
-        provider: sec
-        phase: phase-3
+        app: reddit-ai-processor
+        component: social-sentiment
+        version: v2
     spec:
       backoffLimit: 2
-      activeDeadlineSeconds: 3600  # 1 hour timeout
-      ttlSecondsAfterFinished: 7200
+      activeDeadlineSeconds: 1800  # 30 minute timeout
+      ttlSecondsAfterFinished: 3600
 
       template:
         metadata:
           labels:
-            app: ic-score-insider-trades
-            component: ic-score-pipeline
+            app: reddit-ai-processor
+            component: social-sentiment
         spec:
           restartPolicy: OnFailure
 
           containers:
-          - name: insider-trades-ingestion
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.0.0-unified
+          - name: ai-processor
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-ai-processor:latest
             imagePullPolicy: Always
 
-            command: ["python"]
             args:
-            - "/app/pipelines/sec_insider_trades_ingestion.py"
-            - "--hours"
-            - "24"
+            - "--process-all"
+            - "--batch-size"
+            - "5"
+            - "--min-upvotes"
+            - "1"
+            - "--min-comments"
+            - "1"
 
             env:
             # Database connection
@@ -68,6 +69,13 @@ spec:
                   name: postgres-secret
                   key: password
 
+            # Google API key for Gemini
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-api-secret
+                  key: api-key
+
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: PYTHONPATH
@@ -75,21 +83,17 @@ spec:
 
             resources:
               requests:
-                memory: "512Mi"
-                cpu: "250m"
+                memory: "256Mi"
+                cpu: "100m"
               limits:
-                memory: "1Gi"
+                memory: "512Mi"
                 cpu: "500m"
 
             volumeMounts:
-            - name: logs
-              mountPath: /app/logs
             - name: tmp
               mountPath: /tmp
 
           volumes:
-          - name: logs
-            emptyDir: {}
           - name: tmp
             emptyDir: {}
 

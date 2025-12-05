@@ -135,7 +135,7 @@ class RiskMetricsCalculator:
                 FROM tickers
                 WHERE symbol NOT LIKE '%-%'
                   AND active = true
-                  AND asset_type = 'stock'
+                  AND asset_type IN ('CS', 'ETF', 'stock')
                 ORDER BY symbol
                 LIMIT :limit
             """)

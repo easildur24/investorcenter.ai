@@ -186,9 +186,9 @@ func GetICScores(c *gin.Context) {
 		totalCount = 0
 	}
 
-	// Get total stocks count for context
+	// Get total tickers count for context
 	var totalStocks int
-	database.DB.Get(&totalStocks, "SELECT COUNT(*) FROM stocks")
+	database.DB.Get(&totalStocks, "SELECT COUNT(*) FROM tickers")
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": scores,

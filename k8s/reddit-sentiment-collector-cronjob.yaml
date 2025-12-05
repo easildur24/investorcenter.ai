@@ -1,0 +1,137 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reddit-sentiment-collector
+  namespace: investorcenter
+  labels:
+    app: reddit-sentiment-collector
+    component: social-sentiment
+    source: reddit
+spec:
+  # Run every hour for fresher sentiment data
+  schedule: "0 * * * *"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: reddit-sentiment-collector
+        component: social-sentiment
+        source: reddit
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 3600  # 60 minute timeout (increased for more data)
+      ttlSecondsAfterFinished: 7200
+
+      template:
+        metadata:
+          labels:
+            app: reddit-sentiment-collector
+            component: social-sentiment
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: reddit-collector
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-collector:latest
+            imagePullPolicy: Always
+
+            # Expanded coverage: 30 subreddits, 1000 posts limit, 14 day lookback
+            args:
+            - "--subreddits"
+            # Core trading/investing (8 original)
+            - "wallstreetbets"
+            - "stocks"
+            - "options"
+            - "investing"
+            - "Daytrading"
+            - "StockMarket"
+            - "SecurityAnalysis"
+            - "ValueInvesting"
+            # Additional trading (8)
+            - "pennystocks"
+            - "thetagang"
+            - "smallstreetbets"
+            - "SPACs"
+            - "weedstocks"
+            - "RobinHood"
+            - "Superstonk"
+            - "ETFs"
+            # Stock-specific (3)
+            - "NVDA_Stock"
+            - "AMD_Stock"
+            - "intel"
+            # Long-term investing (5)
+            - "dividends"
+            - "Bogleheads"
+            - "financialindependence"
+            - "fatFIRE"
+            - "personalfinance"
+            # Finance/Economics (4)
+            - "FluentInFinance"
+            - "FinancialPlanning"
+            - "economy"
+            - "economics"
+            # Crypto (2)
+            - "CryptoCurrency"
+            - "Bitcoin"
+            - "--limit"
+            - "1000"
+            - "--sort"
+            - "new"
+            - "--min-score"
+            - "1"
+            - "--max-age"
+            - "14"
+            - "--prune"
+            - "60"
+
+            env:
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "200m"
+              limits:
+                memory: "1Gi"
+                cpu: "1000m"
+
+            volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

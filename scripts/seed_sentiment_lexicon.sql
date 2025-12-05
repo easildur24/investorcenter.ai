@@ -36,6 +36,23 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('printing', 'bullish', 1.20, 'slang'),
 ('money printer', 'bullish', 1.10, 'slang'),
 ('brrr', 'bullish', 1.00, 'slang'),
+('LFG', 'bullish', 1.30, 'slang'),
+('lets go', 'bullish', 1.00, 'slang'),
+('wagmi', 'bullish', 1.20, 'slang'),
+('we like the stock', 'bullish', 1.30, 'slang'),
+('send it', 'bullish', 1.20, 'slang'),
+('all in', 'bullish', 1.30, 'slang'),
+('balls deep', 'bullish', 1.30, 'slang'),
+('degen', 'bullish', 0.80, 'slang'),
+('degenerate', 'bullish', 0.80, 'slang'),
+('hopium', 'bullish', 0.90, 'slang'),
+('gigachad', 'bullish', 1.10, 'slang'),
+('chad', 'bullish', 0.90, 'slang'),
+('based', 'bullish', 0.90, 'slang'),
+('massive gains', 'bullish', 1.40, 'slang'),
+('huge gains', 'bullish', 1.30, 'slang'),
+('moon mission', 'bullish', 1.40, 'slang'),
+('rocket ship', 'bullish', 1.30, 'slang'),
 
 -- Options terminology
 ('calls', 'bullish', 1.00, 'options'),
@@ -51,6 +68,11 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('accumulate', 'bullish', 1.00, 'action'),
 ('accumulating', 'bullish', 1.00, 'action'),
 ('adding', 'bullish', 0.90, 'action'),
+('loading', 'bullish', 1.00, 'action'),
+('loaded', 'bullish', 1.00, 'action'),
+('averaging down', 'bullish', 0.90, 'action'),
+('DCA', 'bullish', 0.90, 'action'),
+('dollar cost averaging', 'bullish', 0.90, 'action'),
 
 -- Position terms
 ('long', 'bullish', 1.00, 'position'),
@@ -65,6 +87,15 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('upside', 'bullish', 1.00, 'analysis'),
 ('catalyst', 'bullish', 1.00, 'analysis'),
 ('bullish divergence', 'bullish', 1.30, 'analysis'),
+('bear trap', 'bullish', 1.30, 'analysis'),
+('ATH', 'bullish', 1.10, 'analysis'),
+('all time high', 'bullish', 1.10, 'analysis'),
+('new highs', 'bullish', 1.10, 'analysis'),
+('floor', 'bullish', 0.90, 'analysis'),
+('higher lows', 'bullish', 1.00, 'analysis'),
+('higher highs', 'bullish', 1.00, 'analysis'),
+('gap up', 'bullish', 1.10, 'analysis'),
+('ripping', 'bullish', 1.20, 'analysis'),
 
 -- Direct sentiment
 ('bullish', 'bullish', 1.00, 'direct'),
@@ -81,7 +112,15 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('📈', 'bullish', 1.20, 'emoji'),
 ('🤑', 'bullish', 1.10, 'emoji'),
 ('🔥', 'bullish', 0.90, 'emoji'),
-('💪', 'bullish', 0.80, 'emoji')
+('💪', 'bullish', 0.80, 'emoji'),
+('🐂', 'bullish', 1.00, 'emoji'),
+('🦬', 'bullish', 1.00, 'emoji'),
+('💹', 'bullish', 1.00, 'emoji'),
+('🟢', 'bullish', 0.90, 'emoji'),
+('⬆️', 'bullish', 0.80, 'emoji'),
+('✅', 'bullish', 0.80, 'emoji'),
+('🏆', 'bullish', 0.90, 'emoji'),
+('👑', 'bullish', 0.90, 'emoji')
 
 ON CONFLICT (term) DO NOTHING;
 
@@ -123,6 +162,21 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('margin called', 'bearish', 1.40, 'slang'),
 ('liquidated', 'bearish', 1.40, 'slang'),
 ('blown up', 'bearish', 1.30, 'slang'),
+('FUD', 'bearish', 1.20, 'slang'),
+('ngmi', 'bearish', 1.20, 'slang'),
+('copium', 'bearish', 1.00, 'slang'),
+('clapped', 'bearish', 1.20, 'slang'),
+('blown account', 'bearish', 1.40, 'slang'),
+('getting wrecked', 'bearish', 1.30, 'slang'),
+('got wrecked', 'bearish', 1.30, 'slang'),
+('wiped out', 'bearish', 1.30, 'slang'),
+('capitulation', 'bearish', 1.30, 'slang'),
+('capitulate', 'bearish', 1.20, 'slang'),
+('blood in the streets', 'bearish', 1.40, 'slang'),
+('falling knife', 'bearish', 1.30, 'slang'),
+('catching a falling knife', 'bearish', 1.30, 'slang'),
+('knife catching', 'bearish', 1.20, 'slang'),
+('trap', 'bearish', 0.90, 'slang'),
 
 -- Action words
 ('sell', 'bearish', 0.80, 'action'),
@@ -148,6 +202,16 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('red flag', 'bearish', 1.20, 'analysis'),
 ('red flags', 'bearish', 1.20, 'analysis'),
 ('bearish divergence', 'bearish', 1.30, 'analysis'),
+('bull trap', 'bearish', 1.30, 'analysis'),
+('ATL', 'bearish', 1.10, 'analysis'),
+('all time low', 'bearish', 1.10, 'analysis'),
+('new lows', 'bearish', 1.10, 'analysis'),
+('ceiling', 'bearish', 0.90, 'analysis'),
+('lower lows', 'bearish', 1.00, 'analysis'),
+('lower highs', 'bearish', 1.00, 'analysis'),
+('gap down', 'bearish', 1.10, 'analysis'),
+('death cross', 'bearish', 1.30, 'analysis'),
+('head and shoulders', 'bearish', 1.10, 'analysis'),
 
 -- Direct sentiment
 ('bearish', 'bearish', 1.00, 'direct'),
@@ -162,7 +226,15 @@ INSERT INTO sentiment_lexicon (term, sentiment, weight, category) VALUES
 ('😭', 'bearish', 0.90, 'emoji'),
 ('🤡', 'bearish', 1.00, 'emoji'),
 ('🐻', 'bearish', 1.00, 'emoji'),
-('⚠️', 'bearish', 0.80, 'emoji')
+('⚠️', 'bearish', 0.80, 'emoji'),
+('🔴', 'bearish', 0.90, 'emoji'),
+('⬇️', 'bearish', 0.80, 'emoji'),
+('💀', 'bearish', 1.20, 'emoji'),
+('🪦', 'bearish', 1.30, 'emoji'),
+('❌', 'bearish', 0.90, 'emoji'),
+('🆘', 'bearish', 1.10, 'emoji'),
+('😱', 'bearish', 1.00, 'emoji'),
+('🥴', 'bearish', 0.80, 'emoji')
 
 ON CONFLICT (term) DO NOTHING;
 

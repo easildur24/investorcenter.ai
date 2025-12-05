@@ -680,9 +680,9 @@ class FundamentalMetricsCalculator:
         """
         async with self.db.session() as session:
             query = text("""
-                SELECT ticker, sector, industry, market_cap
-                FROM companies
-                WHERE ticker = :ticker
+                SELECT symbol as ticker, sector, industry, market_cap
+                FROM tickers
+                WHERE symbol = :ticker
             """)
 
             result = await session.execute(query, {"ticker": ticker})

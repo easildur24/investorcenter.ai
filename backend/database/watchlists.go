@@ -146,9 +146,9 @@ func DeleteWatchList(watchListID string, userID string) error {
 
 // AddTickerToWatchList adds a ticker to a watch list
 func AddTickerToWatchList(item *models.WatchListItem) error {
-	// Verify ticker exists in stocks table
+	// Verify ticker exists in tickers table
 	var exists bool
-	err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM stocks WHERE symbol = $1)", item.Symbol).Scan(&exists)
+	err := DB.QueryRow("SELECT EXISTS(SELECT 1 FROM tickers WHERE symbol = $1)", item.Symbol).Scan(&exists)
 	if err != nil {
 		return fmt.Errorf("failed to verify ticker: %w", err)
 	}
@@ -232,7 +232,7 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,
 			(rhd.avg_rank - rhd.rank_24h_ago) as reddit_rank_change
 		FROM watch_list_items wli
-		JOIN stocks s ON wli.symbol = s.symbol
+		JOIN tickers s ON wli.symbol = s.symbol
 		LEFT JOIN LATERAL (
 			SELECT avg_rank, total_mentions, popularity_score, trend_direction, rank_24h_ago
 			FROM reddit_heatmap_daily

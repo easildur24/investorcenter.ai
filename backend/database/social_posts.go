@@ -546,7 +546,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 
 	// Get company name from stocks table
 	var companyName sql.NullString
-	DB.QueryRow("SELECT name FROM stocks WHERE symbol = $1", ticker).Scan(&companyName)
+	DB.QueryRow("SELECT name FROM tickers WHERE symbol = $1", ticker).Scan(&companyName)
 
 	// Get top subreddits
 	subredditQuery := `
@@ -758,7 +758,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 			) as mention_delta
 		FROM current_period c
 		LEFT JOIN previous_period p ON c.ticker = p.ticker
-		LEFT JOIN stocks s ON c.ticker = s.symbol
+		LEFT JOIN tickers s ON c.ticker = s.symbol
 		WHERE c.post_count >= 3
 		ORDER BY c.post_count DESC
 		LIMIT $1
