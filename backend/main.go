@@ -100,6 +100,7 @@ func main() {
 		markets := v1.Group("/markets")
 		{
 			markets.GET("/indices", handlers.GetMarketIndices)
+			markets.GET("/movers", handlers.GetMarketMovers)
 			markets.GET("/search", searchSecurities)
 		}
 
@@ -132,6 +133,18 @@ func main() {
 		{
 			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                // Get IC Score for a ticker
 			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory) // Get IC Score history
+			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)     // Get financial metrics from SEC filings (legacy)
+			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                // Get risk metrics (Beta, Alpha, Sharpe)
+			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)   // Get technical indicators
+
+			// Financial Statements endpoints (SEC EDGAR data)
+			financialsHandler := handlers.NewFinancialsHandler()
+			stocks.GET("/:ticker/financials/all", financialsHandler.GetAllFinancials)           // Get all financial statements summary
+			stocks.GET("/:ticker/financials/income", financialsHandler.GetIncomeStatements)     // Get income statements
+			stocks.GET("/:ticker/financials/balance", financialsHandler.GetBalanceSheets)       // Get balance sheets
+			stocks.GET("/:ticker/financials/cashflow", financialsHandler.GetCashFlowStatements) // Get cash flow statements
+			stocks.GET("/:ticker/financials/ratios", financialsHandler.GetRatios)               // Get financial ratios
+			stocks.POST("/:ticker/financials/refresh", financialsHandler.RefreshFinancials)     // Refresh financial data
 		}
 
 		// IC Scores admin endpoints (list all scores)
@@ -153,7 +166,7 @@ func main() {
 		}
 
 		// Simple fundamentals endpoint (for testing)
-		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimpleHandler)
+		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimple)
 
 		// Volume endpoints for bulk operations
 		volume := v1.Group("/volume")
@@ -167,6 +180,16 @@ func main() {
 		{
 			reddit.GET("/heatmap", handlers.GetRedditHeatmap)                      // Get trending tickers heatmap (days=7, top=50)
 			reddit.GET("/ticker/:symbol/history", handlers.GetTickerRedditHistory) // Get Reddit history for specific ticker (days=30)
+		}
+
+		// Social sentiment endpoints
+		sentiment := v1.Group("/sentiment")
+		{
+			// IMPORTANT: /trending must come before /:ticker to avoid matching "trending" as a ticker
+			sentiment.GET("/trending", handlers.GetTrendingSentiment)             // GET /api/v1/sentiment/trending?period=24h&limit=20
+			sentiment.GET("/:ticker", handlers.GetTickerSentiment)                // GET /api/v1/sentiment/AAPL
+			sentiment.GET("/:ticker/history", handlers.GetTickerSentimentHistory) // GET /api/v1/sentiment/AAPL/history?days=30
+			sentiment.GET("/:ticker/posts", handlers.GetTickerPosts)              // GET /api/v1/sentiment/AAPL/posts?limit=10
 		}
 
 		// Portfolio endpoints
@@ -187,6 +210,15 @@ func main() {
 			analytics.GET("/trends", getMarketTrends)
 			analytics.GET("/screener", runStockScreener)
 		}
+
+		// Screener endpoints
+		screener := v1.Group("/screener")
+		{
+			screener.GET("/stocks", handlers.GetScreenerStocks)
+		}
+
+		// Logo proxy endpoint (proxies logos from Polygon.io with API key)
+		v1.GET("/logos/:symbol", handlers.ProxyLogo)
 
 		// User endpoints (deprecated - use /auth routes instead)
 		users := v1.Group("/users")
@@ -310,16 +342,23 @@ func main() {
 	adminRoutes.Use(auth.AuthMiddleware())
 	adminRoutes.Use(auth.AdminMiddleware())
 	{
-		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)                   // GET /api/v1/admin/stocks
-		adminRoutes.GET("/users", adminDataHandler.GetUsers)                     // GET /api/v1/admin/users
-		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)               // GET /api/v1/admin/news
-		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals)       // GET /api/v1/admin/fundamentals
-		adminRoutes.GET("/sec-financials", adminDataHandler.GetSECFinancials)    // GET /api/v1/admin/sec-financials
-		adminRoutes.GET("/ttm-financials", adminDataHandler.GetTTMFinancials)    // GET /api/v1/admin/ttm-financials
+		adminRoutes.GET("/stocks", adminDataHandler.GetStocks)                    // GET /api/v1/admin/stocks
+		adminRoutes.GET("/users", adminDataHandler.GetUsers)                      // GET /api/v1/admin/users
+		adminRoutes.GET("/news", adminDataHandler.GetNewsArticles)                // GET /api/v1/admin/news
+		adminRoutes.GET("/fundamentals", adminDataHandler.GetFundamentals)        // GET /api/v1/admin/fundamentals
+		adminRoutes.GET("/sec-financials", adminDataHandler.GetSECFinancials)     // GET /api/v1/admin/sec-financials
+		adminRoutes.GET("/ttm-financials", adminDataHandler.GetTTMFinancials)     // GET /api/v1/admin/ttm-financials
 		adminRoutes.GET("/valuation-ratios", adminDataHandler.GetValuationRatios) // GET /api/v1/admin/valuation-ratios
-		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)                   // GET /api/v1/admin/alerts
-		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)           // GET /api/v1/admin/watchlists
-		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)             // GET /api/v1/admin/stats
+		adminRoutes.GET("/alerts", adminDataHandler.GetAlerts)                    // GET /api/v1/admin/alerts
+		adminRoutes.GET("/watchlists", adminDataHandler.GetWatchLists)            // GET /api/v1/admin/watchlists
+		adminRoutes.GET("/stats", adminDataHandler.GetDatabaseStats)              // GET /api/v1/admin/stats
+		// IC Score pipeline data (from IC Score service database)
+		adminRoutes.GET("/analyst-ratings", adminDataHandler.GetAnalystRatings)               // GET /api/v1/admin/analyst-ratings
+		adminRoutes.GET("/insider-trades", adminDataHandler.GetInsiderTrades)                 // GET /api/v1/admin/insider-trades
+		adminRoutes.GET("/institutional-holdings", adminDataHandler.GetInstitutionalHoldings) // GET /api/v1/admin/institutional-holdings
+		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
+		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
+		adminRoutes.GET("/risk-metrics", adminDataHandler.GetRiskMetrics)                     // GET /api/v1/admin/risk-metrics
 	}
 
 	// Start server
@@ -381,7 +420,7 @@ func searchSecurities(c *gin.Context) {
 		results[i] = gin.H{
 			"symbol":   stock.Symbol,
 			"name":     stock.Name,
-			"type":     "stock",
+			"type":     stock.AssetType,
 			"exchange": stock.Exchange,
 		}
 	}

@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { HeatmapTile, HeatmapData } from '@/lib/api/heatmap';
 import { useRouter } from 'next/navigation';
+import { useTheme } from '@/lib/contexts/ThemeContext';
+import { themeColors } from '@/lib/theme';
 
 interface WatchListHeatmapProps {
   data: HeatmapData;
@@ -21,6 +23,13 @@ export default function WatchListHeatmap({
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { resolvedTheme } = useTheme();
+
+  // Theme-aware colors
+  const isDark = resolvedTheme === 'dark';
+  const strokeColor = isDark ? themeColors.dark.border : themeColors.light.border;
+  const strokeHighlight = isDark ? '#ffffff' : '#000000';
+  const neutralColor = isDark ? themeColors.dark.bgSecondary : themeColors.light.bgSecondary;
 
   useEffect(() => {
     if (!svgRef.current || !data.tiles.length) return;
@@ -46,8 +55,8 @@ export default function WatchListHeatmap({
 
     treemap(root);
 
-    // Color scale based on color metric
-    const colorScale = getColorScale(data.color_scheme, data.min_color_value, data.max_color_value);
+    // Color scale based on color metric (theme-aware)
+    const colorScale = getColorScale(data.color_scheme, data.min_color_value, data.max_color_value, neutralColor);
 
     const svg = d3.select(svgRef.current);
 
@@ -62,14 +71,14 @@ export default function WatchListHeatmap({
       .attr('width', (d: any) => d.x1 - d.x0)
       .attr('height', (d: any) => d.y1 - d.y0)
       .attr('fill', (d: any) => colorScale(d.data.color_value))
-      .attr('stroke', '#fff')
+      .attr('stroke', strokeColor)
       .attr('stroke-width', 2)
       .attr('rx', 4)
       .style('cursor', 'pointer')
       .on('mouseover', function(event: any, d: any) {
         // Highlight tile
         d3.select(this)
-          .attr('stroke', '#000')
+          .attr('stroke', strokeHighlight)
           .attr('stroke-width', 3);
 
         // Show tooltip
@@ -78,7 +87,7 @@ export default function WatchListHeatmap({
       .on('mouseout', function() {
         // Remove highlight
         d3.select(this)
-          .attr('stroke', '#fff')
+          .attr('stroke', strokeColor)
           .attr('stroke-width', 2);
 
         // Hide tooltip
@@ -121,7 +130,7 @@ export default function WatchListHeatmap({
         .text((d: any) => d.data.color_label);
     }
 
-  }, [data, width, height, router, onTileClick]);
+  }, [data, width, height, router, onTileClick, resolvedTheme, strokeColor, strokeHighlight, neutralColor]);
 
   const showTooltip = (event: any, tile: HeatmapTile) => {
     const tooltip = tooltipRef.current;
@@ -130,46 +139,46 @@ export default function WatchListHeatmap({
     tooltip.innerHTML = `
       <div class="font-bold text-lg mb-2">${tile.symbol} - ${tile.name}</div>
       <div class="grid grid-cols-2 gap-2 text-sm">
-        <div class="text-gray-600">Price:</div>
+        <div class="text-ic-text-muted">Price:</div>
         <div class="font-medium">$${tile.current_price.toFixed(2)}</div>
 
-        <div class="text-gray-600">Change:</div>
-        <div class="font-medium ${tile.price_change >= 0 ? 'text-green-600' : 'text-red-600'}">
+        <div class="text-ic-text-muted">Change:</div>
+        <div class="font-medium ${tile.price_change >= 0 ? 'text-ic-positive' : 'text-ic-negative'}">
           ${tile.price_change >= 0 ? '+' : ''}${tile.price_change.toFixed(2)} (${tile.price_change_pct.toFixed(2)}%)
         </div>
 
         ${tile.market_cap ? `
-          <div class="text-gray-600">Market Cap:</div>
+          <div class="text-ic-text-muted">Market Cap:</div>
           <div class="font-medium">${tile.size_label}</div>
         ` : ''}
 
         ${tile.volume ? `
-          <div class="text-gray-600">Volume:</div>
+          <div class="text-ic-text-muted">Volume:</div>
           <div class="font-medium">${formatVolume(tile.volume)}</div>
         ` : ''}
 
         ${tile.reddit_rank ? `
-          <div class="col-span-2 border-t border-gray-200 mt-1 pt-1"></div>
-          <div class="text-gray-600">Reddit Rank:</div>
+          <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
+          <div class="text-ic-text-muted">Reddit Rank:</div>
           <div class="font-medium text-purple-600">#${tile.reddit_rank}</div>
         ` : ''}
 
         ${tile.reddit_mentions ? `
-          <div class="text-gray-600">Reddit Mentions:</div>
+          <div class="text-ic-text-muted">Reddit Mentions:</div>
           <div class="font-medium">${tile.reddit_mentions.toLocaleString()}</div>
         ` : ''}
 
         ${tile.reddit_popularity ? `
-          <div class="text-gray-600">Reddit Score:</div>
+          <div class="text-ic-text-muted">Reddit Score:</div>
           <div class="font-medium">${tile.reddit_popularity.toFixed(1)}/100</div>
         ` : ''}
 
         ${tile.reddit_trend ? `
-          <div class="text-gray-600">Reddit Trend:</div>
+          <div class="text-ic-text-muted">Reddit Trend:</div>
           <div class="font-medium ${
-            tile.reddit_trend === 'rising' ? 'text-green-600' :
-            tile.reddit_trend === 'falling' ? 'text-red-600' :
-            'text-gray-600'
+            tile.reddit_trend === 'rising' ? 'text-ic-positive' :
+            tile.reddit_trend === 'falling' ? 'text-ic-negative' :
+            'text-ic-text-muted'
           }">
             ${tile.reddit_trend === 'rising' ? '↑' : tile.reddit_trend === 'falling' ? '↓' : '→'} ${tile.reddit_trend}
             ${tile.reddit_rank_change ? ` (${tile.reddit_rank_change > 0 ? '+' : ''}${tile.reddit_rank_change})` : ''}
@@ -177,20 +186,20 @@ export default function WatchListHeatmap({
         ` : ''}
 
         ${tile.target_buy_price ? `
-          <div class="col-span-2 border-t border-gray-200 mt-1 pt-1"></div>
-          <div class="text-gray-600">Target Buy:</div>
-          <div class="font-medium text-blue-600">$${tile.target_buy_price.toFixed(2)}</div>
+          <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
+          <div class="text-ic-text-muted">Target Buy:</div>
+          <div class="font-medium text-ic-blue">$${tile.target_buy_price.toFixed(2)}</div>
         ` : ''}
 
         ${tile.target_sell_price ? `
-          <div class="text-gray-600">Target Sell:</div>
+          <div class="text-ic-text-muted">Target Sell:</div>
           <div class="font-medium text-orange-600">$${tile.target_sell_price.toFixed(2)}</div>
         ` : ''}
       </div>
-      ${tile.notes ? `<div class="mt-2 text-sm text-gray-600 italic">${tile.notes}</div>` : ''}
+      ${tile.notes ? `<div class="mt-2 text-sm text-ic-text-muted italic">${tile.notes}</div>` : ''}
       ${tile.tags.length > 0 ? `
         <div class="mt-2 flex flex-wrap gap-1">
-          ${tile.tags.map(tag => `<span class="text-xs bg-gray-200 px-2 py-1 rounded">${tag}</span>`).join('')}
+          ${tile.tags.map(tag => `<span class="text-xs bg-ic-bg-secondary px-2 py-1 rounded">${tag}</span>`).join('')}
         </div>
       ` : ''}
     `;
@@ -216,10 +225,10 @@ export default function WatchListHeatmap({
 
   return (
     <div className="relative">
-      <svg ref={svgRef} width={width} height={height} className="bg-gray-50 rounded-lg" />
+      <svg ref={svgRef} width={width} height={height} className="bg-ic-bg-secondary rounded-lg" />
       <div
         ref={tooltipRef}
-        className="absolute hidden bg-white p-4 rounded-lg shadow-lg border border-gray-200 max-w-sm z-50"
+        className="absolute hidden bg-ic-surface p-4 rounded-lg border border-ic-border max-w-sm z-50"
         style={{ pointerEvents: 'none' }}
       />
     </div>
@@ -228,17 +237,22 @@ export default function WatchListHeatmap({
 
 // Helper functions
 
-function getColorScale(scheme: string, min: number, max: number) {
+function getColorScale(scheme: string, min: number, max: number, neutralColor: string) {
+  // Use theme accent colors for positive/negative
+  const positiveColor = themeColors.accent.positive;
+  const negativeColor = themeColors.accent.negative;
+  const blueColor = themeColors.accent.blue;
+
   switch (scheme) {
     case 'red_green':
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#EF4444', '#F3F4F6', '#10B981']);
+        .range([negativeColor, neutralColor, positiveColor]);
 
     case 'blue_red':
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#3B82F6', '#F3F4F6', '#EF4444']);
+        .range([blueColor, neutralColor, negativeColor]);
 
     case 'heatmap':
       return d3.scaleSequential(d3.interpolateRdYlGn)
@@ -247,7 +261,7 @@ function getColorScale(scheme: string, min: number, max: number) {
     default:
       return d3.scaleLinear<string>()
         .domain([min, 0, max])
-        .range(['#EF4444', '#F3F4F6', '#10B981']);
+        .range([negativeColor, neutralColor, positiveColor]);
   }
 }
 

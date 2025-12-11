@@ -1,0 +1,133 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-financials-full-backfill
+  namespace: investorcenter
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 43200  # 12 hours max
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: sec-backfill
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.2.2-shares-fix
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.sec_financials_ingestion import SECFinancialsIngestion
+          from database.database import get_database
+          from sqlalchemy import text
+
+          async def get_unprocessed_tickers():
+              """Get tickers with CIK that haven't been processed yet, ordered by market cap."""
+              db = get_database()
+              async with db.session() as session:
+                  query = text("""
+                      SELECT t.symbol, t.cik, t.market_cap
+                      FROM tickers t
+                      WHERE t.asset_type = 'CS'
+                        AND t.cik IS NOT NULL
+                        AND t.cik <> ''
+                        AND t.symbol NOT IN (SELECT DISTINCT ticker FROM financials)
+                      ORDER BY t.market_cap DESC NULLS LAST
+                  """)
+                  result = await session.execute(query)
+                  rows = result.fetchall()
+                  return [(row[0], row[1]) for row in rows]
+
+          async def main():
+              print("=== SEC Financials Full Backfill ===")
+              print("Getting unprocessed tickers...")
+
+              tickers = await get_unprocessed_tickers()
+              print(f"Found {len(tickers)} unprocessed tickers with CIK")
+
+              if not tickers:
+                  print("No tickers to process!")
+                  return
+
+              pipeline = SECFinancialsIngestion()
+
+              # Process in batches of 100 for progress tracking
+              batch_size = 100
+              total = len(tickers)
+
+              for i in range(0, total, batch_size):
+                  batch = tickers[i:i+batch_size]
+                  batch_num = i // batch_size + 1
+                  total_batches = (total + batch_size - 1) // batch_size
+
+                  print(f"\n=== Batch {batch_num}/{total_batches} ({i+1}-{min(i+batch_size, total)} of {total}) ===")
+
+                  for symbol, cik in batch:
+                      try:
+                          print(f"Processing {symbol} (CIK: {cik})...")
+                          stocks = await pipeline.get_stocks_to_process(ticker=symbol)
+                          if stocks:
+                              await pipeline.process_stocks(stocks, show_progress=False)
+                          else:
+                              print(f"  {symbol}: Skipped (no CIK match)")
+                      except Exception as e:
+                          print(f"  {symbol}: Error - {e}")
+
+                  print(f"Batch {batch_num} complete. Running totals: Success={pipeline.success_count}, Errors={pipeline.error_count}")
+
+              print(f"\n=== BACKFILL COMPLETE ===")
+              print(f"Total Processed: {pipeline.processed_count}")
+              print(f"Success: {pipeline.success_count}")
+              print(f"Errors: {pipeline.error_count}")
+              if pipeline.processed_count > 0:
+                  print(f"Success Rate: {pipeline.success_count/pipeline.processed_count*100:.1f}%")
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}

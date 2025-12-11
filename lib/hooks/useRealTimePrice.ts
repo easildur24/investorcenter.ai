@@ -15,10 +15,34 @@ interface PriceData {
   lastUpdated: string;
 }
 
+// Check if US stock market is currently open (9:30 AM - 4:00 PM EST, Mon-Fri)
+function isMarketCurrentlyOpen(): boolean {
+  const now = new Date();
+
+  // Convert to Eastern Time
+  const estTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+
+  // Check if it's a weekday (0 = Sunday, 6 = Saturday)
+  const day = estTime.getDay();
+  if (day === 0 || day === 6) {
+    return false;
+  }
+
+  // Market hours: 9:30 AM - 4:00 PM EST
+  const hours = estTime.getHours();
+  const minutes = estTime.getMinutes();
+  const timeInMinutes = hours * 60 + minutes;
+
+  const marketOpenMinutes = 9 * 60 + 30;  // 9:30 AM
+  const marketCloseMinutes = 16 * 60;      // 4:00 PM
+
+  return timeInMinutes >= marketOpenMinutes && timeInMinutes < marketCloseMinutes;
+}
+
 export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePriceProps) {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isMarketOpen, setIsMarketOpen] = useState(true);
+  const [isMarketOpen, setIsMarketOpen] = useState(isMarketCurrentlyOpen);
   const [isCrypto, setIsCrypto] = useState(false);
   const [updateInterval, setUpdateInterval] = useState(5000);
   const intervalRef = useRef<NodeJS.Timeout>();

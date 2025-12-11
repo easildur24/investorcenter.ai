@@ -33,10 +33,11 @@ spec:
             component: ic-score-pipeline
         spec:
           restartPolicy: OnFailure
+          nodeName: ip-10-0-10-183.ec2.internal
 
           containers:
           - name: ic-score-calculator
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.4.2-schema-fix
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.9-openfigi
             imagePullPolicy: Always
 
             command: ["python"]
@@ -79,11 +80,11 @@ spec:
 
             resources:
               requests:
-                memory: "1Gi"
-                cpu: "1000m"
+                memory: "512Mi"
+                cpu: "250m"
               limits:
-                memory: "2Gi"
-                cpu: "1500m"
+                memory: "1Gi"
+                cpu: "500m"
 
             volumeMounts:
             - name: logs

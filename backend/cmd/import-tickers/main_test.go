@@ -103,24 +103,33 @@ func TestTickerExists(t *testing.T) {
 
 	// Insert test ticker
 	_, err := db.Exec(`
-		INSERT INTO tickers (symbol, name, exchange) 
-		VALUES ('TEST1', 'Test Company 1', 'NYSE')
+		INSERT INTO tickers (symbol, name, exchange, asset_type)
+		VALUES ('TEST1', 'Test Company 1', 'NYSE', 'stock')
 	`)
 	if err != nil {
 		t.Fatalf("Failed to insert test data: %v", err)
 	}
 
-	// Test existing ticker
-	exists, err := tickerExists(db, "TEST1")
+	// Test existing ticker with matching asset type
+	exists, err := tickerExists(db, "TEST1", "stock")
 	if err != nil {
 		t.Errorf("tickerExists failed: %v", err)
 	}
 	if !exists {
-		t.Error("Expected TEST1 to exist")
+		t.Error("Expected TEST1 stock to exist")
+	}
+
+	// Test existing symbol but different asset type
+	exists, err = tickerExists(db, "TEST1", "crypto")
+	if err != nil {
+		t.Errorf("tickerExists failed: %v", err)
+	}
+	if exists {
+		t.Error("Expected TEST1 crypto to not exist")
 	}
 
 	// Test non-existing ticker
-	exists, err = tickerExists(db, "NOTEXIST")
+	exists, err = tickerExists(db, "NOTEXIST", "stock")
 	if err != nil {
 		t.Errorf("tickerExists failed: %v", err)
 	}

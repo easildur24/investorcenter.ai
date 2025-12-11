@@ -40,6 +40,7 @@ class SECClient:
     FACT_MAPPINGS = {
         # Income Statement
         'revenue': ['Revenues', 'RevenueFromContractWithCustomerExcludingAssessedTax',
+                   'RevenueFromContractWithCustomerIncludingAssessedTax',
                    'SalesRevenueNet', 'RevenueFromContractWithCustomer'],
         'cost_of_revenue': ['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'],
         'gross_profit': ['GrossProfit'],
@@ -168,6 +169,8 @@ class SECClient:
             return []
 
         # Build period-based data structure
+        # Key change: Use (fy, fp) instead of (period_end, fy, fp) to group by fiscal period
+        # Then select the best record (most recent period_end, has revenue) for each fiscal period
         periods_data = {}
 
         for field, fact_names in self.FACT_MAPPINGS.items():
@@ -194,27 +197,67 @@ class SECClient:
                                 if not all([period_end, filed, fy, value is not None]):
                                     continue
 
-                                # Create unique period key
-                                period_key = (period_end, fy, fp or 'FY')
+                                # Create unique period key by fiscal year + fiscal period ONLY
+                                # This groups all records from the same fiscal period together
+                                period_key = (fy, fp or 'FY')
 
                                 if period_key not in periods_data:
-                                    periods_data[period_key] = {
+                                    periods_data[period_key] = []
+
+                                # Store all potential records for this fiscal period
+                                # We'll de-duplicate later by selecting the best one
+                                record_found = False
+                                for existing_record in periods_data[period_key]:
+                                    if existing_record['period_end_date'] == period_end:
+                                        # Same period_end_date, add field to this record
+                                        if field not in existing_record:
+                                            existing_record[field] = value
+                                        record_found = True
+                                        break
+
+                                if not record_found:
+                                    # New record for this fiscal period
+                                    periods_data[period_key].append({
                                         'period_end_date': period_end,
                                         'filing_date': filed,
                                         'fiscal_year': fy,
                                         'fiscal_quarter': self._parse_fiscal_period(fp),
                                         'statement_type': form,
-                                    }
-
-                                # Store value (use first found value for each field)
-                                if field not in periods_data[period_key]:
-                                    periods_data[period_key][field] = value
+                                        field: value,
+                                    })
 
                             break  # Found data for this fact, move to next field
 
-        # Convert to list and sort by date
-        financials = list(periods_data.values())
+        # De-duplicate: Select best record for each fiscal period
+        # Prefer: 1) Most recent period_end_date, 2) Has revenue data
+        deduplicated_periods = []
+        for period_key, records in periods_data.items():
+            if not records:
+                continue
+
+            # Sort by: 1) Has revenue (descending), 2) period_end_date (descending)
+            best_record = sorted(
+                records,
+                key=lambda r: (
+                    r.get('revenue') is not None,  # Prefer records with revenue
+                    r.get('period_end_date', ''),  # Then most recent period_end
+                ),
+                reverse=True
+            )[0]
+
+            deduplicated_periods.append(best_record)
+
+        logger.info(f"De-duplicated {sum(len(r) for r in periods_data.values())} records to {len(deduplicated_periods)} periods")
+
+        # Use deduplicated periods and sort by date
+        financials = deduplicated_periods
         financials.sort(key=lambda x: x['period_end_date'], reverse=True)
+
+        # Correct fiscal years before calculating metrics
+        self._correct_fiscal_years(financials)
+
+        # Correct shares_outstanding if reported in millions
+        self._correct_shares_outstanding(financials)
 
         # Calculate derived metrics
         for financial in financials[:num_periods]:
@@ -247,6 +290,114 @@ class SECClient:
             return 4
 
         return None
+
+    def _correct_fiscal_years(self, financials: List[Dict[str, Any]]) -> None:
+        """Correct fiscal years based on company's fiscal year-end.
+
+        SEC's `fy` field is sometimes incorrect for companies with non-calendar fiscal years.
+        This method determines the correct fiscal year based on:
+        1. The fiscal year-end month (from annual filings)
+        2. The period end date
+        3. The fiscal quarter
+
+        Args:
+            financials: List of financial records to correct in-place.
+        """
+        if not financials:
+            return
+
+        # Step 1: Determine fiscal year-end month from annual filings
+        annual_filings = [f for f in financials if f.get('fiscal_quarter') is None]
+
+        if not annual_filings:
+            # No annual filings to determine FYE, skip correction
+            logger.debug("No annual filings found, skipping fiscal year correction")
+            return
+
+        # Get the fiscal year-end month from the most recent annual filing
+        # This is the month of the period_end_date for annual filings
+        try:
+            from datetime import datetime
+            annual_period_end = annual_filings[0]['period_end_date']
+            fye_date = datetime.strptime(annual_period_end, '%Y-%m-%d')
+            fye_month = fye_date.month
+            logger.debug(f"Determined fiscal year-end month: {fye_month}")
+        except Exception as e:
+            logger.error(f"Error parsing fiscal year-end: {e}")
+            return
+
+        # Step 2: Correct fiscal years for quarterly filings
+        corrected_count = 0
+        for financial in financials:
+            # Skip annual filings (they should be correct)
+            if financial.get('fiscal_quarter') is None:
+                continue
+
+            try:
+                # Parse period end date
+                period_end = datetime.strptime(financial['period_end_date'], '%Y-%m-%d')
+                period_end_month = period_end.month
+                period_end_year = period_end.year
+
+                # Calculate correct fiscal year
+                # If period ends after fiscal year-end month, it belongs to next fiscal year
+                if period_end_month > fye_month:
+                    correct_fy = period_end_year + 1
+                else:
+                    correct_fy = period_end_year
+
+                # Check if correction is needed
+                current_fy = financial.get('fiscal_year')
+                if current_fy != correct_fy:
+                    logger.debug(
+                        f"Correcting fiscal year for {financial.get('period_end_date')} Q{financial.get('fiscal_quarter')}: "
+                        f"{current_fy} → {correct_fy}"
+                    )
+                    financial['fiscal_year'] = correct_fy
+                    corrected_count += 1
+
+            except Exception as e:
+                logger.error(f"Error correcting fiscal year: {e}")
+                continue
+
+        if corrected_count > 0:
+            logger.info(f"Corrected {corrected_count} fiscal year values")
+
+    def _correct_shares_outstanding(self, financials: List[Dict[str, Any]]) -> None:
+        """Correct shares_outstanding if reported in millions.
+
+        Some companies (like MCD, PEP) report shares_outstanding in millions instead
+        of absolute shares in their SEC XBRL filings. This method detects and
+        corrects such cases by comparing against revenue to determine scale.
+
+        Detection heuristic: If shares_outstanding < 10,000 but revenue > 1B,
+        the shares are likely in millions and should be multiplied by 1,000,000.
+
+        Args:
+            financials: List of financial records to correct in-place.
+        """
+        corrected_count = 0
+        for financial in financials:
+            shares = financial.get('shares_outstanding')
+            revenue = financial.get('revenue')
+
+            # Skip if no shares data
+            if shares is None:
+                continue
+
+            # Check if shares appear to be in millions
+            # Heuristic: shares < 10,000 and revenue > 1 billion
+            if shares < 10000 and revenue and revenue > 1_000_000_000:
+                # Shares likely reported in millions, correct to actual count
+                corrected_shares = int(shares * 1_000_000)
+                financial['shares_outstanding'] = corrected_shares
+                logger.debug(
+                    f"Corrected shares_outstanding from {shares} (millions) to {corrected_shares:,}"
+                )
+                corrected_count += 1
+
+        if corrected_count > 0:
+            logger.info(f"Corrected {corrected_count} shares_outstanding values from millions to actual")
 
     def _calculate_metrics(self, financial: Dict[str, Any]) -> None:
         """Calculate financial ratios and metrics in-place.

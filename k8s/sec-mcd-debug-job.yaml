@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sec-mcd-debug
+  namespace: investorcenter
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: sec-mcd
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.1.0-financials
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.utils.sec_client import SECClient
+
+          # Debug MCD (CIK 0000063908)
+          cik = '0000063908'
+          sec_client = SECClient()
+
+          print(f"Fetching SEC data for MCD (CIK: {cik})")
+          financials = sec_client.get_financials_for_ticker(cik, num_periods=20)
+
+          if financials:
+              print(f"Found {len(financials)} financial periods:")
+              for f in financials[:3]:
+                  print(f"  Period: {f.get('fiscal_year')}-{f.get('fiscal_period')}")
+                  print(f"    Revenue: {f.get('revenue')}")
+                  print(f"    Net Income: {f.get('net_income')}")
+                  print(f"    EPS Basic: {f.get('eps_basic')}")
+                  print(f"    EPS Diluted: {f.get('eps_diluted')}")
+                  print(f"    Shares Outstanding: {f.get('shares_outstanding')}")
+          else:
+              print("No financials found!")
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}

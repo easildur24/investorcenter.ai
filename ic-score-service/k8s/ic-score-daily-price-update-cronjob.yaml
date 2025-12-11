@@ -1,0 +1,108 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-daily-price-update
+  namespace: investorcenter
+  labels:
+    app: ic-score-daily-price-update
+    component: ic-score-pipeline
+    provider: polygon
+    phase: phase-1
+spec:
+  # Run daily at 5:30 PM ET (10:30 PM UTC) on weekdays after market close
+  # This runs BEFORE technical-indicators (11 PM UTC) and risk-metrics
+  schedule: "30 22 * * 1-5"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-daily-price-update
+        component: ic-score-pipeline
+        provider: polygon
+        phase: phase-1
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 10800  # 3 hours timeout
+      ttlSecondsAfterFinished: 21600
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-daily-price-update
+            component: ic-score-pipeline
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: daily-price-update
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/daily_price_update.py"
+            - "--all"
+            - "--days"
+            - "5"
+
+            env:
+            # Polygon API Key
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

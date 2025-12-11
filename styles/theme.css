@@ -1,0 +1,214 @@
+/* =============================================================================
+   InvestorCenter Theme CSS Variables
+   =============================================================================
+   This file defines all colors for both light and dark modes.
+   Dark mode is the default theme.
+   ============================================================================= */
+
+/* =============================================================================
+   1. :root (Dark Mode - Default)
+   ============================================================================= */
+:root {
+  /* Backgrounds */
+  --ic-bg-primary: #09090B;
+  --ic-bg-secondary: #18181B;
+  --ic-bg-tertiary: #27272A;
+
+  /* Surfaces (cards, modals) */
+  --ic-surface: rgba(255, 255, 255, 0.03);
+  --ic-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --ic-border: rgba(255, 255, 255, 0.1);
+  --ic-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --ic-text-primary: #FAFAFA;
+  --ic-text-secondary: #D4D4D8;
+  --ic-text-muted: #A1A1AA;
+  --ic-text-dim: #71717A;
+
+  /* Header */
+  --ic-header-bg: rgba(9, 9, 11, 0.85);
+
+  /* Input fields */
+  --ic-input-bg: rgba(255, 255, 255, 0.06);
+  --ic-input-border: rgba(255, 255, 255, 0.1);
+
+  /* Hero gradient - bold blue */
+  --ic-hero-bg: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  --ic-hero-text-accent: #BAE6FD;
+  --ic-hero-text-body: rgba(255, 255, 255, 0.8);
+
+  /* Card shadows - minimal in dark mode */
+  --ic-shadow-card: none;
+  --ic-shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.3);
+
+  /* Decorative elements */
+  --ic-blur-circle: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================================
+   2. System preference: Light mode (when no manual override)
+   ============================================================================= */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    /* Backgrounds - Slate palette (blue-tinted, not gray) */
+    --ic-bg-primary: #FFFFFF;
+    --ic-bg-secondary: #F8FAFC;
+    --ic-bg-tertiary: #F1F5F9;
+
+    /* Surfaces (cards, modals) - white with subtle shadow */
+    --ic-surface: #FFFFFF;
+    --ic-surface-hover: #F8FAFC;
+
+    /* Borders - Slate */
+    --ic-border: #E2E8F0;
+    --ic-border-subtle: #F1F5F9;
+
+    /* Text - Slate */
+    --ic-text-primary: #0F172A;
+    --ic-text-secondary: #334155;
+    --ic-text-muted: #64748B;
+    --ic-text-dim: #94A3B8;
+
+    /* Header */
+    --ic-header-bg: rgba(255, 255, 255, 0.9);
+
+    /* Input fields */
+    --ic-input-bg: #F8FAFC;
+    --ic-input-border: #E2E8F0;
+
+    /* Hero gradient - soft blue */
+    --ic-hero-bg: linear-gradient(180deg, #EFF6FF 0%, #DBEAFE 50%, #BFDBFE 100%);
+    --ic-hero-text-accent: #1D4ED8;
+    --ic-hero-text-body: #475569;
+
+    /* Card shadows for light mode */
+    --ic-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
+    --ic-shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.1);
+
+    /* Decorative elements */
+    --ic-blur-circle: rgba(59, 130, 246, 0.1);
+  }
+}
+
+/* =============================================================================
+   3. Manual override: Light mode
+   ============================================================================= */
+[data-theme="light"] {
+  /* Backgrounds - Slate palette (blue-tinted, not gray) */
+  --ic-bg-primary: #FFFFFF;
+  --ic-bg-secondary: #F8FAFC;
+  --ic-bg-tertiary: #F1F5F9;
+
+  /* Surfaces (cards, modals) - white with subtle shadow */
+  --ic-surface: #FFFFFF;
+  --ic-surface-hover: #F8FAFC;
+
+  /* Borders - Slate */
+  --ic-border: #E2E8F0;
+  --ic-border-subtle: #F1F5F9;
+
+  /* Text - Slate */
+  --ic-text-primary: #0F172A;
+  --ic-text-secondary: #334155;
+  --ic-text-muted: #64748B;
+  --ic-text-dim: #94A3B8;
+
+  /* Header */
+  --ic-header-bg: rgba(255, 255, 255, 0.9);
+
+  /* Input fields */
+  --ic-input-bg: #F8FAFC;
+  --ic-input-border: #E2E8F0;
+
+  /* Hero gradient - soft blue */
+  --ic-hero-bg: linear-gradient(180deg, #EFF6FF 0%, #DBEAFE 50%, #BFDBFE 100%);
+  --ic-hero-text-accent: #1D4ED8;
+  --ic-hero-text-body: #475569;
+
+  /* Card shadows for light mode */
+  --ic-shadow-card: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --ic-shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.1);
+
+  /* Decorative elements */
+  --ic-blur-circle: rgba(59, 130, 246, 0.1);
+}
+
+/* =============================================================================
+   4. Manual override: Dark mode
+   ============================================================================= */
+[data-theme="dark"] {
+  /* Backgrounds */
+  --ic-bg-primary: #09090B;
+  --ic-bg-secondary: #18181B;
+  --ic-bg-tertiary: #27272A;
+
+  /* Surfaces (cards, modals) */
+  --ic-surface: rgba(255, 255, 255, 0.03);
+  --ic-surface-hover: rgba(255, 255, 255, 0.06);
+
+  /* Borders */
+  --ic-border: rgba(255, 255, 255, 0.1);
+  --ic-border-subtle: rgba(255, 255, 255, 0.05);
+
+  /* Text */
+  --ic-text-primary: #FAFAFA;
+  --ic-text-secondary: #D4D4D8;
+  --ic-text-muted: #A1A1AA;
+  --ic-text-dim: #71717A;
+
+  /* Header */
+  --ic-header-bg: rgba(9, 9, 11, 0.85);
+
+  /* Input fields */
+  --ic-input-bg: rgba(255, 255, 255, 0.06);
+  --ic-input-border: rgba(255, 255, 255, 0.1);
+
+  /* Hero gradient - bold blue */
+  --ic-hero-bg: linear-gradient(135deg, #1E40AF 0%, #3B82F6 50%, #0EA5E9 100%);
+  --ic-hero-text-accent: #BAE6FD;
+  --ic-hero-text-body: rgba(255, 255, 255, 0.8);
+
+  /* Card shadows - minimal in dark mode */
+  --ic-shadow-card: none;
+  --ic-shadow-card-hover: 0 8px 30px rgba(0, 0, 0, 0.3);
+
+  /* Decorative elements */
+  --ic-blur-circle: rgba(255, 255, 255, 0.1);
+}
+
+/* =============================================================================
+   5. Accent colors (same in both themes)
+   ============================================================================= */
+:root {
+  /* Primary accent */
+  --ic-blue: #3B82F6;
+  --ic-blue-hover: #2563EB;
+
+  /* Secondary accent */
+  --ic-cyan: #22D3EE;
+
+  /* Status colors */
+  --ic-positive: #34D399;
+  --ic-positive-bg: rgba(52, 211, 153, 0.1);
+
+  --ic-negative: #F87171;
+  --ic-negative-bg: rgba(248, 113, 113, 0.1);
+
+  --ic-warning: #FBBF24;
+  --ic-warning-bg: rgba(251, 191, 36, 0.1);
+
+  --ic-orange: #F97316;
+  --ic-orange-bg: rgba(249, 115, 22, 0.15);
+}
+
+/* =============================================================================
+   6. Base styles
+   ============================================================================= */
+body {
+  background-color: var(--ic-bg-primary);
+  color: var(--ic-text-primary);
+  transition: background-color 0.2s, color 0.2s;
+}

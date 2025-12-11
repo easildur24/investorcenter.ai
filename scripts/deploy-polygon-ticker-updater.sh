@@ -53,9 +53,9 @@ fi
 
 print_status "Prerequisites check passed"
 
-# Step 1: Build Docker image
+# Step 1: Build Docker image for linux/amd64 platform (EKS runs on AMD64)
 echo -e "\n📦 Building Docker image..."
-docker build -f docker/polygon-ticker-updater/Dockerfile -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f docker/polygon-ticker-updater/Dockerfile -t ${ECR_REPOSITORY}:${IMAGE_TAG} .
 print_status "Docker image built successfully"
 
 # Step 2: Login to ECR

@@ -1,0 +1,101 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ttm-valuation-full-backfill
+  namespace: investorcenter
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 14400  # 4 hours max
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: ttm-valuation
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.2.3-eps-fix
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.ttm_financials_calculator import TTMFinancialsCalculator
+          from pipelines.valuation_ratios_calculator import ValuationRatiosCalculator
+
+          async def main():
+              # Step 1: Run TTM Financials Calculator for all stocks
+              print("=" * 80)
+              print("STEP 1: TTM Financials Calculator (All Stocks)")
+              print("=" * 80)
+
+              ttm_calc = TTMFinancialsCalculator()
+              await ttm_calc.run(all_tickers=True)
+
+              print(f"\nTTM Summary: Calculated={ttm_calc.calculated_count}, Skipped={ttm_calc.skipped_count}, Errors={ttm_calc.error_count}")
+
+              # Step 2: Run Valuation Ratios Calculator for all stocks
+              print("\n" + "=" * 80)
+              print("STEP 2: Valuation Ratios Calculator (All Stocks)")
+              print("=" * 80)
+
+              val_calc = ValuationRatiosCalculator()
+              await val_calc.run(all_stocks=True)
+
+              print(f"\nValuation Summary: Success={val_calc.success_count}, Errors={val_calc.error_count}")
+
+              print("\n" + "=" * 80)
+              print("BACKFILL COMPLETE")
+              print("=" * 80)
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: logs
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}

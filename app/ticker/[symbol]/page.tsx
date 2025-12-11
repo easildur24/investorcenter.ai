@@ -1,14 +1,17 @@
 import { Suspense } from 'react';
-import TickerOverview from '@/components/ticker/TickerOverview';
-import HybridChart from '@/components/ticker/HybridChart';
+import TickerTabs, { TabSkeleton } from '@/components/ticker/TickerTabs';
 import TickerFundamentals from '@/components/ticker/TickerFundamentals';
-import TickerNews from '@/components/ticker/TickerNews';
-import TickerEarnings from '@/components/ticker/TickerEarnings';
 import TickerAnalysts from '@/components/ticker/TickerAnalysts';
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
 import ICScoreCard from '@/components/ic-score/ICScoreCard';
+import SentimentCard from '@/components/sentiment/SentimentCard';
+import OverviewTab from '@/components/ticker/tabs/OverviewTab';
+import TechnicalTab from '@/components/ticker/tabs/TechnicalTab';
+import RiskTab from '@/components/ticker/tabs/RiskTab';
+import FinancialsTab from '@/components/ticker/tabs/FinancialsTab';
+import OwnershipTab from '@/components/ticker/tabs/OwnershipTab';
 
 interface PageProps {
   params: {
@@ -69,31 +72,42 @@ async function getChartData(symbol: string, period: string = '1Y') {
   }
 }
 
+// Tab configuration with icons
+const stockTabs = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'technical', label: 'Technical' },
+  { id: 'risk', label: 'Risk' },
+  { id: 'financials', label: 'Financials' },
+  { id: 'ownership', label: 'Ownership' },
+];
+
 export default async function TickerPage({ params, searchParams }: PageProps) {
   const symbol = decodeURIComponent(params.symbol).toUpperCase();
   const period = searchParams.period || '1Y';
-  
+
   // Fetch data server-side
   const [tickerData, chartData] = await Promise.all([
     getTickerData(symbol),
     getChartData(symbol, period)
   ]);
-  
+
   if (!tickerData) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <h2 className="text-red-800 font-semibold">Failed to Load Data</h2>
-          <p className="text-red-600 mt-2">Could not fetch data for {symbol}</p>
+          <p className="text-ic-negative mt-2">Could not fetch data for {symbol}</p>
         </div>
       </div>
     );
   }
 
+  const currentPrice = parseFloat(tickerData.summary.price.price);
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-ic-bg-primary">
       {/* Ticker Overview Header with Real-time Updates */}
-      <div className="bg-white shadow-sm">
+      <div className="bg-ic-surface shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {tickerData.summary.stock.isCrypto ? (
             <CryptoTickerHeader symbol={symbol} initialData={tickerData.summary} />
@@ -107,47 +121,58 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {tickerData.summary.stock.isCrypto ? (
           /* CoinMarketCap-style crypto layout */
-          <CryptoMainContent 
-            symbol={symbol} 
-            cryptoName={tickerData.summary.stock.name.split(' - ')[0]} 
+          <CryptoMainContent
+            symbol={symbol}
+            cryptoName={tickerData.summary.stock.name.split(' - ')[0]}
           />
         ) : (
-          /* Traditional stock layout */
+          /* Stock layout with tabbed interface */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Chart and News */}
-            <div className="lg:col-span-2 space-y-8">
-              {/* HYBRID Interactive Price Chart */}
-              <div className="bg-white rounded-lg shadow relative">
-                <HybridChart 
-                  symbol={symbol} 
-                  initialData={chartData} 
-                  currentPrice={parseFloat(tickerData.summary.price.price)} 
-                />
-              </div>
+            {/* Left Column - Tabbed Content */}
+            <div className="lg:col-span-2">
+              <Suspense fallback={<TabSkeleton />}>
+                <TickerTabs symbol={symbol} tabs={stockTabs} defaultTab="overview">
+                  {/* Overview Tab */}
+                  <OverviewTab
+                    symbol={symbol}
+                    chartData={chartData}
+                    currentPrice={currentPrice}
+                  />
 
-              {/* News & Analysis */}
-              <div className="bg-white rounded-lg shadow">
-                <TickerNews symbol={symbol} />
-              </div>
+                  {/* Technical Tab */}
+                  <TechnicalTab symbol={symbol} />
 
-              {/* Earnings */}
-              <div className="bg-white rounded-lg shadow">
-                <TickerEarnings symbol={symbol} />
-              </div>
+                  {/* Risk Tab */}
+                  <RiskTab symbol={symbol} />
 
-              {/* IC Score Analysis */}
-              <Suspense fallback={<ICScoreSkeleton />}>
-                <ICScoreCard ticker={symbol} variant="full" />
+                  {/* Financials Tab */}
+                  <FinancialsTab symbol={symbol} />
+
+                  {/* Ownership Tab */}
+                  <OwnershipTab symbol={symbol} />
+                </TickerTabs>
               </Suspense>
             </div>
 
-            {/* Right Column - Fundamentals and Analysis */}
+            {/* Right Column - IC Score, Sentiment, Fundamentals and Analysis */}
             <div className="space-y-8">
+              {/* IC Score Analysis - at top for visibility */}
+              <Suspense fallback={<ICScoreSkeleton />}>
+                <ICScoreCard ticker={symbol} variant="compact" />
+              </Suspense>
+
+              {/* Social Sentiment Analysis */}
+              <Suspense fallback={<SentimentSkeleton />}>
+                <SentimentCard ticker={symbol} variant="compact" />
+              </Suspense>
+
               {/* Comprehensive Key Metrics */}
-              <TickerFundamentals symbol={symbol} />
+              <div className="bg-ic-surface rounded-lg shadow">
+                <TickerFundamentals symbol={symbol} />
+              </div>
 
               {/* Analyst Ratings */}
-              <div className="bg-white rounded-lg shadow">
+              <div className="bg-ic-surface rounded-lg shadow">
                 <TickerAnalysts symbol={symbol} />
               </div>
             </div>
@@ -158,246 +183,28 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
   );
 }
 
-// Server-side components that display real data
-function TickerOverviewServer({ data }: { data: any }) {
-  const { stock, price, keyMetrics } = data;
-  
-  return (
-    <div className="flex items-center justify-between">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">
-          {stock.name} ({stock.symbol})
-        </h1>
-        <p className="text-gray-600">{stock.exchange} • {stock.sector}</p>
-      </div>
-      <div className="text-right">
-        <div className="text-3xl font-bold text-gray-900">
-          ${parseFloat(price.price).toFixed(2)}
-        </div>
-        <div className={`text-sm ${parseFloat(price.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-          {parseFloat(price.change) >= 0 ? '+' : ''}{parseFloat(price.change).toFixed(2)}
-          ({parseFloat(price.changePercent).toFixed(2)}%)
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TickerFundamentalsServer({ data }: { data: any }) {
-  const { fundamentals, keyMetrics } = data;
-  
-  const formatLargeNumber = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined) return 'N/A';
-    const num = parseFloat(value.toString());
-    if (isNaN(num)) return 'N/A';
-    if (num >= 1e12) return `$${(num / 1e12).toFixed(1)}T`;
-    if (num >= 1e9) return `$${(num / 1e9).toFixed(1)}B`;
-    if (num >= 1e6) return `$${(num / 1e6).toFixed(1)}M`;
-    return `$${num.toFixed(2)}`;
-  };
-  
-  const formatPercent = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined) return 'N/A';
-    const num = parseFloat(value.toString());
-    if (isNaN(num)) return 'N/A';
-    return `${(num * 100).toFixed(1)}%`;
-  };
-  
-  const formatRatio = (value: string | number | null | undefined) => {
-    if (value === null || value === undefined) return 'N/A';
-    const num = parseFloat(value.toString());
-    if (isNaN(num)) return 'N/A';
-    return num.toFixed(2);
-  };
-  
-  return (
-    <div className="p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-6">Key Fundamentals</h3>
-      
-      {/* 🥇 TOP PRIORITY METRICS */}
-      <div className="mb-6">
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Valuation & Profitability</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">P/E Ratio</span>
-            <span className="font-semibold text-blue-600">{formatRatio(fundamentals.pe)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">EPS (Basic)</span>
-            <span className="font-semibold">${formatRatio(fundamentals.eps)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Revenue (TTM)</span>
-            <span className="font-semibold">{formatLargeNumber(fundamentals.revenue)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Net Income</span>
-            <span className="font-semibold">{formatLargeNumber(fundamentals.netIncome)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 🥈 PROFITABILITY MARGINS */}
-      <div className="mb-6">
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Margins</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Gross Margin</span>
-            <span className="font-semibold">{formatPercent(fundamentals.grossMargin)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Operating Margin</span>
-            <span className="font-semibold">{formatPercent(fundamentals.operatingMargin)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Net Margin</span>
-            <span className="font-semibold">{formatPercent(fundamentals.netMargin)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 🥉 FINANCIAL HEALTH */}
-      <div className="mb-6">
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Financial Health</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">ROE</span>
-            <span className="font-semibold">{formatPercent(fundamentals.roe)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">ROA</span>
-            <span className="font-semibold">{formatPercent(fundamentals.roa)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Current Ratio</span>
-            <span className="font-semibold">{formatRatio(fundamentals.currentRatio)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Debt-to-Equity</span>
-            <span className="font-semibold">{formatRatio(fundamentals.debtToEquity)}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* 📊 OTHER RATIOS */}
-      <div>
-        <h4 className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Valuation Ratios</h4>
-        <div className="space-y-3">
-          <div className="flex justify-between">
-            <span className="text-gray-600">P/B Ratio</span>
-            <span className="font-semibold">{formatRatio(fundamentals.pb)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">P/S Ratio</span>
-            <span className="font-semibold">{formatRatio(fundamentals.ps)}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Quick Ratio</span>
-            <span className="font-semibold">{formatRatio(fundamentals.quickRatio)}</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // Loading Skeletons
-function TickerHeaderSkeleton() {
-  return (
-    <div className="animate-pulse">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-32"></div>
-        </div>
-        <div className="text-right">
-          <div className="h-8 bg-gray-200 rounded w-24 mb-2"></div>
-          <div className="h-4 bg-gray-200 rounded w-20"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ChartSkeleton() {
-  return (
-    <div className="p-6">
-      <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-      <div className="h-80 bg-gray-200 rounded"></div>
-    </div>
-  );
-}
-
-function NewsSkeleton() {
-  return (
-    <div className="p-6">
-      <div className="h-6 bg-gray-200 rounded w-40 mb-4"></div>
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="border-b border-gray-100 pb-4">
-            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-            <div className="h-3 bg-gray-200 rounded w-full mb-1"></div>
-            <div className="h-3 bg-gray-200 rounded w-2/3"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function EarningsSkeleton() {
-  return (
-    <div className="p-6">
-      <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="flex justify-between items-center">
-            <div className="h-4 bg-gray-200 rounded w-20"></div>
-            <div className="h-4 bg-gray-200 rounded w-16"></div>
-            <div className="h-4 bg-gray-200 rounded w-16"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function FundamentalsSkeleton() {
-  return (
-    <div className="p-6">
-      <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-      <div className="space-y-3">
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="flex justify-between">
-            <div className="h-4 bg-gray-200 rounded w-24"></div>
-            <div className="h-4 bg-gray-200 rounded w-16"></div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AnalystsSkeleton() {
-  return (
-    <div className="p-6">
-      <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-      <div className="space-y-3">
-        <div className="h-8 bg-gray-200 rounded w-full"></div>
-        <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-        <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-      </div>
-    </div>
-  );
-}
-
 function ICScoreSkeleton() {
   return (
-    <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden animate-pulse">
-      <div className="bg-gray-300 h-24"></div>
+    <div className="bg-ic-surface rounded-xl shadow-lg border border-ic-border overflow-hidden animate-pulse">
+      <div className="bg-ic-bg-secondary h-24"></div>
       <div className="p-6 space-y-4">
-        <div className="h-64 bg-gray-200 rounded"></div>
-        <div className="h-64 bg-gray-200 rounded"></div>
+        <div className="h-64 bg-ic-bg-secondary rounded"></div>
+        <div className="h-64 bg-ic-bg-secondary rounded"></div>
+      </div>
+    </div>
+  );
+}
+
+function SentimentSkeleton() {
+  return (
+    <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-6 animate-pulse">
+      <div className="h-6 w-32 bg-ic-bg-secondary rounded mb-4"></div>
+      <div className="h-20 bg-ic-bg-secondary rounded mb-4"></div>
+      <div className="h-3 bg-ic-bg-secondary rounded mb-4"></div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="h-12 bg-ic-bg-secondary rounded"></div>
+        <div className="h-12 bg-ic-bg-secondary rounded"></div>
       </div>
     </div>
   );

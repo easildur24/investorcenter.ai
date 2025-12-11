@@ -38,7 +38,7 @@ spec:
 
           containers:
           - name: insider-trades-ingestion
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.0.0-unified
             imagePullPolicy: Always
 
             command: ["python"]
@@ -75,11 +75,11 @@ spec:
 
             resources:
               requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
                 memory: "1Gi"
                 cpu: "500m"
-              limits:
-                memory: "2Gi"
-                cpu: "1000m"
 
             volumeMounts:
             - name: logs

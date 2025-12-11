@@ -142,6 +142,7 @@ func GetTicker(c *gin.Context) {
 					"sector":    stock.Sector,
 					"assetType": stock.AssetType,
 					"isCrypto":  isCrypto,
+					"logoUrl":   stock.LogoURL,
 				},
 				"price": gin.H{
 					"price":         priceData.Price.String(),
@@ -231,18 +232,29 @@ func GetTickerChart(c *gin.Context) {
 			return
 		}
 	} else {
-		// Use Polygon for stock/ETF charts
-		log.Printf("Fetching stock chart data for %s from Polygon", symbol)
-		polygonClient := services.NewPolygonClient()
-		dataSource = "polygon"
-
+		// For stocks: Try database first (faster, has 3 years of data), fallback to Polygon
 		if period == "1D" {
-			// For intraday, get minute-level data
+			// For intraday data, must use Polygon
+			log.Printf("Fetching intraday chart data for %s from Polygon", symbol)
+			polygonClient := services.NewPolygonClient()
 			chartData, chartErr = polygonClient.GetIntradayData(symbol)
+			dataSource = "polygon"
 		} else {
-			// For longer periods, get daily data
-			days := services.GetDaysFromPeriod(period)
-			chartData, chartErr = polygonClient.GetDailyData(symbol, days)
+			// For longer periods, try database first
+			log.Printf("Fetching chart data for %s from database", symbol)
+			priceService := services.NewPriceService()
+			chartData, chartErr = priceService.GetHistoricalPrices(c.Request.Context(), symbol, period)
+
+			if chartErr == nil && len(chartData) > 0 {
+				dataSource = "database"
+				log.Printf("✓ Successfully fetched %d data points from database for %s", len(chartData), symbol)
+			} else {
+				// Fallback to Polygon if database query fails or returns no data
+				log.Printf("Database query failed or returned no data for %s, falling back to Polygon: %v", symbol, chartErr)
+				polygonClient := services.NewPolygonClient()
+				chartData, chartErr = polygonClient.GetDailyData(symbol, services.GetDaysFromPeriod(period))
+				dataSource = "polygon"
+			}
 		}
 
 		if chartErr != nil {
@@ -503,21 +515,60 @@ func GetTickerRealTimePrice(c *gin.Context) {
 	})
 }
 
-// GetTickerNews returns news articles for a ticker
+// GetTickerNews returns news articles for a ticker with AI sentiment analysis
 func GetTickerNews(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerNews called for symbol: %s", symbol)
 
-	// Try to get real news from Polygon first
-	polygonClient := services.NewPolygonClient()
+	// First, try IC Score service for news with real AI sentiment analysis
+	icScoreClient := services.NewICScoreClient()
+	icScoreNews, err := icScoreClient.GetNews(symbol, 30, 30)
 
-	// Get raw Polygon news data with all fields
+	if err == nil && icScoreNews != nil && len(icScoreNews.Articles) > 0 {
+		log.Printf("Successfully fetched %d news articles with AI sentiment from IC Score for %s", len(icScoreNews.Articles), symbol)
+
+		// Convert to response format compatible with frontend
+		articles := make([]map[string]interface{}, len(icScoreNews.Articles))
+		for i, article := range icScoreNews.Articles {
+			articles[i] = map[string]interface{}{
+				"id":              article.ID,
+				"title":           article.Title,
+				"article_url":     article.URL,
+				"published_utc":   article.PublishedAt,
+				"description":     article.Summary,
+				"author":          article.Author,
+				"tickers":         article.Tickers,
+				"image_url":       article.ImageURL,
+				"sentiment_score": article.SentimentScore, // -100 to +100
+				"sentiment_label": article.SentimentLabel, // Positive, Negative, Neutral
+				"relevance_score": article.RelevanceScore, // 0 to 100
+				"publisher": map[string]interface{}{
+					"name": article.Source,
+				},
+			}
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"data": articles,
+			"meta": gin.H{
+				"symbol":    symbol,
+				"count":     len(articles),
+				"timestamp": time.Now().UTC(),
+				"source":    "ic-score",
+			},
+		})
+		return
+	}
+
+	log.Printf("IC Score news not available for %s: %v, falling back to Polygon", symbol, err)
+
+	// Fallback to Polygon API for news
+	polygonClient := services.NewPolygonClient()
 	url := "https://api.polygon.io/v2/reference/news?ticker=" + symbol + "&limit=30&apikey=" + polygonClient.APIKey
 	resp, err := polygonClient.Client.Get(url)
 
 	if err != nil || resp.StatusCode != 200 {
-		log.Printf("Failed to get real news for %s: %v, using mock data", symbol, err)
-		// Fallback to mock news data
+		log.Printf("Failed to get news from Polygon for %s: %v, using mock data", symbol, err)
 		mockArticles := generateMockNews(symbol)
 		c.JSON(http.StatusOK, gin.H{
 			"data": mockArticles,
@@ -532,10 +583,9 @@ func GetTickerNews(c *gin.Context) {
 	}
 	defer resp.Body.Close()
 
-	// Parse and return raw Polygon response with all fields
 	var polygonResp map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&polygonResp); err != nil {
-		log.Printf("Failed to decode news response: %v", err)
+		log.Printf("Failed to decode Polygon news response: %v", err)
 		mockArticles := generateMockNews(symbol)
 		c.JSON(http.StatusOK, gin.H{
 			"data": mockArticles,
@@ -549,9 +599,8 @@ func GetTickerNews(c *gin.Context) {
 		return
 	}
 
-	// Return the raw Polygon results with all fields intact
 	results := polygonResp["results"]
-	log.Printf("Successfully fetched real news for %s", symbol)
+	log.Printf("Successfully fetched news from Polygon for %s", symbol)
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": results,

@@ -1,0 +1,109 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-ttm-financials
+  namespace: investorcenter
+  labels:
+    app: ic-score-ttm-financials
+    component: ic-score-pipeline
+    phase: phase-2
+spec:
+  # Run daily at 10:00 PM UTC (5:00 PM ET) - after SEC financials complete
+  schedule: "0 22 * * 1-5"
+
+  # Keep last 3 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+
+  # Don't start new job if previous is still running
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-ttm-financials
+        component: ic-score-pipeline
+        phase: phase-2
+    spec:
+      # Retry failed jobs up to 2 times
+      backoffLimit: 2
+
+      # Job timeout: 2 hours (TTM calculation is faster than data ingestion)
+      activeDeadlineSeconds: 7200
+
+      # Clean up completed jobs after 6 hours
+      ttlSecondsAfterFinished: 21600
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-ttm-financials
+            component: ic-score-pipeline
+            phase: phase-2
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: ttm-financials-calculator
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/ttm_financials_calculator.py"
+            - "--all"
+
+            env:
+            # Database connection configuration
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            # Python environment
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            # Resource limits (moderate - calculation only, no API calls)
+            resources:
+              requests:
+                memory: "1Gi"
+                cpu: "500m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+
+            # Volume mounts for logs and temp files
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          # Security context
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

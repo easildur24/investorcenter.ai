@@ -21,9 +21,9 @@ echo "Repository: ${ECR_URI}"
 echo "Logging in to ECR..."
 aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_URI}
 
-# Build the Docker image
+# Build the Docker image for linux/amd64 platform (EKS runs on AMD64)
 echo "Building Docker image..."
-docker build -t investorcenter/backend:${IMAGE_TAG} -f backend/Dockerfile backend/
+docker build --platform linux/amd64 -t investorcenter/backend:${IMAGE_TAG} -f backend/Dockerfile backend/
 
 # Tag the image for ECR
 echo "Tagging image for ECR..."

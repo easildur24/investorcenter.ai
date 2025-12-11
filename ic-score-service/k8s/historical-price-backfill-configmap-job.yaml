@@ -1,0 +1,60 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: historical-price-backfill-v2
+  namespace: investorcenter
+spec:
+  backoffLimit: 10
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: price-backfill
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.2.0-tech-fix
+        imagePullPolicy: IfNotPresent
+        command: ["python", "/app/pipelines/historical_price_backfill.py"]
+        args:
+        - "--all"
+        - "--years"
+        - "10"
+        - "--resume"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: script-volume
+          mountPath: /app/pipelines/historical_price_backfill.py
+          subPath: historical_price_backfill.py
+        env:
+        - name: DB_HOST
+          value: postgres-simple-service
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: investorcenter_db
+        - name: DB_SSLMODE
+          value: disable
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+      volumes:
+      - name: script-volume
+        configMap:
+          name: historical-price-backfill-script

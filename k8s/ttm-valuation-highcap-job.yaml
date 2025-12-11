@@ -1,0 +1,122 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ttm-valuation-highcap
+  namespace: investorcenter
+spec:
+  backoffLimit: 1
+  activeDeadlineSeconds: 1800
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+      containers:
+      - name: ttm-valuation
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.2.0-eps-fallback
+        imagePullPolicy: Always
+        command: ["python"]
+        args:
+        - "-c"
+        - |
+          import asyncio
+          import sys
+          sys.path.insert(0, '/app')
+          from pipelines.ttm_financials_calculator import TTMFinancialsCalculator
+          from pipelines.valuation_ratios_calculator import ValuationRatiosCalculator
+
+          # High-priority large-cap stocks that were just ingested
+          tickers = [
+              'MCD', 'LOW', 'PGR', 'PANW', 'VRTX', 'KKR', 'MCK', 'PH', 'LMT',
+              'MELI', 'SO', 'MO', 'SBUX', 'NEM', 'NKE', 'TT', 'MMM', 'MMC',
+              'ICE', 'WM', 'PNC', 'USB', 'TFC', 'ADP', 'GILD', 'MDLZ', 'SHW',
+              'ZTS', 'CME', 'REGN', 'KLAC', 'CDNS', 'SNPS', 'ADSK', 'MAR',
+              'APH', 'AFL', 'MSI', 'ORLY', 'AZO', 'EOG', 'CL', 'SLB', 'PSA',
+              'HUM', 'CARR', 'WELL', 'DLR', 'SPG', 'O'
+          ]
+
+          async def main():
+              # Step 1: Calculate TTM financials
+              print("=" * 60)
+              print("Step 1: Calculating TTM financials")
+              print("=" * 60)
+              ttm_calc = TTMFinancialsCalculator()
+              ttm_success = 0
+              for ticker in tickers:
+                  try:
+                      success = await ttm_calc.process_ticker(ticker)
+                      if success:
+                          ttm_success += 1
+                          print(f"{ticker}: TTM calculated")
+                      else:
+                          print(f"{ticker}: TTM failed (no data)")
+                  except Exception as e:
+                      print(f"{ticker}: TTM error - {e}")
+
+              print(f"\nTTM Complete: {ttm_success}/{len(tickers)} success")
+
+              # Step 2: Calculate valuation ratios
+              print("\n" + "=" * 60)
+              print("Step 2: Calculating valuation ratios")
+              print("=" * 60)
+              val_calc = ValuationRatiosCalculator()
+              val_success = 0
+              for ticker in tickers:
+                  try:
+                      success = await val_calc.process_ticker(ticker)
+                      if success:
+                          val_success += 1
+                          print(f"{ticker}: Valuation ratios calculated")
+                      else:
+                          print(f"{ticker}: Valuation failed")
+                  except Exception as e:
+                      print(f"{ticker}: Valuation error - {e}")
+
+              print(f"\nValuation Complete: {val_success}/{len(tickers)} success")
+              print("\n=== ALL DONE ===")
+
+          asyncio.run(main())
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: tmp
+          mountPath: /tmp
+      volumes:
+      - name: tmp
+        emptyDir: {}

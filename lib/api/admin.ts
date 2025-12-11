@@ -154,3 +154,93 @@ export async function getAdminValuationRatios(params?: {
   const query = queryParams.toString();
   return apiClient.get(`/admin/valuation-ratios${query ? `?${query}` : ''}`);
 }
+
+// Fetch analyst ratings (admin)
+export async function getAdminAnalystRatings(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/analyst-ratings${query ? `?${query}` : ''}`);
+}
+
+// Fetch insider trades (admin)
+export async function getAdminInsiderTrades(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/insider-trades${query ? `?${query}` : ''}`);
+}
+
+// Fetch institutional holdings (admin)
+export async function getAdminInstitutionalHoldings(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/institutional-holdings${query ? `?${query}` : ''}`);
+}
+
+// Fetch technical indicators (admin)
+export async function getAdminTechnicalIndicators(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/technical-indicators${query ? `?${query}` : ''}`);
+}
+
+// Fetch companies (admin)
+export async function getAdminCompanies(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/companies${query ? `?${query}` : ''}`);
+}
+
+// Fetch risk metrics (admin)
+export async function getAdminRiskMetrics(params?: {
+  limit?: number;
+  offset?: number;
+  search?: string;
+}): Promise<AdminDataResponse<any>> {
+  const queryParams = new URLSearchParams();
+  if (params?.limit) queryParams.append('limit', params.limit.toString());
+  if (params?.offset) queryParams.append('offset', params.offset.toString());
+  if (params?.search) queryParams.append('search', params.search);
+
+  const query = queryParams.toString();
+  return apiClient.get(`/admin/risk-metrics${query ? `?${query}` : ''}`);
+}

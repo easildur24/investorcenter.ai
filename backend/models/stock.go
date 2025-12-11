@@ -34,6 +34,7 @@ type Stock struct {
 	PrimaryExchangeCode string `json:"primaryExchangeCode,omitempty" db:"primary_exchange_code"`
 	PolygonType         string `json:"polygonType,omitempty" db:"polygon_type"`
 	LastUpdatedUTC      string `json:"lastUpdatedUtc,omitempty" db:"last_updated_utc"`
+	LogoURL             string `json:"logoUrl,omitempty" db:"logo_url"`
 }
 
 // StockPrice represents current and historical price data
@@ -254,6 +255,60 @@ type KeyMetrics struct {
 	DividendRate    *decimal.Decimal `json:"dividendRate"`
 	PayoutRatio     *decimal.Decimal `json:"payoutRatio"`
 	LastUpdated     time.Time        `json:"lastUpdated"`
+}
+
+// ScreenerStock represents a stock with screening metrics
+type ScreenerStock struct {
+	Symbol        string   `json:"symbol" db:"symbol"`
+	Name          string   `json:"name" db:"name"`
+	Sector        *string  `json:"sector" db:"sector"`
+	Industry      *string  `json:"industry" db:"industry"`
+	MarketCap     *float64 `json:"market_cap" db:"market_cap"`
+	Price         *float64 `json:"price" db:"price"`
+	ChangePercent *float64 `json:"change_percent" db:"change_percent"`
+	PERatio       *float64 `json:"pe_ratio" db:"pe_ratio"`
+	PBRatio       *float64 `json:"pb_ratio" db:"pb_ratio"`
+	PSRatio       *float64 `json:"ps_ratio" db:"ps_ratio"`
+	ROE           *float64 `json:"roe" db:"roe"`
+	RevenueGrowth *float64 `json:"revenue_growth" db:"revenue_growth"`
+	DividendYield *float64 `json:"dividend_yield" db:"dividend_yield"`
+	Beta          *float64 `json:"beta" db:"beta"`
+	ICScore       *float64 `json:"ic_score" db:"ic_score"`
+}
+
+// ScreenerParams represents query parameters for the screener endpoint
+type ScreenerParams struct {
+	Page             int      `json:"page"`
+	Limit            int      `json:"limit"`
+	Sort             string   `json:"sort"`
+	Order            string   `json:"order"`
+	Sectors          []string `json:"sectors"`
+	MarketCapMin     *float64 `json:"market_cap_min"`
+	MarketCapMax     *float64 `json:"market_cap_max"`
+	PEMin            *float64 `json:"pe_min"`
+	PEMax            *float64 `json:"pe_max"`
+	DividendYieldMin *float64 `json:"dividend_yield_min"`
+	DividendYieldMax *float64 `json:"dividend_yield_max"`
+	RevenueGrowthMin *float64 `json:"revenue_growth_min"`
+	RevenueGrowthMax *float64 `json:"revenue_growth_max"`
+	ICScoreMin       *float64 `json:"ic_score_min"`
+	ICScoreMax       *float64 `json:"ic_score_max"`
+	AssetType        string   `json:"asset_type"`
+}
+
+// ScreenerResponse represents the paginated response for the screener endpoint
+type ScreenerResponse struct {
+	Data []ScreenerStock `json:"data"`
+	Meta ScreenerMeta    `json:"meta"`
+}
+
+// ScreenerMeta represents pagination metadata
+type ScreenerMeta struct {
+	Total      int    `json:"total"`
+	Page       int    `json:"page"`
+	Limit      int    `json:"limit"`
+	TotalPages int    `json:"total_pages"`
+	Timestamp  string `json:"timestamp"`
 }
 
 // Helper functions

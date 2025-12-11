@@ -1,0 +1,49 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: historical-price-backfill-max
+  namespace: investorcenter
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 172800  # Keep for 48 hours
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: price-backfill
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v2.0.1-price-fix
+        command: ["python", "-m", "pipelines.historical_price_backfill"]
+        args:
+        - "--all"
+        - "--years"
+        - "25"
+        - "--resume"
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "250m"
+          limits:
+            memory: "4Gi"
+            cpu: "1000m"
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key

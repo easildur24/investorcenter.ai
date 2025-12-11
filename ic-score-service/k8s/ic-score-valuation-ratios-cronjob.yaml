@@ -65,6 +65,13 @@ spec:
                   name: postgres-secret
                   key: password
 
+            # Polygon API Key (for stock price data)
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: polygon-api-secret
+                  key: api-key
+
             - name: PYTHONUNBUFFERED
               value: "1"
             - name: PYTHONPATH

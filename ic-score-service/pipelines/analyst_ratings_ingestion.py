@@ -203,16 +203,16 @@ class AnalystRatingsIngestion:
 
         async with self.db.session() as session:
             query_str = """
-                SELECT ticker
-                FROM stocks
-                WHERE ticker NOT LIKE '%-%'
-                  AND is_active = true
+                SELECT symbol AS ticker
+                FROM tickers
+                WHERE symbol NOT LIKE '%-%'
+                  AND active = true
             """
 
             if sp500:
                 query_str += " AND is_sp500 = true"
 
-            query_str += " ORDER BY ticker LIMIT :limit"
+            query_str += " ORDER BY symbol LIMIT :limit"
 
             query = text(query_str)
             result = await session.execute(query, {"limit": limit or 500})

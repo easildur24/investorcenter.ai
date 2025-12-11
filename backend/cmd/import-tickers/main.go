@@ -155,8 +155,11 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 				i, len(tickers), inserted, updated, skipped, errors)
 		}
 
-		// Check if ticker exists
-		exists, err := tickerExists(db, ticker.Ticker)
+		// Map asset type for the check
+		assetType := services.MapAssetType(ticker.Type)
+
+		// Check if ticker exists (with same asset type)
+		exists, err := tickerExists(db, ticker.Ticker, assetType)
 		if err != nil {
 			if *verbose {
 				log.Printf("Error checking ticker %s: %v", ticker.Ticker, err)
@@ -200,9 +203,9 @@ func importTickers(db *sql.DB, client *services.PolygonClient, assetType string)
 	return nil
 }
 
-func tickerExists(db *sql.DB, symbol string) (bool, error) {
+func tickerExists(db *sql.DB, symbol string, assetType string) (bool, error) {
 	var count int
-	err := db.QueryRow("SELECT COUNT(*) FROM tickers WHERE symbol = $1", symbol).Scan(&count)
+	err := db.QueryRow("SELECT COUNT(*) FROM tickers WHERE symbol = $1 AND asset_type = $2", symbol, assetType).Scan(&count)
 	return count > 0, err
 }
 
@@ -223,7 +226,12 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 		) VALUES (
 			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
 			$16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27
-		) ON CONFLICT (symbol) DO NOTHING`
+		) ON CONFLICT (symbol, asset_type) DO UPDATE SET
+			name = EXCLUDED.name,
+			exchange = COALESCE(EXCLUDED.exchange, tickers.exchange),
+			market_cap = COALESCE(EXCLUDED.market_cap, tickers.market_cap),
+			website = COALESCE(EXCLUDED.website, tickers.website),
+			updated_at = NOW()`
 
 	// Map values
 	exchange := services.MapExchangeCode(ticker.PrimaryExchange)
@@ -306,6 +314,8 @@ func insertTicker(db *sql.DB, ticker services.PolygonTicker) error {
 }
 
 func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
+	assetType := services.MapAssetType(ticker.Type)
+
 	query := `
 		UPDATE tickers SET
 			name = $2,
@@ -319,7 +329,7 @@ func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
 			weighted_shares_outstanding = COALESCE($10, weighted_shares_outstanding),
 			active = $11,
 			updated_at = NOW()
-		WHERE symbol = $1`
+		WHERE symbol = $1 AND asset_type = $12`
 
 	var marketCap *float64
 	if ticker.MarketCap > 0 {
@@ -349,6 +359,7 @@ func updateTicker(db *sql.DB, ticker services.PolygonTicker) error {
 		nullIfEmpty(ticker.PhoneNumber),
 		sharesOutstanding,
 		ticker.Active,
+		assetType,
 	)
 
 	return err

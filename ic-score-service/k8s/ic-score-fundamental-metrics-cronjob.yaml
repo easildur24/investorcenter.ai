@@ -1,0 +1,194 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-fundamental-metrics
+  namespace: investorcenter
+  labels:
+    app: ic-score-service
+    component: fundamental-metrics
+spec:
+  # Run daily at 5:00 AM UTC (after TTM financials are calculated)
+  schedule: "0 5 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 7200  # 2 hour timeout
+      template:
+        metadata:
+          labels:
+            app: ic-score-service
+            component: fundamental-metrics
+        spec:
+          containers:
+          - name: fundamental-metrics-calculator
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            command: ["python", "-m", "pipelines.fundamental_metrics_calculator", "--all"]
+            env:
+            - name: DB_HOST
+              value: postgres-simple-service
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: investorcenter_db
+            - name: DB_SSLMODE
+              value: disable
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: postgres-secret
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: postgres-secret
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: api-key
+                  name: polygon-api-secret
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: /app
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+          restartPolicy: OnFailure
+          volumes:
+          - name: logs
+            emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-fair-value
+  namespace: investorcenter
+  labels:
+    app: ic-score-service
+    component: fair-value
+spec:
+  # Run daily at 7:00 AM UTC (after fundamental metrics are calculated)
+  schedule: "0 7 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 7200  # 2 hour timeout
+      template:
+        metadata:
+          labels:
+            app: ic-score-service
+            component: fair-value
+        spec:
+          containers:
+          - name: fair-value-calculator
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:latest
+            command: ["python", "-m", "pipelines.fair_value_calculator", "--all"]
+            env:
+            - name: DB_HOST
+              value: postgres-simple-service
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: investorcenter_db
+            - name: DB_SSLMODE
+              value: disable
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  key: username
+                  name: postgres-secret
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: password
+                  name: postgres-secret
+            - name: POLYGON_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: api-key
+                  name: polygon-api-secret
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: /app
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "1Gi"
+                cpu: "500m"
+          restartPolicy: OnFailure
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-refresh-sector-views
+  namespace: investorcenter
+  labels:
+    app: ic-score-service
+    component: sector-views
+spec:
+  # Run daily at 6:30 AM UTC (after fundamental metrics, before fair value)
+  schedule: "30 6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800  # 30 minute timeout
+      template:
+        metadata:
+          labels:
+            app: ic-score-service
+            component: sector-views
+        spec:
+          containers:
+          - name: refresh-views
+            image: postgres:15
+            command:
+            - /bin/sh
+            - -c
+            - |
+              PGPASSWORD=$DB_PASSWORD psql -h $DB_HOST -U $DB_USER -d $DB_NAME -c "
+                REFRESH MATERIALIZED VIEW CONCURRENTLY sector_metric_averages;
+                REFRESH MATERIALIZED VIEW CONCURRENTLY industry_metric_averages;
+              "
+            env:
+            - name: DB_HOST
+              value: postgres-simple-service
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: DB_NAME
+              value: investorcenter_db
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "256Mi"
+                cpu: "200m"
+          restartPolicy: OnFailure

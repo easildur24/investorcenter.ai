@@ -1,0 +1,4 @@
+# Reddit AI processor dependencies
+psycopg2-binary>=2.9.0
+requests>=2.28.0
+google-generativeai>=0.8.0

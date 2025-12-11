@@ -9,8 +9,8 @@ metadata:
     provider: polygon
     phase: phase-2
 spec:
-  # Run daily at 6:00 PM ET (11:00 PM UTC) on weekdays after market close
-  schedule: "0 23 * * 1-5"
+  # Run daily at 6:00 PM ET (11:00 PM UTC) after market close
+  schedule: "0 23 * * *"
 
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 1
@@ -35,10 +35,11 @@ spec:
             component: ic-score-pipeline
         spec:
           restartPolicy: OnFailure
+          # Removed static nodeName - let scheduler place pod on any available node
 
           containers:
           - name: technical-indicators-calculator
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.2.0-tech-fix
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.4-tech-fix
             imagePullPolicy: Always
 
             command: ["python"]
@@ -81,11 +82,11 @@ spec:
 
             resources:
               requests:
-                memory: "4Gi"
-                cpu: "2000m"
+                memory: "512Mi"
+                cpu: "250m"
               limits:
-                memory: "8Gi"
-                cpu: "4000m"
+                memory: "1Gi"
+                cpu: "500m"
 
             volumeMounts:
             - name: logs

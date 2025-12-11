@@ -145,8 +145,8 @@ class Financial(Base):
     operating_expenses: Mapped[Optional[int]] = mapped_column(BigInteger)
     operating_income: Mapped[Optional[int]] = mapped_column(BigInteger)
     net_income: Mapped[Optional[int]] = mapped_column(BigInteger)
-    eps_basic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
-    eps_diluted: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    eps_basic: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    eps_diluted: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
     shares_outstanding: Mapped[Optional[int]] = mapped_column(BigInteger)
 
     # Balance Sheet
@@ -165,18 +165,18 @@ class Financial(Base):
     capex: Mapped[Optional[int]] = mapped_column(BigInteger)
 
     # Calculated Metrics
-    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    pb_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    ps_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    current_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    quick_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    roic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    gross_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    operating_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
-    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 2))
+    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    pb_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    ps_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    current_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    quick_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    roic: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    gross_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    operating_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
+    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(15, 4))
 
     # Metadata
     sec_filing_url: Mapped[Optional[str]] = mapped_column(String(500))
@@ -488,3 +488,147 @@ class TechnicalIndicator(Base):
 
     def __repr__(self) -> str:
         return f"<TechnicalIndicator(ticker='{self.ticker}', indicator='{self.indicator_name}', value={self.value})>"
+
+
+class BenchmarkReturn(Base):
+    """TimescaleDB hypertable for benchmark index returns (S&P 500, etc.)."""
+    __tablename__ = 'benchmark_returns'
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    symbol: Mapped[str] = mapped_column(String(20), primary_key=True, nullable=False)
+    close: Mapped[Decimal] = mapped_column(Numeric(12, 4), nullable=False)
+    total_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    daily_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 6))
+    volume: Mapped[Optional[int]] = mapped_column(BigInteger)
+
+    def __repr__(self) -> str:
+        return f"<BenchmarkReturn(symbol='{self.symbol}', time={self.time}, close={self.close})>"
+
+
+class TreasuryRate(Base):
+    """US Treasury rates from FRED API for risk-free rate calculations."""
+    __tablename__ = 'treasury_rates'
+
+    date: Mapped[date] = mapped_column(Date, primary_key=True, nullable=False)
+    rate_1m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_3m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_6m: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_1y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_2y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    rate_10y: Mapped[Optional[Decimal]] = mapped_column(Numeric(8, 4))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<TreasuryRate(date={self.date}, rate_3m={self.rate_3m}, rate_10y={self.rate_10y})>"
+
+
+class RiskMetric(Base):
+    """TimescaleDB hypertable for risk metrics (Alpha, Beta, Sharpe, Sortino, etc.)."""
+    __tablename__ = 'risk_metrics'
+
+    time: Mapped[datetime] = mapped_column(TIMESTAMP(timezone=True), primary_key=True, nullable=False)
+    ticker: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
+    period: Mapped[str] = mapped_column(String(10), primary_key=True, nullable=False)
+
+    # Risk Metrics
+    alpha: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    beta: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    sharpe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    sortino_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    std_dev: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    max_drawdown: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    var_5: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Supporting metrics
+    annualized_return: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    downside_deviation: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Metadata
+    data_points: Mapped[Optional[int]] = mapped_column(Integer)
+    calculation_date: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<RiskMetric(ticker='{self.ticker}', period='{self.period}', beta={self.beta}, sharpe={self.sharpe_ratio})>"
+
+
+# ============================================================================
+# EXTENDED FUNDAMENTAL METRICS
+# ============================================================================
+
+class FundamentalMetricsExtended(Base):
+    """Extended fundamental metrics including growth rates, leverage, dividends, and fair value."""
+    __tablename__ = 'fundamental_metrics_extended'
+    __table_args__ = (
+        UniqueConstraint('ticker', 'calculation_date', name='uq_fundamental_metrics_ticker_date'),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
+    ticker: Mapped[str] = mapped_column(String(10), nullable=False)
+    calculation_date: Mapped[date] = mapped_column(Date, nullable=False)
+
+    # Profitability Margins (as percentages)
+    gross_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    operating_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    ebitda_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Returns (as percentages)
+    roe: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    roa: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    roic: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Growth Rates (as percentages)
+    revenue_growth_yoy: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    revenue_growth_3y_cagr: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    revenue_growth_5y_cagr: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    eps_growth_yoy: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    eps_growth_3y_cagr: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    eps_growth_5y_cagr: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    fcf_growth_yoy: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Valuation
+    enterprise_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 2))
+    ev_to_revenue: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    ev_to_ebitda: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+    ev_to_fcf: Mapped[Optional[Decimal]] = mapped_column(Numeric(12, 4))
+
+    # Liquidity
+    current_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    quick_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Debt/Leverage
+    debt_to_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    interest_coverage: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    net_debt_to_ebitda: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Dividends
+    dividend_yield: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    payout_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    dividend_growth_rate: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    consecutive_dividend_years: Mapped[int] = mapped_column(Integer, server_default='0')
+
+    # Fair Value (Phase 5)
+    dcf_fair_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2))
+    dcf_upside_percent: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    graham_number: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2))
+    epv_fair_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(14, 2))
+
+    # Sector Comparisons (percentile ranks 0-100)
+    pe_sector_percentile: Mapped[Optional[int]] = mapped_column(Integer)
+    pb_sector_percentile: Mapped[Optional[int]] = mapped_column(Integer)
+    roe_sector_percentile: Mapped[Optional[int]] = mapped_column(Integer)
+    margin_sector_percentile: Mapped[Optional[int]] = mapped_column(Integer)
+
+    # WACC Components
+    wacc: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    beta: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    cost_of_equity: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    cost_of_debt: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+
+    # Metadata
+    data_quality_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+    updated_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<FundamentalMetricsExtended(ticker='{self.ticker}', date={self.calculation_date}, roe={self.roe}, quality={self.data_quality_score})>"

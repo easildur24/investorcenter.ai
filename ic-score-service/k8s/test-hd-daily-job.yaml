@@ -1,0 +1,84 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-hd-daily-returns
+  namespace: investorcenter
+  labels:
+    app: ic-score-test
+    test-type: daily-returns-validation
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600  # Keep for 1 hour
+
+  template:
+    metadata:
+      labels:
+        app: ic-score-test
+    spec:
+      restartPolicy: Never
+
+      containers:
+      - name: test-hd-metrics
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:risk-metrics-daily-v2
+        imagePullPolicy: Always
+
+        command: ["python"]
+        args:
+        - "-m"
+        - "pipelines.risk_metrics_calculator"
+        - "--ticker"
+        - "HD"
+
+        env:
+        # Polygon API Key
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+
+        # Database connection
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+
+        - name: PYTHONUNBUFFERED
+          value: "1"
+        - name: PYTHONPATH
+          value: "/app"
+
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+
+        volumeMounts:
+        - name: logs
+          mountPath: /app/logs
+
+      volumes:
+      - name: logs
+        emptyDir: {}
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000

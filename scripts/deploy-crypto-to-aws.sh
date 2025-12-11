@@ -60,9 +60,9 @@ else
 fi
 echo ""
 
-# Step 2: Build Docker image
+# Step 2: Build Docker image for linux/amd64 platform (EKS runs on AMD64)
 echo "🐳 Step 2: Building Docker image..."
-docker build -f Dockerfile.crypto-updater -t crypto-price-updater:${IMAGE_TAG} .
+docker build --platform linux/amd64 -f Dockerfile.crypto-updater -t crypto-price-updater:${IMAGE_TAG} .
 echo -e "${GREEN}   ✅ Image built${NC}"
 echo ""
 

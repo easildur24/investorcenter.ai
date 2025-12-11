@@ -200,3 +200,6 @@ bin/
 backend/investorcenter-api
 backend/.env
 .env
+
+# Local documentation archive
+.docs-archive/

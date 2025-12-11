@@ -11,10 +11,11 @@ ECR_REGISTRY="360358043271.dkr.ecr.us-east-1.amazonaws.com"
 IMAGE_NAME="investorcenter/reddit-collector"
 TAG="latest"
 
-# Step 1: Build Docker image
+# Step 1: Build Docker image for linux/amd64 platform (EKS runs on AMD64)
 echo ""
 echo "📦 Building Docker image..."
 docker build \
+  --platform linux/amd64 \
   -f scripts/Dockerfile.reddit-collector \
   -t ${IMAGE_NAME}:${TAG} \
   .

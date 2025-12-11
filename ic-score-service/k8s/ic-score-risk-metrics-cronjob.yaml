@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ic-score-risk-metrics
+  namespace: investorcenter
+  labels:
+    app: ic-score-risk-metrics
+    component: ic-score-pipeline
+    provider: calculated
+    phase: phase-3
+spec:
+  # Run daily at midnight UTC on weekdays (Tue-Sat after Mon-Fri market close)
+  # Order: price-update (10:30 PM) -> technical-indicators (11 PM) -> risk-metrics (midnight)
+  schedule: "0 0 * * 2-6"
+
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  concurrencyPolicy: Forbid
+
+  jobTemplate:
+    metadata:
+      labels:
+        app: ic-score-risk-metrics
+        component: ic-score-pipeline
+        provider: calculated
+        phase: phase-3
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 14400  # 4 hours timeout
+      ttlSecondsAfterFinished: 21600
+
+      template:
+        metadata:
+          labels:
+            app: ic-score-risk-metrics
+            component: ic-score-pipeline
+        spec:
+          restartPolicy: OnFailure
+
+          containers:
+          - name: risk-metrics-calculator
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.6.2-risk-fix
+            imagePullPolicy: Always
+
+            command: ["python"]
+            args:
+            - "/app/pipelines/risk_metrics_calculator.py"
+            - "--all"
+
+            env:
+            # Database connection
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: PYTHONPATH
+              value: "/app"
+
+            resources:
+              requests:
+                memory: "512Mi"
+                cpu: "250m"
+              limits:
+                memory: "2Gi"
+                cpu: "1000m"
+
+            volumeMounts:
+            - name: logs
+              mountPath: /app/logs
+            - name: tmp
+              mountPath: /tmp
+
+          volumes:
+          - name: logs
+            emptyDir: {}
+          - name: tmp
+            emptyDir: {}
+
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            fsGroup: 1000

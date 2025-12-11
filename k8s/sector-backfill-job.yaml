@@ -1,0 +1,293 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: sector-backfill
+  namespace: investorcenter
+spec:
+  ttlSecondsAfterFinished: 86400  # Clean up after 24 hours
+  template:
+    spec:
+      containers:
+      - name: sector-backfill
+        image: golang:1.21-alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - |
+            apk add --no-cache git
+            mkdir -p /tmp/app
+            cp /app/backfill_sectors.go /tmp/app/
+            cd /tmp/app
+            go mod init sector-backfill
+            go get github.com/lib/pq
+            go run backfill_sectors.go
+        volumeMounts:
+        - name: script
+          mountPath: /app
+        env:
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: POLYGON_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "500m"
+      volumes:
+      - name: script
+        configMap:
+          name: sector-backfill-script
+      restartPolicy: Never
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sector-backfill-script
+  namespace: investorcenter
+data:
+  backfill_sectors.go: |
+    package main
+
+    import (
+    	"database/sql"
+    	"encoding/json"
+    	"fmt"
+    	"log"
+    	"net/http"
+    	"os"
+    	"time"
+
+    	_ "github.com/lib/pq"
+    )
+
+    // SIC code to sector mapping
+    var sicToSector = map[string]string{
+    	"01": "Consumer Defensive", "02": "Consumer Defensive", "07": "Consumer Defensive",
+    	"08": "Consumer Defensive", "09": "Consumer Defensive",
+    	"10": "Energy", "12": "Energy", "13": "Energy", "14": "Basic Materials",
+    	"15": "Industrials", "16": "Industrials", "17": "Industrials",
+    	"20": "Consumer Defensive", "21": "Consumer Defensive",
+    	"22": "Consumer Cyclical", "23": "Consumer Cyclical",
+    	"24": "Basic Materials", "25": "Consumer Cyclical", "26": "Basic Materials",
+    	"27": "Communication Services",
+    	"28": "Healthcare", "29": "Energy",
+    	"30": "Basic Materials", "31": "Consumer Cyclical",
+    	"32": "Basic Materials", "33": "Basic Materials", "34": "Industrials",
+    	"35": "Technology", "36": "Technology",
+    	"37": "Consumer Cyclical",
+    	"38": "Healthcare", "39": "Consumer Cyclical",
+    	"40": "Industrials", "41": "Industrials", "42": "Industrials",
+    	"43": "Industrials", "44": "Industrials", "45": "Industrials",
+    	"46": "Energy", "47": "Industrials",
+    	"48": "Communication Services", "49": "Utilities",
+    	"50": "Consumer Cyclical", "51": "Consumer Cyclical",
+    	"52": "Consumer Cyclical", "53": "Consumer Cyclical",
+    	"54": "Consumer Defensive", "55": "Consumer Cyclical",
+    	"56": "Consumer Cyclical", "57": "Consumer Cyclical",
+    	"58": "Consumer Cyclical", "59": "Consumer Cyclical",
+    	"60": "Financial Services", "61": "Financial Services",
+    	"62": "Financial Services", "63": "Financial Services",
+    	"64": "Financial Services", "65": "Real Estate", "67": "Financial Services",
+    	"70": "Consumer Cyclical", "72": "Consumer Cyclical",
+    	"73": "Technology", "75": "Consumer Cyclical", "76": "Consumer Cyclical",
+    	"78": "Communication Services", "79": "Communication Services",
+    	"80": "Healthcare", "81": "Industrials", "82": "Consumer Cyclical",
+    	"83": "Consumer Defensive", "84": "Consumer Cyclical",
+    	"86": "Consumer Cyclical", "87": "Technology", "89": "Industrials",
+    	"91": "Industrials", "92": "Industrials", "93": "Industrials",
+    	"94": "Industrials", "95": "Industrials", "96": "Industrials",
+    	"97": "Industrials", "99": "Industrials",
+    }
+
+    // 4-digit SIC mappings for accuracy
+    var sic4ToSector = map[string]string{
+    	"3571": "Technology", "3572": "Technology", "3575": "Technology",
+    	"3576": "Technology", "3577": "Technology", "3578": "Technology",
+    	"3579": "Technology", "3661": "Technology", "3663": "Technology",
+    	"3669": "Technology", "3674": "Technology", "3825": "Technology",
+    	"7370": "Technology", "7371": "Technology", "7372": "Technology",
+    	"7373": "Technology", "7374": "Technology", "7375": "Technology",
+    	"7376": "Technology", "7377": "Technology", "7378": "Technology",
+    	"7379": "Technology",
+    	"2834": "Healthcare", "2835": "Healthcare", "2836": "Healthcare",
+    	"3826": "Healthcare", "3841": "Healthcare", "3842": "Healthcare",
+    	"3843": "Healthcare", "3844": "Healthcare", "3845": "Healthcare",
+    	"8011": "Healthcare", "8021": "Healthcare", "8031": "Healthcare",
+    	"8041": "Healthcare", "8042": "Healthcare", "8049": "Healthcare",
+    	"8051": "Healthcare", "8052": "Healthcare", "8059": "Healthcare",
+    	"8062": "Healthcare", "8063": "Healthcare", "8069": "Healthcare",
+    	"8071": "Healthcare", "8072": "Healthcare", "8082": "Healthcare",
+    	"8092": "Healthcare", "8093": "Healthcare", "8099": "Healthcare",
+    	"4812": "Communication Services", "4813": "Communication Services",
+    	"4822": "Communication Services", "4832": "Communication Services",
+    	"4833": "Communication Services", "4841": "Communication Services",
+    	"7812": "Communication Services", "7819": "Communication Services",
+    	"7822": "Communication Services", "7829": "Communication Services",
+    	"7832": "Communication Services", "7841": "Communication Services",
+    	"7941": "Communication Services",
+    	"5961": "Consumer Cyclical",
+    	"3711": "Consumer Cyclical", "3713": "Consumer Cyclical",
+    	"3714": "Consumer Cyclical", "3715": "Consumer Cyclical",
+    	"3716": "Consumer Cyclical", "5511": "Consumer Cyclical",
+    	"5521": "Consumer Cyclical", "5531": "Consumer Cyclical",
+    }
+
+    type PolygonResponse struct {
+    	Results struct {
+    		SICCode        string `json:"sic_code"`
+    		SICDescription string `json:"sic_description"`
+    	} `json:"results"`
+    	Status string `json:"status"`
+    }
+
+    func getSectorFromSIC(sicCode string) string {
+    	if sicCode == "" {
+    		return ""
+    	}
+    	if sector, ok := sic4ToSector[sicCode]; ok {
+    		return sector
+    	}
+    	if len(sicCode) >= 2 {
+    		if sector, ok := sicToSector[sicCode[:2]]; ok {
+    			return sector
+    		}
+    	}
+    	return ""
+    }
+
+    func main() {
+    	dbHost := os.Getenv("DB_HOST")
+    	dbPort := os.Getenv("DB_PORT")
+    	dbUser := os.Getenv("DB_USER")
+    	dbPassword := os.Getenv("DB_PASSWORD")
+    	dbName := os.Getenv("DB_NAME")
+    	polygonAPIKey := os.Getenv("POLYGON_API_KEY")
+
+    	if dbHost == "" || dbUser == "" || dbPassword == "" || dbName == "" {
+    		log.Fatal("Database environment variables not set")
+    	}
+    	if polygonAPIKey == "" {
+    		log.Fatal("POLYGON_API_KEY environment variable not set")
+    	}
+
+    	connStr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+    		dbHost, dbPort, dbUser, dbPassword, dbName)
+
+    	db, err := sql.Open("postgres", connStr)
+    	if err != nil {
+    		log.Fatalf("Failed to connect to database: %v", err)
+    	}
+    	defer db.Close()
+
+    	if err := db.Ping(); err != nil {
+    		log.Fatalf("Failed to ping database: %v", err)
+    	}
+
+    	log.Println("Connected to database")
+
+    	rows, err := db.Query(`
+    		SELECT symbol FROM tickers
+    		WHERE (sector IS NULL OR sector = '')
+    		AND asset_type IN ('CS', 'PFD', 'stock')
+    		AND symbol NOT LIKE 'I:%'
+    		AND symbol NOT LIKE 'X:%'
+    		AND symbol NOT LIKE 'C:%'
+    		ORDER BY symbol
+    	`)
+    	if err != nil {
+    		log.Fatalf("Failed to query tickers: %v", err)
+    	}
+    	defer rows.Close()
+
+    	var symbols []string
+    	for rows.Next() {
+    		var symbol string
+    		if err := rows.Scan(&symbol); err != nil {
+    			continue
+    		}
+    		symbols = append(symbols, symbol)
+    	}
+
+    	log.Printf("Found %d tickers without sector data", len(symbols))
+
+    	client := &http.Client{Timeout: 10 * time.Second}
+    	updated := 0
+    	failed := 0
+    	noSector := 0
+
+    	for i, symbol := range symbols {
+    		time.Sleep(200 * time.Millisecond)
+
+    		url := fmt.Sprintf("https://api.polygon.io/v3/reference/tickers/%s?apiKey=%s", symbol, polygonAPIKey)
+    		resp, err := client.Get(url)
+    		if err != nil {
+    			log.Printf("[%d/%d] Error fetching %s: %v", i+1, len(symbols), symbol, err)
+    			failed++
+    			continue
+    		}
+
+    		var data PolygonResponse
+    		if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
+    			resp.Body.Close()
+    			failed++
+    			continue
+    		}
+    		resp.Body.Close()
+
+    		sicCode := data.Results.SICCode
+    		sector := getSectorFromSIC(sicCode)
+
+    		if sector == "" {
+    			if sicCode != "" {
+    				log.Printf("[%d/%d] No sector mapping for %s (SIC: %s)", i+1, len(symbols), symbol, sicCode)
+    			}
+    			noSector++
+    			continue
+    		}
+
+    		_, err = db.Exec("UPDATE tickers SET sector = $1 WHERE symbol = $2", sector, symbol)
+    		if err != nil {
+    			failed++
+    			continue
+    		}
+
+    		log.Printf("[%d/%d] Updated %s: SIC %s -> %s", i+1, len(symbols), symbol, sicCode, sector)
+    		updated++
+
+    		if (i+1)%100 == 0 {
+    			log.Printf("Progress: %d/%d (updated: %d, no sector: %d, failed: %d)",
+    				i+1, len(symbols), updated, noSector, failed)
+    		}
+    	}
+
+    	log.Printf("Completed: %d updated, %d no sector mapping, %d failed out of %d total",
+    		updated, noSector, failed, len(symbols))
+
+    	log.Println("Refreshing screener_data materialized view...")
+    	_, err = db.Exec("REFRESH MATERIALIZED VIEW screener_data")
+    	if err != nil {
+    		log.Printf("Warning: Failed to refresh materialized view: %v", err)
+    	} else {
+    		log.Println("Materialized view refreshed successfully")
+    	}
+    }

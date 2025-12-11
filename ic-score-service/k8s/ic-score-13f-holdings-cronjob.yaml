@@ -36,10 +36,11 @@ spec:
             component: ic-score-pipeline
         spec:
           restartPolicy: OnFailure
+          nodeName: ip-10-0-10-183.ec2.internal
 
           containers:
           - name: 13f-holdings-ingestion
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.1.2-13f-batch
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/ic-score-service:v1.5.9-openfigi
             imagePullPolicy: Always
 
             command: ["python"]
@@ -75,11 +76,11 @@ spec:
 
             resources:
               requests:
-                memory: "2Gi"
-                cpu: "1000m"
+                memory: "512Mi"
+                cpu: "250m"
               limits:
-                memory: "4Gi"
-                cpu: "2000m"
+                memory: "1Gi"
+                cpu: "500m"
 
             volumeMounts:
             - name: logs

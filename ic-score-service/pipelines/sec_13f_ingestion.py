@@ -50,11 +50,20 @@ class SEC13FIngestion:
     EDGAR_ARCHIVES_URL = "https://www.sec.gov/Archives/edgar/data"
     SEC_TICKERS_URL = "https://www.sec.gov/files/company_tickers.json"
 
+    # OpenFIGI API for CUSIP to ticker mapping
+    OPENFIGI_URL = "https://api.openfigi.com/v3/mapping"
+    OPENFIGI_BATCH_SIZE = 10  # Keep small to avoid 413 Payload Too Large errors
+
     USER_AGENT = "InvestorCenter.ai research@investorcenter.ai"
 
     # Rate limiting: 10 requests/second per SEC guidelines
     REQUESTS_PER_SECOND = 10
     MIN_REQUEST_INTERVAL = 1.0 / REQUESTS_PER_SECOND
+    # OpenFIGI: 20 requests/minute without API key (3 seconds between requests)
+    OPENFIGI_MIN_INTERVAL = 3.0
+
+    # Track last OpenFIGI request time separately from SEC
+    last_openfigi_request_time = 0.0
 
     # Top institutional investors by AUM (CIK numbers)
     MAJOR_INSTITUTIONS = [
@@ -103,22 +112,39 @@ class SEC13FIngestion:
 
     async def load_cusip_ticker_mapping(self):
         """Load CUSIP to ticker mapping from SEC and database."""
-        # First, get from database (stocks we already have)
+        # Try to get CUSIP mappings from database if the column exists
+        # Note: The tickers table may not have a cusip column - this is optional
         async with self.db.session() as session:
-            query = text("""
-                SELECT cusip, ticker
-                FROM stocks
-                WHERE cusip IS NOT NULL AND cusip != ''
-            """)
-            result = await session.execute(query)
-            rows = result.fetchall()
+            try:
+                # Check if cusip column exists
+                check_query = text("""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_name = 'tickers' AND column_name = 'cusip'
+                """)
+                result = await session.execute(check_query)
+                has_cusip_column = result.fetchone() is not None
 
-            for row in rows:
-                cusip = str(row[0]).strip()
-                if cusip:
-                    self.cusip_to_ticker[cusip] = row[1]
+                if has_cusip_column:
+                    query = text("""
+                        SELECT cusip, symbol AS ticker
+                        FROM tickers
+                        WHERE cusip IS NOT NULL AND cusip != ''
+                    """)
+                    result = await session.execute(query)
+                    rows = result.fetchall()
 
-        logger.info(f"Loaded {len(self.cusip_to_ticker)} CUSIP mappings from database")
+                    for row in rows:
+                        cusip = str(row[0]).strip()
+                        if cusip:
+                            self.cusip_to_ticker[cusip] = row[1]
+
+                    logger.info(f"Loaded {len(self.cusip_to_ticker)} CUSIP mappings from database")
+                else:
+                    logger.info("No cusip column in tickers table - will use CUSIP as identifier")
+
+            except Exception as e:
+                logger.warning(f"Could not load CUSIP mappings from database: {e}")
+                logger.info("Will use CUSIP as identifier for holdings")
 
         # Also fetch from SEC company tickers JSON (has CUSIP in some cases)
         try:
@@ -132,6 +158,98 @@ class SEC13FIngestion:
 
         except Exception as e:
             logger.warning(f"Could not load SEC tickers JSON: {e}")
+
+    def _openfigi_rate_limit(self):
+        """Implement rate limiting for OpenFIGI requests (separate from SEC)."""
+        current_time = time.time()
+        elapsed = current_time - self.last_openfigi_request_time
+
+        if elapsed < self.OPENFIGI_MIN_INTERVAL:
+            sleep_time = self.OPENFIGI_MIN_INTERVAL - elapsed
+            time.sleep(sleep_time)
+
+        self.last_openfigi_request_time = time.time()
+
+    def lookup_cusips_via_openfigi(self, cusips: List[str]) -> Dict[str, str]:
+        """Lookup ticker symbols for CUSIPs using OpenFIGI API.
+
+        Args:
+            cusips: List of CUSIP identifiers to lookup.
+
+        Returns:
+            Dict mapping CUSIP -> ticker symbol.
+        """
+        if not cusips:
+            return {}
+
+        # Remove duplicates while preserving order
+        unique_cusips = list(dict.fromkeys(cusips))
+        logger.info(f"Looking up {len(unique_cusips)} unique CUSIPs via OpenFIGI API")
+
+        cusip_to_ticker = {}
+        failed_lookups = 0
+
+        # Process in batches of OPENFIGI_BATCH_SIZE
+        for i in range(0, len(unique_cusips), self.OPENFIGI_BATCH_SIZE):
+            batch = unique_cusips[i:i + self.OPENFIGI_BATCH_SIZE]
+            batch_num = i // self.OPENFIGI_BATCH_SIZE + 1
+            total_batches = (len(unique_cusips) + self.OPENFIGI_BATCH_SIZE - 1) // self.OPENFIGI_BATCH_SIZE
+
+            logger.info(f"OpenFIGI batch {batch_num}/{total_batches}: {len(batch)} CUSIPs")
+
+            # Rate limit
+            self._openfigi_rate_limit()
+
+            try:
+                # Build request payload
+                payload = [{"idType": "ID_CUSIP", "idValue": cusip} for cusip in batch]
+
+                response = self.session.post(
+                    self.OPENFIGI_URL,
+                    json=payload,
+                    headers={'Content-Type': 'application/json'},
+                    timeout=30
+                )
+                response.raise_for_status()
+
+                results = response.json()
+
+                # Process results - each item corresponds to a CUSIP in same order
+                for j, result in enumerate(results):
+                    cusip = batch[j]
+
+                    if 'data' in result and result['data']:
+                        # Get the first matching security (usually the primary listing)
+                        security = result['data'][0]
+                        ticker = security.get('ticker')
+
+                        if ticker:
+                            # Clean ticker (remove any exchange suffix)
+                            ticker = ticker.split()[0].upper()
+                            cusip_to_ticker[cusip] = ticker
+                        else:
+                            failed_lookups += 1
+                    elif 'error' in result:
+                        # OpenFIGI returned an error for this CUSIP
+                        failed_lookups += 1
+                    else:
+                        # No data found
+                        failed_lookups += 1
+
+            except requests.exceptions.RequestException as e:
+                logger.error(f"OpenFIGI API request failed for batch {batch_num}: {e}")
+                failed_lookups += len(batch)
+            except Exception as e:
+                logger.error(f"Error processing OpenFIGI response for batch {batch_num}: {e}")
+                failed_lookups += len(batch)
+
+        success_count = len(cusip_to_ticker)
+        logger.info(
+            f"OpenFIGI lookup complete: {success_count} tickers found, "
+            f"{failed_lookups} failed/unmapped"
+        )
+
+        return cusip_to_ticker
 
     def get_latest_13f_filing(self, institution_cik: str) -> Optional[Dict[str, str]]:
         """Get the latest 13F filing for an institution.
@@ -279,6 +397,7 @@ class SEC13FIngestion:
         self._rate_limit()
 
         holdings = []
+        raw_entries = []  # Store raw parsed data before ticker mapping
 
         try:
             response = self.session.get(xml_url, timeout=30)
@@ -290,7 +409,9 @@ class SEC13FIngestion:
             # Namespace
             ns = {'': 'http://www.sec.gov/edgar/document/thirteenf/informationtable'}
 
-            # Find all infoTable elements
+            # First pass: Extract all entries with CUSIPs
+            cusips_to_lookup = []
+
             for info_table in root.findall('.//infoTable', ns):
                 try:
                     # Extract data
@@ -302,42 +423,68 @@ class SEC13FIngestion:
                         continue
 
                     cusip = cusip_elem.text.strip()
-
-                    # Map CUSIP to ticker
-                    ticker = self.cusip_to_ticker.get(cusip)
-                    if not ticker:
-                        # Try without check digit (last character)
-                        ticker = self.cusip_to_ticker.get(cusip[:-1]) if len(cusip) > 8 else None
-
-                    if not ticker:
-                        # Use CUSIP as ticker temporarily (can backfill later)
-                        # CUSIP is 9 chars, ticker field is VARCHAR(10), so it fits
-                        ticker = cusip
-                        logger.debug(f"No ticker match for CUSIP {cusip}, storing as CUSIP")
-
-                    # Parse values
                     market_value = int(value_elem.text)  # Already in dollars
                     shares = int(shares_elem.text)
 
-                    # Create holding record
-                    holding = {
-                        'ticker': ticker,
-                        'filing_date': filing_date,
-                        'quarter_end_date': quarter_end_date,
-                        'institution_name': institution_name,
-                        'institution_cik': institution_cik,
+                    raw_entries.append({
+                        'cusip': cusip,
                         'shares': shares,
                         'market_value': market_value,
-                        'position_change': None,  # Will calculate later
-                        'shares_change': None,
-                        'percent_change': None,
-                    }
+                    })
 
-                    holdings.append(holding)
+                    # Check if we already have this CUSIP mapped
+                    if cusip not in self.cusip_to_ticker:
+                        cusips_to_lookup.append(cusip)
 
                 except Exception as e:
                     # Skip individual entries that fail to parse
                     continue
+
+            logger.info(f"Parsed {len(raw_entries)} entries from XML, {len(cusips_to_lookup)} CUSIPs need lookup")
+
+            # Second pass: Lookup unmapped CUSIPs via OpenFIGI
+            if cusips_to_lookup:
+                openfigi_mappings = self.lookup_cusips_via_openfigi(cusips_to_lookup)
+
+                # Merge into our cache
+                self.cusip_to_ticker.update(openfigi_mappings)
+                logger.info(f"Updated CUSIP cache with {len(openfigi_mappings)} new mappings")
+
+            # Third pass: Create holdings with mapped tickers
+            unmapped_count = 0
+            for entry in raw_entries:
+                cusip = entry['cusip']
+
+                # Map CUSIP to ticker
+                ticker = self.cusip_to_ticker.get(cusip)
+                if not ticker:
+                    # Try without check digit (last character)
+                    ticker = self.cusip_to_ticker.get(cusip[:-1]) if len(cusip) > 8 else None
+
+                if not ticker:
+                    # Skip entries we couldn't map - they're likely not stocks
+                    # (e.g., bonds, preferred shares, warrants without tickers)
+                    unmapped_count += 1
+                    continue
+
+                # Create holding record
+                holding = {
+                    'ticker': ticker,
+                    'filing_date': filing_date,
+                    'quarter_end_date': quarter_end_date,
+                    'institution_name': institution_name,
+                    'institution_cik': institution_cik,
+                    'shares': entry['shares'],
+                    'market_value': entry['market_value'],
+                    'position_change': None,  # Will calculate later
+                    'shares_change': None,
+                    'percent_change': None,
+                }
+
+                holdings.append(holding)
+
+            if unmapped_count > 0:
+                logger.info(f"Skipped {unmapped_count} entries without ticker mappings (likely non-stock securities)")
 
         except Exception as e:
             logger.error(f"Error parsing information table from {xml_url}: {e}")

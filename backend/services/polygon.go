@@ -236,28 +236,33 @@ func (p *PolygonClient) GetDailyData(symbol string, days int) ([]models.ChartDat
 	return p.GetHistoricalData(symbol, "day", from.Format("2006-01-02"), to.Format("2006-01-02"))
 }
 
+// TickerBranding represents company branding info from Polygon
+type TickerBranding struct {
+	LogoURL string `json:"logo_url"`
+	IconURL string `json:"icon_url"`
+}
+
 // TickerDetailsResponse represents ticker details
 type TickerDetailsResponse struct {
 	Status    string `json:"status"`
 	RequestID string `json:"request_id"`
 	Results   struct {
-		Ticker         string `json:"ticker"`
-		Name           string `json:"name"`
-		Market         string `json:"market"`
-		Locale         string `json:"locale"`
-		PrimaryExch    string `json:"primary_exchange"`
-		Type           string `json:"type"`
-		Active         bool   `json:"active"`
-		CurrencyName   string `json:"currency_name"`
-		CIK            string `json:"cik"`
-		Composite      string `json:"composite_figi"`
-		ShareClass     string `json:"share_class_figi"`
-		Description    string `json:"description"`
-		HomepageURL    string `json:"homepage_url"`
-		TotalEmployees int    `json:"total_employees"`
-		ListDate       string `json:"list_date"`
-		LogoURL        string `json:"branding.logo_url"`
-		IconURL        string `json:"branding.icon_url"`
+		Ticker         string         `json:"ticker"`
+		Name           string         `json:"name"`
+		Market         string         `json:"market"`
+		Locale         string         `json:"locale"`
+		PrimaryExch    string         `json:"primary_exchange"`
+		Type           string         `json:"type"`
+		Active         bool           `json:"active"`
+		CurrencyName   string         `json:"currency_name"`
+		CIK            string         `json:"cik"`
+		Composite      string         `json:"composite_figi"`
+		ShareClass     string         `json:"share_class_figi"`
+		Description    string         `json:"description"`
+		HomepageURL    string         `json:"homepage_url"`
+		TotalEmployees int            `json:"total_employees"`
+		ListDate       string         `json:"list_date"`
+		Branding       TickerBranding `json:"branding"`
 	} `json:"results"`
 }
 
@@ -1024,10 +1029,18 @@ func GetDaysFromPeriod(period string) int {
 		return 90
 	case "6M":
 		return 180
+	case "YTD":
+		// Calculate days from January 1st of current year to today
+		now := time.Now()
+		startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+		return int(now.Sub(startOfYear).Hours()/24) + 1
 	case "1Y":
 		return 365
 	case "5Y":
 		return 1825
+	case "MAX":
+		// Return 20 years of data (maximum available history)
+		return 7300
 	default:
 		return 365
 	}

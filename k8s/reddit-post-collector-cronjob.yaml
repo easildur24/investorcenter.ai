@@ -1,0 +1,78 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: reddit-post-collector
+  namespace: investorcenter
+  labels:
+    app: reddit-post-collector
+    component: data-collection
+spec:
+  # Run every 4 hours
+  schedule: "0 */4 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid  # Prevent overlapping jobs
+  jobTemplate:
+    spec:
+      backoffLimit: 2  # Retry up to 2 times on failure
+      activeDeadlineSeconds: 1800  # 30 minute timeout
+      template:
+        metadata:
+          labels:
+            app: reddit-post-collector
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: reddit-post-collector
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-post-collector:latest
+            imagePullPolicy: Always
+            env:
+            - name: DB_HOST
+              value: "postgres-simple-service"
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: password
+            - name: DB_NAME
+              value: "investorcenter_db"
+            - name: DB_SSLMODE
+              value: "disable"
+            - name: REDDIT_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: reddit-api-secret
+                  key: client-id
+            - name: REDDIT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: reddit-api-secret
+                  key: client-secret
+            resources:
+              requests:
+                memory: "128Mi"
+                cpu: "100m"
+              limits:
+                memory: "512Mi"
+                cpu: "500m"
+          imagePullSecrets:
+          - name: ecr-secret
+---
+# Create secret for Reddit API credentials (run once):
+# kubectl create secret generic reddit-api-secret \
+#   --namespace=investorcenter \
+#   --from-literal=client-id=YOUR_CLIENT_ID \
+#   --from-literal=client-secret=YOUR_CLIENT_SECRET
+#
+# Manual job trigger (for testing):
+# kubectl create job --from=cronjob/reddit-post-collector reddit-post-collector-manual -n investorcenter
+#
+# Check logs:
+# kubectl logs -n investorcenter -l app=reddit-post-collector --tail=100

@@ -37,9 +37,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Login to InvestorCenter.ai</h1>
+    <div className="flex items-center justify-center min-h-screen bg-ic-bg-primary">
+      <div className="w-full max-w-md p-8 bg-ic-surface rounded-lg border border-ic-border">
+        <h1 className="text-2xl font-bold mb-6 text-center text-ic-text-primary">Login to InvestorCenter.ai</h1>
 
         {sessionExpired && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-400 text-yellow-800 rounded">
@@ -48,14 +48,14 @@ export default function LoginPage() {
         )}
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-ic-negative rounded">
             {error}
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="email">
+            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="email">
               Email
             </label>
             <input
@@ -63,13 +63,13 @@ export default function LoginPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               required
             />
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 mb-2" htmlFor="password">
+            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="password">
               Password
             </label>
             <input
@@ -77,7 +77,7 @@ export default function LoginPage() {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
               required
             />
           </div>
@@ -85,21 +85,21 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full py-2 px-4 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed"
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
         <div className="mt-4 text-center text-sm">
-          <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
+          <Link href="/auth/forgot-password" className="text-ic-blue hover:underline">
             Forgot password?
           </Link>
         </div>
 
-        <div className="mt-2 text-center text-sm text-gray-700">
+        <div className="mt-2 text-center text-sm text-ic-text-secondary">
           Don&apos;t have an account?{' '}
-          <Link href="/auth/signup" className="text-blue-600 hover:underline">
+          <Link href="/auth/signup" className="text-ic-blue hover:underline">
             Sign up
           </Link>
         </div>

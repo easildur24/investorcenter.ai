@@ -25,6 +25,7 @@ httpx>=0.25.0
 # Data processing (Phase 1-2)
 pandas>=2.1.0
 numpy>=1.26.0
+scipy>=1.11.0  # For risk metrics calculations
 
 # Technical analysis (Phase 2)
 # pandas-ta>=0.3.14b0  # REMOVED: Not available for Python 3.11/ARM64, using TA-Lib instead

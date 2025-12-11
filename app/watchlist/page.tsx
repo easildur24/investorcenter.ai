@@ -60,14 +60,14 @@ export default function WatchListDashboard() {
           <h1 className="text-3xl font-bold">My Watch Lists</h1>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
           >
             + Create Watch List
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-ic-negative rounded">
             {error}
           </div>
         )}
@@ -76,10 +76,10 @@ export default function WatchListDashboard() {
           <div className="text-center py-12">Loading...</div>
         ) : watchLists.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 mb-4">You don't have any watch lists yet.</p>
+            <p className="text-ic-text-muted mb-4">You don't have any watch lists yet.</p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded hover:bg-blue-700"
+              className="px-6 py-3 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
             >
               Create Your First Watch List
             </button>
@@ -98,21 +98,21 @@ export default function WatchListDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {watchLists.map((watchList) => (
-                <div key={watchList.id} className="bg-white p-6 rounded-lg shadow hover:shadow-lg transition">
+                <div key={watchList.id} className="bg-ic-surface p-6 rounded-lg border border-ic-border transition">
                   <div className="flex justify-between items-start mb-3">
-                    <h3 className="text-xl font-semibold text-gray-900">{watchList.name}</h3>
+                    <h3 className="text-xl font-semibold text-ic-text-primary">{watchList.name}</h3>
                     {watchList.is_default && (
                       <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>
                     )}
                   </div>
 
                   {watchList.description && (
-                    <p className="text-gray-600 text-sm mb-4">{watchList.description}</p>
+                    <p className="text-ic-text-muted text-sm mb-4">{watchList.description}</p>
                   )}
 
                   <div className="flex items-center justify-between mb-4">
-                    <span className="text-gray-500">{watchList.item_count} tickers</span>
-                    <span className="text-xs text-gray-400">
+                    <span className="text-ic-text-muted">{watchList.item_count} tickers</span>
+                    <span className="text-xs text-ic-text-dim">
                       {new Date(watchList.updated_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -120,14 +120,14 @@ export default function WatchListDashboard() {
                   <div className="flex gap-2">
                     <Link
                       href={`/watchlist/${watchList.id}`}
-                      className="flex-1 text-center px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                      className="flex-1 text-center px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
                     >
                       View
                     </Link>
                     {!watchList.is_default && (
                       <button
                         onClick={() => handleDeleteWatchList(watchList.id)}
-                        className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                        className="px-4 py-2 bg-ic-negative text-ic-text-primary rounded hover:bg-ic-negative-hover"
                       >
                         Delete
                       </button>
