@@ -399,6 +399,21 @@ class TTMFinancialsCalculator:
         short_term_debt = most_recent_q.get('short_term_debt')
         long_term_debt = most_recent_q.get('long_term_debt')
 
+        # Calculate 5-quarter average shareholders' equity (YCharts ROE methodology)
+        # YCharts uses average of past 5 quarters to capture equity changes during the year
+        avg_shareholders_equity_5q = None
+        equity_values = [
+            q['shareholders_equity'] for q in quarters[:5]
+            if q.get('shareholders_equity') is not None
+        ]
+        if equity_values:
+            avg_shareholders_equity_5q = int(sum(equity_values) / len(equity_values))
+            logger.debug(
+                f"{ticker}: 5Q avg equity calculated from {len(equity_values)} quarters: "
+                f"${avg_shareholders_equity_5q:,} (latest: ${shareholders_equity:,})"
+                if shareholders_equity else f"${avg_shareholders_equity_5q:,}"
+            )
+
         # EPS SANITY CHECK: Detect stock split issues where EPS sign doesn't match net_income sign
         # This happens when historical EPS values weren't adjusted for stock splits
         if not needs_eps_fallback and net_income is not None and eps_diluted is not None:
@@ -449,6 +464,7 @@ class TTMFinancialsCalculator:
             'total_assets': total_assets,
             'total_liabilities': total_liabilities,
             'shareholders_equity': shareholders_equity,
+            'avg_shareholders_equity_5q': avg_shareholders_equity_5q,
             'cash_and_equivalents': cash_and_equivalents,
             'short_term_debt': short_term_debt,
             'long_term_debt': long_term_debt,
@@ -476,14 +492,14 @@ class TTMFinancialsCalculator:
                         ticker, calculation_date, ttm_period_start, ttm_period_end,
                         revenue, net_income, eps_basic, eps_diluted,
                         shares_outstanding, total_assets, total_liabilities,
-                        shareholders_equity, cash_and_equivalents,
+                        shareholders_equity, avg_shareholders_equity_5q, cash_and_equivalents,
                         short_term_debt, long_term_debt,
                         operating_cash_flow, free_cash_flow, capex
                     ) VALUES (
                         :ticker, :calculation_date, :ttm_period_start, :ttm_period_end,
                         :revenue, :net_income, :eps_basic, :eps_diluted,
                         :shares_outstanding, :total_assets, :total_liabilities,
-                        :shareholders_equity, :cash_and_equivalents,
+                        :shareholders_equity, :avg_shareholders_equity_5q, :cash_and_equivalents,
                         :short_term_debt, :long_term_debt,
                         :operating_cash_flow, :free_cash_flow, :capex
                     )
@@ -499,6 +515,7 @@ class TTMFinancialsCalculator:
                         total_assets = EXCLUDED.total_assets,
                         total_liabilities = EXCLUDED.total_liabilities,
                         shareholders_equity = EXCLUDED.shareholders_equity,
+                        avg_shareholders_equity_5q = EXCLUDED.avg_shareholders_equity_5q,
                         cash_and_equivalents = EXCLUDED.cash_and_equivalents,
                         short_term_debt = EXCLUDED.short_term_debt,
                         long_term_debt = EXCLUDED.long_term_debt,

@@ -380,7 +380,7 @@ class FundamentalMetricsCalculator:
                     ticker, calculation_date,
                     revenue, net_income, eps_basic, eps_diluted,
                     shares_outstanding, total_assets, total_liabilities,
-                    shareholders_equity, cash_and_equivalents,
+                    shareholders_equity, avg_shareholders_equity_5q, cash_and_equivalents,
                     short_term_debt, long_term_debt,
                     operating_cash_flow, free_cash_flow, capex,
                     operating_income, gross_profit
@@ -407,14 +407,15 @@ class FundamentalMetricsCalculator:
                 'total_assets': Decimal(str(row[7])) if row[7] else None,
                 'total_liabilities': Decimal(str(row[8])) if row[8] else None,
                 'shareholders_equity': Decimal(str(row[9])) if row[9] else None,
-                'cash_and_equivalents': Decimal(str(row[10])) if row[10] else None,
-                'short_term_debt': Decimal(str(row[11])) if row[11] else None,
-                'long_term_debt': Decimal(str(row[12])) if row[12] else None,
-                'operating_cash_flow': Decimal(str(row[13])) if row[13] else None,
-                'free_cash_flow': Decimal(str(row[14])) if row[14] else None,
-                'capex': Decimal(str(row[15])) if row[15] else None,
-                'operating_income': Decimal(str(row[16])) if row[16] else None,
-                'gross_profit': Decimal(str(row[17])) if row[17] else None,
+                'avg_shareholders_equity_5q': Decimal(str(row[10])) if row[10] else None,
+                'cash_and_equivalents': Decimal(str(row[11])) if row[11] else None,
+                'short_term_debt': Decimal(str(row[12])) if row[12] else None,
+                'long_term_debt': Decimal(str(row[13])) if row[13] else None,
+                'operating_cash_flow': Decimal(str(row[14])) if row[14] else None,
+                'free_cash_flow': Decimal(str(row[15])) if row[15] else None,
+                'capex': Decimal(str(row[16])) if row[16] else None,
+                'operating_income': Decimal(str(row[17])) if row[17] else None,
+                'gross_profit': Decimal(str(row[18])) if row[18] else None,
             }
 
     async def get_historical_annual_values(
@@ -800,9 +801,18 @@ class FundamentalMetricsCalculator:
         roa = None
         roic = None
 
-        if ttm_data.get('net_income'):
-            if ttm_data.get('shareholders_equity') and ttm_data['shareholders_equity'] > 0:
-                roe = (ttm_data['net_income'] / ttm_data['shareholders_equity']) * 100
+        # ROE Calculation (YCharts methodology):
+        # - Uses TTM net income
+        # - Uses average of past 5 quarters of shareholders' equity
+        # - Does NOT calculate if net income OR equity is negative
+        if ttm_data.get('net_income') and ttm_data['net_income'] > 0:
+            # Prefer 5-quarter average equity (YCharts methodology)
+            # Fall back to single-quarter equity if 5Q average not available
+            equity_for_roe = ttm_data.get('avg_shareholders_equity_5q') or ttm_data.get('shareholders_equity')
+            if equity_for_roe and equity_for_roe > 0:
+                roe = (ttm_data['net_income'] / equity_for_roe) * 100
+
+            # ROA uses total assets (not averaged, as assets change less dramatically)
             if ttm_data.get('total_assets') and ttm_data['total_assets'] > 0:
                 roa = (ttm_data['net_income'] / ttm_data['total_assets']) * 100
 
