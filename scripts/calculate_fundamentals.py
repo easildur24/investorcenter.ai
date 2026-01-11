@@ -504,20 +504,44 @@ class SECFundamentalsCalculator:
             return False
 
 def main():
-    calculator = SECFundamentalsCalculator()
+    # Use SEC EDGAR API calculator instead of HTML parsing
+    print("🚀 Using SEC EDGAR API Calculator (more accurate)")
+    print("="*60)
     
-    symbols = ['AAPL']  # Start with AAPL
+    # Import and use the SEC EDGAR API calculator
+    import subprocess
+    import sys
     
-    for symbol in symbols:
-        print(f"\n{'='*50}")
-        print(f"Processing {symbol}")
-        print(f"{'='*50}")
+    try:
+        result = subprocess.run([sys.executable, 'sec_edgar_api_calculator.py'], 
+                              capture_output=True, text=True, cwd='.')
         
-        success = calculator.calculate_and_store(symbol)
-        if success:
-            print(f"✅ Successfully processed {symbol}")
+        if result.returncode == 0:
+            print(result.stdout)
+            print("✅ SEC EDGAR API calculation completed successfully")
         else:
-            print(f"❌ Failed to process {symbol}")
+            print("❌ SEC EDGAR API calculation failed:")
+            print(result.stderr)
+            
+    except Exception as e:
+        print(f"❌ Error running SEC EDGAR API calculator: {e}")
+        
+        # Fallback to original HTML parsing method
+        print("\n🔄 Falling back to HTML parsing method...")
+        calculator = SECFundamentalsCalculator()
+        
+        symbols = ['AAPL']  # Start with AAPL
+        
+        for symbol in symbols:
+            print(f"\n{'='*50}")
+            print(f"Processing {symbol}")
+            print(f"{'='*50}")
+            
+            success = calculator.calculate_and_store(symbol)
+            if success:
+                print(f"✅ Successfully processed {symbol}")
+            else:
+                print(f"❌ Failed to process {symbol}")
 
 if __name__ == "__main__":
     main()
