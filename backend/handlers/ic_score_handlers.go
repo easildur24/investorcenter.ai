@@ -225,12 +225,16 @@ func GetFinancialMetrics(c *gin.Context) {
 	}
 
 	// Query latest financial data with YoY comparison
+	// Note: ORDER BY uses CASE to prioritize rows with actual data over NULL rows
+	// (there can be duplicate rows where some have NULL margins/ratios)
 	query := `
 		WITH latest AS (
 			SELECT *
 			FROM financials
 			WHERE ticker = $1
-			ORDER BY period_end_date DESC
+			ORDER BY period_end_date DESC,
+			         CASE WHEN gross_margin IS NOT NULL THEN 0 ELSE 1 END,
+			         CASE WHEN roe IS NOT NULL THEN 0 ELSE 1 END
 			LIMIT 1
 		),
 		prior_year AS (
@@ -307,6 +311,9 @@ func GetFinancialMetrics(c *gin.Context) {
 		growth := (*result.CurrentEPS - *result.PriorEPS) / abs(*result.PriorEPS) * 100
 		earningsGrowthYoY = &growth
 	}
+
+	// Note: financials table already stores margins/returns as percentages (46.9 = 46.9%)
+	// No conversion needed - values are ready for display
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
