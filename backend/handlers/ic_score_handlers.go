@@ -10,9 +10,17 @@ import (
 
 	"investorcenter-api/database"
 	"investorcenter-api/models"
+	"investorcenter-api/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+// fmpClient is a package-level FMP client instance
+var fmpClient *services.FMPClient
+
+func init() {
+	fmpClient = services.NewFMPClient()
+}
 
 // GetICScore retrieves the IC Score for a specific ticker
 // GET /api/v1/stocks/:ticker/ic-score
@@ -205,7 +213,8 @@ func GetICScores(c *gin.Context) {
 	})
 }
 
-// GetFinancialMetrics retrieves financial metrics for a ticker from the financials table
+// GetFinancialMetrics retrieves financial metrics for a ticker
+// Uses FMP API as primary source with database as fallback
 // GET /api/v1/stocks/:ticker/financials
 func GetFinancialMetrics(c *gin.Context) {
 	ticker := strings.ToUpper(c.Param("ticker"))
@@ -224,7 +233,17 @@ func GetFinancialMetrics(c *gin.Context) {
 		return
 	}
 
-	// Query latest financial data with YoY comparison
+	// Try to fetch from FMP API (real-time TTM ratios)
+	var fmpData *services.FMPRatiosTTM
+	var fmpErr error
+	if fmpClient != nil && fmpClient.APIKey != "" {
+		fmpData, fmpErr = fmpClient.GetRatiosTTM(ticker)
+		if fmpErr != nil {
+			log.Printf("FMP API error for %s (falling back to DB): %v", ticker, fmpErr)
+		}
+	}
+
+	// Query latest financial data from database (with YoY comparison)
 	// Note: ORDER BY uses CASE to prioritize rows with actual data over NULL rows
 	// (there can be duplicate rows where some have NULL margins/ratios)
 	query := `
@@ -281,7 +300,10 @@ func GetFinancialMetrics(c *gin.Context) {
 	}
 
 	err := database.DB.Get(&result, query, ticker)
-	if err != nil {
+	dbHasData := err == nil
+
+	// If both FMP and DB failed, return error
+	if fmpData == nil && !dbHasData {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error":   "Financial data not found",
@@ -298,7 +320,16 @@ func GetFinancialMetrics(c *gin.Context) {
 		return
 	}
 
-	// Calculate YoY growth rates
+	// Merge FMP + DB data (FMP as primary, DB as fallback)
+	merged := services.MergeWithDBData(
+		fmpData,
+		result.GrossMargin, result.OperatingMargin, result.NetMargin,
+		result.ROE, result.ROA,
+		result.DebtToEquity, result.CurrentRatio, result.QuickRatio,
+		result.PERatio, result.PBRatio, result.PSRatio,
+	)
+
+	// Calculate YoY growth rates (always from DB)
 	var revenueGrowthYoY *float64
 	var earningsGrowthYoY *float64
 
@@ -312,33 +343,37 @@ func GetFinancialMetrics(c *gin.Context) {
 		earningsGrowthYoY = &growth
 	}
 
-	// Note: financials table already stores margins/returns as percentages (46.9 = 46.9%)
-	// No conversion needed - values are ready for display
+	// Determine data source for logging/debugging
+	dataSource := "database"
+	if merged.FMPAvailable {
+		dataSource = "fmp+database"
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-			"ticker":              result.Ticker,
+			"ticker":              ticker,
 			"period_end_date":     result.PeriodEndDate,
 			"fiscal_year":         result.FiscalYear,
 			"fiscal_quarter":      result.FiscalQuarter,
-			"gross_margin":        result.GrossMargin,
-			"operating_margin":    result.OperatingMargin,
-			"net_margin":          result.NetMargin,
-			"roe":                 result.ROE,
-			"roa":                 result.ROA,
-			"debt_to_equity":      result.DebtToEquity,
-			"current_ratio":       result.CurrentRatio,
-			"quick_ratio":         result.QuickRatio,
-			"pe_ratio":            result.PERatio,
-			"pb_ratio":            result.PBRatio,
-			"ps_ratio":            result.PSRatio,
+			"gross_margin":        merged.GrossMargin,
+			"operating_margin":    merged.OperatingMargin,
+			"net_margin":          merged.NetMargin,
+			"roe":                 merged.ROE,
+			"roa":                 merged.ROA,
+			"debt_to_equity":      merged.DebtToEquity,
+			"current_ratio":       merged.CurrentRatio,
+			"quick_ratio":         merged.QuickRatio,
+			"pe_ratio":            merged.PERatio,
+			"pb_ratio":            merged.PBRatio,
+			"ps_ratio":            merged.PSRatio,
 			"revenue_growth_yoy":  revenueGrowthYoY,
 			"earnings_growth_yoy": earningsGrowthYoY,
 			"shares_outstanding":  result.SharesOutstanding,
 			"statement_type":      result.StatementType,
 		},
 		"meta": gin.H{
-			"ticker": ticker,
+			"ticker":      ticker,
+			"data_source": dataSource,
 		},
 	})
 }
