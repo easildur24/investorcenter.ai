@@ -11,6 +11,7 @@ interface User {
   created_at: string;
   email_verified: boolean;
   is_premium: boolean;
+  is_admin: boolean;
   last_login_at?: string;
 }
 

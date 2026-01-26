@@ -375,6 +375,9 @@ func GetFinancialMetrics(c *gin.Context) {
 			"ticker":      ticker,
 			"data_source": dataSource,
 		},
+		"debug": gin.H{
+			"sources": merged.Sources,
+		},
 	})
 }
 

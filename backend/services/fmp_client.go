@@ -94,6 +94,30 @@ func ConvertToPercentage(val *float64) *float64 {
 	return &pct
 }
 
+// DataSource indicates where a metric value came from
+type DataSource string
+
+const (
+	SourceFMP      DataSource = "fmp"
+	SourceDatabase DataSource = "database"
+	SourceNone     DataSource = ""
+)
+
+// FieldSources tracks the data source for each field (for admin debug mode)
+type FieldSources struct {
+	PERatio         DataSource `json:"pe_ratio"`
+	PBRatio         DataSource `json:"pb_ratio"`
+	PSRatio         DataSource `json:"ps_ratio"`
+	GrossMargin     DataSource `json:"gross_margin"`
+	OperatingMargin DataSource `json:"operating_margin"`
+	NetMargin       DataSource `json:"net_margin"`
+	ROE             DataSource `json:"roe"`
+	ROA             DataSource `json:"roa"`
+	CurrentRatio    DataSource `json:"current_ratio"`
+	QuickRatio      DataSource `json:"quick_ratio"`
+	DebtToEquity    DataSource `json:"debt_to_equity"`
+}
+
 // MergedFinancialMetrics represents the merged data from FMP + our DB
 type MergedFinancialMetrics struct {
 	// Valuation ratios (prefer FMP)
@@ -114,7 +138,8 @@ type MergedFinancialMetrics struct {
 	DebtToEquity *float64 `json:"debt_to_equity"`
 
 	// Source tracking
-	FMPAvailable bool `json:"fmp_available"`
+	FMPAvailable bool          `json:"fmp_available"`
+	Sources      *FieldSources `json:"sources,omitempty"`
 }
 
 // MergeWithDBData merges FMP data with database data, preferring FMP when available
@@ -128,27 +153,28 @@ func MergeWithDBData(
 ) *MergedFinancialMetrics {
 	merged := &MergedFinancialMetrics{
 		FMPAvailable: fmp != nil,
+		Sources:      &FieldSources{},
 	}
 
 	if fmp != nil {
 		// Valuation ratios from FMP (already in correct format)
-		merged.PERatio = coalesce(fmp.PriceToEarningsRatioTTM, dbPERatio)
-		merged.PBRatio = coalesce(fmp.PriceToBookRatioTTM, dbPBRatio)
-		merged.PSRatio = coalesce(fmp.PriceToSalesRatioTTM, dbPSRatio)
+		merged.PERatio, merged.Sources.PERatio = coalesceWithSource(fmp.PriceToEarningsRatioTTM, dbPERatio)
+		merged.PBRatio, merged.Sources.PBRatio = coalesceWithSource(fmp.PriceToBookRatioTTM, dbPBRatio)
+		merged.PSRatio, merged.Sources.PSRatio = coalesceWithSource(fmp.PriceToSalesRatioTTM, dbPSRatio)
 
 		// Profitability - FMP stores as decimals (0.47), convert to % (47.0)
-		merged.GrossMargin = coalesce(ConvertToPercentage(fmp.GrossProfitMarginTTM), dbGrossMargin)
-		merged.OperatingMargin = coalesce(ConvertToPercentage(fmp.OperatingProfitMarginTTM), dbOperatingMargin)
-		merged.NetMargin = coalesce(ConvertToPercentage(fmp.NetProfitMarginTTM), dbNetMargin)
+		merged.GrossMargin, merged.Sources.GrossMargin = coalesceWithSource(ConvertToPercentage(fmp.GrossProfitMarginTTM), dbGrossMargin)
+		merged.OperatingMargin, merged.Sources.OperatingMargin = coalesceWithSource(ConvertToPercentage(fmp.OperatingProfitMarginTTM), dbOperatingMargin)
+		merged.NetMargin, merged.Sources.NetMargin = coalesceWithSource(ConvertToPercentage(fmp.NetProfitMarginTTM), dbNetMargin)
 
 		// ROE/ROA - FMP often null, fallback to DB
-		merged.ROE = coalesce(ConvertToPercentage(fmp.ReturnOnEquityTTM), dbROE)
-		merged.ROA = coalesce(ConvertToPercentage(fmp.ReturnOnAssetsTTM), dbROA)
+		merged.ROE, merged.Sources.ROE = coalesceWithSource(ConvertToPercentage(fmp.ReturnOnEquityTTM), dbROE)
+		merged.ROA, merged.Sources.ROA = coalesceWithSource(ConvertToPercentage(fmp.ReturnOnAssetsTTM), dbROA)
 
 		// Financial health
-		merged.CurrentRatio = coalesce(fmp.CurrentRatioTTM, dbCurrentRatio)
-		merged.QuickRatio = coalesce(fmp.QuickRatioTTM, dbQuickRatio)
-		merged.DebtToEquity = coalesce(fmp.DebtEquityRatioTTM, dbDebtToEquity)
+		merged.CurrentRatio, merged.Sources.CurrentRatio = coalesceWithSource(fmp.CurrentRatioTTM, dbCurrentRatio)
+		merged.QuickRatio, merged.Sources.QuickRatio = coalesceWithSource(fmp.QuickRatioTTM, dbQuickRatio)
+		merged.DebtToEquity, merged.Sources.DebtToEquity = coalesceWithSource(fmp.DebtEquityRatioTTM, dbDebtToEquity)
 	} else {
 		// No FMP data, use all DB values
 		merged.PERatio = dbPERatio
@@ -162,9 +188,30 @@ func MergeWithDBData(
 		merged.CurrentRatio = dbCurrentRatio
 		merged.QuickRatio = dbQuickRatio
 		merged.DebtToEquity = dbDebtToEquity
+
+		// All sources are database when FMP unavailable
+		merged.Sources.PERatio = sourceFor(dbPERatio, SourceDatabase)
+		merged.Sources.PBRatio = sourceFor(dbPBRatio, SourceDatabase)
+		merged.Sources.PSRatio = sourceFor(dbPSRatio, SourceDatabase)
+		merged.Sources.GrossMargin = sourceFor(dbGrossMargin, SourceDatabase)
+		merged.Sources.OperatingMargin = sourceFor(dbOperatingMargin, SourceDatabase)
+		merged.Sources.NetMargin = sourceFor(dbNetMargin, SourceDatabase)
+		merged.Sources.ROE = sourceFor(dbROE, SourceDatabase)
+		merged.Sources.ROA = sourceFor(dbROA, SourceDatabase)
+		merged.Sources.CurrentRatio = sourceFor(dbCurrentRatio, SourceDatabase)
+		merged.Sources.QuickRatio = sourceFor(dbQuickRatio, SourceDatabase)
+		merged.Sources.DebtToEquity = sourceFor(dbDebtToEquity, SourceDatabase)
 	}
 
 	return merged
+}
+
+// sourceFor returns the source if the value is non-nil, otherwise empty
+func sourceFor(val *float64, source DataSource) DataSource {
+	if val != nil {
+		return source
+	}
+	return SourceNone
 }
 
 // coalesce returns the first non-nil value
@@ -175,4 +222,15 @@ func coalesce(values ...*float64) *float64 {
 		}
 	}
 	return nil
+}
+
+// coalesceWithSource returns the first non-nil value and its source (FMP or database)
+func coalesceWithSource(fmpVal, dbVal *float64) (*float64, DataSource) {
+	if fmpVal != nil {
+		return fmpVal, SourceFMP
+	}
+	if dbVal != nil {
+		return dbVal, SourceDatabase
+	}
+	return nil, SourceNone
 }

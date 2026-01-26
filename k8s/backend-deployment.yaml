@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: investorcenter-backend
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend:v20260125160243
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend:v20260125161704
         ports:
         - containerPort: 8080
         env:
