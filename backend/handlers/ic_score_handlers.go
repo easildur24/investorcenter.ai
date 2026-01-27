@@ -389,6 +389,209 @@ func abs(x float64) float64 {
 	return x
 }
 
+// GetComprehensiveFinancialMetrics retrieves all financial metrics for a ticker
+// Uses FMP API endpoints (ratios-ttm, key-metrics-ttm, financial-growth, analyst-estimates, score)
+// GET /api/v1/stocks/:ticker/metrics
+func GetComprehensiveFinancialMetrics(c *gin.Context) {
+	ticker := strings.ToUpper(c.Param("ticker"))
+
+	if ticker == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ticker symbol is required"})
+		return
+	}
+
+	// Get current stock price for Forward P/E calculation
+	var currentPrice float64 = 0
+	if database.DB != nil {
+		var priceResult struct {
+			Price *float64 `db:"close_price"`
+		}
+		priceQuery := `SELECT close_price FROM daily_prices WHERE ticker = $1 ORDER BY date DESC LIMIT 1`
+		if err := database.DB.Get(&priceResult, priceQuery, ticker); err == nil && priceResult.Price != nil {
+			currentPrice = *priceResult.Price
+		}
+	}
+
+	// Fetch all FMP data in parallel
+	var allMetrics *services.FMPAllMetrics
+	if fmpClient != nil && fmpClient.APIKey != "" {
+		allMetrics = fmpClient.GetAllMetrics(ticker)
+
+		// Log any errors for debugging
+		for endpoint, err := range allMetrics.Errors {
+			log.Printf("FMP %s error for %s: %v", endpoint, ticker, err)
+		}
+	}
+
+	// Merge all FMP data
+	merged := services.MergeAllData(allMetrics, currentPrice)
+
+	// If no data available at all, return error
+	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Financial data not found",
+			"message": fmt.Sprintf("No financial data available for %s from FMP", ticker),
+			"ticker":  ticker,
+		})
+		return
+	}
+
+	// Build response with all metrics organized by category
+	response := gin.H{
+		// === VALUATION ===
+		"valuation": gin.H{
+			"pe_ratio":         merged.PERatio,
+			"forward_pe":       merged.ForwardPE,
+			"pb_ratio":         merged.PBRatio,
+			"ps_ratio":         merged.PSRatio,
+			"price_to_fcf":     merged.PriceToFCF,
+			"price_to_ocf":     merged.PriceToOCF,
+			"peg_ratio":        merged.PEGRatio,
+			"peg_interpretation": merged.PEGInterpretation,
+			"enterprise_value": merged.EnterpriseValue,
+			"ev_to_sales":      merged.EVToSales,
+			"ev_to_ebitda":     merged.EVToEBITDA,
+			"ev_to_ebit":       merged.EVToEBIT,
+			"ev_to_fcf":        merged.EVToFCF,
+			"earnings_yield":   merged.EarningsYield,
+			"fcf_yield":        merged.FCFYield,
+			"market_cap":       merged.MarketCap,
+		},
+
+		// === PROFITABILITY ===
+		"profitability": gin.H{
+			"gross_margin":     merged.GrossMargin,
+			"operating_margin": merged.OperatingMargin,
+			"net_margin":       merged.NetMargin,
+			"ebitda_margin":    merged.EBITDAMargin,
+			"ebit_margin":      merged.EBITMargin,
+			"fcf_margin":       merged.FCFMargin,
+			"pretax_margin":    merged.PretaxMargin,
+			"roe":              merged.ROE,
+			"roa":              merged.ROA,
+			"roic":             merged.ROIC,
+			"roce":             merged.ROCE,
+		},
+
+		// === LIQUIDITY ===
+		"liquidity": gin.H{
+			"current_ratio":   merged.CurrentRatio,
+			"quick_ratio":     merged.QuickRatio,
+			"cash_ratio":      merged.CashRatio,
+			"working_capital": merged.WorkingCapital,
+		},
+
+		// === LEVERAGE ===
+		"leverage": gin.H{
+			"debt_to_equity":     merged.DebtToEquity,
+			"debt_to_assets":     merged.DebtToAssets,
+			"debt_to_ebitda":     merged.DebtToEBITDA,
+			"debt_to_capital":    merged.DebtToCapital,
+			"interest_coverage":  merged.InterestCoverage,
+			"net_debt_to_ebitda": merged.NetDebtToEBITDA,
+			"net_debt":           merged.NetDebt,
+		},
+
+		// === EFFICIENCY ===
+		"efficiency": gin.H{
+			"asset_turnover":              merged.AssetTurnover,
+			"inventory_turnover":          merged.InventoryTurnover,
+			"receivables_turnover":        merged.ReceivablesTurnover,
+			"payables_turnover":           merged.PayablesTurnover,
+			"fixed_asset_turnover":        merged.FixedAssetTurnover,
+			"days_sales_outstanding":      merged.DaysOfSalesOutstanding,
+			"days_inventory_outstanding":  merged.DaysOfInventoryOutstanding,
+			"days_payables_outstanding":   merged.DaysOfPayablesOutstanding,
+			"cash_conversion_cycle":       merged.CashConversionCycle,
+		},
+
+		// === GROWTH ===
+		"growth": gin.H{
+			"revenue_growth_yoy":          merged.RevenueGrowthYoY,
+			"revenue_growth_3y_cagr":      merged.RevenueGrowth3YCAGR,
+			"revenue_growth_5y_cagr":      merged.RevenueGrowth5YCAGR,
+			"gross_profit_growth_yoy":     merged.GrossProfitGrowthYoY,
+			"operating_income_growth_yoy": merged.OperatingIncomeGrowthYoY,
+			"net_income_growth_yoy":       merged.NetIncomeGrowthYoY,
+			"eps_growth_yoy":              merged.EPSGrowthYoY,
+			"eps_growth_3y_cagr":          merged.EPSGrowth3YCAGR,
+			"eps_growth_5y_cagr":          merged.EPSGrowth5YCAGR,
+			"fcf_growth_yoy":              merged.FCFGrowthYoY,
+			"book_value_growth_yoy":       merged.BookValueGrowthYoY,
+			"dividend_growth_5y_cagr":     merged.DividendGrowth5YCAGR,
+		},
+
+		// === PER SHARE ===
+		"per_share": gin.H{
+			"eps_diluted":            merged.EPSDiluted,
+			"book_value_per_share":   merged.BookValuePerShare,
+			"tangible_book_per_share": merged.TangibleBookPerShare,
+			"revenue_per_share":      merged.RevenuePerShare,
+			"operating_cf_per_share": merged.OperatingCFPerShare,
+			"fcf_per_share":          merged.FCFPerShare,
+			"cash_per_share":         merged.CashPerShare,
+			"dividend_per_share":     merged.DividendPerShare,
+			"graham_number":          merged.GrahamNumber,
+		},
+
+		// === DIVIDENDS ===
+		"dividends": gin.H{
+			"dividend_yield":            merged.DividendYield,
+			"forward_dividend_yield":    merged.ForwardDividendYield,
+			"payout_ratio":              merged.PayoutRatio,
+			"payout_interpretation":     merged.PayoutInterpretation,
+			"fcf_payout_ratio":          merged.FCFPayoutRatio,
+			"consecutive_dividend_years": merged.ConsecutiveDividendYears,
+			"ex_dividend_date":          merged.ExDividendDate,
+			"payment_date":              merged.PaymentDate,
+			"dividend_frequency":        merged.DividendFrequency,
+		},
+
+		// === QUALITY SCORES ===
+		"quality_scores": gin.H{
+			"altman_z_score":            merged.AltmanZScore,
+			"altman_z_interpretation":   merged.AltmanZInterpretation,
+			"altman_z_description":      merged.AltmanZDescription,
+			"piotroski_f_score":         merged.PiotroskiFScore,
+			"piotroski_f_interpretation": merged.PiotroskiFInterpretation,
+			"piotroski_f_description":   merged.PiotroskiFDescription,
+		},
+
+		// === FORWARD ESTIMATES ===
+		"forward_estimates": gin.H{
+			"forward_eps":          merged.ForwardEPS,
+			"forward_eps_high":     merged.ForwardEPSHigh,
+			"forward_eps_low":      merged.ForwardEPSLow,
+			"forward_revenue":      merged.ForwardRevenue,
+			"forward_ebitda":       merged.ForwardEBITDA,
+			"forward_net_income":   merged.ForwardNetIncome,
+			"num_analysts_eps":     merged.NumAnalystsEPS,
+			"num_analysts_revenue": merged.NumAnalystsRevenue,
+		},
+	}
+
+	// Collect errors for debugging
+	var errors []string
+	if allMetrics != nil {
+		for endpoint, err := range allMetrics.Errors {
+			errors = append(errors, fmt.Sprintf("%s: %v", endpoint, err))
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": response,
+		"meta": gin.H{
+			"ticker":        ticker,
+			"fmp_available": merged.FMPAvailable,
+			"current_price": currentPrice,
+		},
+		"debug": gin.H{
+			"sources": merged.Sources,
+			"errors":  errors,
+		},
+	})
+}
+
 // GetRiskMetrics retrieves risk metrics for a ticker from the risk_metrics table
 // GET /api/v1/stocks/:ticker/risk?period=1Y
 func GetRiskMetrics(c *gin.Context) {
