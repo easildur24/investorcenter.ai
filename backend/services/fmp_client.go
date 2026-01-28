@@ -724,6 +724,7 @@ type FieldSources struct {
 	DebtToEBITDA     DataSource `json:"debt_to_ebitda,omitempty"`
 	DebtToCapital    DataSource `json:"debt_to_capital,omitempty"`
 	InterestCoverage DataSource `json:"interest_coverage,omitempty"`
+	NetDebt          DataSource `json:"net_debt,omitempty"`
 
 	// Efficiency
 	AssetTurnover       DataSource `json:"asset_turnover,omitempty"`
@@ -798,7 +799,7 @@ type MergedFinancialMetrics struct {
 	CashRatio      *float64 `json:"cash_ratio"`
 	WorkingCapital *float64 `json:"working_capital"`
 
-	// === LEVERAGE (7 metrics) ===
+	// === LEVERAGE (8 metrics) ===
 	DebtToEquity     *float64 `json:"debt_to_equity"`
 	DebtToAssets     *float64 `json:"debt_to_assets"`
 	DebtToEBITDA     *float64 `json:"debt_to_ebitda"`
@@ -806,6 +807,7 @@ type MergedFinancialMetrics struct {
 	InterestCoverage *float64 `json:"interest_coverage"`
 	NetDebtToEBITDA  *float64 `json:"net_debt_to_ebitda"`
 	NetDebt          *float64 `json:"net_debt"`
+	InvestedCapital  *float64 `json:"invested_capital"`
 
 	// === EFFICIENCY (9 metrics) ===
 	AssetTurnover              *float64 `json:"asset_turnover"`
@@ -832,7 +834,7 @@ type MergedFinancialMetrics struct {
 	BookValueGrowthYoY       *float64 `json:"book_value_growth_yoy"`
 	DividendGrowth5YCAGR     *float64 `json:"dividend_growth_5y_cagr"`
 
-	// === PER SHARE (10 metrics) ===
+	// === PER SHARE (11 metrics) ===
 	EPSDiluted           *float64 `json:"eps_diluted"`
 	BookValuePerShare    *float64 `json:"book_value_per_share"`
 	TangibleBookPerShare *float64 `json:"tangible_book_per_share"`
@@ -842,6 +844,7 @@ type MergedFinancialMetrics struct {
 	CashPerShare         *float64 `json:"cash_per_share"`
 	DividendPerShare     *float64 `json:"dividend_per_share"`
 	GrahamNumber         *float64 `json:"graham_number"`
+	InterestDebtPerShare *float64 `json:"interest_debt_per_share"`
 
 	// === DIVIDENDS (9 metrics) ===
 	DividendYield            *float64 `json:"dividend_yield"`
@@ -1032,6 +1035,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		}
 		merged.WorkingCapital = k.WorkingCapitalTTM
 		merged.NetDebt = k.NetDebtTTM
+		merged.InvestedCapital = k.InvestedCapitalTTM
 
 		// Fill in per-share metrics if not from ratios-ttm
 		if merged.RevenuePerShare == nil {
@@ -1054,6 +1058,9 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		}
 		if merged.GrahamNumber == nil {
 			merged.GrahamNumber = k.GrahamNumberTTM
+		}
+		if merged.InterestDebtPerShare == nil {
+			merged.InterestDebtPerShare = k.InterestDebtPerShareTTM
 		}
 
 		// Fallback for ROE from key-metrics-ttm (uses different field name: roeTTM)
