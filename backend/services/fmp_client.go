@@ -50,36 +50,36 @@ type FMPRatiosTTM struct {
 	CashRatioTTM    *float64 `json:"cashRatioTTM"`
 
 	// === LEVERAGE ===
-	DebtEquityRatioTTM      *float64 `json:"debtEquityRatioTTM"`
-	DebtToAssetsRatioTTM    *float64 `json:"debtToAssetsRatioTTM"`
-	DebtToEBITDATTM         *float64 `json:"debtToEbitdaTTM"`
-	DebtToCapitalTTM        *float64 `json:"debtToCapitalTTM"`
-	InterestCoverageTTM     *float64 `json:"interestCoverageTTM"`
-	NetDebtToEBITDATTM      *float64 `json:"netDebtToEbitdaTTM"`
-	LongTermDebtToCapTTM    *float64 `json:"longTermDebtToCapitalizationTTM"`
-	TotalDebtToCapTTM       *float64 `json:"totalDebtToCapitalizationTTM"`
-	FinancialLeverageTTM    *float64 `json:"companyEquityMultiplierTTM"`
+	DebtEquityRatioTTM   *float64 `json:"debtEquityRatioTTM"`
+	DebtToAssetsRatioTTM *float64 `json:"debtToAssetsRatioTTM"`
+	DebtToEBITDATTM      *float64 `json:"debtToEbitdaTTM"`
+	DebtToCapitalTTM     *float64 `json:"debtToCapitalTTM"`
+	InterestCoverageTTM  *float64 `json:"interestCoverageTTM"`
+	NetDebtToEBITDATTM   *float64 `json:"netDebtToEbitdaTTM"`
+	LongTermDebtToCapTTM *float64 `json:"longTermDebtToCapitalizationTTM"`
+	TotalDebtToCapTTM    *float64 `json:"totalDebtToCapitalizationTTM"`
+	FinancialLeverageTTM *float64 `json:"companyEquityMultiplierTTM"`
 
 	// === VALUATION ===
-	PriceToEarningsRatioTTM    *float64 `json:"priceToEarningsRatioTTM"`
-	PriceToBookRatioTTM        *float64 `json:"priceToBookRatioTTM"`
-	PriceToSalesRatioTTM       *float64 `json:"priceToSalesRatioTTM"`
-	PriceToFreeCashFlowTTM     *float64 `json:"priceToFreeCashFlowRatioTTM"`
-	PriceToOperatingCFTTM      *float64 `json:"priceToOperatingCashFlowRatioTTM"`
-	PriceToCashRatioTTM        *float64 `json:"priceCashFlowRatioTTM"`
-	PEGRatioTTM                *float64 `json:"pegRatioTTM"`
-	EarningsYieldTTM           *float64 `json:"earningsYieldTTM"`
-	FCFYieldTTM                *float64 `json:"freeCashFlowYieldTTM"`
-	PriceToTangibleBookTTM     *float64 `json:"priceToTangibleAssetsRatioTTM"`
+	PriceToEarningsRatioTTM *float64 `json:"priceToEarningsRatioTTM"`
+	PriceToBookRatioTTM     *float64 `json:"priceToBookRatioTTM"`
+	PriceToSalesRatioTTM    *float64 `json:"priceToSalesRatioTTM"`
+	PriceToFreeCashFlowTTM  *float64 `json:"priceToFreeCashFlowRatioTTM"`
+	PriceToOperatingCFTTM   *float64 `json:"priceToOperatingCashFlowRatioTTM"`
+	PriceToCashRatioTTM     *float64 `json:"priceCashFlowRatioTTM"`
+	PEGRatioTTM             *float64 `json:"pegRatioTTM"`
+	EarningsYieldTTM        *float64 `json:"earningsYieldTTM"`
+	FCFYieldTTM             *float64 `json:"freeCashFlowYieldTTM"`
+	PriceToTangibleBookTTM  *float64 `json:"priceToTangibleAssetsRatioTTM"`
 
 	// === ENTERPRISE VALUE ===
-	EnterpriseValueTTM                *float64 `json:"enterpriseValueTTM"`
-	EVToSalesTTM                      *float64 `json:"evToSalesTTM"`
-	EVToEBITDATTM                     *float64 `json:"evToEbitdaTTM"`
-	EVToEBITTTM                       *float64 `json:"evToEbitTTM"`
-	EVToFCFTTM                        *float64 `json:"evToFreeCashFlowTTM"`
-	EVToOperatingCFTTM                *float64 `json:"evToOperatingCashFlowTTM"`
-	EnterpriseValueMultipleTTM        *float64 `json:"enterpriseValueMultipleTTM"`
+	EnterpriseValueTTM         *float64 `json:"enterpriseValueTTM"`
+	EVToSalesTTM               *float64 `json:"evToSalesTTM"`
+	EVToEBITDATTM              *float64 `json:"evToEbitdaTTM"`
+	EVToEBITTTM                *float64 `json:"evToEbitTTM"`
+	EVToFCFTTM                 *float64 `json:"evToFreeCashFlowTTM"`
+	EVToOperatingCFTTM         *float64 `json:"evToOperatingCashFlowTTM"`
+	EnterpriseValueMultipleTTM *float64 `json:"enterpriseValueMultipleTTM"`
 
 	// === EFFICIENCY ===
 	AssetTurnoverTTM              *float64 `json:"assetTurnoverTTM"`
@@ -94,27 +94,27 @@ type FMPRatiosTTM struct {
 	OperatingCycleTTM             *float64 `json:"operatingCycleTTM"`
 
 	// === DIVIDENDS ===
-	DividendYieldTTM        *float64 `json:"dividendYieldTTM"`
-	PayoutRatioTTM          *float64 `json:"payoutRatioTTM"`
-	DividendPerShareTTM     *float64 `json:"dividendPerShareTTM"`
-	DividendPayoutRatioTTM  *float64 `json:"dividendPayoutRatioTTM"`
+	DividendYieldTTM       *float64 `json:"dividendYieldTTM"`
+	PayoutRatioTTM         *float64 `json:"payoutRatioTTM"`
+	DividendPerShareTTM    *float64 `json:"dividendPerShareTTM"`
+	DividendPayoutRatioTTM *float64 `json:"dividendPayoutRatioTTM"`
 
 	// === CASH FLOW ===
-	OperatingCFPerShareTTM     *float64 `json:"operatingCashFlowPerShareTTM"`
-	FreeCashFlowPerShareTTM    *float64 `json:"freeCashFlowPerShareTTM"`
-	CashPerShareTTM            *float64 `json:"cashPerShareTTM"`
+	OperatingCFPerShareTTM  *float64 `json:"operatingCashFlowPerShareTTM"`
+	FreeCashFlowPerShareTTM *float64 `json:"freeCashFlowPerShareTTM"`
+	CashPerShareTTM         *float64 `json:"cashPerShareTTM"`
 
 	// === PER SHARE ===
-	RevenuePerShareTTM        *float64 `json:"revenuePerShareTTM"`
-	NetIncomePerShareTTM      *float64 `json:"netIncomePerShareTTM"`
-	BookValuePerShareTTM      *float64 `json:"bookValuePerShareTTM"`
-	TangibleBookPerShareTTM   *float64 `json:"tangibleBookValuePerShareTTM"`
+	RevenuePerShareTTM            *float64 `json:"revenuePerShareTTM"`
+	NetIncomePerShareTTM          *float64 `json:"netIncomePerShareTTM"`
+	BookValuePerShareTTM          *float64 `json:"bookValuePerShareTTM"`
+	TangibleBookPerShareTTM       *float64 `json:"tangibleBookValuePerShareTTM"`
 	ShareholdersEquityPerShareTTM *float64 `json:"shareholdersEquityPerShareTTM"`
 
 	// === OTHER ===
-	CapexPerShareTTM           *float64 `json:"capexPerShareTTM"`
-	GrahamNumberTTM            *float64 `json:"grahamNumberTTM"`
-	GrahamNetNetTTM            *float64 `json:"grahamNetNetTTM"`
+	CapexPerShareTTM *float64 `json:"capexPerShareTTM"`
+	GrahamNumberTTM  *float64 `json:"grahamNumberTTM"`
+	GrahamNetNetTTM  *float64 `json:"grahamNetNetTTM"`
 }
 
 // FMPKeyMetricsTTM represents the response from FMP key-metrics-ttm endpoint
@@ -122,87 +122,87 @@ type FMPKeyMetricsTTM struct {
 	Symbol string `json:"symbol"`
 
 	// === MARKET DATA ===
-	MarketCapTTM         *float64 `json:"marketCapTTM"`
-	EnterpriseValueTTM   *float64 `json:"enterpriseValueTTM"`
+	MarketCapTTM       *float64 `json:"marketCapTTM"`
+	EnterpriseValueTTM *float64 `json:"enterpriseValueTTM"`
 
 	// === PER SHARE ===
-	RevenuePerShareTTM             *float64 `json:"revenuePerShareTTM"`
-	NetIncomePerShareTTM           *float64 `json:"netIncomePerShareTTM"`
-	OperatingCashFlowPerShareTTM   *float64 `json:"operatingCashFlowPerShareTTM"`
-	FreeCashFlowPerShareTTM        *float64 `json:"freeCashFlowPerShareTTM"`
-	CashPerShareTTM                *float64 `json:"cashPerShareTTM"`
-	BookValuePerShareTTM           *float64 `json:"bookValuePerShareTTM"`
-	TangibleBookValuePerShareTTM   *float64 `json:"tangibleBookValuePerShareTTM"`
-	ShareholdersEquityPerShareTTM  *float64 `json:"shareholdersEquityPerShareTTM"`
-	InterestDebtPerShareTTM        *float64 `json:"interestDebtPerShareTTM"`
+	RevenuePerShareTTM            *float64 `json:"revenuePerShareTTM"`
+	NetIncomePerShareTTM          *float64 `json:"netIncomePerShareTTM"`
+	OperatingCashFlowPerShareTTM  *float64 `json:"operatingCashFlowPerShareTTM"`
+	FreeCashFlowPerShareTTM       *float64 `json:"freeCashFlowPerShareTTM"`
+	CashPerShareTTM               *float64 `json:"cashPerShareTTM"`
+	BookValuePerShareTTM          *float64 `json:"bookValuePerShareTTM"`
+	TangibleBookValuePerShareTTM  *float64 `json:"tangibleBookValuePerShareTTM"`
+	ShareholdersEquityPerShareTTM *float64 `json:"shareholdersEquityPerShareTTM"`
+	InterestDebtPerShareTTM       *float64 `json:"interestDebtPerShareTTM"`
 
 	// === FINANCIAL DATA ===
-	WorkingCapitalTTM              *float64 `json:"workingCapitalTTM"`
-	NetDebtTTM                     *float64 `json:"netDebtTTM"`
-	AverageReceivablesTTM          *float64 `json:"averageReceivablesTTM"`
-	AveragePayablesTTM             *float64 `json:"averagePayablesTTM"`
-	AverageInventoryTTM            *float64 `json:"averageInventoryTTM"`
-	InvestedCapitalTTM             *float64 `json:"investedCapitalTTM"`
-	TangibleAssetValueTTM          *float64 `json:"tangibleAssetValueTTM"`
+	WorkingCapitalTTM     *float64 `json:"workingCapitalTTM"`
+	NetDebtTTM            *float64 `json:"netDebtTTM"`
+	AverageReceivablesTTM *float64 `json:"averageReceivablesTTM"`
+	AveragePayablesTTM    *float64 `json:"averagePayablesTTM"`
+	AverageInventoryTTM   *float64 `json:"averageInventoryTTM"`
+	InvestedCapitalTTM    *float64 `json:"investedCapitalTTM"`
+	TangibleAssetValueTTM *float64 `json:"tangibleAssetValueTTM"`
 
 	// === RETURNS ===
-	ROETTM                         *float64 `json:"roeTTM"`
-	CapexToOperatingCashFlowTTM    *float64 `json:"capexToOperatingCashFlowTTM"`
-	CapexToRevenueTTM              *float64 `json:"capexToRevenueTTM"`
-	CapexToDepreciationTTM         *float64 `json:"capexToDepreciationTTM"`
+	ROETTM                             *float64 `json:"roeTTM"`
+	CapexToOperatingCashFlowTTM        *float64 `json:"capexToOperatingCashFlowTTM"`
+	CapexToRevenueTTM                  *float64 `json:"capexToRevenueTTM"`
+	CapexToDepreciationTTM             *float64 `json:"capexToDepreciationTTM"`
 	StockBasedCompensationToRevenueTTM *float64 `json:"stockBasedCompensationToRevenueTTM"`
 
 	// === SPECIAL ===
-	GrahamNumberTTM                *float64 `json:"grahamNumberTTM"`
-	GrahamNetNetTTM                *float64 `json:"grahamNetNetTTM"`
+	GrahamNumberTTM *float64 `json:"grahamNumberTTM"`
+	GrahamNetNetTTM *float64 `json:"grahamNetNetTTM"`
 
 	// === VALUATION ===
-	PERatioTTM                     *float64 `json:"peRatioTTM"`
-	PriceToSalesRatioTTM           *float64 `json:"priceToSalesRatioTTM"`
-	POCFRatioTTM                   *float64 `json:"pocfratioTTM"`
-	PFCFRatioTTM                   *float64 `json:"pfcfRatioTTM"`
-	PBRatioTTM                     *float64 `json:"pbRatioTTM"`
-	PTBRatioTTM                    *float64 `json:"ptbRatioTTM"`
-	EVToSalesTTM                   *float64 `json:"evToSalesTTM"`
-	EVToFreeCashFlowTTM            *float64 `json:"evToFreeCashFlowTTM"`
-	EarningsYieldTTM               *float64 `json:"earningsYieldTTM"`
-	FreeCashFlowYieldTTM           *float64 `json:"freeCashFlowYieldTTM"`
-	DebtToEquityTTM                *float64 `json:"debtToEquityTTM"`
-	DebtToAssetsTTM                *float64 `json:"debtToAssetsTTM"`
+	PERatioTTM           *float64 `json:"peRatioTTM"`
+	PriceToSalesRatioTTM *float64 `json:"priceToSalesRatioTTM"`
+	POCFRatioTTM         *float64 `json:"pocfratioTTM"`
+	PFCFRatioTTM         *float64 `json:"pfcfRatioTTM"`
+	PBRatioTTM           *float64 `json:"pbRatioTTM"`
+	PTBRatioTTM          *float64 `json:"ptbRatioTTM"`
+	EVToSalesTTM         *float64 `json:"evToSalesTTM"`
+	EVToFreeCashFlowTTM  *float64 `json:"evToFreeCashFlowTTM"`
+	EarningsYieldTTM     *float64 `json:"earningsYieldTTM"`
+	FreeCashFlowYieldTTM *float64 `json:"freeCashFlowYieldTTM"`
+	DebtToEquityTTM      *float64 `json:"debtToEquityTTM"`
+	DebtToAssetsTTM      *float64 `json:"debtToAssetsTTM"`
 
 	// === DIVIDENDS ===
-	DividendYieldTTM               *float64 `json:"dividendYieldTTM"`
-	DividendYieldPercentageTTM     *float64 `json:"dividendYieldPercentageTTM"`
-	PayoutRatioTTM                 *float64 `json:"payoutRatioTTM"`
-	DividendPerShareTTM            *float64 `json:"dividendPerShareTTM"`
+	DividendYieldTTM           *float64 `json:"dividendYieldTTM"`
+	DividendYieldPercentageTTM *float64 `json:"dividendYieldPercentageTTM"`
+	PayoutRatioTTM             *float64 `json:"payoutRatioTTM"`
+	DividendPerShareTTM        *float64 `json:"dividendPerShareTTM"`
 
 	// === INCOME DATA ===
-	IncomeQualityTTM               *float64 `json:"incomeQualityTTM"`
+	IncomeQualityTTM                          *float64 `json:"incomeQualityTTM"`
 	SalesGeneralAndAdministrativeToRevenueTTM *float64 `json:"salesGeneralAndAdministrativeToRevenueTTM"`
-	ResearchAndDevelopmentToRevenueTTM *float64 `json:"researchAndDevelopmentToRevenueTTM"`
-	IntangiblesToTotalAssetsTTM    *float64 `json:"intangiblesToTotalAssetsTTM"`
-	CapexPerShareTTM               *float64 `json:"capexPerShareTTM"`
+	ResearchAndDevelopmentToRevenueTTM        *float64 `json:"researchAndDevelopmentToRevenueTTM"`
+	IntangiblesToTotalAssetsTTM               *float64 `json:"intangiblesToTotalAssetsTTM"`
+	CapexPerShareTTM                          *float64 `json:"capexPerShareTTM"`
 }
 
 // FMPFinancialGrowth represents the response from FMP financial-growth endpoint
 type FMPFinancialGrowth struct {
-	Symbol     string `json:"symbol"`
-	Date       string `json:"date"`
-	Period     string `json:"period"`
+	Symbol       string `json:"symbol"`
+	Date         string `json:"date"`
+	Period       string `json:"period"`
 	CalendarYear string `json:"calendarYear"`
 
 	// === REVENUE GROWTH ===
-	RevenueGrowth          *float64 `json:"revenueGrowth"`
-	GrossProfitGrowth      *float64 `json:"grossProfitGrowth"`
+	RevenueGrowth     *float64 `json:"revenueGrowth"`
+	GrossProfitGrowth *float64 `json:"grossProfitGrowth"`
 
 	// === INCOME GROWTH ===
-	EBITGrowth             *float64 `json:"ebitgrowth"`
-	OperatingIncomeGrowth  *float64 `json:"operatingIncomeGrowth"`
-	NetIncomeGrowth        *float64 `json:"netIncomeGrowth"`
+	EBITGrowth            *float64 `json:"ebitgrowth"`
+	OperatingIncomeGrowth *float64 `json:"operatingIncomeGrowth"`
+	NetIncomeGrowth       *float64 `json:"netIncomeGrowth"`
 
 	// === EPS GROWTH ===
-	EPSGrowth              *float64 `json:"epsgrowth"`
-	EPSDilutedGrowth       *float64 `json:"epsdilutedGrowth"`
+	EPSGrowth        *float64 `json:"epsgrowth"`
+	EPSDilutedGrowth *float64 `json:"epsdilutedGrowth"`
 
 	// === DIVIDEND GROWTH ===
 	DividendPerShareGrowth *float64 `json:"dividendsperShareGrowth"`
@@ -212,38 +212,38 @@ type FMPFinancialGrowth struct {
 	FreeCashFlowGrowth      *float64 `json:"freeCashFlowGrowth"`
 
 	// === BALANCE SHEET GROWTH ===
-	AssetGrowth              *float64 `json:"assetGrowth"`
-	BookValuePerShareGrowth  *float64 `json:"bookValueperShareGrowth"`
-	DebtGrowth               *float64 `json:"debtGrowth"`
-	TenYRevenueGrowthPerShare *float64 `json:"tenYRevenueGrowthPerShare"`
-	FiveYRevenueGrowthPerShare *float64 `json:"fiveYRevenueGrowthPerShare"`
-	ThreeYRevenueGrowthPerShare *float64 `json:"threeYRevenueGrowthPerShare"`
-	TenYOperatingCFGrowthPerShare *float64 `json:"tenYOperatingCFGrowthPerShare"`
-	FiveYOperatingCFGrowthPerShare *float64 `json:"fiveYOperatingCFGrowthPerShare"`
-	ThreeYOperatingCFGrowthPerShare *float64 `json:"threeYOperatingCFGrowthPerShare"`
-	TenYNetIncomeGrowthPerShare *float64 `json:"tenYNetIncomeGrowthPerShare"`
-	FiveYNetIncomeGrowthPerShare *float64 `json:"fiveYNetIncomeGrowthPerShare"`
-	ThreeYNetIncomeGrowthPerShare *float64 `json:"threeYNetIncomeGrowthPerShare"`
-	TenYShareholdersEquityGrowthPerShare *float64 `json:"tenYShareholdersEquityGrowthPerShare"`
-	FiveYShareholdersEquityGrowthPerShare *float64 `json:"fiveYShareholdersEquityGrowthPerShare"`
+	AssetGrowth                            *float64 `json:"assetGrowth"`
+	BookValuePerShareGrowth                *float64 `json:"bookValueperShareGrowth"`
+	DebtGrowth                             *float64 `json:"debtGrowth"`
+	TenYRevenueGrowthPerShare              *float64 `json:"tenYRevenueGrowthPerShare"`
+	FiveYRevenueGrowthPerShare             *float64 `json:"fiveYRevenueGrowthPerShare"`
+	ThreeYRevenueGrowthPerShare            *float64 `json:"threeYRevenueGrowthPerShare"`
+	TenYOperatingCFGrowthPerShare          *float64 `json:"tenYOperatingCFGrowthPerShare"`
+	FiveYOperatingCFGrowthPerShare         *float64 `json:"fiveYOperatingCFGrowthPerShare"`
+	ThreeYOperatingCFGrowthPerShare        *float64 `json:"threeYOperatingCFGrowthPerShare"`
+	TenYNetIncomeGrowthPerShare            *float64 `json:"tenYNetIncomeGrowthPerShare"`
+	FiveYNetIncomeGrowthPerShare           *float64 `json:"fiveYNetIncomeGrowthPerShare"`
+	ThreeYNetIncomeGrowthPerShare          *float64 `json:"threeYNetIncomeGrowthPerShare"`
+	TenYShareholdersEquityGrowthPerShare   *float64 `json:"tenYShareholdersEquityGrowthPerShare"`
+	FiveYShareholdersEquityGrowthPerShare  *float64 `json:"fiveYShareholdersEquityGrowthPerShare"`
 	ThreeYShareholdersEquityGrowthPerShare *float64 `json:"threeYShareholdersEquityGrowthPerShare"`
-	TenYDividendPerShareGrowthPerShare *float64 `json:"tenYDividendperShareGrowthPerShare"`
-	FiveYDividendPerShareGrowthPerShare *float64 `json:"fiveYDividendperShareGrowthPerShare"`
-	ThreeYDividendPerShareGrowthPerShare *float64 `json:"threeYDividendperShareGrowthPerShare"`
+	TenYDividendPerShareGrowthPerShare     *float64 `json:"tenYDividendperShareGrowthPerShare"`
+	FiveYDividendPerShareGrowthPerShare    *float64 `json:"fiveYDividendperShareGrowthPerShare"`
+	ThreeYDividendPerShareGrowthPerShare   *float64 `json:"threeYDividendperShareGrowthPerShare"`
 
 	// === RECEIVABLES/INVENTORY GROWTH ===
-	ReceivablesGrowth      *float64 `json:"receivablesGrowth"`
-	InventoryGrowth        *float64 `json:"inventoryGrowth"`
+	ReceivablesGrowth *float64 `json:"receivablesGrowth"`
+	InventoryGrowth   *float64 `json:"inventoryGrowth"`
 
 	// === R&D AND SG&A GROWTH ===
-	RDExpenseGrowth        *float64 `json:"rdexpenseGrowth"`
-	SGAExpensesGrowth      *float64 `json:"sgaexpensesGrowth"`
+	RDExpenseGrowth   *float64 `json:"rdexpenseGrowth"`
+	SGAExpensesGrowth *float64 `json:"sgaexpensesGrowth"`
 }
 
 // FMPAnalystEstimate represents the response from FMP analyst-estimates endpoint
 type FMPAnalystEstimate struct {
-	Symbol       string `json:"symbol"`
-	Date         string `json:"date"`
+	Symbol string `json:"symbol"`
+	Date   string `json:"date"`
 
 	// === REVENUE ESTIMATES ===
 	EstimatedRevenueLow  *float64 `json:"estimatedRevenueLow"`
@@ -490,13 +490,13 @@ func (c *FMPClient) GetDividendHistory(ticker string) ([]FMPDividendHistorical, 
 
 // FMPAllMetrics contains all FMP data for a ticker
 type FMPAllMetrics struct {
-	RatiosTTM      *FMPRatiosTTM
-	KeyMetricsTTM  *FMPKeyMetricsTTM
-	Growth         []FMPFinancialGrowth
-	Estimates      []FMPAnalystEstimate
-	Score          *FMPScore
-	Dividends      []FMPDividendHistorical
-	Errors         map[string]error
+	RatiosTTM     *FMPRatiosTTM
+	KeyMetricsTTM *FMPKeyMetricsTTM
+	Growth        []FMPFinancialGrowth
+	Estimates     []FMPAnalystEstimate
+	Score         *FMPScore
+	Dividends     []FMPDividendHistorical
+	Errors        map[string]error
 }
 
 // GetAllMetrics fetches all FMP data for a ticker in parallel
@@ -686,19 +686,19 @@ const (
 // FieldSources tracks the data source for each field (for admin debug mode)
 type FieldSources struct {
 	// Valuation
-	PERatio         DataSource `json:"pe_ratio,omitempty"`
-	ForwardPE       DataSource `json:"forward_pe,omitempty"`
-	PBRatio         DataSource `json:"pb_ratio,omitempty"`
-	PSRatio         DataSource `json:"ps_ratio,omitempty"`
-	PriceToFCF      DataSource `json:"price_to_fcf,omitempty"`
-	PriceToOCF      DataSource `json:"price_to_ocf,omitempty"`
-	PEGRatio        DataSource `json:"peg_ratio,omitempty"`
-	EVToSales       DataSource `json:"ev_to_sales,omitempty"`
-	EVToEBITDA      DataSource `json:"ev_to_ebitda,omitempty"`
-	EVToEBIT        DataSource `json:"ev_to_ebit,omitempty"`
-	EVToFCF         DataSource `json:"ev_to_fcf,omitempty"`
-	EarningsYield   DataSource `json:"earnings_yield,omitempty"`
-	FCFYield        DataSource `json:"fcf_yield,omitempty"`
+	PERatio       DataSource `json:"pe_ratio,omitempty"`
+	ForwardPE     DataSource `json:"forward_pe,omitempty"`
+	PBRatio       DataSource `json:"pb_ratio,omitempty"`
+	PSRatio       DataSource `json:"ps_ratio,omitempty"`
+	PriceToFCF    DataSource `json:"price_to_fcf,omitempty"`
+	PriceToOCF    DataSource `json:"price_to_ocf,omitempty"`
+	PEGRatio      DataSource `json:"peg_ratio,omitempty"`
+	EVToSales     DataSource `json:"ev_to_sales,omitempty"`
+	EVToEBITDA    DataSource `json:"ev_to_ebitda,omitempty"`
+	EVToEBIT      DataSource `json:"ev_to_ebit,omitempty"`
+	EVToFCF       DataSource `json:"ev_to_fcf,omitempty"`
+	EarningsYield DataSource `json:"earnings_yield,omitempty"`
+	FCFYield      DataSource `json:"fcf_yield,omitempty"`
 
 	// Profitability
 	GrossMargin     DataSource `json:"gross_margin,omitempty"`
@@ -713,15 +713,15 @@ type FieldSources struct {
 	ROCE            DataSource `json:"roce,omitempty"`
 
 	// Liquidity
-	CurrentRatio    DataSource `json:"current_ratio,omitempty"`
-	QuickRatio      DataSource `json:"quick_ratio,omitempty"`
-	CashRatio       DataSource `json:"cash_ratio,omitempty"`
+	CurrentRatio DataSource `json:"current_ratio,omitempty"`
+	QuickRatio   DataSource `json:"quick_ratio,omitempty"`
+	CashRatio    DataSource `json:"cash_ratio,omitempty"`
 
 	// Leverage
-	DebtToEquity    DataSource `json:"debt_to_equity,omitempty"`
-	DebtToAssets    DataSource `json:"debt_to_assets,omitempty"`
-	DebtToEBITDA    DataSource `json:"debt_to_ebitda,omitempty"`
-	DebtToCapital   DataSource `json:"debt_to_capital,omitempty"`
+	DebtToEquity     DataSource `json:"debt_to_equity,omitempty"`
+	DebtToAssets     DataSource `json:"debt_to_assets,omitempty"`
+	DebtToEBITDA     DataSource `json:"debt_to_ebitda,omitempty"`
+	DebtToCapital    DataSource `json:"debt_to_capital,omitempty"`
 	InterestCoverage DataSource `json:"interest_coverage,omitempty"`
 
 	// Efficiency
@@ -739,15 +739,20 @@ type FieldSources struct {
 	PiotroskiFScore DataSource `json:"piotroski_f_score,omitempty"`
 
 	// Growth
-	RevenueGrowthYoY  DataSource `json:"revenue_growth_yoy,omitempty"`
-	RevenueGrowth3Y   DataSource `json:"revenue_growth_3y,omitempty"`
-	RevenueGrowth5Y   DataSource `json:"revenue_growth_5y,omitempty"`
-	EPSGrowthYoY      DataSource `json:"eps_growth_yoy,omitempty"`
-	EPSGrowth5Y       DataSource `json:"eps_growth_5y,omitempty"`
+	RevenueGrowthYoY DataSource `json:"revenue_growth_yoy,omitempty"`
+	RevenueGrowth3Y  DataSource `json:"revenue_growth_3y,omitempty"`
+	RevenueGrowth5Y  DataSource `json:"revenue_growth_5y,omitempty"`
+	EPSGrowthYoY     DataSource `json:"eps_growth_yoy,omitempty"`
+	EPSGrowth5Y      DataSource `json:"eps_growth_5y,omitempty"`
 
 	// Dividends
-	DividendYield   DataSource `json:"dividend_yield,omitempty"`
-	PayoutRatio     DataSource `json:"payout_ratio,omitempty"`
+	DividendYield        DataSource `json:"dividend_yield,omitempty"`
+	PayoutRatio          DataSource `json:"payout_ratio,omitempty"`
+	ForwardDividendYield DataSource `json:"forward_dividend_yield,omitempty"`
+	FCFPayoutRatio       DataSource `json:"fcf_payout_ratio,omitempty"`
+
+	// Per Share
+	EPSDiluted DataSource `json:"eps_diluted,omitempty"`
 }
 
 // ============================================================================
@@ -757,74 +762,74 @@ type FieldSources struct {
 // MergedFinancialMetrics represents the complete merged data from FMP + DB
 type MergedFinancialMetrics struct {
 	// === VALUATION (15 metrics) ===
-	PERatio           *float64 `json:"pe_ratio"`
-	ForwardPE         *float64 `json:"forward_pe"`
-	PBRatio           *float64 `json:"pb_ratio"`
-	PSRatio           *float64 `json:"ps_ratio"`
-	PriceToFCF        *float64 `json:"price_to_fcf"`
-	PriceToOCF        *float64 `json:"price_to_ocf"`
-	PEGRatio          *float64 `json:"peg_ratio"`
-	EnterpriseValue   *float64 `json:"enterprise_value"`
-	EVToSales         *float64 `json:"ev_to_sales"`
-	EVToEBITDA        *float64 `json:"ev_to_ebitda"`
-	EVToEBIT          *float64 `json:"ev_to_ebit"`
-	EVToFCF           *float64 `json:"ev_to_fcf"`
-	EarningsYield     *float64 `json:"earnings_yield"`
-	FCFYield          *float64 `json:"fcf_yield"`
-	MarketCap         *float64 `json:"market_cap"`
+	PERatio         *float64 `json:"pe_ratio"`
+	ForwardPE       *float64 `json:"forward_pe"`
+	PBRatio         *float64 `json:"pb_ratio"`
+	PSRatio         *float64 `json:"ps_ratio"`
+	PriceToFCF      *float64 `json:"price_to_fcf"`
+	PriceToOCF      *float64 `json:"price_to_ocf"`
+	PEGRatio        *float64 `json:"peg_ratio"`
+	EnterpriseValue *float64 `json:"enterprise_value"`
+	EVToSales       *float64 `json:"ev_to_sales"`
+	EVToEBITDA      *float64 `json:"ev_to_ebitda"`
+	EVToEBIT        *float64 `json:"ev_to_ebit"`
+	EVToFCF         *float64 `json:"ev_to_fcf"`
+	EarningsYield   *float64 `json:"earnings_yield"`
+	FCFYield        *float64 `json:"fcf_yield"`
+	MarketCap       *float64 `json:"market_cap"`
 
 	// === PROFITABILITY (12 metrics) ===
-	GrossMargin       *float64 `json:"gross_margin"`
-	OperatingMargin   *float64 `json:"operating_margin"`
-	NetMargin         *float64 `json:"net_margin"`
-	EBITDAMargin      *float64 `json:"ebitda_margin"`
-	EBITMargin        *float64 `json:"ebit_margin"`
-	FCFMargin         *float64 `json:"fcf_margin"`
-	PretaxMargin      *float64 `json:"pretax_margin"`
-	ROE               *float64 `json:"roe"`
-	ROA               *float64 `json:"roa"`
-	ROIC              *float64 `json:"roic"`
-	ROCE              *float64 `json:"roce"`
+	GrossMargin     *float64 `json:"gross_margin"`
+	OperatingMargin *float64 `json:"operating_margin"`
+	NetMargin       *float64 `json:"net_margin"`
+	EBITDAMargin    *float64 `json:"ebitda_margin"`
+	EBITMargin      *float64 `json:"ebit_margin"`
+	FCFMargin       *float64 `json:"fcf_margin"`
+	PretaxMargin    *float64 `json:"pretax_margin"`
+	ROE             *float64 `json:"roe"`
+	ROA             *float64 `json:"roa"`
+	ROIC            *float64 `json:"roic"`
+	ROCE            *float64 `json:"roce"`
 
 	// === LIQUIDITY (4 metrics) ===
-	CurrentRatio      *float64 `json:"current_ratio"`
-	QuickRatio        *float64 `json:"quick_ratio"`
-	CashRatio         *float64 `json:"cash_ratio"`
-	WorkingCapital    *float64 `json:"working_capital"`
+	CurrentRatio   *float64 `json:"current_ratio"`
+	QuickRatio     *float64 `json:"quick_ratio"`
+	CashRatio      *float64 `json:"cash_ratio"`
+	WorkingCapital *float64 `json:"working_capital"`
 
 	// === LEVERAGE (7 metrics) ===
-	DebtToEquity      *float64 `json:"debt_to_equity"`
-	DebtToAssets      *float64 `json:"debt_to_assets"`
-	DebtToEBITDA      *float64 `json:"debt_to_ebitda"`
-	DebtToCapital     *float64 `json:"debt_to_capital"`
-	InterestCoverage  *float64 `json:"interest_coverage"`
-	NetDebtToEBITDA   *float64 `json:"net_debt_to_ebitda"`
-	NetDebt           *float64 `json:"net_debt"`
+	DebtToEquity     *float64 `json:"debt_to_equity"`
+	DebtToAssets     *float64 `json:"debt_to_assets"`
+	DebtToEBITDA     *float64 `json:"debt_to_ebitda"`
+	DebtToCapital    *float64 `json:"debt_to_capital"`
+	InterestCoverage *float64 `json:"interest_coverage"`
+	NetDebtToEBITDA  *float64 `json:"net_debt_to_ebitda"`
+	NetDebt          *float64 `json:"net_debt"`
 
 	// === EFFICIENCY (9 metrics) ===
-	AssetTurnover             *float64 `json:"asset_turnover"`
-	InventoryTurnover         *float64 `json:"inventory_turnover"`
-	ReceivablesTurnover       *float64 `json:"receivables_turnover"`
-	PayablesTurnover          *float64 `json:"payables_turnover"`
-	FixedAssetTurnover        *float64 `json:"fixed_asset_turnover"`
-	DaysOfSalesOutstanding    *float64 `json:"days_sales_outstanding"`
+	AssetTurnover              *float64 `json:"asset_turnover"`
+	InventoryTurnover          *float64 `json:"inventory_turnover"`
+	ReceivablesTurnover        *float64 `json:"receivables_turnover"`
+	PayablesTurnover           *float64 `json:"payables_turnover"`
+	FixedAssetTurnover         *float64 `json:"fixed_asset_turnover"`
+	DaysOfSalesOutstanding     *float64 `json:"days_sales_outstanding"`
 	DaysOfInventoryOutstanding *float64 `json:"days_inventory_outstanding"`
-	DaysOfPayablesOutstanding *float64 `json:"days_payables_outstanding"`
-	CashConversionCycle       *float64 `json:"cash_conversion_cycle"`
+	DaysOfPayablesOutstanding  *float64 `json:"days_payables_outstanding"`
+	CashConversionCycle        *float64 `json:"cash_conversion_cycle"`
 
 	// === GROWTH (12 metrics) ===
-	RevenueGrowthYoY    *float64 `json:"revenue_growth_yoy"`
-	RevenueGrowth3YCAGR *float64 `json:"revenue_growth_3y_cagr"`
-	RevenueGrowth5YCAGR *float64 `json:"revenue_growth_5y_cagr"`
-	GrossProfitGrowthYoY *float64 `json:"gross_profit_growth_yoy"`
+	RevenueGrowthYoY         *float64 `json:"revenue_growth_yoy"`
+	RevenueGrowth3YCAGR      *float64 `json:"revenue_growth_3y_cagr"`
+	RevenueGrowth5YCAGR      *float64 `json:"revenue_growth_5y_cagr"`
+	GrossProfitGrowthYoY     *float64 `json:"gross_profit_growth_yoy"`
 	OperatingIncomeGrowthYoY *float64 `json:"operating_income_growth_yoy"`
-	NetIncomeGrowthYoY  *float64 `json:"net_income_growth_yoy"`
-	EPSGrowthYoY        *float64 `json:"eps_growth_yoy"`
-	EPSGrowth3YCAGR     *float64 `json:"eps_growth_3y_cagr"`
-	EPSGrowth5YCAGR     *float64 `json:"eps_growth_5y_cagr"`
-	FCFGrowthYoY        *float64 `json:"fcf_growth_yoy"`
-	BookValueGrowthYoY  *float64 `json:"book_value_growth_yoy"`
-	DividendGrowth5YCAGR *float64 `json:"dividend_growth_5y_cagr"`
+	NetIncomeGrowthYoY       *float64 `json:"net_income_growth_yoy"`
+	EPSGrowthYoY             *float64 `json:"eps_growth_yoy"`
+	EPSGrowth3YCAGR          *float64 `json:"eps_growth_3y_cagr"`
+	EPSGrowth5YCAGR          *float64 `json:"eps_growth_5y_cagr"`
+	FCFGrowthYoY             *float64 `json:"fcf_growth_yoy"`
+	BookValueGrowthYoY       *float64 `json:"book_value_growth_yoy"`
+	DividendGrowth5YCAGR     *float64 `json:"dividend_growth_5y_cagr"`
 
 	// === PER SHARE (10 metrics) ===
 	EPSDiluted           *float64 `json:"eps_diluted"`
@@ -838,22 +843,22 @@ type MergedFinancialMetrics struct {
 	GrahamNumber         *float64 `json:"graham_number"`
 
 	// === DIVIDENDS (9 metrics) ===
-	DividendYield          *float64 `json:"dividend_yield"`
-	ForwardDividendYield   *float64 `json:"forward_dividend_yield"`
-	PayoutRatio            *float64 `json:"payout_ratio"`
-	FCFPayoutRatio         *float64 `json:"fcf_payout_ratio"`
-	ConsecutiveDividendYears *int    `json:"consecutive_dividend_years"`
-	ExDividendDate         *string  `json:"ex_dividend_date"`
-	PaymentDate            *string  `json:"payment_date"`
-	DividendFrequency      *string  `json:"dividend_frequency"`
+	DividendYield            *float64 `json:"dividend_yield"`
+	ForwardDividendYield     *float64 `json:"forward_dividend_yield"`
+	PayoutRatio              *float64 `json:"payout_ratio"`
+	FCFPayoutRatio           *float64 `json:"fcf_payout_ratio"`
+	ConsecutiveDividendYears *int     `json:"consecutive_dividend_years"`
+	ExDividendDate           *string  `json:"ex_dividend_date"`
+	PaymentDate              *string  `json:"payment_date"`
+	DividendFrequency        *string  `json:"dividend_frequency"`
 
 	// === QUALITY SCORES (6 metrics) ===
-	AltmanZScore           *float64 `json:"altman_z_score"`
-	AltmanZInterpretation  *string  `json:"altman_z_interpretation"`
-	AltmanZDescription     *string  `json:"altman_z_description"`
-	PiotroskiFScore        *int     `json:"piotroski_f_score"`
-	PiotroskiFInterpretation *string `json:"piotroski_f_interpretation"`
-	PiotroskiFDescription  *string  `json:"piotroski_f_description"`
+	AltmanZScore             *float64 `json:"altman_z_score"`
+	AltmanZInterpretation    *string  `json:"altman_z_interpretation"`
+	AltmanZDescription       *string  `json:"altman_z_description"`
+	PiotroskiFScore          *int     `json:"piotroski_f_score"`
+	PiotroskiFInterpretation *string  `json:"piotroski_f_interpretation"`
+	PiotroskiFDescription    *string  `json:"piotroski_f_description"`
 
 	// === FORWARD ESTIMATES (8 metrics) ===
 	ForwardEPS         *float64 `json:"forward_eps"`
@@ -866,8 +871,8 @@ type MergedFinancialMetrics struct {
 	NumAnalystsRevenue *int     `json:"num_analysts_revenue"`
 
 	// === INTERPRETATIONS ===
-	PEGInterpretation     *string `json:"peg_interpretation,omitempty"`
-	PayoutInterpretation  *string `json:"payout_interpretation,omitempty"`
+	PEGInterpretation    *string `json:"peg_interpretation,omitempty"`
+	PayoutInterpretation *string `json:"payout_interpretation,omitempty"`
 
 	// === METADATA ===
 	FMPAvailable bool          `json:"fmp_available"`
@@ -958,6 +963,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		merged.FCFPerShare = r.FreeCashFlowPerShareTTM
 		merged.CashPerShare = r.CashPerShareTTM
 		merged.GrahamNumber = r.GrahamNumberTTM
+		merged.EPSDiluted = r.NetIncomePerShareTTM
 
 		// PEG Interpretation
 		if r.PEGRatioTTM != nil {
@@ -1012,6 +1018,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		merged.Sources.CashConversionCycle = SourceFMP
 		merged.Sources.DividendYield = SourceFMP
 		merged.Sources.PayoutRatio = SourceFMP
+		merged.Sources.EPSDiluted = SourceFMP
 	}
 
 	// Merge key-metrics-ttm data
@@ -1134,6 +1141,20 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		// Estimate dividend frequency
 		freq := estimateDividendFrequency(fmp.Dividends)
 		merged.DividendFrequency = &freq
+	}
+
+	// Calculate ForwardDividendYield: (Dividend Per Share / Current Price) * 100
+	if merged.DividendPerShare != nil && currentPrice > 0 {
+		forwardYield := (*merged.DividendPerShare / currentPrice) * 100
+		merged.ForwardDividendYield = &forwardYield
+		merged.Sources.ForwardDividendYield = SourceCalculated
+	}
+
+	// Calculate FCF Payout Ratio: (Dividend Per Share / FCF Per Share) * 100
+	if merged.DividendPerShare != nil && merged.FCFPerShare != nil && *merged.FCFPerShare > 0 {
+		fcfPayout := (*merged.DividendPerShare / *merged.FCFPerShare) * 100
+		merged.FCFPayoutRatio = &fcfPayout
+		merged.Sources.FCFPayoutRatio = SourceCalculated
 	}
 
 	return merged
