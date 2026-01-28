@@ -699,6 +699,7 @@ type FieldSources struct {
 	EVToFCF       DataSource `json:"ev_to_fcf,omitempty"`
 	EarningsYield DataSource `json:"earnings_yield,omitempty"`
 	FCFYield      DataSource `json:"fcf_yield,omitempty"`
+	MarketCap     DataSource `json:"market_cap,omitempty"`
 
 	// Profitability
 	GrossMargin     DataSource `json:"gross_margin,omitempty"`
@@ -1026,6 +1027,9 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		k := fmp.KeyMetricsTTM
 
 		merged.MarketCap = k.MarketCapTTM
+		if k.MarketCapTTM != nil {
+			merged.Sources.MarketCap = SourceFMP
+		}
 		merged.WorkingCapital = k.WorkingCapitalTTM
 		merged.NetDebt = k.NetDebtTTM
 

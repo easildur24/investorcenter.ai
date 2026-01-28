@@ -584,6 +584,65 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 				merged.ConsecutiveDividendYears = dbFallback.ConsecutiveDividendYears
 			}
 		}
+
+		// Fetch Market Cap from tickers table if not available from FMP
+		if merged.MarketCap == nil {
+			var marketCapResult struct {
+				MarketCap *float64 `db:"market_cap"`
+			}
+			marketCapQuery := `SELECT market_cap FROM tickers WHERE symbol = $1 AND active = true`
+			if err := database.DB.Get(&marketCapResult, marketCapQuery, ticker); err == nil && marketCapResult.MarketCap != nil {
+				merged.MarketCap = marketCapResult.MarketCap
+				merged.Sources.MarketCap = services.SourceDatabase
+			}
+		}
+	}
+
+	// Calculate derived metrics as fallbacks if primary sources are missing
+
+	// PEG Ratio: P/E / EPS Growth Rate (use 5Y EPS CAGR if available)
+	if merged.PEGRatio == nil && merged.PERatio != nil && *merged.PERatio > 0 {
+		// Try using 5-year EPS CAGR first, then YoY
+		var epsGrowth *float64
+		if merged.EPSGrowth5YCAGR != nil && *merged.EPSGrowth5YCAGR > 0 {
+			epsGrowth = merged.EPSGrowth5YCAGR
+		} else if merged.EPSGrowthYoY != nil && *merged.EPSGrowthYoY > 0 {
+			epsGrowth = merged.EPSGrowthYoY
+		}
+		if epsGrowth != nil {
+			pegRatio := *merged.PERatio / *epsGrowth
+			merged.PEGRatio = &pegRatio
+			merged.Sources.PEGRatio = services.SourceCalculated
+			// Add PEG interpretation
+			interp, _ := services.GetPEGInterpretation(pegRatio)
+			merged.PEGInterpretation = &interp
+		}
+	}
+
+	// Earnings Yield: inverse of P/E ratio (1 / PE * 100)
+	if merged.EarningsYield == nil && merged.PERatio != nil && *merged.PERatio > 0 {
+		earningsYield := (1.0 / *merged.PERatio) * 100
+		merged.EarningsYield = &earningsYield
+		merged.Sources.EarningsYield = services.SourceCalculated
+	}
+
+	// FCF Yield: inverse of Price to FCF ratio (1 / P/FCF * 100)
+	if merged.FCFYield == nil && merged.PriceToFCF != nil && *merged.PriceToFCF > 0 {
+		fcfYield := (1.0 / *merged.PriceToFCF) * 100
+		merged.FCFYield = &fcfYield
+		merged.Sources.FCFYield = services.SourceCalculated
+	}
+
+	// EV/EBITDA calculated fallback: EV / (Net Margin * Revenue approximation)
+	// Note: This is a rough approximation when direct data is unavailable
+
+	// EV/Sales calculated fallback: EV / Revenue (using Market Cap as proxy when EV is available)
+	if merged.EVToSales == nil && merged.EnterpriseValue != nil && merged.PSRatio != nil && merged.MarketCap != nil && *merged.MarketCap > 0 {
+		// EV/Sales = EV / Revenue, and P/S = Price / Revenue per share = Market Cap / Revenue
+		// So Revenue = Market Cap / P/S, and EV/Sales = EV / (Market Cap / P/S) = EV * P/S / Market Cap
+		evToSales := (*merged.EnterpriseValue * *merged.PSRatio) / *merged.MarketCap
+		merged.EVToSales = &evToSales
+		merged.Sources.EVToSales = services.SourceCalculated
 	}
 
 	// If no data available at all, return error
