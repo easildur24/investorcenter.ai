@@ -1163,6 +1163,14 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		merged.Sources.FCFPayoutRatio = SourceCalculated
 	}
 
+	// Calculate FCF Margin fallback: (FCF Per Share / Revenue Per Share) * 100
+	// This is equivalent to FCF/Revenue since per-share values cancel out shares outstanding
+	if merged.FCFMargin == nil && merged.FCFPerShare != nil && merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 {
+		fcfMargin := (*merged.FCFPerShare / *merged.RevenuePerShare) * 100
+		merged.FCFMargin = &fcfMargin
+		merged.Sources.FCFMargin = SourceCalculated
+	}
+
 	return merged
 }
 

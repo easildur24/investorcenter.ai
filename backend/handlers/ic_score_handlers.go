@@ -426,6 +426,33 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 	// Merge all FMP data
 	merged := services.MergeAllData(allMetrics, currentPrice)
 
+	// Fetch database fallbacks for missing return metrics (ROA, ROIC)
+	if database.DB != nil && (merged.ROA == nil || merged.ROIC == nil) {
+		var dbFallback struct {
+			ROA  *float64 `db:"roa"`
+			ROIC *float64 `db:"roic"`
+		}
+		fallbackQuery := `
+			SELECT m.roa, m.roic
+			FROM fundamental_metrics_extended m
+			WHERE m.ticker = $1
+			ORDER BY m.calculation_date DESC
+			LIMIT 1
+		`
+		if err := database.DB.Get(&dbFallback, fallbackQuery, ticker); err == nil {
+			if merged.ROA == nil && dbFallback.ROA != nil {
+				roa := *dbFallback.ROA * 100 // Convert decimal to percentage
+				merged.ROA = &roa
+				merged.Sources.ROA = services.SourceDatabase
+			}
+			if merged.ROIC == nil && dbFallback.ROIC != nil {
+				roic := *dbFallback.ROIC * 100 // Convert decimal to percentage
+				merged.ROIC = &roic
+				merged.Sources.ROIC = services.SourceDatabase
+			}
+		}
+	}
+
 	// If no data available at all, return error
 	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
 		c.JSON(http.StatusNotFound, gin.H{
