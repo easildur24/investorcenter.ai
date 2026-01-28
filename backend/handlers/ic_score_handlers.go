@@ -400,13 +400,13 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		return
 	}
 
-	// Get current stock price for Forward P/E calculation
+	// Get current stock price for Forward P/E and Forward Dividend Yield calculations
 	var currentPrice float64 = 0
 	if database.DB != nil {
 		var priceResult struct {
-			Price *float64 `db:"close_price"`
+			Price *float64 `db:"current_price"`
 		}
-		priceQuery := `SELECT close_price FROM daily_prices WHERE ticker = $1 ORDER BY date DESC LIMIT 1`
+		priceQuery := `SELECT current_price FROM tickers WHERE symbol = $1 AND active = true`
 		if err := database.DB.Get(&priceResult, priceQuery, ticker); err == nil && priceResult.Price != nil {
 			currentPrice = *priceResult.Price
 		}
@@ -440,22 +440,22 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 	response := gin.H{
 		// === VALUATION ===
 		"valuation": gin.H{
-			"pe_ratio":         merged.PERatio,
-			"forward_pe":       merged.ForwardPE,
-			"pb_ratio":         merged.PBRatio,
-			"ps_ratio":         merged.PSRatio,
-			"price_to_fcf":     merged.PriceToFCF,
-			"price_to_ocf":     merged.PriceToOCF,
-			"peg_ratio":        merged.PEGRatio,
+			"pe_ratio":           merged.PERatio,
+			"forward_pe":         merged.ForwardPE,
+			"pb_ratio":           merged.PBRatio,
+			"ps_ratio":           merged.PSRatio,
+			"price_to_fcf":       merged.PriceToFCF,
+			"price_to_ocf":       merged.PriceToOCF,
+			"peg_ratio":          merged.PEGRatio,
 			"peg_interpretation": merged.PEGInterpretation,
-			"enterprise_value": merged.EnterpriseValue,
-			"ev_to_sales":      merged.EVToSales,
-			"ev_to_ebitda":     merged.EVToEBITDA,
-			"ev_to_ebit":       merged.EVToEBIT,
-			"ev_to_fcf":        merged.EVToFCF,
-			"earnings_yield":   merged.EarningsYield,
-			"fcf_yield":        merged.FCFYield,
-			"market_cap":       merged.MarketCap,
+			"enterprise_value":   merged.EnterpriseValue,
+			"ev_to_sales":        merged.EVToSales,
+			"ev_to_ebitda":       merged.EVToEBITDA,
+			"ev_to_ebit":         merged.EVToEBIT,
+			"ev_to_fcf":          merged.EVToFCF,
+			"earnings_yield":     merged.EarningsYield,
+			"fcf_yield":          merged.FCFYield,
+			"market_cap":         merged.MarketCap,
 		},
 
 		// === PROFITABILITY ===
@@ -494,15 +494,15 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 
 		// === EFFICIENCY ===
 		"efficiency": gin.H{
-			"asset_turnover":              merged.AssetTurnover,
-			"inventory_turnover":          merged.InventoryTurnover,
-			"receivables_turnover":        merged.ReceivablesTurnover,
-			"payables_turnover":           merged.PayablesTurnover,
-			"fixed_asset_turnover":        merged.FixedAssetTurnover,
-			"days_sales_outstanding":      merged.DaysOfSalesOutstanding,
-			"days_inventory_outstanding":  merged.DaysOfInventoryOutstanding,
-			"days_payables_outstanding":   merged.DaysOfPayablesOutstanding,
-			"cash_conversion_cycle":       merged.CashConversionCycle,
+			"asset_turnover":             merged.AssetTurnover,
+			"inventory_turnover":         merged.InventoryTurnover,
+			"receivables_turnover":       merged.ReceivablesTurnover,
+			"payables_turnover":          merged.PayablesTurnover,
+			"fixed_asset_turnover":       merged.FixedAssetTurnover,
+			"days_sales_outstanding":     merged.DaysOfSalesOutstanding,
+			"days_inventory_outstanding": merged.DaysOfInventoryOutstanding,
+			"days_payables_outstanding":  merged.DaysOfPayablesOutstanding,
+			"cash_conversion_cycle":      merged.CashConversionCycle,
 		},
 
 		// === GROWTH ===
@@ -523,38 +523,38 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 
 		// === PER SHARE ===
 		"per_share": gin.H{
-			"eps_diluted":            merged.EPSDiluted,
-			"book_value_per_share":   merged.BookValuePerShare,
+			"eps_diluted":             merged.EPSDiluted,
+			"book_value_per_share":    merged.BookValuePerShare,
 			"tangible_book_per_share": merged.TangibleBookPerShare,
-			"revenue_per_share":      merged.RevenuePerShare,
-			"operating_cf_per_share": merged.OperatingCFPerShare,
-			"fcf_per_share":          merged.FCFPerShare,
-			"cash_per_share":         merged.CashPerShare,
-			"dividend_per_share":     merged.DividendPerShare,
-			"graham_number":          merged.GrahamNumber,
+			"revenue_per_share":       merged.RevenuePerShare,
+			"operating_cf_per_share":  merged.OperatingCFPerShare,
+			"fcf_per_share":           merged.FCFPerShare,
+			"cash_per_share":          merged.CashPerShare,
+			"dividend_per_share":      merged.DividendPerShare,
+			"graham_number":           merged.GrahamNumber,
 		},
 
 		// === DIVIDENDS ===
 		"dividends": gin.H{
-			"dividend_yield":            merged.DividendYield,
-			"forward_dividend_yield":    merged.ForwardDividendYield,
-			"payout_ratio":              merged.PayoutRatio,
-			"payout_interpretation":     merged.PayoutInterpretation,
-			"fcf_payout_ratio":          merged.FCFPayoutRatio,
+			"dividend_yield":             merged.DividendYield,
+			"forward_dividend_yield":     merged.ForwardDividendYield,
+			"payout_ratio":               merged.PayoutRatio,
+			"payout_interpretation":      merged.PayoutInterpretation,
+			"fcf_payout_ratio":           merged.FCFPayoutRatio,
 			"consecutive_dividend_years": merged.ConsecutiveDividendYears,
-			"ex_dividend_date":          merged.ExDividendDate,
-			"payment_date":              merged.PaymentDate,
-			"dividend_frequency":        merged.DividendFrequency,
+			"ex_dividend_date":           merged.ExDividendDate,
+			"payment_date":               merged.PaymentDate,
+			"dividend_frequency":         merged.DividendFrequency,
 		},
 
 		// === QUALITY SCORES ===
 		"quality_scores": gin.H{
-			"altman_z_score":            merged.AltmanZScore,
-			"altman_z_interpretation":   merged.AltmanZInterpretation,
-			"altman_z_description":      merged.AltmanZDescription,
-			"piotroski_f_score":         merged.PiotroskiFScore,
+			"altman_z_score":             merged.AltmanZScore,
+			"altman_z_interpretation":    merged.AltmanZInterpretation,
+			"altman_z_description":       merged.AltmanZDescription,
+			"piotroski_f_score":          merged.PiotroskiFScore,
 			"piotroski_f_interpretation": merged.PiotroskiFInterpretation,
-			"piotroski_f_description":   merged.PiotroskiFDescription,
+			"piotroski_f_description":    merged.PiotroskiFDescription,
 		},
 
 		// === FORWARD ESTIMATES ===

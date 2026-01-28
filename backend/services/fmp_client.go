@@ -746,8 +746,13 @@ type FieldSources struct {
 	EPSGrowth5Y       DataSource `json:"eps_growth_5y,omitempty"`
 
 	// Dividends
-	DividendYield   DataSource `json:"dividend_yield,omitempty"`
-	PayoutRatio     DataSource `json:"payout_ratio,omitempty"`
+	DividendYield        DataSource `json:"dividend_yield,omitempty"`
+	PayoutRatio          DataSource `json:"payout_ratio,omitempty"`
+	ForwardDividendYield DataSource `json:"forward_dividend_yield,omitempty"`
+	FCFPayoutRatio       DataSource `json:"fcf_payout_ratio,omitempty"`
+
+	// Per Share
+	EPSDiluted DataSource `json:"eps_diluted,omitempty"`
 }
 
 // ============================================================================
@@ -958,6 +963,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		merged.FCFPerShare = r.FreeCashFlowPerShareTTM
 		merged.CashPerShare = r.CashPerShareTTM
 		merged.GrahamNumber = r.GrahamNumberTTM
+		merged.EPSDiluted = r.NetIncomePerShareTTM
 
 		// PEG Interpretation
 		if r.PEGRatioTTM != nil {
@@ -1012,6 +1018,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		merged.Sources.CashConversionCycle = SourceFMP
 		merged.Sources.DividendYield = SourceFMP
 		merged.Sources.PayoutRatio = SourceFMP
+		merged.Sources.EPSDiluted = SourceFMP
 	}
 
 	// Merge key-metrics-ttm data
@@ -1134,6 +1141,20 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		// Estimate dividend frequency
 		freq := estimateDividendFrequency(fmp.Dividends)
 		merged.DividendFrequency = &freq
+	}
+
+	// Calculate ForwardDividendYield: (Dividend Per Share / Current Price) * 100
+	if merged.DividendPerShare != nil && currentPrice > 0 {
+		forwardYield := (*merged.DividendPerShare / currentPrice) * 100
+		merged.ForwardDividendYield = &forwardYield
+		merged.Sources.ForwardDividendYield = SourceCalculated
+	}
+
+	// Calculate FCF Payout Ratio: (Dividend Per Share / FCF Per Share) * 100
+	if merged.DividendPerShare != nil && merged.FCFPerShare != nil && *merged.FCFPerShare > 0 {
+		fcfPayout := (*merged.DividendPerShare / *merged.FCFPerShare) * 100
+		merged.FCFPayoutRatio = &fcfPayout
+		merged.Sources.FCFPayoutRatio = SourceCalculated
 	}
 
 	return merged
