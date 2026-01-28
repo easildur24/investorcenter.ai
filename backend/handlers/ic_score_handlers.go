@@ -761,7 +761,7 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		merged.Sources.DebtToCapital = services.SourceCalculated
 	}
 
-	// Net Debt calculated fallback: (InterestDebtPerShare - CashPerShare) × SharesOutstanding
+	// Net Debt calculated fallback method 1: (InterestDebtPerShare - CashPerShare) × SharesOutstanding
 	if merged.NetDebt == nil && merged.InterestDebtPerShare != nil && merged.CashPerShare != nil &&
 		merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
 		sharesOutstanding := *merged.MarketCap / currentPrice
@@ -770,30 +770,46 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		merged.Sources.NetDebt = services.SourceCalculated
 	}
 
-	// Debt/EBITDA calculated fallback: derive from EV/EBITDA and other metrics
-	if merged.DebtToEBITDA == nil && merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
-		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 &&
-		merged.DebtToEquity != nil && merged.MarketCap != nil && *merged.MarketCap > 0 {
+	// Net Debt calculated fallback method 2: Derive from NetDebtToEBITDA × EBITDA when InterestDebtPerShare is missing
+	if merged.NetDebt == nil && merged.NetDebtToEBITDA != nil && *merged.NetDebtToEBITDA != 0 &&
+		merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
+		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 {
 		// EBITDA = EV / (EV/EBITDA)
 		ebitda := *merged.EnterpriseValue / *merged.EVToEBITDA
 		if ebitda > 0 {
-			// Total Debt can be derived: D/E = Debt/Equity, so Debt = D/E × Equity
-			// Equity ≈ Market Cap / P/B, but simpler: use EV = MarketCap + Debt - Cash
-			// So: Debt = EV - MarketCap + Cash
-			// If we have NetDebt: Debt = NetDebt + Cash
+			// Net Debt = NetDebtToEBITDA × EBITDA
+			netDebt := *merged.NetDebtToEBITDA * ebitda
+			merged.NetDebt = &netDebt
+			merged.Sources.NetDebt = services.SourceCalculated
+			log.Printf("Calculated Net Debt for %s from NetDebtToEBITDA (%.4f) × EBITDA (%.0f) = $%.0f", ticker, *merged.NetDebtToEBITDA, ebitda, netDebt)
+		}
+	}
+
+	// Debt/EBITDA calculated fallback: derive from Net Debt and EBITDA
+	if merged.DebtToEBITDA == nil && merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
+		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 {
+		// EBITDA = EV / (EV/EBITDA)
+		ebitda := *merged.EnterpriseValue / *merged.EVToEBITDA
+		if ebitda > 0 {
+			// Calculate Total Debt from Net Debt + Cash
 			var totalDebt float64
 			if merged.NetDebt != nil && merged.CashPerShare != nil && currentPrice > 0 {
 				sharesOutstanding := *merged.MarketCap / currentPrice
 				cash := *merged.CashPerShare * sharesOutstanding
 				totalDebt = *merged.NetDebt + cash
-			} else {
-				// Alternative: Debt = EV - MarketCap (assumes Cash ≈ 0, less accurate)
-				totalDebt = *merged.EnterpriseValue - *merged.MarketCap
+				log.Printf("Calculated Total Debt for %s: NetDebt ($%.0f) + Cash ($%.0f) = $%.0f", ticker, *merged.NetDebt, cash, totalDebt)
+			} else if merged.NetDebt != nil {
+				// Approximation: assume Cash is small relative to debt
+				totalDebt = *merged.NetDebt
+				log.Printf("Approximated Total Debt for %s ≈ Net Debt: $%.0f", ticker, totalDebt)
 			}
+
 			if totalDebt > 0 {
 				debtToEBITDA := totalDebt / ebitda
 				merged.DebtToEBITDA = &debtToEBITDA
 				merged.Sources.DebtToEBITDA = services.SourceCalculated
+				log.Printf("Calculated Debt/EBITDA for %s: Total Debt ($%.0f) / EBITDA ($%.0f) = %.2f", ticker, totalDebt, ebitda, debtToEBITDA)
 			}
 		}
 	}
