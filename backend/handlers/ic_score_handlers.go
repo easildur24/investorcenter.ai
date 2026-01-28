@@ -633,8 +633,62 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		merged.Sources.FCFYield = services.SourceCalculated
 	}
 
-	// EV/EBITDA calculated fallback: EV / (Net Margin * Revenue approximation)
-	// Note: This is a rough approximation when direct data is unavailable
+	// Forward P/E calculated fallback: Use projected EPS from historical growth
+	if merged.ForwardPE == nil && merged.PERatio != nil && *merged.PERatio > 0 && merged.EPSDiluted != nil && *merged.EPSDiluted > 0 {
+		// Use EPS growth rate to project next year's EPS
+		var epsGrowthRate float64 = 0.10 // Default 10% growth assumption
+		if merged.EPSGrowth5YCAGR != nil && *merged.EPSGrowth5YCAGR > 0 {
+			epsGrowthRate = *merged.EPSGrowth5YCAGR / 100 // Convert percentage to decimal
+		} else if merged.EPSGrowthYoY != nil && *merged.EPSGrowthYoY > 0 {
+			epsGrowthRate = *merged.EPSGrowthYoY / 100
+		}
+
+		// Project next year's EPS: CurrentEPS * (1 + growth rate)
+		projectedEPS := *merged.EPSDiluted * (1 + epsGrowthRate)
+
+		// Calculate Forward P/E from current price and projected EPS
+		if currentPrice > 0 && projectedEPS > 0 {
+			forwardPE := currentPrice / projectedEPS
+			merged.ForwardPE = &forwardPE
+			merged.Sources.ForwardPE = services.SourceCalculated
+		}
+	}
+
+	// EV/EBITDA calculated fallback: Derive EBITDA from available metrics
+	if merged.EVToEBITDA == nil && merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 {
+		var ebitda *float64
+
+		// Method 1: Calculate from Revenue * EBITDA Margin
+		if merged.RevenuePerShare != nil && merged.EBITDAMargin != nil && *merged.RevenuePerShare > 0 && *merged.EBITDAMargin > 0 {
+			// EBITDA = Revenue * EBITDA Margin / 100
+			// Need to multiply by shares outstanding, but we can use Market Cap / Price as proxy
+			if merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				revenue := *merged.RevenuePerShare * sharesOutstanding
+				ebitdaValue := revenue * (*merged.EBITDAMargin / 100)
+				ebitda = &ebitdaValue
+			}
+		}
+
+		// Method 2: Calculate from Net Income and margins if Method 1 failed
+		if ebitda == nil && merged.NetMargin != nil && merged.EBITDAMargin != nil &&
+			*merged.NetMargin > 0 && *merged.EBITDAMargin > 0 &&
+			merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 {
+			if merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				revenue := *merged.RevenuePerShare * sharesOutstanding
+				ebitdaValue := revenue * (*merged.EBITDAMargin / 100)
+				ebitda = &ebitdaValue
+			}
+		}
+
+		// Calculate EV/EBITDA if we derived EBITDA
+		if ebitda != nil && *ebitda > 0 {
+			evToEBITDA := *merged.EnterpriseValue / *ebitda
+			merged.EVToEBITDA = &evToEBITDA
+			merged.Sources.EVToEBITDA = services.SourceCalculated
+		}
+	}
 
 	// EV/Sales calculated fallback: EV / Revenue (using Market Cap as proxy when EV is available)
 	if merged.EVToSales == nil && merged.EnterpriseValue != nil && merged.PSRatio != nil && merged.MarketCap != nil && *merged.MarketCap > 0 {

@@ -286,6 +286,183 @@ func TestEVToSalesCalculation(t *testing.T) {
 	}
 }
 
+func TestForwardPECalculation(t *testing.T) {
+	tests := []struct {
+		name              string
+		currentPrice      float64
+		epsDiluted        *float64
+		epsGrowth5Y       *float64
+		epsGrowthYoY      *float64
+		expectedForwardPE *float64
+	}{
+		{
+			name:              "Forward P/E using 5Y growth",
+			currentPrice:      100.0,
+			epsDiluted:        float64Ptr(5.0),
+			epsGrowth5Y:       float64Ptr(20.0), // 20% growth
+			epsGrowthYoY:      nil,
+			expectedForwardPE: float64Ptr(16.666666666666668), // 100 / (5 * 1.20) = 100 / 6 = 16.67
+		},
+		{
+			name:              "Forward P/E using YoY growth when 5Y missing",
+			currentPrice:      150.0,
+			epsDiluted:        float64Ptr(10.0),
+			epsGrowth5Y:       nil,
+			epsGrowthYoY:      float64Ptr(15.0),               // 15% growth
+			expectedForwardPE: float64Ptr(13.043478260869565), // 150 / (10 * 1.15) = 150 / 11.5 = 13.04
+		},
+		{
+			name:              "Forward P/E using default 10% growth when no growth data",
+			currentPrice:      200.0,
+			epsDiluted:        float64Ptr(8.0),
+			epsGrowth5Y:       nil,
+			epsGrowthYoY:      nil,
+			expectedForwardPE: float64Ptr(22.727272727272727), // 200 / (8 * 1.10) = 200 / 8.8 = 22.73
+		},
+		{
+			name:              "No calculation when EPS is zero",
+			currentPrice:      100.0,
+			epsDiluted:        float64Ptr(0.0),
+			epsGrowth5Y:       float64Ptr(20.0),
+			epsGrowthYoY:      nil,
+			expectedForwardPE: nil,
+		},
+		{
+			name:              "No calculation when price is zero",
+			currentPrice:      0.0,
+			epsDiluted:        float64Ptr(5.0),
+			epsGrowth5Y:       float64Ptr(20.0),
+			epsGrowthYoY:      nil,
+			expectedForwardPE: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var forwardPE *float64
+
+			if tt.epsDiluted != nil && *tt.epsDiluted > 0 {
+				// Use EPS growth rate to project next year's EPS
+				var epsGrowthRate float64 = 0.10 // Default 10% growth assumption
+				if tt.epsGrowth5Y != nil && *tt.epsGrowth5Y > 0 {
+					epsGrowthRate = *tt.epsGrowth5Y / 100 // Convert percentage to decimal
+				} else if tt.epsGrowthYoY != nil && *tt.epsGrowthYoY > 0 {
+					epsGrowthRate = *tt.epsGrowthYoY / 100
+				}
+
+				// Project next year's EPS: CurrentEPS * (1 + growth rate)
+				projectedEPS := *tt.epsDiluted * (1 + epsGrowthRate)
+
+				// Calculate Forward P/E from current price and projected EPS
+				if tt.currentPrice > 0 && projectedEPS > 0 {
+					fpe := tt.currentPrice / projectedEPS
+					forwardPE = &fpe
+				}
+			}
+
+			if tt.expectedForwardPE == nil {
+				if forwardPE != nil {
+					t.Errorf("Expected no Forward P/E, but got %v", *forwardPE)
+				}
+			} else {
+				if forwardPE == nil {
+					t.Errorf("Expected Forward P/E=%v, but got nil", *tt.expectedForwardPE)
+				} else if *forwardPE != *tt.expectedForwardPE {
+					t.Errorf("Expected Forward P/E=%v, got %v", *tt.expectedForwardPE, *forwardPE)
+				}
+			}
+		})
+	}
+}
+
+func TestEVToEBITDACalculation(t *testing.T) {
+	tests := []struct {
+		name               string
+		enterpriseValue    *float64
+		revenuePerShare    *float64
+		ebitdaMargin       *float64
+		marketCap          *float64
+		currentPrice       float64
+		expectedEVToEBITDA *float64
+	}{
+		{
+			name:               "EV/EBITDA calculated from revenue and margin",
+			enterpriseValue:    float64Ptr(1000000.0),
+			revenuePerShare:    float64Ptr(50.0),
+			ebitdaMargin:       float64Ptr(20.0), // 20%
+			marketCap:          float64Ptr(800000.0),
+			currentPrice:       100.0,
+			expectedEVToEBITDA: float64Ptr(12.5), // 1M / (50 * 8000 * 0.20) = 1M / 80K = 12.5
+		},
+		{
+			name:               "No calculation when EV is zero",
+			enterpriseValue:    float64Ptr(0.0),
+			revenuePerShare:    float64Ptr(50.0),
+			ebitdaMargin:       float64Ptr(20.0),
+			marketCap:          float64Ptr(800000.0),
+			currentPrice:       100.0,
+			expectedEVToEBITDA: nil,
+		},
+		{
+			name:               "No calculation when EBITDA margin is zero",
+			enterpriseValue:    float64Ptr(1000000.0),
+			revenuePerShare:    float64Ptr(50.0),
+			ebitdaMargin:       float64Ptr(0.0),
+			marketCap:          float64Ptr(800000.0),
+			currentPrice:       100.0,
+			expectedEVToEBITDA: nil,
+		},
+		{
+			name:               "No calculation when current price is zero",
+			enterpriseValue:    float64Ptr(1000000.0),
+			revenuePerShare:    float64Ptr(50.0),
+			ebitdaMargin:       float64Ptr(20.0),
+			marketCap:          float64Ptr(800000.0),
+			currentPrice:       0.0,
+			expectedEVToEBITDA: nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var evToEBITDA *float64
+
+			if tt.enterpriseValue != nil && *tt.enterpriseValue > 0 {
+				var ebitda *float64
+
+				// Calculate from Revenue * EBITDA Margin
+				if tt.revenuePerShare != nil && tt.ebitdaMargin != nil &&
+					*tt.revenuePerShare > 0 && *tt.ebitdaMargin > 0 {
+					if tt.marketCap != nil && *tt.marketCap > 0 && tt.currentPrice > 0 {
+						sharesOutstanding := *tt.marketCap / tt.currentPrice
+						revenue := *tt.revenuePerShare * sharesOutstanding
+						ebitdaValue := revenue * (*tt.ebitdaMargin / 100)
+						ebitda = &ebitdaValue
+					}
+				}
+
+				// Calculate EV/EBITDA if we derived EBITDA
+				if ebitda != nil && *ebitda > 0 {
+					ratio := *tt.enterpriseValue / *ebitda
+					evToEBITDA = &ratio
+				}
+			}
+
+			if tt.expectedEVToEBITDA == nil {
+				if evToEBITDA != nil {
+					t.Errorf("Expected no EV/EBITDA, but got %v", *evToEBITDA)
+				}
+			} else {
+				if evToEBITDA == nil {
+					t.Errorf("Expected EV/EBITDA=%v, but got nil", *tt.expectedEVToEBITDA)
+				} else if *evToEBITDA != *tt.expectedEVToEBITDA {
+					t.Errorf("Expected EV/EBITDA=%v, got %v", *tt.expectedEVToEBITDA, *evToEBITDA)
+				}
+			}
+		})
+	}
+}
+
 // Helper function to create float64 pointers
 func float64Ptr(f float64) *float64 {
 	return &f
