@@ -412,6 +412,9 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		}
 	}
 
+	// Fallback: derive current price from P/E ratio and EPS if DB query failed
+	// We'll set this after getting FMP data if currentPrice is still 0
+
 	// Fetch all FMP data in parallel
 	var allMetrics *services.FMPAllMetrics
 	if fmpClient != nil && fmpClient.APIKey != "" {
@@ -425,6 +428,12 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 
 	// Merge all FMP data
 	merged := services.MergeAllData(allMetrics, currentPrice)
+
+	// If current price is still 0, try to derive it from P/E ratio and EPS
+	if currentPrice == 0 && merged.PERatio != nil && *merged.PERatio > 0 && merged.EPSDiluted != nil && *merged.EPSDiluted > 0 {
+		currentPrice = *merged.PERatio * *merged.EPSDiluted
+		log.Printf("Derived current price for %s from P/E (%.2f) × EPS (%.2f) = $%.2f", ticker, *merged.PERatio, *merged.EPSDiluted, currentPrice)
+	}
 
 	// Fetch database fallbacks for missing metrics from fundamental_metrics_extended
 	// Note: The database stores percentages as percentage values (e.g., 31.18 for 31.18%), not decimals
