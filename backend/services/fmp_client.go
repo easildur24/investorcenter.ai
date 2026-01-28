@@ -1051,6 +1051,12 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		if merged.GrahamNumber == nil {
 			merged.GrahamNumber = k.GrahamNumberTTM
 		}
+
+		// Fallback for ROE from key-metrics-ttm (uses different field name: roeTTM)
+		if merged.ROE == nil && k.ROETTM != nil {
+			merged.ROE = ConvertToPercentage(k.ROETTM)
+			merged.Sources.ROE = SourceFMP
+		}
 	}
 
 	// Merge financial-growth data
@@ -1155,6 +1161,14 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		fcfPayout := (*merged.DividendPerShare / *merged.FCFPerShare) * 100
 		merged.FCFPayoutRatio = &fcfPayout
 		merged.Sources.FCFPayoutRatio = SourceCalculated
+	}
+
+	// Calculate FCF Margin fallback: (FCF Per Share / Revenue Per Share) * 100
+	// This is equivalent to FCF/Revenue since per-share values cancel out shares outstanding
+	if merged.FCFMargin == nil && merged.FCFPerShare != nil && merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 {
+		fcfMargin := (*merged.FCFPerShare / *merged.RevenuePerShare) * 100
+		merged.FCFMargin = &fcfMargin
+		merged.Sources.FCFMargin = SourceCalculated
 	}
 
 	return merged
