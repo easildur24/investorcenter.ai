@@ -18,8 +18,12 @@ import (
 // fmpClient is a package-level FMP client instance
 var fmpClient *services.FMPClient
 
+// polygonClient is a package-level Polygon client instance
+var polygonClient *services.PolygonClient
+
 func init() {
 	fmpClient = services.NewFMPClient()
+	polygonClient = services.NewPolygonClient()
 }
 
 // GetICScore retrieves the IC Score for a specific ticker
@@ -412,7 +416,19 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		}
 	}
 
-	// Fallback: derive current price from P/E ratio and EPS if DB query failed
+	// Fallback: fetch real-time price from Polygon API if database value is NULL
+	if currentPrice == 0 && polygonClient != nil {
+		log.Printf("Database current_price is NULL for %s, fetching real-time price from Polygon API", ticker)
+		if priceData, err := polygonClient.GetStockRealTimePrice(ticker); err == nil && priceData != nil {
+			currentPriceFloat, _ := priceData.Price.Float64()
+			currentPrice = currentPriceFloat
+			log.Printf("✓ Fetched real-time price for %s from Polygon API: $%.2f", ticker, currentPrice)
+		} else {
+			log.Printf("⚠️ Failed to fetch real-time price from Polygon API for %s: %v", ticker, err)
+		}
+	}
+
+	// Final fallback: derive current price from P/E ratio and EPS if all other methods failed
 	// We'll set this after getting FMP data if currentPrice is still 0
 
 	// Fetch all FMP data in parallel
