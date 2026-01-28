@@ -699,6 +699,36 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		merged.Sources.EVToSales = services.SourceCalculated
 	}
 
+	// ROIC calculated fallback: Net Income / Invested Capital
+	if merged.ROIC == nil && merged.InvestedCapital != nil && *merged.InvestedCapital > 0 &&
+		merged.EPSDiluted != nil && merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		// Net Income = EPS × Shares Outstanding, Shares Outstanding = Market Cap / Price
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		netIncome := *merged.EPSDiluted * sharesOutstanding
+		if netIncome != 0 {
+			roic := (netIncome / *merged.InvestedCapital) * 100 // Convert to percentage
+			merged.ROIC = &roic
+			merged.Sources.ROIC = services.SourceCalculated
+		}
+	}
+
+	// ROCE calculated fallback: EBIT / Capital Employed (using Invested Capital as proxy)
+	if merged.ROCE == nil && merged.InvestedCapital != nil && *merged.InvestedCapital > 0 &&
+		merged.EBITMargin != nil && merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		// EBIT = Revenue × EBIT Margin / 100
+		// Revenue = Revenue per Share × Shares Outstanding
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		revenue := *merged.RevenuePerShare * sharesOutstanding
+		ebit := revenue * (*merged.EBITMargin / 100)
+		if ebit != 0 {
+			// Capital Employed ≈ Invested Capital (approximation)
+			roce := (ebit / *merged.InvestedCapital) * 100 // Convert to percentage
+			merged.ROCE = &roce
+			merged.Sources.ROCE = services.SourceCalculated
+		}
+	}
+
 	// If no data available at all, return error
 	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
 		c.JSON(http.StatusNotFound, gin.H{
@@ -763,6 +793,7 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 			"interest_coverage":  merged.InterestCoverage,
 			"net_debt_to_ebitda": merged.NetDebtToEBITDA,
 			"net_debt":           merged.NetDebt,
+			"invested_capital":   merged.InvestedCapital,
 		},
 
 		// === EFFICIENCY ===

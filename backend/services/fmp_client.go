@@ -798,7 +798,7 @@ type MergedFinancialMetrics struct {
 	CashRatio      *float64 `json:"cash_ratio"`
 	WorkingCapital *float64 `json:"working_capital"`
 
-	// === LEVERAGE (7 metrics) ===
+	// === LEVERAGE (8 metrics) ===
 	DebtToEquity     *float64 `json:"debt_to_equity"`
 	DebtToAssets     *float64 `json:"debt_to_assets"`
 	DebtToEBITDA     *float64 `json:"debt_to_ebitda"`
@@ -806,6 +806,7 @@ type MergedFinancialMetrics struct {
 	InterestCoverage *float64 `json:"interest_coverage"`
 	NetDebtToEBITDA  *float64 `json:"net_debt_to_ebitda"`
 	NetDebt          *float64 `json:"net_debt"`
+	InvestedCapital  *float64 `json:"invested_capital"`
 
 	// === EFFICIENCY (9 metrics) ===
 	AssetTurnover              *float64 `json:"asset_turnover"`
@@ -1032,6 +1033,7 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		}
 		merged.WorkingCapital = k.WorkingCapitalTTM
 		merged.NetDebt = k.NetDebtTTM
+		merged.InvestedCapital = k.InvestedCapitalTTM
 
 		// Fill in per-share metrics if not from ratios-ttm
 		if merged.RevenuePerShare == nil {

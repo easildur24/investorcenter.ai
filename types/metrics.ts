@@ -70,6 +70,7 @@ export interface LeverageMetrics {
   interest_coverage: number | null;
   net_debt_to_ebitda: number | null;
   net_debt: number | null;
+  invested_capital: number | null;
 }
 
 // ============================================================================
