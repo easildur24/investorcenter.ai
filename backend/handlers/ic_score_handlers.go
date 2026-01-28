@@ -621,6 +621,47 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 				merged.Sources.MarketCap = services.SourceDatabase
 			}
 		}
+
+		// Fetch dividend details from dividends table if not available from FMP
+		if merged.ExDividendDate == nil || merged.PaymentDate == nil || merged.DividendFrequency == nil {
+			var divDetails struct {
+				ExDate    *string `db:"ex_date"`
+				PayDate   *string `db:"pay_date"`
+				Frequency *int    `db:"frequency"`
+			}
+			divQuery := `
+				SELECT ex_date::text, pay_date::text, frequency
+				FROM dividends
+				WHERE symbol = $1
+				ORDER BY ex_date DESC
+				LIMIT 1
+			`
+			if err := database.DB.Get(&divDetails, divQuery, ticker); err == nil {
+				if merged.ExDividendDate == nil && divDetails.ExDate != nil {
+					merged.ExDividendDate = divDetails.ExDate
+				}
+				if merged.PaymentDate == nil && divDetails.PayDate != nil {
+					merged.PaymentDate = divDetails.PayDate
+				}
+				if merged.DividendFrequency == nil && divDetails.Frequency != nil {
+					// Convert frequency integer to string: 1=Annual, 2=Semi-Annual, 4=Quarterly, 12=Monthly
+					var freqStr string
+					switch *divDetails.Frequency {
+					case 1:
+						freqStr = "Annual"
+					case 2:
+						freqStr = "Semi-Annual"
+					case 4:
+						freqStr = "Quarterly"
+					case 12:
+						freqStr = "Monthly"
+					default:
+						freqStr = fmt.Sprintf("%dx/year", *divDetails.Frequency)
+					}
+					merged.DividendFrequency = &freqStr
+				}
+			}
+		}
 	}
 
 	// Calculate derived metrics as fallbacks if primary sources are missing
@@ -799,6 +840,32 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 	}
 
 	// Interest Coverage: EBIT / Interest Expense - Cannot calculate without interest expense data
+
+	// Working Capital Days calculated fallbacks: DSO, DIO, DPO, CCC
+	// DSO = 365 / Receivables Turnover
+	if merged.DaysOfSalesOutstanding == nil && merged.ReceivablesTurnover != nil && *merged.ReceivablesTurnover > 0 {
+		dso := 365.0 / *merged.ReceivablesTurnover
+		merged.DaysOfSalesOutstanding = &dso
+		merged.Sources.DSO = services.SourceCalculated
+	}
+	// DIO = 365 / Inventory Turnover
+	if merged.DaysOfInventoryOutstanding == nil && merged.InventoryTurnover != nil && *merged.InventoryTurnover > 0 {
+		dio := 365.0 / *merged.InventoryTurnover
+		merged.DaysOfInventoryOutstanding = &dio
+		merged.Sources.DIO = services.SourceCalculated
+	}
+	// DPO = 365 / Payables Turnover
+	if merged.DaysOfPayablesOutstanding == nil && merged.PayablesTurnover != nil && *merged.PayablesTurnover > 0 {
+		dpo := 365.0 / *merged.PayablesTurnover
+		merged.DaysOfPayablesOutstanding = &dpo
+		merged.Sources.DPO = services.SourceCalculated
+	}
+	// Cash Conversion Cycle = DSO + DIO - DPO
+	if merged.CashConversionCycle == nil &&
+		merged.DaysOfSalesOutstanding != nil && merged.DaysOfInventoryOutstanding != nil && merged.DaysOfPayablesOutstanding != nil {
+		ccc := *merged.DaysOfSalesOutstanding + *merged.DaysOfInventoryOutstanding - *merged.DaysOfPayablesOutstanding
+		merged.CashConversionCycle = &ccc
+	}
 
 	// If no data available at all, return error
 	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
