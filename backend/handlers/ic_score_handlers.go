@@ -426,29 +426,162 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 	// Merge all FMP data
 	merged := services.MergeAllData(allMetrics, currentPrice)
 
-	// Fetch database fallbacks for missing return metrics (ROA, ROIC)
-	if database.DB != nil && (merged.ROA == nil || merged.ROIC == nil) {
+	// Fetch database fallbacks for missing metrics from fundamental_metrics_extended
+	// Note: The database stores percentages as percentage values (e.g., 31.18 for 31.18%), not decimals
+	if database.DB != nil {
 		var dbFallback struct {
-			ROA  *float64 `db:"roa"`
-			ROIC *float64 `db:"roic"`
+			// Profitability
+			GrossMargin     *float64 `db:"gross_margin"`
+			OperatingMargin *float64 `db:"operating_margin"`
+			NetMargin       *float64 `db:"net_margin"`
+			EBITDAMargin    *float64 `db:"ebitda_margin"`
+			ROE             *float64 `db:"roe"`
+			ROA             *float64 `db:"roa"`
+			ROIC            *float64 `db:"roic"`
+			// Growth
+			RevenueGrowthYoY    *float64 `db:"revenue_growth_yoy"`
+			RevenueGrowth3YCAGR *float64 `db:"revenue_growth_3y_cagr"`
+			RevenueGrowth5YCAGR *float64 `db:"revenue_growth_5y_cagr"`
+			EPSGrowthYoY        *float64 `db:"eps_growth_yoy"`
+			EPSGrowth3YCAGR     *float64 `db:"eps_growth_3y_cagr"`
+			EPSGrowth5YCAGR     *float64 `db:"eps_growth_5y_cagr"`
+			FCFGrowthYoY        *float64 `db:"fcf_growth_yoy"`
+			// Valuation
+			EnterpriseValue *float64 `db:"enterprise_value"`
+			EVToRevenue     *float64 `db:"ev_to_revenue"`
+			EVToEBITDA      *float64 `db:"ev_to_ebitda"`
+			EVToFCF         *float64 `db:"ev_to_fcf"`
+			// Liquidity
+			CurrentRatio *float64 `db:"current_ratio"`
+			QuickRatio   *float64 `db:"quick_ratio"`
+			// Leverage
+			DebtToEquity     *float64 `db:"debt_to_equity"`
+			InterestCoverage *float64 `db:"interest_coverage"`
+			NetDebtToEBITDA  *float64 `db:"net_debt_to_ebitda"`
+			// Dividends
+			DividendYield            *float64 `db:"dividend_yield"`
+			PayoutRatio              *float64 `db:"payout_ratio"`
+			ConsecutiveDividendYears *int     `db:"consecutive_dividend_years"`
 		}
 		fallbackQuery := `
-			SELECT m.roa, m.roic
+			SELECT m.gross_margin, m.operating_margin, m.net_margin, m.ebitda_margin,
+			       m.roe, m.roa, m.roic,
+			       m.revenue_growth_yoy, m.revenue_growth_3y_cagr, m.revenue_growth_5y_cagr,
+			       m.eps_growth_yoy, m.eps_growth_3y_cagr, m.eps_growth_5y_cagr, m.fcf_growth_yoy,
+			       m.enterprise_value, m.ev_to_revenue, m.ev_to_ebitda, m.ev_to_fcf,
+			       m.current_ratio, m.quick_ratio,
+			       m.debt_to_equity, m.interest_coverage, m.net_debt_to_ebitda,
+			       m.dividend_yield, m.payout_ratio, m.consecutive_dividend_years
 			FROM fundamental_metrics_extended m
 			WHERE m.ticker = $1
 			ORDER BY m.calculation_date DESC
 			LIMIT 1
 		`
 		if err := database.DB.Get(&dbFallback, fallbackQuery, ticker); err == nil {
+			// Profitability fallbacks
+			if merged.GrossMargin == nil && dbFallback.GrossMargin != nil {
+				merged.GrossMargin = dbFallback.GrossMargin
+				merged.Sources.GrossMargin = services.SourceDatabase
+			}
+			if merged.OperatingMargin == nil && dbFallback.OperatingMargin != nil {
+				merged.OperatingMargin = dbFallback.OperatingMargin
+				merged.Sources.OperatingMargin = services.SourceDatabase
+			}
+			if merged.NetMargin == nil && dbFallback.NetMargin != nil {
+				merged.NetMargin = dbFallback.NetMargin
+				merged.Sources.NetMargin = services.SourceDatabase
+			}
+			if merged.EBITDAMargin == nil && dbFallback.EBITDAMargin != nil {
+				merged.EBITDAMargin = dbFallback.EBITDAMargin
+				merged.Sources.EBITDAMargin = services.SourceDatabase
+			}
+			if merged.ROE == nil && dbFallback.ROE != nil {
+				merged.ROE = dbFallback.ROE
+				merged.Sources.ROE = services.SourceDatabase
+			}
 			if merged.ROA == nil && dbFallback.ROA != nil {
-				roa := *dbFallback.ROA * 100 // Convert decimal to percentage
-				merged.ROA = &roa
+				merged.ROA = dbFallback.ROA
 				merged.Sources.ROA = services.SourceDatabase
 			}
 			if merged.ROIC == nil && dbFallback.ROIC != nil {
-				roic := *dbFallback.ROIC * 100 // Convert decimal to percentage
-				merged.ROIC = &roic
+				merged.ROIC = dbFallback.ROIC
 				merged.Sources.ROIC = services.SourceDatabase
+			}
+			// Growth fallbacks
+			if merged.RevenueGrowthYoY == nil && dbFallback.RevenueGrowthYoY != nil {
+				merged.RevenueGrowthYoY = dbFallback.RevenueGrowthYoY
+				merged.Sources.RevenueGrowthYoY = services.SourceDatabase
+			}
+			if merged.RevenueGrowth3YCAGR == nil && dbFallback.RevenueGrowth3YCAGR != nil {
+				merged.RevenueGrowth3YCAGR = dbFallback.RevenueGrowth3YCAGR
+				merged.Sources.RevenueGrowth3Y = services.SourceDatabase
+			}
+			if merged.RevenueGrowth5YCAGR == nil && dbFallback.RevenueGrowth5YCAGR != nil {
+				merged.RevenueGrowth5YCAGR = dbFallback.RevenueGrowth5YCAGR
+				merged.Sources.RevenueGrowth5Y = services.SourceDatabase
+			}
+			if merged.EPSGrowthYoY == nil && dbFallback.EPSGrowthYoY != nil {
+				merged.EPSGrowthYoY = dbFallback.EPSGrowthYoY
+				merged.Sources.EPSGrowthYoY = services.SourceDatabase
+			}
+			if merged.EPSGrowth3YCAGR == nil && dbFallback.EPSGrowth3YCAGR != nil {
+				merged.EPSGrowth3YCAGR = dbFallback.EPSGrowth3YCAGR
+			}
+			if merged.EPSGrowth5YCAGR == nil && dbFallback.EPSGrowth5YCAGR != nil {
+				merged.EPSGrowth5YCAGR = dbFallback.EPSGrowth5YCAGR
+				merged.Sources.EPSGrowth5Y = services.SourceDatabase
+			}
+			if merged.FCFGrowthYoY == nil && dbFallback.FCFGrowthYoY != nil {
+				merged.FCFGrowthYoY = dbFallback.FCFGrowthYoY
+			}
+			// Valuation fallbacks
+			if merged.EnterpriseValue == nil && dbFallback.EnterpriseValue != nil {
+				merged.EnterpriseValue = dbFallback.EnterpriseValue
+			}
+			if merged.EVToSales == nil && dbFallback.EVToRevenue != nil {
+				merged.EVToSales = dbFallback.EVToRevenue
+				merged.Sources.EVToSales = services.SourceDatabase
+			}
+			if merged.EVToEBITDA == nil && dbFallback.EVToEBITDA != nil {
+				merged.EVToEBITDA = dbFallback.EVToEBITDA
+				merged.Sources.EVToEBITDA = services.SourceDatabase
+			}
+			if merged.EVToFCF == nil && dbFallback.EVToFCF != nil {
+				merged.EVToFCF = dbFallback.EVToFCF
+				merged.Sources.EVToFCF = services.SourceDatabase
+			}
+			// Liquidity fallbacks
+			if merged.CurrentRatio == nil && dbFallback.CurrentRatio != nil {
+				merged.CurrentRatio = dbFallback.CurrentRatio
+				merged.Sources.CurrentRatio = services.SourceDatabase
+			}
+			if merged.QuickRatio == nil && dbFallback.QuickRatio != nil {
+				merged.QuickRatio = dbFallback.QuickRatio
+				merged.Sources.QuickRatio = services.SourceDatabase
+			}
+			// Leverage fallbacks
+			if merged.DebtToEquity == nil && dbFallback.DebtToEquity != nil {
+				merged.DebtToEquity = dbFallback.DebtToEquity
+				merged.Sources.DebtToEquity = services.SourceDatabase
+			}
+			if merged.InterestCoverage == nil && dbFallback.InterestCoverage != nil {
+				merged.InterestCoverage = dbFallback.InterestCoverage
+				merged.Sources.InterestCoverage = services.SourceDatabase
+			}
+			if merged.NetDebtToEBITDA == nil && dbFallback.NetDebtToEBITDA != nil {
+				merged.NetDebtToEBITDA = dbFallback.NetDebtToEBITDA
+			}
+			// Dividend fallbacks
+			if merged.DividendYield == nil && dbFallback.DividendYield != nil {
+				merged.DividendYield = dbFallback.DividendYield
+				merged.Sources.DividendYield = services.SourceDatabase
+			}
+			if merged.PayoutRatio == nil && dbFallback.PayoutRatio != nil {
+				merged.PayoutRatio = dbFallback.PayoutRatio
+				merged.Sources.PayoutRatio = services.SourceDatabase
+			}
+			if merged.ConsecutiveDividendYears == nil && dbFallback.ConsecutiveDividendYears != nil {
+				merged.ConsecutiveDividendYears = dbFallback.ConsecutiveDividendYears
 			}
 		}
 	}
