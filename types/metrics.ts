@@ -122,6 +122,7 @@ export interface PerShareMetrics {
   cash_per_share: number | null;
   dividend_per_share: number | null;
   graham_number: number | null;
+  interest_debt_per_share: number | null;
 }
 
 // ============================================================================
@@ -206,6 +207,7 @@ export interface FieldSources {
   debt_to_ebitda?: DataSource;
   debt_to_capital?: DataSource;
   interest_coverage?: DataSource;
+  net_debt?: DataSource;
   asset_turnover?: DataSource;
   inventory_turnover?: DataSource;
   receivables_turnover?: DataSource;

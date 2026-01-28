@@ -729,6 +729,52 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 		}
 	}
 
+	// Debt/Capital calculated fallback: D/C = D/E / (1 + D/E)
+	if merged.DebtToCapital == nil && merged.DebtToEquity != nil && *merged.DebtToEquity >= 0 {
+		debtToCapital := *merged.DebtToEquity / (1 + *merged.DebtToEquity)
+		merged.DebtToCapital = &debtToCapital
+		merged.Sources.DebtToCapital = services.SourceCalculated
+	}
+
+	// Net Debt calculated fallback: (InterestDebtPerShare - CashPerShare) × SharesOutstanding
+	if merged.NetDebt == nil && merged.InterestDebtPerShare != nil && merged.CashPerShare != nil &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		netDebt := (*merged.InterestDebtPerShare - *merged.CashPerShare) * sharesOutstanding
+		merged.NetDebt = &netDebt
+		merged.Sources.NetDebt = services.SourceCalculated
+	}
+
+	// Debt/EBITDA calculated fallback: derive from EV/EBITDA and other metrics
+	if merged.DebtToEBITDA == nil && merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
+		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 &&
+		merged.DebtToEquity != nil && merged.MarketCap != nil && *merged.MarketCap > 0 {
+		// EBITDA = EV / (EV/EBITDA)
+		ebitda := *merged.EnterpriseValue / *merged.EVToEBITDA
+		if ebitda > 0 {
+			// Total Debt can be derived: D/E = Debt/Equity, so Debt = D/E × Equity
+			// Equity ≈ Market Cap / P/B, but simpler: use EV = MarketCap + Debt - Cash
+			// So: Debt = EV - MarketCap + Cash
+			// If we have NetDebt: Debt = NetDebt + Cash
+			var totalDebt float64
+			if merged.NetDebt != nil && merged.CashPerShare != nil && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				cash := *merged.CashPerShare * sharesOutstanding
+				totalDebt = *merged.NetDebt + cash
+			} else {
+				// Alternative: Debt = EV - MarketCap (assumes Cash ≈ 0, less accurate)
+				totalDebt = *merged.EnterpriseValue - *merged.MarketCap
+			}
+			if totalDebt > 0 {
+				debtToEBITDA := totalDebt / ebitda
+				merged.DebtToEBITDA = &debtToEBITDA
+				merged.Sources.DebtToEBITDA = services.SourceCalculated
+			}
+		}
+	}
+
+	// Interest Coverage: EBIT / Interest Expense - Cannot calculate without interest expense data
+
 	// If no data available at all, return error
 	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
 		c.JSON(http.StatusNotFound, gin.H{
