@@ -779,7 +779,7 @@ function DividendsSection({
           />
           <MetricCard
             label="Dividend/Share"
-            value={dividends.dividend_per_share}
+            value={perShare.dividend_per_share}
             format="currency"
             decimals={2}
             tooltip="Annual Dividend Per Share"
