@@ -15,10 +15,14 @@ import {
   DividendMetrics,
   QualityScores,
   ForwardEstimates,
+  AnalystRatings,
   getZScoreColor,
   getFScoreColor,
   getPEGColor,
   getPayoutColor,
+  getConsensusColor,
+  getConsensusBgColor,
+  calculateTargetUpside,
   formatMetricValue,
   valuationMetricConfigs,
   profitabilityMetricConfigs,
@@ -30,6 +34,7 @@ import {
   dividendMetricConfigs,
   qualityScoreConfigs,
   forwardEstimateConfigs,
+  analystRatingsConfigs,
   MetricDisplayConfig,
 } from '@/types/metrics';
 import { getComprehensiveMetrics } from '@/lib/api/metrics';
@@ -45,7 +50,8 @@ type MetricCategory =
   | 'efficiency'
   | 'growth'
   | 'dividends'
-  | 'quality';
+  | 'quality'
+  | 'analyst';
 
 const categoryTabs: { id: MetricCategory; label: string }[] = [
   { id: 'valuation', label: 'Valuation' },
@@ -55,6 +61,7 @@ const categoryTabs: { id: MetricCategory; label: string }[] = [
   { id: 'growth', label: 'Growth' },
   { id: 'dividends', label: 'Dividends' },
   { id: 'quality', label: 'Quality Scores' },
+  { id: 'analyst', label: 'Analyst Ratings' },
 ];
 
 export default function MetricsTab({ symbol }: MetricsTabProps) {
@@ -164,6 +171,12 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
           <QualitySection
             qualityScores={data.data.quality_scores}
             valuation={data.data.valuation}
+          />
+        )}
+        {activeCategory === 'analyst' && (
+          <AnalystRatingsSection
+            analystRatings={data.data.analyst_ratings}
+            currentPrice={data.meta.current_price}
           />
         )}
       </div>
@@ -1336,6 +1349,313 @@ function QualitySection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function AnalystRatingsSection({
+  analystRatings,
+  currentPrice
+}: {
+  analystRatings: AnalystRatings;
+  currentPrice: number;
+}) {
+  // Calculate total ratings
+  const totalRatings =
+    (analystRatings.analyst_rating_strong_buy ?? 0) +
+    (analystRatings.analyst_rating_buy ?? 0) +
+    (analystRatings.analyst_rating_hold ?? 0) +
+    (analystRatings.analyst_rating_sell ?? 0) +
+    (analystRatings.analyst_rating_strong_sell ?? 0);
+
+  // Calculate upside/downside percentages
+  const consensusUpside = calculateTargetUpside(currentPrice, analystRatings.target_consensus);
+  const highUpside = calculateTargetUpside(currentPrice, analystRatings.target_high);
+  const lowUpside = calculateTargetUpside(currentPrice, analystRatings.target_low);
+
+  // Check if we have any data
+  const hasRatings = totalRatings > 0;
+  const hasPriceTargets = analystRatings.target_consensus !== null;
+
+  if (!hasRatings && !hasPriceTargets) {
+    return (
+      <div className="p-8 text-center">
+        <div className="text-ic-text-muted">
+          <p className="text-lg font-medium">No Analyst Ratings Available</p>
+          <p className="text-sm mt-2">Analyst coverage data is not available for this stock.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Analyst Consensus */}
+      {hasRatings && (
+        <div className="bg-ic-bg-secondary rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-lg font-semibold text-ic-text-primary">Analyst Consensus</h4>
+              <p className="text-sm text-ic-text-muted">Based on {totalRatings} analyst ratings</p>
+            </div>
+            {analystRatings.analyst_consensus && (
+              <span className={cn(
+                'px-4 py-2 rounded-full text-sm font-semibold',
+                getConsensusColor(analystRatings.analyst_consensus),
+                getConsensusBgColor(analystRatings.analyst_consensus)
+              )}>
+                {analystRatings.analyst_consensus.toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          {/* Rating Distribution Bar */}
+          <div className="mt-4">
+            <div className="flex h-8 rounded-lg overflow-hidden">
+              {analystRatings.analyst_rating_strong_buy !== null && analystRatings.analyst_rating_strong_buy > 0 && (
+                <div
+                  className="bg-green-600 flex items-center justify-center text-white text-xs font-medium"
+                  style={{ width: `${(analystRatings.analyst_rating_strong_buy / totalRatings) * 100}%` }}
+                  title={`Strong Buy: ${analystRatings.analyst_rating_strong_buy}`}
+                >
+                  {analystRatings.analyst_rating_strong_buy}
+                </div>
+              )}
+              {analystRatings.analyst_rating_buy !== null && analystRatings.analyst_rating_buy > 0 && (
+                <div
+                  className="bg-green-400 flex items-center justify-center text-white text-xs font-medium"
+                  style={{ width: `${(analystRatings.analyst_rating_buy / totalRatings) * 100}%` }}
+                  title={`Buy: ${analystRatings.analyst_rating_buy}`}
+                >
+                  {analystRatings.analyst_rating_buy}
+                </div>
+              )}
+              {analystRatings.analyst_rating_hold !== null && analystRatings.analyst_rating_hold > 0 && (
+                <div
+                  className="bg-yellow-400 flex items-center justify-center text-gray-800 text-xs font-medium"
+                  style={{ width: `${(analystRatings.analyst_rating_hold / totalRatings) * 100}%` }}
+                  title={`Hold: ${analystRatings.analyst_rating_hold}`}
+                >
+                  {analystRatings.analyst_rating_hold}
+                </div>
+              )}
+              {analystRatings.analyst_rating_sell !== null && analystRatings.analyst_rating_sell > 0 && (
+                <div
+                  className="bg-red-400 flex items-center justify-center text-white text-xs font-medium"
+                  style={{ width: `${(analystRatings.analyst_rating_sell / totalRatings) * 100}%` }}
+                  title={`Sell: ${analystRatings.analyst_rating_sell}`}
+                >
+                  {analystRatings.analyst_rating_sell}
+                </div>
+              )}
+              {analystRatings.analyst_rating_strong_sell !== null && analystRatings.analyst_rating_strong_sell > 0 && (
+                <div
+                  className="bg-red-600 flex items-center justify-center text-white text-xs font-medium"
+                  style={{ width: `${(analystRatings.analyst_rating_strong_sell / totalRatings) * 100}%` }}
+                  title={`Strong Sell: ${analystRatings.analyst_rating_strong_sell}`}
+                >
+                  {analystRatings.analyst_rating_strong_sell}
+                </div>
+              )}
+            </div>
+            <div className="flex justify-between text-xs text-ic-text-dim mt-2">
+              <span>Strong Buy</span>
+              <span>Buy</span>
+              <span>Hold</span>
+              <span>Sell</span>
+              <span>Strong Sell</span>
+            </div>
+          </div>
+
+          {/* Rating Breakdown Grid */}
+          <div className="grid grid-cols-5 gap-2 mt-6">
+            <div className="text-center p-2 bg-green-100 rounded">
+              <div className="text-lg font-bold text-green-700">
+                {analystRatings.analyst_rating_strong_buy ?? 0}
+              </div>
+              <div className="text-xs text-green-600">Strong Buy</div>
+            </div>
+            <div className="text-center p-2 bg-green-50 rounded">
+              <div className="text-lg font-bold text-green-600">
+                {analystRatings.analyst_rating_buy ?? 0}
+              </div>
+              <div className="text-xs text-green-500">Buy</div>
+            </div>
+            <div className="text-center p-2 bg-yellow-50 rounded">
+              <div className="text-lg font-bold text-yellow-600">
+                {analystRatings.analyst_rating_hold ?? 0}
+              </div>
+              <div className="text-xs text-yellow-500">Hold</div>
+            </div>
+            <div className="text-center p-2 bg-red-50 rounded">
+              <div className="text-lg font-bold text-red-500">
+                {analystRatings.analyst_rating_sell ?? 0}
+              </div>
+              <div className="text-xs text-red-400">Sell</div>
+            </div>
+            <div className="text-center p-2 bg-red-100 rounded">
+              <div className="text-lg font-bold text-red-700">
+                {analystRatings.analyst_rating_strong_sell ?? 0}
+              </div>
+              <div className="text-xs text-red-600">Strong Sell</div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price Targets */}
+      {hasPriceTargets && (
+        <div className="bg-ic-bg-secondary rounded-lg p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-lg font-semibold text-ic-text-primary">Price Targets</h4>
+              <p className="text-sm text-ic-text-muted">
+                Current Price: ${currentPrice.toFixed(2)}
+              </p>
+            </div>
+          </div>
+
+          {/* Price Target Range Visual */}
+          <div className="mt-4 mb-6">
+            <div className="relative h-12 bg-ic-bg-tertiary rounded-lg">
+              {/* Range bar */}
+              {analystRatings.target_low !== null && analystRatings.target_high !== null && (
+                <>
+                  {/* Calculate positions */}
+                  {(() => {
+                    const min = Math.min(analystRatings.target_low, currentPrice * 0.8);
+                    const max = Math.max(analystRatings.target_high, currentPrice * 1.2);
+                    const range = max - min;
+                    const lowPos = ((analystRatings.target_low - min) / range) * 100;
+                    const highPos = ((analystRatings.target_high - min) / range) * 100;
+                    const currentPos = ((currentPrice - min) / range) * 100;
+                    const consensusPos = analystRatings.target_consensus
+                      ? ((analystRatings.target_consensus - min) / range) * 100
+                      : null;
+
+                    return (
+                      <>
+                        {/* Target range bar */}
+                        <div
+                          className="absolute h-4 top-4 bg-blue-200 rounded"
+                          style={{
+                            left: `${lowPos}%`,
+                            width: `${highPos - lowPos}%`
+                          }}
+                        />
+                        {/* Low target marker */}
+                        <div
+                          className="absolute w-1 h-8 top-2 bg-blue-400 rounded"
+                          style={{ left: `${lowPos}%` }}
+                          title={`Low: $${analystRatings.target_low?.toFixed(2)}`}
+                        />
+                        {/* High target marker */}
+                        <div
+                          className="absolute w-1 h-8 top-2 bg-blue-400 rounded"
+                          style={{ left: `${highPos}%` }}
+                          title={`High: $${analystRatings.target_high?.toFixed(2)}`}
+                        />
+                        {/* Consensus marker */}
+                        {consensusPos !== null && (
+                          <div
+                            className="absolute w-2 h-10 top-1 bg-blue-600 rounded"
+                            style={{ left: `calc(${consensusPos}% - 4px)` }}
+                            title={`Consensus: $${analystRatings.target_consensus?.toFixed(2)}`}
+                          />
+                        )}
+                        {/* Current price marker */}
+                        <div
+                          className="absolute w-3 h-12 top-0 bg-ic-text-primary rounded"
+                          style={{ left: `calc(${currentPos}% - 6px)` }}
+                          title={`Current: $${currentPrice.toFixed(2)}`}
+                        />
+                      </>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+            <div className="flex justify-between text-xs text-ic-text-dim mt-2">
+              <span>${analystRatings.target_low?.toFixed(2) ?? '—'} (Low)</span>
+              <span className="font-medium">${analystRatings.target_consensus?.toFixed(2) ?? '—'} (Consensus)</span>
+              <span>${analystRatings.target_high?.toFixed(2) ?? '—'} (High)</span>
+            </div>
+          </div>
+
+          {/* Price Target Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <MetricCard
+              label="Consensus Target"
+              value={analystRatings.target_consensus}
+              format="currency"
+              decimals={2}
+              tooltip="Average analyst price target"
+              calculationTooltip={{
+                formula: "Average of Analyst Price Targets",
+                description: "Mean price target from all analysts"
+              }}
+            />
+            <MetricCard
+              label="Upside/Downside"
+              value={consensusUpside !== null ? `${consensusUpside >= 0 ? '+' : ''}${consensusUpside.toFixed(1)}%` : null}
+              format="text"
+              tooltip="Potential return to consensus target"
+              calculationTooltip={{
+                formula: "(Target - Current Price) / Current Price × 100",
+                description: "Potential gain/loss to reach consensus"
+              }}
+            />
+            <MetricCard
+              label="Target High"
+              value={analystRatings.target_high}
+              format="currency"
+              decimals={2}
+              tooltip="Highest analyst price target"
+              calculationTooltip={{
+                formula: "Max(Analyst Price Targets)",
+                description: `Upside: ${highUpside !== null ? `${highUpside >= 0 ? '+' : ''}${highUpside.toFixed(1)}%` : '—'}`
+              }}
+            />
+            <MetricCard
+              label="Target Low"
+              value={analystRatings.target_low}
+              format="currency"
+              decimals={2}
+              tooltip="Lowest analyst price target"
+              calculationTooltip={{
+                formula: "Min(Analyst Price Targets)",
+                description: `Downside: ${lowUpside !== null ? `${lowUpside >= 0 ? '+' : ''}${lowUpside.toFixed(1)}%` : '—'}`
+              }}
+            />
+          </div>
+
+          {/* Median Target */}
+          {analystRatings.target_median !== null && (
+            <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+              <MetricCard
+                label="Median Target"
+                value={analystRatings.target_median}
+                format="currency"
+                decimals={2}
+                tooltip="Median analyst price target"
+                calculationTooltip={{
+                  formula: "Median(Analyst Price Targets)",
+                  description: "Middle value of all price targets"
+                }}
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Disclaimer */}
+      <div className="text-xs text-ic-text-dim p-4 bg-ic-bg-tertiary rounded-lg">
+        <p>
+          <strong>Note:</strong> Analyst ratings and price targets are sourced from Financial Modeling Prep (FMP).
+          These represent consensus views from multiple analysts and should not be considered investment advice.
+          Past analyst performance does not guarantee future accuracy.
+        </p>
+      </div>
     </div>
   );
 }

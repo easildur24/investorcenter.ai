@@ -170,6 +170,23 @@ export interface ForwardEstimates {
 }
 
 // ============================================================================
+// Analyst Ratings
+// ============================================================================
+
+export interface AnalystRatings {
+  analyst_rating_strong_buy: number | null;
+  analyst_rating_buy: number | null;
+  analyst_rating_hold: number | null;
+  analyst_rating_sell: number | null;
+  analyst_rating_strong_sell: number | null;
+  analyst_consensus: string | null;
+  target_high: number | null;
+  target_low: number | null;
+  target_consensus: number | null;
+  target_median: number | null;
+}
+
+// ============================================================================
 // Data Sources (for admin debug mode)
 // ============================================================================
 
@@ -242,6 +259,7 @@ export interface ComprehensiveMetricsData {
   dividends: DividendMetrics;
   quality_scores: QualityScores;
   forward_estimates: ForwardEstimates;
+  analyst_ratings: AnalystRatings;
 }
 
 export interface ComprehensiveMetricsDebug {
@@ -408,6 +426,17 @@ export const forwardEstimateConfigs: MetricDisplayConfig[] = [
 ];
 
 // ============================================================================
+// Analyst Ratings Display Config
+// ============================================================================
+
+export const analystRatingsConfigs: MetricDisplayConfig[] = [
+  { key: 'target_consensus', label: 'Price Target (Consensus)', format: 'currency', decimals: 2, tooltip: 'Average analyst price target' },
+  { key: 'target_median', label: 'Price Target (Median)', format: 'currency', decimals: 2, tooltip: 'Median analyst price target' },
+  { key: 'target_high', label: 'Price Target (High)', format: 'currency', decimals: 2, tooltip: 'Highest analyst price target' },
+  { key: 'target_low', label: 'Price Target (Low)', format: 'currency', decimals: 2, tooltip: 'Lowest analyst price target' },
+];
+
+// ============================================================================
 // Utility Functions
 // ============================================================================
 
@@ -526,4 +555,62 @@ export function formatMetricValue(
     default:
       return `${value.toFixed(decimals)}${suffix}`;
   }
+}
+
+/**
+ * Get color for analyst consensus rating
+ */
+export function getConsensusColor(consensus: string | null): string {
+  if (!consensus) return 'text-gray-600';
+
+  const normalized = consensus.toLowerCase();
+  if (normalized.includes('strong buy') || normalized === 'strongbuy') {
+    return 'text-green-600';
+  }
+  if (normalized.includes('buy')) {
+    return 'text-green-500';
+  }
+  if (normalized.includes('hold') || normalized.includes('neutral')) {
+    return 'text-yellow-600';
+  }
+  if (normalized.includes('strong sell') || normalized === 'strongsell') {
+    return 'text-red-600';
+  }
+  if (normalized.includes('sell')) {
+    return 'text-red-500';
+  }
+  return 'text-gray-600';
+}
+
+/**
+ * Get background color for analyst consensus rating
+ */
+export function getConsensusBgColor(consensus: string | null): string {
+  if (!consensus) return 'bg-gray-50';
+
+  const normalized = consensus.toLowerCase();
+  if (normalized.includes('strong buy') || normalized === 'strongbuy') {
+    return 'bg-green-100';
+  }
+  if (normalized.includes('buy')) {
+    return 'bg-green-50';
+  }
+  if (normalized.includes('hold') || normalized.includes('neutral')) {
+    return 'bg-yellow-50';
+  }
+  if (normalized.includes('strong sell') || normalized === 'strongsell') {
+    return 'bg-red-100';
+  }
+  if (normalized.includes('sell')) {
+    return 'bg-red-50';
+  }
+  return 'bg-gray-50';
+}
+
+/**
+ * Calculate upside/downside percentage from current price to target
+ */
+export function calculateTargetUpside(currentPrice: number, targetPrice: number | null): number | null {
+  if (!targetPrice || currentPrice <= 0) return null;
+  return ((targetPrice - currentPrice) / currentPrice) * 100;
 }

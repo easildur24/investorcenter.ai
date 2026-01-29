@@ -1032,6 +1032,20 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 			"num_analysts_eps":     merged.NumAnalystsEPS,
 			"num_analysts_revenue": merged.NumAnalystsRevenue,
 		},
+
+		// === ANALYST RATINGS ===
+		"analyst_ratings": gin.H{
+			"analyst_rating_strong_buy":  merged.AnalystRatingStrongBuy,
+			"analyst_rating_buy":         merged.AnalystRatingBuy,
+			"analyst_rating_hold":        merged.AnalystRatingHold,
+			"analyst_rating_sell":        merged.AnalystRatingSell,
+			"analyst_rating_strong_sell": merged.AnalystRatingStrongSell,
+			"analyst_consensus":          merged.AnalystConsensus,
+			"target_high":                merged.TargetHigh,
+			"target_low":                 merged.TargetLow,
+			"target_consensus":           merged.TargetConsensus,
+			"target_median":              merged.TargetMedian,
+		},
 	}
 
 	// Collect errors for debugging
