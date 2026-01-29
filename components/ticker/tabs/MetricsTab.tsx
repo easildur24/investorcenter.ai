@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
+import { CalculationTooltip } from '@/components/ui/Tooltip';
 import {
   ComprehensiveMetricsResponse,
   ValuationMetrics,
@@ -204,18 +205,30 @@ function ValuationSection({
             value={valuation.pe_ratio}
             format="ratio"
             tooltip="Price to Earnings - lower may indicate undervaluation"
+            calculationTooltip={{
+              formula: "Share Price / Earnings Per Share (EPS)",
+              description: "Lower may indicate undervaluation"
+            }}
           />
           <MetricCard
             label="Forward P/E"
             value={valuation.forward_pe}
             format="ratio"
             tooltip="P/E based on estimated future earnings"
+            calculationTooltip={{
+              formula: "Share Price / Forward EPS Estimate",
+              description: "Based on analyst earnings estimates"
+            }}
           />
           <MetricCard
             label="PEG Ratio"
             value={valuation.peg_ratio}
             format="ratio"
             tooltip="P/E to Growth - <1 suggests undervalued relative to growth"
+            calculationTooltip={{
+              formula: "P/E Ratio / EPS Growth Rate",
+              description: "<1 suggests undervalued relative to growth"
+            }}
             interpretation={valuation.peg_interpretation}
             interpretationColorFn={getPEGColor}
           />
@@ -224,6 +237,10 @@ function ValuationSection({
             value={valuation.pb_ratio}
             format="ratio"
             tooltip="Price to Book value"
+            calculationTooltip={{
+              formula: "Share Price / Book Value Per Share",
+              description: "Compares market value to accounting value"
+            }}
           />
         </div>
       </div>
@@ -239,24 +256,40 @@ function ValuationSection({
             value={valuation.ps_ratio}
             format="ratio"
             tooltip="Price to Sales"
+            calculationTooltip={{
+              formula: "Market Cap / Total Revenue",
+              description: "Useful for unprofitable companies"
+            }}
           />
           <MetricCard
             label="P/FCF"
             value={valuation.price_to_fcf}
             format="ratio"
             tooltip="Price to Free Cash Flow"
+            calculationTooltip={{
+              formula: "Market Cap / Free Cash Flow",
+              description: "FCF = Operating Cash Flow - CapEx"
+            }}
           />
           <MetricCard
             label="EV/EBITDA"
             value={valuation.ev_to_ebitda}
             format="ratio"
             tooltip="Enterprise Value to EBITDA"
+            calculationTooltip={{
+              formula: "Enterprise Value / EBITDA",
+              description: "Capital structure-neutral valuation"
+            }}
           />
           <MetricCard
             label="EV/Sales"
             value={valuation.ev_to_sales}
             format="ratio"
             tooltip="Enterprise Value to Sales"
+            calculationTooltip={{
+              formula: "Enterprise Value / Total Revenue",
+              description: "Compares total firm value to sales"
+            }}
           />
         </div>
       </div>
@@ -272,24 +305,40 @@ function ValuationSection({
             value={valuation.earnings_yield}
             format="percent"
             tooltip="Inverse of P/E - higher is better"
+            calculationTooltip={{
+              formula: "EPS / Share Price × 100",
+              description: "Inverse of P/E ratio - higher is better"
+            }}
           />
           <MetricCard
             label="FCF Yield"
             value={valuation.fcf_yield}
             format="percent"
             tooltip="Free Cash Flow Yield - higher is better"
+            calculationTooltip={{
+              formula: "Free Cash Flow / Market Cap × 100",
+              description: "Cash return on investment - higher is better"
+            }}
           />
           <MetricCard
             label="Market Cap"
             value={valuation.market_cap}
             format="currency"
             tooltip="Total market capitalization"
+            calculationTooltip={{
+              formula: "Share Price × Shares Outstanding",
+              description: "Total market value of equity"
+            }}
           />
           <MetricCard
             label="Enterprise Value"
             value={valuation.enterprise_value}
             format="currency"
             tooltip="Market Cap + Debt - Cash"
+            calculationTooltip={{
+              formula: "Market Cap + Total Debt - Cash",
+              description: "Total firm value including debt"
+            }}
           />
         </div>
       </div>
@@ -307,6 +356,10 @@ function ValuationSection({
               format="currency"
               decimals={2}
               tooltip="Average analyst EPS estimate"
+              calculationTooltip={{
+                formula: "Average of Analyst EPS Estimates",
+                description: "Consensus estimate for next fiscal year"
+              }}
             />
             <MetricCard
               label="EPS Range"
@@ -315,6 +368,10 @@ function ValuationSection({
                 : null}
               format="text"
               tooltip="Low to high analyst EPS estimates"
+              calculationTooltip={{
+                formula: "Min(Analyst Estimates) - Max(Analyst Estimates)",
+                description: "Range shows analyst disagreement"
+              }}
             />
             <MetricCard
               label="# Analysts (EPS)"
@@ -322,12 +379,20 @@ function ValuationSection({
               format="number"
               decimals={0}
               tooltip="Number of analysts providing EPS estimates"
+              calculationTooltip={{
+                formula: "Count of Analyst Estimates",
+                description: "More analysts = more reliable consensus"
+              }}
             />
             <MetricCard
               label="Forward Revenue"
               value={forwardEstimates.forward_revenue}
               format="currency"
               tooltip="Analyst revenue estimate"
+              calculationTooltip={{
+                formula: "Average of Analyst Revenue Estimates",
+                description: "Consensus revenue estimate for next fiscal year"
+              }}
             />
           </div>
         </div>
@@ -350,6 +415,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.gross_margin}
             format="percent"
             tooltip="Gross Profit / Revenue"
+            calculationTooltip={{
+              formula: "(Revenue - COGS) / Revenue × 100",
+              description: "Measures production efficiency"
+            }}
             colorByValue
           />
           <MetricCard
@@ -357,6 +426,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.operating_margin}
             format="percent"
             tooltip="Operating Income / Revenue"
+            calculationTooltip={{
+              formula: "Operating Income / Revenue × 100",
+              description: "Profit from core operations"
+            }}
             colorByValue
           />
           <MetricCard
@@ -364,6 +437,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.net_margin}
             format="percent"
             tooltip="Net Income / Revenue"
+            calculationTooltip={{
+              formula: "Net Income / Revenue × 100",
+              description: "Bottom line profitability"
+            }}
             colorByValue
           />
           <MetricCard
@@ -371,6 +448,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.ebitda_margin}
             format="percent"
             tooltip="EBITDA / Revenue"
+            calculationTooltip={{
+              formula: "EBITDA / Revenue × 100",
+              description: "Operating profitability before D&A"
+            }}
             colorByValue
           />
         </div>
@@ -387,6 +468,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.ebit_margin}
             format="percent"
             tooltip="EBIT / Revenue"
+            calculationTooltip={{
+              formula: "EBIT / Revenue × 100",
+              description: "Operating income margin"
+            }}
             colorByValue
           />
           <MetricCard
@@ -394,6 +479,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.fcf_margin}
             format="percent"
             tooltip="Free Cash Flow / Revenue"
+            calculationTooltip={{
+              formula: "Free Cash Flow / Revenue × 100",
+              description: "Cash generation efficiency"
+            }}
             colorByValue
           />
           <MetricCard
@@ -401,6 +490,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.pretax_margin}
             format="percent"
             tooltip="Pre-tax Income / Revenue"
+            calculationTooltip={{
+              formula: "Pre-tax Income / Revenue × 100",
+              description: "Profitability before taxes"
+            }}
             colorByValue
           />
         </div>
@@ -417,6 +510,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.roe}
             format="percent"
             tooltip="Return on Equity - Net Income / Shareholders Equity"
+            calculationTooltip={{
+              formula: "Net Income / Shareholders Equity × 100",
+              description: "Return generated for shareholders"
+            }}
             colorByValue
           />
           <MetricCard
@@ -424,6 +521,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.roa}
             format="percent"
             tooltip="Return on Assets - Net Income / Total Assets"
+            calculationTooltip={{
+              formula: "Net Income / Total Assets × 100",
+              description: "How efficiently assets generate profit"
+            }}
             colorByValue
           />
           <MetricCard
@@ -431,6 +532,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.roic}
             format="percent"
             tooltip="Return on Invested Capital"
+            calculationTooltip={{
+              formula: "NOPAT / Invested Capital × 100",
+              description: "NOPAT = Net Operating Profit After Tax"
+            }}
             colorByValue
           />
           <MetricCard
@@ -438,6 +543,10 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             value={profitability.roce}
             format="percent"
             tooltip="Return on Capital Employed"
+            calculationTooltip={{
+              formula: "EBIT / Capital Employed × 100",
+              description: "Capital Employed = Total Assets - Current Liabilities"
+            }}
             colorByValue
           />
         </div>
@@ -466,24 +575,40 @@ function FinancialHealthSection({
             value={liquidity.current_ratio}
             format="ratio"
             tooltip="Current Assets / Current Liabilities - >1 is healthy"
+            calculationTooltip={{
+              formula: "Current Assets / Current Liabilities",
+              description: ">1 indicates ability to pay short-term debts"
+            }}
           />
           <MetricCard
             label="Quick Ratio"
             value={liquidity.quick_ratio}
             format="ratio"
             tooltip="(Current Assets - Inventory) / Current Liabilities"
+            calculationTooltip={{
+              formula: "(Current Assets - Inventory) / Current Liabilities",
+              description: "More conservative liquidity measure"
+            }}
           />
           <MetricCard
             label="Cash Ratio"
             value={liquidity.cash_ratio}
             format="ratio"
             tooltip="Cash / Current Liabilities"
+            calculationTooltip={{
+              formula: "Cash & Equivalents / Current Liabilities",
+              description: "Most conservative liquidity measure"
+            }}
           />
           <MetricCard
             label="Working Capital"
             value={liquidity.working_capital}
             format="currency"
             tooltip="Current Assets - Current Liabilities"
+            calculationTooltip={{
+              formula: "Current Assets - Current Liabilities",
+              description: "Short-term financial health buffer"
+            }}
           />
         </div>
       </div>
@@ -499,18 +624,30 @@ function FinancialHealthSection({
             value={leverage.debt_to_equity}
             format="ratio"
             tooltip="Total Debt / Shareholders Equity - lower is less risky"
+            calculationTooltip={{
+              formula: "Total Debt / Shareholders Equity",
+              description: "Lower ratio = less financial risk"
+            }}
           />
           <MetricCard
             label="Debt/Assets"
             value={leverage.debt_to_assets}
             format="ratio"
             tooltip="Total Debt / Total Assets"
+            calculationTooltip={{
+              formula: "Total Debt / Total Assets",
+              description: "Proportion of assets financed by debt"
+            }}
           />
           <MetricCard
             label="Debt/EBITDA"
             value={leverage.debt_to_ebitda}
             format="ratio"
             tooltip="Net Debt / EBITDA - <3 is generally healthy"
+            calculationTooltip={{
+              formula: "Total Debt / EBITDA",
+              description: "Years to pay off debt with EBITDA (<3 is healthy)"
+            }}
           />
           <MetricCard
             label="Interest Coverage"
@@ -518,6 +655,10 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="EBIT / Interest Expense - higher means more ability to pay interest"
             nullTooltip="Not applicable - company has net interest income (earns more from interest than it pays)"
+            calculationTooltip={{
+              formula: "EBIT / Interest Expense",
+              description: "Ability to pay interest on debt"
+            }}
           />
         </div>
       </div>
@@ -533,18 +674,30 @@ function FinancialHealthSection({
             value={leverage.debt_to_capital}
             format="ratio"
             tooltip="Total Debt / Total Capital"
+            calculationTooltip={{
+              formula: "Total Debt / (Total Debt + Equity)",
+              description: "Debt as portion of total capitalization"
+            }}
           />
           <MetricCard
             label="Net Debt/EBITDA"
             value={leverage.net_debt_to_ebitda}
             format="ratio"
             tooltip="Net Debt / EBITDA"
+            calculationTooltip={{
+              formula: "(Total Debt - Cash) / EBITDA",
+              description: "Net leverage after cash offset"
+            }}
           />
           <MetricCard
             label="Net Debt"
             value={leverage.net_debt}
             format="currency"
             tooltip="Total Debt - Cash & Equivalents"
+            calculationTooltip={{
+              formula: "Total Debt - Cash & Equivalents",
+              description: "Debt after subtracting cash on hand"
+            }}
           />
         </div>
       </div>
@@ -566,24 +719,40 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             value={efficiency.asset_turnover}
             format="ratio"
             tooltip="Revenue / Total Assets - higher is more efficient"
+            calculationTooltip={{
+              formula: "Revenue / Average Total Assets",
+              description: "Sales generated per dollar of assets"
+            }}
           />
           <MetricCard
             label="Inventory Turnover"
             value={efficiency.inventory_turnover}
             format="ratio"
             tooltip="COGS / Average Inventory - higher is better"
+            calculationTooltip={{
+              formula: "Cost of Goods Sold / Average Inventory",
+              description: "How often inventory is sold and replaced"
+            }}
           />
           <MetricCard
             label="Receivables Turnover"
             value={efficiency.receivables_turnover}
             format="ratio"
             tooltip="Revenue / Average Receivables"
+            calculationTooltip={{
+              formula: "Revenue / Average Accounts Receivable",
+              description: "How quickly receivables are collected"
+            }}
           />
           <MetricCard
             label="Payables Turnover"
             value={efficiency.payables_turnover}
             format="ratio"
             tooltip="COGS / Average Payables"
+            calculationTooltip={{
+              formula: "COGS / Average Accounts Payable",
+              description: "How quickly company pays suppliers"
+            }}
           />
         </div>
       </div>
@@ -599,24 +768,40 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             value={efficiency.days_sales_outstanding}
             format="days"
             tooltip="Days Sales Outstanding - lower is better"
+            calculationTooltip={{
+              formula: "(Accounts Receivable / Revenue) × 365",
+              description: "Average days to collect payment"
+            }}
           />
           <MetricCard
             label="DIO"
             value={efficiency.days_inventory_outstanding}
             format="days"
             tooltip="Days Inventory Outstanding - lower is better"
+            calculationTooltip={{
+              formula: "(Inventory / COGS) × 365",
+              description: "Average days inventory is held"
+            }}
           />
           <MetricCard
             label="DPO"
             value={efficiency.days_payables_outstanding}
             format="days"
             tooltip="Days Payables Outstanding"
+            calculationTooltip={{
+              formula: "(Accounts Payable / COGS) × 365",
+              description: "Average days to pay suppliers"
+            }}
           />
           <MetricCard
             label="Cash Conversion Cycle"
             value={efficiency.cash_conversion_cycle}
             format="days"
             tooltip="DSO + DIO - DPO - lower is better"
+            calculationTooltip={{
+              formula: "DSO + DIO - DPO",
+              description: "Days to convert inventory to cash"
+            }}
           />
         </div>
       </div>
@@ -632,6 +817,10 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             value={efficiency.fixed_asset_turnover}
             format="ratio"
             tooltip="Revenue / Fixed Assets"
+            calculationTooltip={{
+              formula: "Revenue / Net Property, Plant & Equipment",
+              description: "Efficiency of fixed asset utilization"
+            }}
           />
         </div>
       </div>
@@ -653,6 +842,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.revenue_growth_yoy}
             format="percent"
             tooltip="Year-over-year revenue growth"
+            calculationTooltip={{
+              formula: "(Revenue₁ - Revenue₀) / Revenue₀ × 100",
+              description: "Change in revenue vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -660,6 +853,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.eps_growth_yoy}
             format="percent"
             tooltip="Year-over-year EPS growth"
+            calculationTooltip={{
+              formula: "(EPS₁ - EPS₀) / |EPS₀| × 100",
+              description: "Change in earnings per share vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -667,6 +864,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.net_income_growth_yoy}
             format="percent"
             tooltip="Year-over-year net income growth"
+            calculationTooltip={{
+              formula: "(Net Income₁ - Net Income₀) / |Net Income₀| × 100",
+              description: "Change in net income vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -674,6 +875,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.fcf_growth_yoy}
             format="percent"
             tooltip="Year-over-year free cash flow growth"
+            calculationTooltip={{
+              formula: "(FCF₁ - FCF₀) / |FCF₀| × 100",
+              description: "Change in free cash flow vs prior year"
+            }}
             colorByValue
           />
         </div>
@@ -690,6 +895,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.revenue_growth_3y_cagr}
             format="percent"
             tooltip="3-year compound annual revenue growth"
+            calculationTooltip={{
+              formula: "(Revenue₃ / Revenue₀)^(1/3) - 1",
+              description: "Annualized revenue growth over 3 years"
+            }}
             colorByValue
           />
           <MetricCard
@@ -697,6 +906,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.revenue_growth_5y_cagr}
             format="percent"
             tooltip="5-year compound annual revenue growth"
+            calculationTooltip={{
+              formula: "(Revenue₅ / Revenue₀)^(1/5) - 1",
+              description: "Annualized revenue growth over 5 years"
+            }}
             colorByValue
           />
           <MetricCard
@@ -704,6 +917,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.eps_growth_3y_cagr}
             format="percent"
             tooltip="3-year compound annual EPS growth"
+            calculationTooltip={{
+              formula: "(EPS₃ / EPS₀)^(1/3) - 1",
+              description: "Annualized EPS growth over 3 years"
+            }}
             colorByValue
           />
           <MetricCard
@@ -711,6 +928,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.eps_growth_5y_cagr}
             format="percent"
             tooltip="5-year compound annual EPS growth"
+            calculationTooltip={{
+              formula: "(EPS₅ / EPS₀)^(1/5) - 1",
+              description: "Annualized EPS growth over 5 years"
+            }}
             colorByValue
           />
         </div>
@@ -727,6 +948,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.gross_profit_growth_yoy}
             format="percent"
             tooltip="Year-over-year gross profit growth"
+            calculationTooltip={{
+              formula: "(Gross Profit₁ - Gross Profit₀) / Gross Profit₀ × 100",
+              description: "Change in gross profit vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -734,6 +959,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.operating_income_growth_yoy}
             format="percent"
             tooltip="Year-over-year operating income growth"
+            calculationTooltip={{
+              formula: "(Op Income₁ - Op Income₀) / |Op Income₀| × 100",
+              description: "Change in operating income vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -741,6 +970,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.book_value_growth_yoy}
             format="percent"
             tooltip="Year-over-year book value growth"
+            calculationTooltip={{
+              formula: "(Book Value₁ - Book Value₀) / Book Value₀ × 100",
+              description: "Change in shareholders equity vs prior year"
+            }}
             colorByValue
           />
           <MetricCard
@@ -748,6 +981,10 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             value={growth.dividend_growth_5y_cagr}
             format="percent"
             tooltip="5-year compound annual dividend growth"
+            calculationTooltip={{
+              formula: "(Dividend₅ / Dividend₀)^(1/5) - 1",
+              description: "Annualized dividend growth over 5 years"
+            }}
             colorByValue
           />
         </div>
@@ -776,6 +1013,10 @@ function DividendsSection({
             value={dividends.dividend_yield}
             format="percent"
             tooltip="Annual Dividend / Share Price"
+            calculationTooltip={{
+              formula: "Annual Dividend Per Share / Share Price × 100",
+              description: "Income return on investment"
+            }}
           />
           <MetricCard
             label="Dividend/Share"
@@ -783,12 +1024,20 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Annual Dividend Per Share"
+            calculationTooltip={{
+              formula: "Total Dividends Paid / Shares Outstanding",
+              description: "Annual dividend amount per share"
+            }}
           />
           <MetricCard
             label="Payout Ratio"
             value={dividends.payout_ratio}
             format="percent"
             tooltip="Dividends / Net Income"
+            calculationTooltip={{
+              formula: "Dividends Paid / Net Income × 100",
+              description: "Proportion of earnings paid as dividends"
+            }}
             interpretation={dividends.payout_interpretation}
             interpretationColorFn={getPayoutColor}
           />
@@ -797,6 +1046,10 @@ function DividendsSection({
             value={dividends.consecutive_dividend_years}
             format="years"
             tooltip="Years of consecutive dividend payments"
+            calculationTooltip={{
+              formula: "Count of Consecutive Years with Dividends",
+              description: "Track record of dividend payments"
+            }}
           />
         </div>
       </div>
@@ -812,18 +1065,30 @@ function DividendsSection({
             value={dividends.dividend_frequency}
             format="text"
             tooltip="How often dividends are paid"
+            calculationTooltip={{
+              formula: "Quarterly / Monthly / Annual / Semi-Annual",
+              description: "How frequently dividends are distributed"
+            }}
           />
           <MetricCard
             label="Ex-Dividend Date"
             value={dividends.ex_dividend_date}
             format="date"
             tooltip="Last ex-dividend date"
+            calculationTooltip={{
+              formula: "Date (from company announcement)",
+              description: "Must own before this date to receive dividend"
+            }}
           />
           <MetricCard
             label="Payment Date"
             value={dividends.payment_date}
             format="date"
             tooltip="Last payment date"
+            calculationTooltip={{
+              formula: "Date (from company announcement)",
+              description: "When dividend is actually paid"
+            }}
           />
         </div>
       </div>
@@ -840,6 +1105,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Diluted Earnings Per Share"
+            calculationTooltip={{
+              formula: "Net Income / Diluted Shares Outstanding",
+              description: "Earnings per share including stock options"
+            }}
           />
           <MetricCard
             label="Book Value/Share"
@@ -847,6 +1116,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Book Value Per Share"
+            calculationTooltip={{
+              formula: "Shareholders Equity / Shares Outstanding",
+              description: "Net asset value per share"
+            }}
           />
           <MetricCard
             label="FCF/Share"
@@ -854,6 +1127,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Free Cash Flow Per Share"
+            calculationTooltip={{
+              formula: "Free Cash Flow / Shares Outstanding",
+              description: "Cash generated per share"
+            }}
           />
           <MetricCard
             label="Revenue/Share"
@@ -861,6 +1138,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Revenue Per Share"
+            calculationTooltip={{
+              formula: "Total Revenue / Shares Outstanding",
+              description: "Sales per share"
+            }}
           />
         </div>
       </div>
@@ -877,6 +1158,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Fair value estimate based on Ben Graham formula"
+            calculationTooltip={{
+              formula: "√(22.5 × EPS × Book Value Per Share)",
+              description: "Ben Graham's intrinsic value estimate"
+            }}
           />
           <MetricCard
             label="Tangible Book/Share"
@@ -884,6 +1169,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Book Value excluding intangibles"
+            calculationTooltip={{
+              formula: "(Total Equity - Intangible Assets) / Shares",
+              description: "Physical asset value per share"
+            }}
           />
           <MetricCard
             label="Cash/Share"
@@ -891,6 +1180,10 @@ function DividendsSection({
             format="currency"
             decimals={2}
             tooltip="Cash Per Share"
+            calculationTooltip={{
+              formula: "Cash & Equivalents / Shares Outstanding",
+              description: "Cash backing per share"
+            }}
           />
         </div>
       </div>
@@ -923,9 +1216,15 @@ function QualitySection({
             </span>
           )}
         </div>
-        <div className="text-4xl font-bold text-ic-text-primary mb-2">
-          {qualityScores.altman_z_score?.toFixed(2) ?? '—'}
-        </div>
+        <CalculationTooltip
+          label="Altman Z-Score"
+          formula="1.2×WC/TA + 1.4×RE/TA + 3.3×EBIT/TA + 0.6×MVE/TL + 1.0×S/TA"
+          description="WC=Working Capital, RE=Retained Earnings, MVE=Market Value of Equity, TL=Total Liabilities, S=Sales, TA=Total Assets"
+        >
+          <div className="text-4xl font-bold text-ic-text-primary mb-2 cursor-help inline-block">
+            {qualityScores.altman_z_score?.toFixed(2) ?? '—'}
+          </div>
+        </CalculationTooltip>
         <p className="text-sm text-ic-text-muted">
           {qualityScores.altman_z_description || 'Z-Score helps predict bankruptcy probability within 2 years'}
         </p>
@@ -954,9 +1253,15 @@ function QualitySection({
             </span>
           )}
         </div>
-        <div className="text-4xl font-bold text-ic-text-primary mb-2">
-          {qualityScores.piotroski_f_score ?? '—'} <span className="text-lg text-ic-text-muted">/ 9</span>
-        </div>
+        <CalculationTooltip
+          label="Piotroski F-Score"
+          formula="Sum of 9 binary signals (0 or 1 each)"
+          description="Profitability (4), Leverage/Liquidity (3), Operating Efficiency (2)"
+        >
+          <div className="text-4xl font-bold text-ic-text-primary mb-2 cursor-help inline-block">
+            {qualityScores.piotroski_f_score ?? '—'} <span className="text-lg text-ic-text-muted">/ 9</span>
+          </div>
+        </CalculationTooltip>
         <p className="text-sm text-ic-text-muted">
           {qualityScores.piotroski_f_description || 'F-Score measures overall financial health'}
         </p>
@@ -1012,9 +1317,15 @@ function QualitySection({
               </span>
             )}
           </div>
-          <div className="text-4xl font-bold text-ic-text-primary mb-2">
-            {valuation.peg_ratio?.toFixed(2) ?? '—'}
-          </div>
+          <CalculationTooltip
+            label="PEG Ratio"
+            formula="P/E Ratio / EPS Growth Rate"
+            description="Values stock relative to earnings growth"
+          >
+            <div className="text-4xl font-bold text-ic-text-primary mb-2 cursor-help inline-block">
+              {valuation.peg_ratio?.toFixed(2) ?? '—'}
+            </div>
+          </CalculationTooltip>
           <div className="mt-4 pt-4 border-t border-ic-border">
             <div className="text-xs text-ic-text-dim space-y-1">
               <p>&lt; 1.0: Undervalued (growing faster than P/E suggests)</p>
@@ -1040,6 +1351,10 @@ interface MetricCardProps {
   decimals?: number;
   tooltip?: string;
   nullTooltip?: string; // Tooltip to show when value is NULL
+  calculationTooltip?: {
+    formula: string;
+    description?: string;
+  };
   colorByValue?: boolean;
   interpretation?: string | null;
   interpretationColorFn?: (interp: string | null) => string;
@@ -1052,6 +1367,7 @@ function MetricCard({
   decimals = 2,
   tooltip,
   nullTooltip,
+  calculationTooltip,
   colorByValue = false,
   interpretation,
   interpretationColorFn,
@@ -1099,8 +1415,14 @@ function MetricCard({
   // Use nullTooltip when value is NULL, otherwise use regular tooltip
   const displayTooltip = (value === null || value === undefined) && nullTooltip ? nullTooltip : tooltip;
 
+  const valueContent = (
+    <div className={cn('text-xl font-semibold', getValueColor())}>
+      {formatValue()}
+    </div>
+  );
+
   return (
-    <div className="bg-ic-bg-secondary rounded-lg p-4" title={displayTooltip}>
+    <div className="bg-ic-bg-secondary rounded-lg p-4" title={!calculationTooltip ? displayTooltip : undefined}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-ic-text-muted">{label}</span>
         {interpretation && interpretationColorFn && (
@@ -1113,9 +1435,19 @@ function MetricCard({
           </span>
         )}
       </div>
-      <div className={cn('text-xl font-semibold', getValueColor())}>
-        {formatValue()}
-      </div>
+      {calculationTooltip ? (
+        <CalculationTooltip
+          label={label}
+          formula={calculationTooltip.formula}
+          description={calculationTooltip.description || displayTooltip}
+        >
+          <div className="cursor-help inline-block">
+            {valueContent}
+          </div>
+        </CalculationTooltip>
+      ) : (
+        valueContent
+      )}
     </div>
   );
 }
