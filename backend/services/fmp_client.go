@@ -289,6 +289,40 @@ type FMPDividendHistorical struct {
 	DeclarationDate string  `json:"declarationDate"`
 }
 
+// FMPGradesSummary represents the response from FMP grades-summary endpoint
+type FMPGradesSummary struct {
+	Symbol     string `json:"symbol"`
+	StrongBuy  int    `json:"strongBuy"`
+	Buy        int    `json:"buy"`
+	Hold       int    `json:"hold"`
+	Sell       int    `json:"sell"`
+	StrongSell int    `json:"strongSell"`
+	Consensus  string `json:"consensus"`
+}
+
+// FMPPriceTargetConsensus represents the response from FMP price-target-consensus endpoint
+type FMPPriceTargetConsensus struct {
+	Symbol          string   `json:"symbol"`
+	TargetHigh      *float64 `json:"targetHigh"`
+	TargetLow       *float64 `json:"targetLow"`
+	TargetConsensus *float64 `json:"targetConsensus"`
+	TargetMedian    *float64 `json:"targetMedian"`
+}
+
+// FMPPriceTargetSummary represents the response from FMP price-target-summary endpoint
+type FMPPriceTargetSummary struct {
+	Symbol                   string   `json:"symbol"`
+	LastMonth                *float64 `json:"lastMonth"`
+	LastMonthAvgPriceTarget  *float64 `json:"lastMonthAvgPriceTarget"`
+	LastQuarter              *float64 `json:"lastQuarter"`
+	LastQuarterAvgPriceTarget *float64 `json:"lastQuarterAvgPriceTarget"`
+	LastYear                 *float64 `json:"lastYear"`
+	LastYearAvgPriceTarget   *float64 `json:"lastYearAvgPriceTarget"`
+	AllTime                  *float64 `json:"allTime"`
+	AllTimeAvgPriceTarget    *float64 `json:"allTimeAvgPriceTarget"`
+	Publishers               string   `json:"publishers"`
+}
+
 // ============================================================================
 // Client Constructor
 // ============================================================================
@@ -484,19 +518,81 @@ func (c *FMPClient) GetDividendHistory(ticker string) ([]FMPDividendHistorical, 
 	return wrapper.Historical, nil
 }
 
+// GetGradesSummary fetches analyst grades summary (strongBuy, buy, hold, sell, strongSell counts)
+func (c *FMPClient) GetGradesSummary(ticker string) (*FMPGradesSummary, error) {
+	if c.APIKey == "" {
+		return nil, fmt.Errorf("FMP API key not configured")
+	}
+
+	url := fmt.Sprintf("%s/grades-summary?symbol=%s&apikey=%s", FMPBaseURL, ticker, c.APIKey)
+
+	resp, err := c.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("FMP grades-summary request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("FMP grades-summary returned status %d", resp.StatusCode)
+	}
+
+	var results []FMPGradesSummary
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("failed to decode FMP grades-summary response: %w", err)
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no FMP grades-summary data found for %s", ticker)
+	}
+
+	return &results[0], nil
+}
+
+// GetPriceTargetConsensus fetches analyst price target consensus data
+func (c *FMPClient) GetPriceTargetConsensus(ticker string) (*FMPPriceTargetConsensus, error) {
+	if c.APIKey == "" {
+		return nil, fmt.Errorf("FMP API key not configured")
+	}
+
+	url := fmt.Sprintf("%s/price-target-consensus?symbol=%s&apikey=%s", FMPBaseURL, ticker, c.APIKey)
+
+	resp, err := c.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("FMP price-target-consensus request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("FMP price-target-consensus returned status %d", resp.StatusCode)
+	}
+
+	var results []FMPPriceTargetConsensus
+	if err := json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, fmt.Errorf("failed to decode FMP price-target-consensus response: %w", err)
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no FMP price-target-consensus data found for %s", ticker)
+	}
+
+	return &results[0], nil
+}
+
 // ============================================================================
 // Aggregated Data Fetch
 // ============================================================================
 
 // FMPAllMetrics contains all FMP data for a ticker
 type FMPAllMetrics struct {
-	RatiosTTM     *FMPRatiosTTM
-	KeyMetricsTTM *FMPKeyMetricsTTM
-	Growth        []FMPFinancialGrowth
-	Estimates     []FMPAnalystEstimate
-	Score         *FMPScore
-	Dividends     []FMPDividendHistorical
-	Errors        map[string]error
+	RatiosTTM            *FMPRatiosTTM
+	KeyMetricsTTM        *FMPKeyMetricsTTM
+	Growth               []FMPFinancialGrowth
+	Estimates            []FMPAnalystEstimate
+	Score                *FMPScore
+	Dividends            []FMPDividendHistorical
+	GradesSummary        *FMPGradesSummary
+	PriceTargetConsensus *FMPPriceTargetConsensus
+	Errors               map[string]error
 }
 
 // GetAllMetrics fetches all FMP data for a ticker in parallel
@@ -588,6 +684,34 @@ func (c *FMPClient) GetAllMetrics(ticker string) *FMPAllMetrics {
 			result.Errors["dividends"] = err
 		} else {
 			result.Dividends = data
+		}
+		mu.Unlock()
+	}()
+
+	// Fetch grades summary (analyst ratings)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		data, err := c.GetGradesSummary(ticker)
+		mu.Lock()
+		if err != nil {
+			result.Errors["grades-summary"] = err
+		} else {
+			result.GradesSummary = data
+		}
+		mu.Unlock()
+	}()
+
+	// Fetch price target consensus
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		data, err := c.GetPriceTargetConsensus(ticker)
+		mu.Lock()
+		if err != nil {
+			result.Errors["price-target-consensus"] = err
+		} else {
+			result.PriceTargetConsensus = data
 		}
 		mu.Unlock()
 	}()
@@ -873,6 +997,18 @@ type MergedFinancialMetrics struct {
 	ForwardNetIncome   *float64 `json:"forward_net_income"`
 	NumAnalystsEPS     *int     `json:"num_analysts_eps"`
 	NumAnalystsRevenue *int     `json:"num_analysts_revenue"`
+
+	// === ANALYST RATINGS (10 metrics) ===
+	AnalystRatingStrongBuy  *int     `json:"analyst_rating_strong_buy"`
+	AnalystRatingBuy        *int     `json:"analyst_rating_buy"`
+	AnalystRatingHold       *int     `json:"analyst_rating_hold"`
+	AnalystRatingSell       *int     `json:"analyst_rating_sell"`
+	AnalystRatingStrongSell *int     `json:"analyst_rating_strong_sell"`
+	AnalystConsensus        *string  `json:"analyst_consensus"`
+	TargetHigh              *float64 `json:"target_high"`
+	TargetLow               *float64 `json:"target_low"`
+	TargetConsensus         *float64 `json:"target_consensus"`
+	TargetMedian            *float64 `json:"target_median"`
 
 	// === INTERPRETATIONS ===
 	PEGInterpretation    *string `json:"peg_interpretation,omitempty"`
@@ -1180,6 +1316,30 @@ func MergeAllData(fmp *FMPAllMetrics, currentPrice float64) *MergedFinancialMetr
 		fcfMargin := (*merged.FCFPerShare / *merged.RevenuePerShare) * 100
 		merged.FCFMargin = &fcfMargin
 		merged.Sources.FCFMargin = SourceCalculated
+	}
+
+	// Merge analyst grades summary data
+	if fmp.GradesSummary != nil {
+		g := fmp.GradesSummary
+
+		merged.AnalystRatingStrongBuy = &g.StrongBuy
+		merged.AnalystRatingBuy = &g.Buy
+		merged.AnalystRatingHold = &g.Hold
+		merged.AnalystRatingSell = &g.Sell
+		merged.AnalystRatingStrongSell = &g.StrongSell
+		if g.Consensus != "" {
+			merged.AnalystConsensus = &g.Consensus
+		}
+	}
+
+	// Merge price target consensus data
+	if fmp.PriceTargetConsensus != nil {
+		p := fmp.PriceTargetConsensus
+
+		merged.TargetHigh = p.TargetHigh
+		merged.TargetLow = p.TargetLow
+		merged.TargetConsensus = p.TargetConsensus
+		merged.TargetMedian = p.TargetMedian
 	}
 
 	return merged
