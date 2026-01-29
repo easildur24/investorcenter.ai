@@ -74,7 +74,7 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
         }
 
         // Fall back to regular ticker endpoint for stocks
-        const response = await fetch(`/api/v1/tickers/${symbol}/realtime`);
+        const response = await fetch(`/api/v1/tickers/${symbol}/price`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch price: ${response.status}`);
