@@ -517,6 +517,7 @@ function FinancialHealthSection({
             value={leverage.interest_coverage}
             format="ratio"
             tooltip="EBIT / Interest Expense - higher means more ability to pay interest"
+            nullTooltip="Not applicable - company has net interest income (earns more from interest than it pays)"
           />
         </div>
       </div>
@@ -1038,6 +1039,7 @@ interface MetricCardProps {
   format: 'ratio' | 'percent' | 'currency' | 'number' | 'days' | 'years' | 'date' | 'text';
   decimals?: number;
   tooltip?: string;
+  nullTooltip?: string; // Tooltip to show when value is NULL
   colorByValue?: boolean;
   interpretation?: string | null;
   interpretationColorFn?: (interp: string | null) => string;
@@ -1049,6 +1051,7 @@ function MetricCard({
   format,
   decimals = 2,
   tooltip,
+  nullTooltip,
   colorByValue = false,
   interpretation,
   interpretationColorFn,
@@ -1093,8 +1096,11 @@ function MetricCard({
     return numValue >= 0 ? 'text-ic-positive' : 'text-ic-negative';
   };
 
+  // Use nullTooltip when value is NULL, otherwise use regular tooltip
+  const displayTooltip = (value === null || value === undefined) && nullTooltip ? nullTooltip : tooltip;
+
   return (
-    <div className="bg-ic-bg-secondary rounded-lg p-4" title={tooltip}>
+    <div className="bg-ic-bg-secondary rounded-lg p-4" title={displayTooltip}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-ic-text-muted">{label}</span>
         {interpretation && interpretationColorFn && (
