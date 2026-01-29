@@ -19,6 +19,7 @@ export function Tooltip({
   delay = 200,
 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const [isPositioned, setIsPositioned] = useState(false);
   const [coords, setCoords] = useState({ top: 0, left: 0 });
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -35,6 +36,7 @@ export function Tooltip({
       clearTimeout(timeoutRef.current);
     }
     setIsVisible(false);
+    setIsPositioned(false);
   };
 
   useEffect(() => {
@@ -79,6 +81,7 @@ export function Tooltip({
       }
 
       setCoords({ top, left });
+      setIsPositioned(true);
     }
   }, [isVisible, position]);
 
@@ -109,7 +112,10 @@ export function Tooltip({
       {isVisible && (
         <div
           ref={tooltipRef}
-          className="fixed z-50 px-3 py-2 text-sm bg-ic-bg-tertiary border border-ic-border rounded-lg shadow-lg max-w-xs"
+          className={cn(
+            "fixed z-50 px-3 py-2 text-sm bg-ic-bg-tertiary border border-ic-border rounded-lg shadow-lg max-w-xs transition-opacity duration-150",
+            isPositioned ? "opacity-100" : "opacity-0"
+          )}
           style={{
             top: coords.top,
             left: coords.left,
