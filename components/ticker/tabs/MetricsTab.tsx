@@ -206,8 +206,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Price to Earnings - lower may indicate undervaluation"
             calculationTooltip={{
-              formula: "Share Price / Earnings Per Share (EPS)",
-              description: "Lower may indicate undervaluation"
+              formula: "Share Price / EPS (TTM)",
+              description: "Uses trailing 12-month diluted EPS. Price updates real-time; EPS updates quarterly after earnings. Source: FMP"
             }}
           />
           <MetricCard
@@ -226,8 +226,8 @@ function ValuationSection({
             format="ratio"
             tooltip="P/E to Growth - <1 suggests undervalued relative to growth"
             calculationTooltip={{
-              formula: "P/E Ratio / EPS Growth Rate",
-              description: "<1 suggests undervalued relative to growth"
+              formula: "P/E Ratio / Expected EPS Growth Rate (%)",
+              description: "Growth rate based on 5-year historical EPS CAGR or analyst estimates. <1 suggests undervalued relative to growth. Source: FMP"
             }}
             interpretation={valuation.peg_interpretation}
             interpretationColorFn={getPEGColor}
@@ -511,8 +511,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Return on Equity - Net Income / Shareholders Equity"
             calculationTooltip={{
-              formula: "Net Income / Shareholders Equity × 100",
-              description: "Return generated for shareholders"
+              formula: "Net Income (TTM) / Avg Shareholders Equity × 100",
+              description: "Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP"
             }}
             colorByValue
           />
@@ -587,7 +587,7 @@ function FinancialHealthSection({
             tooltip="(Current Assets - Inventory) / Current Liabilities"
             calculationTooltip={{
               formula: "(Current Assets - Inventory) / Current Liabilities",
-              description: "More conservative liquidity measure"
+              description: "Also called 'Acid Test'. Excludes inventory as it may not be quickly liquidated. >1.0 indicates strong short-term liquidity. Source: FMP"
             }}
           />
           <MetricCard
@@ -1181,8 +1181,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Cash Per Share"
             calculationTooltip={{
-              formula: "Cash & Equivalents / Shares Outstanding",
-              description: "Cash backing per share"
+              formula: "Total Cash & Equivalents / Shares Outstanding",
+              description: "Uses total cash (not net cash after debt). For net cash position, subtract debt per share. Source: FMP"
             }}
           />
         </div>
