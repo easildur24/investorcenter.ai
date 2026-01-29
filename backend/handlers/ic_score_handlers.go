@@ -621,6 +621,79 @@ func GetComprehensiveFinancialMetrics(c *gin.Context) {
 				merged.Sources.MarketCap = services.SourceDatabase
 			}
 		}
+
+		// Fetch debt data from financials table to improve Net Debt and Debt/EBITDA calculations
+		var debtResult struct {
+			ShortTermDebt      *int64 `db:"short_term_debt"`
+			LongTermDebt       *int64 `db:"long_term_debt"`
+			CashAndEquivalents *int64 `db:"cash_and_equivalents"`
+		}
+		debtQuery := `
+			SELECT short_term_debt, long_term_debt, cash_and_equivalents
+			FROM financials
+			WHERE ticker = $1
+			ORDER BY period_end_date DESC
+			LIMIT 1
+		`
+		if err := database.DB.Get(&debtResult, debtQuery, ticker); err == nil {
+			// Calculate Net Debt from database if we have the components
+			if merged.NetDebt == nil && debtResult.LongTermDebt != nil && debtResult.CashAndEquivalents != nil {
+				// Total Debt = Short-term + Long-term (handle NULL short-term)
+				var totalDebt int64
+				if debtResult.ShortTermDebt != nil {
+					totalDebt = *debtResult.ShortTermDebt + *debtResult.LongTermDebt
+				} else {
+					totalDebt = *debtResult.LongTermDebt
+				}
+				// Net Debt = Total Debt - Cash
+				netDebt := float64(totalDebt - *debtResult.CashAndEquivalents)
+				merged.NetDebt = &netDebt
+				merged.Sources.NetDebt = services.SourceDatabase
+				log.Printf("Fetched Net Debt for %s from database: $%.0f (Total Debt: $%.0f - Cash: $%.0f)",
+					ticker, netDebt, float64(totalDebt), float64(*debtResult.CashAndEquivalents))
+			}
+		}
+
+		// Fetch EBIT and EBT from financial_statements to calculate Interest Expense and Interest Coverage
+		if merged.InterestCoverage == nil {
+			var incomeResult struct {
+				EBIT *string `db:"ebit"`
+				EBT  *string `db:"ebt"`
+			}
+			incomeQuery := `
+				SELECT
+					fs.data->>'operating_income_loss' as ebit,
+					fs.data->>'income_loss_from_continuing_operations_before_tax' as ebt
+				FROM financial_statements fs
+				JOIN tickers t ON fs.ticker_id = t.id
+				WHERE t.symbol = $1 AND fs.statement_type = 'income'
+				ORDER BY fs.period_end DESC
+				LIMIT 1
+			`
+			if err := database.DB.Get(&incomeResult, incomeQuery, ticker); err == nil && incomeResult.EBIT != nil && incomeResult.EBT != nil {
+				// Parse string values to float64
+				var ebit, ebt float64
+				if _, err := fmt.Sscanf(*incomeResult.EBIT, "%f", &ebit); err == nil {
+					if _, err := fmt.Sscanf(*incomeResult.EBT, "%f", &ebt); err == nil {
+						// Interest Expense = EBIT - EBT (when EBT < EBIT, meaning company has interest expense)
+						// If EBT > EBIT, company has net interest income, so Interest Coverage doesn't apply
+						if ebit > ebt && ebit > 0 {
+							interestExpense := ebit - ebt
+							if interestExpense > 0 {
+								interestCoverage := ebit / interestExpense
+								merged.InterestCoverage = &interestCoverage
+								merged.Sources.InterestCoverage = services.SourceCalculated
+								log.Printf("Calculated Interest Coverage for %s: EBIT ($%.0f) / Interest Expense ($%.0f) = %.2fx",
+									ticker, ebit, interestExpense, interestCoverage)
+							}
+						} else if ebt > ebit {
+							log.Printf("Skipping Interest Coverage for %s: EBT > EBIT indicates net interest income (EBT: $%.0f, EBIT: $%.0f)",
+								ticker, ebt, ebit)
+						}
+					}
+				}
+			}
+		}
 	}
 
 	// Calculate derived metrics as fallbacks if primary sources are missing
