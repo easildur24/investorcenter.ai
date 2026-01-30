@@ -90,12 +90,12 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <a
-                href={`/ticker/${ticker}#ic-score`}
+              <button
+                onClick={() => setShowFactors(!showFactors)}
                 className="text-sm text-ic-blue hover:text-blue-700 hover:underline"
               >
-                View Details →
-              </a>
+                {showFactors ? 'Hide Details' : 'View Details →'}
+              </button>
               <ICScoreExplainerButton onClick={() => setShowExplainer(true)} />
             </div>
           </div>
@@ -138,6 +138,13 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
           <p className="text-xs text-ic-text-dim mt-3 text-center">
             Updated {formatRelativeTime(icScore.calculated_at)}
           </p>
+
+          {/* Factor Breakdown - shown when expanded */}
+          {showFactors && (
+            <div className="mt-6 pt-6 border-t border-ic-border animate-fadeIn">
+              <FactorBreakdown icScore={icScore} />
+            </div>
+          )}
         </div>
 
         {/* Explainer Modal */}
