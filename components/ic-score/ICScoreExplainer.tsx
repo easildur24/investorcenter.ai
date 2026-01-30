@@ -150,13 +150,36 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
                 based on its historical predictive power and contribution to investment returns.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-sm text-blue-800">
-                  <strong>Score Range:</strong> 0-100 |
-                  <strong className="ml-2">80+:</strong> Strong Buy |
-                  <strong className="ml-2">65-79:</strong> Buy |
-                  <strong className="ml-2">50-64:</strong> Hold |
-                  <strong className="ml-2">&lt;50:</strong> Caution
+                <p className="text-sm text-blue-800 mb-2">
+                  <strong>Score Range:</strong> 0-100
                 </p>
+                <div className="grid grid-cols-5 gap-2 text-xs text-center">
+                  <div className="p-2 bg-green-100 rounded">
+                    <div className="font-bold text-green-800">80-100</div>
+                    <div className="text-green-700">Strong Buy</div>
+                    <div className="text-green-600">Grade A</div>
+                  </div>
+                  <div className="p-2 bg-green-50 rounded">
+                    <div className="font-bold text-green-700">65-79</div>
+                    <div className="text-green-600">Buy</div>
+                    <div className="text-green-500">Grade B</div>
+                  </div>
+                  <div className="p-2 bg-yellow-50 rounded">
+                    <div className="font-bold text-yellow-700">50-64</div>
+                    <div className="text-yellow-600">Hold</div>
+                    <div className="text-yellow-500">Grade C</div>
+                  </div>
+                  <div className="p-2 bg-orange-50 rounded">
+                    <div className="font-bold text-orange-700">35-49</div>
+                    <div className="text-orange-600">Underperform</div>
+                    <div className="text-orange-500">Grade D</div>
+                  </div>
+                  <div className="p-2 bg-red-50 rounded">
+                    <div className="font-bold text-red-700">0-34</div>
+                    <div className="text-red-600">Sell</div>
+                    <div className="text-red-500">Grade F</div>
+                  </div>
+                </div>
               </div>
             </div>
 

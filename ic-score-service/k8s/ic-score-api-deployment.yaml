@@ -73,6 +73,14 @@ spec:
         - name: DB_MAX_OVERFLOW
           value: "10"
 
+        # AI Analysis (Gemini) - optional, AI features disabled if not set
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ic-score-ai-secrets
+              key: GEMINI_API_KEY
+              optional: true
+
         - name: PYTHONUNBUFFERED
           value: "1"
         - name: PYTHONPATH

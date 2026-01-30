@@ -338,11 +338,11 @@ func isCryptoAssetWithStock(stock *models.Stock) bool {
 
 func getUpdateInterval(isCrypto bool, marketStatus string) int {
 	if isCrypto {
-		return 5 // 5 seconds for crypto
+		return 1 // 1 second for crypto
 	}
 
 	if marketStatus == "open" {
-		return 5 // 5 seconds during market hours
+		return 1 // 1 second during market hours
 	}
 
 	return 300 // 5 minutes when market is closed

@@ -7,6 +7,86 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**
+ * Factor calculation metadata - shows the inputs used to calculate each factor score
+ */
+export interface FactorMetadata {
+  // Value factor inputs
+  pe_ratio?: number;
+  pb_ratio?: number;
+  ps_ratio?: number;
+  pe_score?: number;
+  pb_score?: number;
+  ps_score?: number;
+
+  // Growth factor inputs
+  revenue_growth?: number;
+  eps_growth?: number;
+  revenue_score?: number;
+  eps_score?: number;
+
+  // Profitability factor inputs
+  net_margin?: number;
+  roe?: number;
+  roa?: number;
+  margin_score?: number;
+  roe_score?: number;
+  roa_score?: number;
+
+  // Financial health factor inputs
+  debt_to_equity?: number;
+  current_ratio?: number;
+  de_score?: number;
+  cr_score?: number;
+
+  // Momentum factor inputs
+  return_1m?: number;
+  return_3m?: number;
+  return_6m?: number;
+  return_12m?: number;
+
+  // Technical factor inputs
+  rsi?: number;
+  macd_histogram?: number;
+  price_vs_sma50?: number;
+  price_vs_sma200?: number;
+
+  // Analyst consensus inputs
+  buy_count?: number;
+  hold_count?: number;
+  sell_count?: number;
+  consensus_score?: number;
+  price_target?: number;
+  current_price?: number;
+  upside_pct?: number;
+
+  // Insider activity inputs
+  net_shares?: number;
+  buy_transactions?: number;
+  sell_transactions?: number;
+
+  // Institutional inputs
+  institution_count?: number;
+  total_shares?: number;
+  holdings_change_pct?: number;
+
+  // News sentiment inputs
+  sentiment_avg?: number;
+  article_count?: number;
+
+  // Generic field for any additional data
+  [key: string]: number | string | undefined;
+}
+
+/**
+ * Calculation metadata stored with each IC Score
+ */
+export interface CalculationMetadata {
+  factors: Record<string, FactorMetadata>;
+  weights_used: Record<string, number>;
+  calculated_at: string;
+}
+
+/**
  * IC Score Data Interface
  * Represents the complete IC Score data for a stock
  */
@@ -32,6 +112,7 @@ export interface ICScoreData {
   factor_count: number;
   available_factors: string[];
   missing_factors: string[];
+  calculation_metadata?: CalculationMetadata;
 }
 
 /**
@@ -210,25 +291,86 @@ export async function getICScores(params?: {
 /**
  * Get letter grade for a score
  *
+ * Aligned with IC Score rating system:
+ * - A range (80-100): Strong Buy
+ * - B range (65-79): Buy
+ * - C range (50-64): Hold
+ * - D range (35-49): Underperform
+ * - F range (0-34): Sell
+ *
  * @param score Numeric score (0-100)
  * @returns Letter grade (A+ to F)
  */
 export function getLetterGrade(score: number | null): string {
   if (score === null) return 'N/A';
 
-  if (score >= 97) return 'A+';
-  if (score >= 93) return 'A';
-  if (score >= 90) return 'A-';
-  if (score >= 87) return 'B+';
-  if (score >= 83) return 'B';
-  if (score >= 80) return 'B-';
-  if (score >= 77) return 'C+';
-  if (score >= 73) return 'C';
-  if (score >= 70) return 'C-';
-  if (score >= 67) return 'D+';
-  if (score >= 63) return 'D';
-  if (score >= 60) return 'D-';
+  // A range: Strong Buy (80-100)
+  if (score >= 93) return 'A+';
+  if (score >= 86) return 'A';
+  if (score >= 80) return 'A-';
+
+  // B range: Buy (65-79)
+  if (score >= 75) return 'B+';
+  if (score >= 70) return 'B';
+  if (score >= 65) return 'B-';
+
+  // C range: Hold (50-64)
+  if (score >= 60) return 'C+';
+  if (score >= 55) return 'C';
+  if (score >= 50) return 'C-';
+
+  // D range: Underperform (35-49)
+  if (score >= 45) return 'D+';
+  if (score >= 40) return 'D';
+  if (score >= 35) return 'D-';
+
+  // F range: Sell (0-34)
   return 'F';
+}
+
+/**
+ * Get rating label from score
+ */
+export function getRating(score: number | null): string {
+  if (score === null) return 'N/A';
+  if (score >= 80) return 'Strong Buy';
+  if (score >= 65) return 'Buy';
+  if (score >= 50) return 'Hold';
+  if (score >= 35) return 'Underperform';
+  return 'Sell';
+}
+
+/**
+ * Get grade tier description
+ */
+export function getGradeTier(score: number | null): { letter: string; rating: string; description: string } {
+  if (score === null) return { letter: 'N/A', rating: 'N/A', description: 'Data not available' };
+
+  if (score >= 80) return {
+    letter: getLetterGrade(score),
+    rating: 'Strong Buy',
+    description: 'Exceptional investment profile'
+  };
+  if (score >= 65) return {
+    letter: getLetterGrade(score),
+    rating: 'Buy',
+    description: 'Favorable investment profile'
+  };
+  if (score >= 50) return {
+    letter: getLetterGrade(score),
+    rating: 'Hold',
+    description: 'Neutral investment profile'
+  };
+  if (score >= 35) return {
+    letter: getLetterGrade(score),
+    rating: 'Underperform',
+    description: 'Below average investment profile'
+  };
+  return {
+    letter: getLetterGrade(score),
+    rating: 'Sell',
+    description: 'Weak investment profile'
+  };
 }
 
 /**

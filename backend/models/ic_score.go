@@ -32,27 +32,28 @@ type ICScore struct {
 
 // ICScoreResponse represents the API response for IC Score
 type ICScoreResponse struct {
-	Ticker                string   `json:"ticker"`
-	Date                  string   `json:"date"`
-	OverallScore          float64  `json:"overall_score"`
-	ValueScore            *float64 `json:"value_score"`
-	GrowthScore           *float64 `json:"growth_score"`
-	ProfitabilityScore    *float64 `json:"profitability_score"`
-	FinancialHealthScore  *float64 `json:"financial_health_score"`
-	MomentumScore         *float64 `json:"momentum_score"`
-	AnalystConsensusScore *float64 `json:"analyst_consensus_score"`
-	InsiderActivityScore  *float64 `json:"insider_activity_score"`
-	InstitutionalScore    *float64 `json:"institutional_score"`
-	NewsSentimentScore    *float64 `json:"news_sentiment_score"`
-	TechnicalScore        *float64 `json:"technical_score"`
-	Rating                string   `json:"rating"`
-	SectorPercentile      *float64 `json:"sector_percentile"`
-	ConfidenceLevel       string   `json:"confidence_level"`
-	DataCompleteness      float64  `json:"data_completeness"`
-	CalculatedAt          string   `json:"calculated_at"`
-	FactorCount           int      `json:"factor_count"`
-	AvailableFactors      []string `json:"available_factors"`
-	MissingFactors        []string `json:"missing_factors"`
+	Ticker                string         `json:"ticker"`
+	Date                  string         `json:"date"`
+	OverallScore          float64        `json:"overall_score"`
+	ValueScore            *float64       `json:"value_score"`
+	GrowthScore           *float64       `json:"growth_score"`
+	ProfitabilityScore    *float64       `json:"profitability_score"`
+	FinancialHealthScore  *float64       `json:"financial_health_score"`
+	MomentumScore         *float64       `json:"momentum_score"`
+	AnalystConsensusScore *float64       `json:"analyst_consensus_score"`
+	InsiderActivityScore  *float64       `json:"insider_activity_score"`
+	InstitutionalScore    *float64       `json:"institutional_score"`
+	NewsSentimentScore    *float64       `json:"news_sentiment_score"`
+	TechnicalScore        *float64       `json:"technical_score"`
+	Rating                string         `json:"rating"`
+	SectorPercentile      *float64       `json:"sector_percentile"`
+	ConfidenceLevel       string         `json:"confidence_level"`
+	DataCompleteness      float64        `json:"data_completeness"`
+	CalculatedAt          string         `json:"calculated_at"`
+	FactorCount           int            `json:"factor_count"`
+	AvailableFactors      []string       `json:"available_factors"`
+	MissingFactors        []string       `json:"missing_factors"`
+	CalculationMetadata   map[string]any `json:"calculation_metadata,omitempty"`
 }
 
 // ICScoreListItem represents a summary for the admin list view
@@ -176,6 +177,11 @@ func (ic *ICScore) ToResponse() ICScoreResponse {
 	if ic.SectorPercentile != nil {
 		v := toFloat64(*ic.SectorPercentile)
 		response.SectorPercentile = &v
+	}
+
+	// Include calculation metadata for transparency
+	if ic.CalculationMetadata != nil {
+		response.CalculationMetadata = ic.CalculationMetadata
 	}
 
 	return response

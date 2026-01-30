@@ -131,12 +131,13 @@ func main() {
 		// IC Score endpoints
 		stocks := v1.Group("/stocks")
 		{
-			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                      // Get IC Score for a ticker
-			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory)       // Get IC Score history
-			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)           // Get financial metrics from SEC filings (legacy)
-			stocks.GET("/:ticker/metrics", handlers.GetComprehensiveFinancialMetrics) // Get comprehensive financial metrics (FMP)
-			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                      // Get risk metrics (Beta, Alpha, Sharpe)
-			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)         // Get technical indicators
+			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                        // Get IC Score for a ticker
+			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory)         // Get IC Score history
+			stocks.POST("/:ticker/ic-score/ai-analysis", handlers.GetICScoreAIAnalysis) // Get AI analysis for IC Score
+			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)             // Get financial metrics from SEC filings (legacy)
+			stocks.GET("/:ticker/metrics", handlers.GetComprehensiveFinancialMetrics)   // Get comprehensive financial metrics (FMP)
+			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                        // Get risk metrics (Beta, Alpha, Sharpe)
+			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)           // Get technical indicators
 
 			// Financial Statements endpoints (SEC EDGAR data)
 			financialsHandler := handlers.NewFinancialsHandler()

@@ -311,16 +311,16 @@ type FMPPriceTargetConsensus struct {
 
 // FMPPriceTargetSummary represents the response from FMP price-target-summary endpoint
 type FMPPriceTargetSummary struct {
-	Symbol                   string   `json:"symbol"`
-	LastMonth                *float64 `json:"lastMonth"`
-	LastMonthAvgPriceTarget  *float64 `json:"lastMonthAvgPriceTarget"`
-	LastQuarter              *float64 `json:"lastQuarter"`
+	Symbol                    string   `json:"symbol"`
+	LastMonth                 *float64 `json:"lastMonth"`
+	LastMonthAvgPriceTarget   *float64 `json:"lastMonthAvgPriceTarget"`
+	LastQuarter               *float64 `json:"lastQuarter"`
 	LastQuarterAvgPriceTarget *float64 `json:"lastQuarterAvgPriceTarget"`
-	LastYear                 *float64 `json:"lastYear"`
-	LastYearAvgPriceTarget   *float64 `json:"lastYearAvgPriceTarget"`
-	AllTime                  *float64 `json:"allTime"`
-	AllTimeAvgPriceTarget    *float64 `json:"allTimeAvgPriceTarget"`
-	Publishers               string   `json:"publishers"`
+	LastYear                  *float64 `json:"lastYear"`
+	LastYearAvgPriceTarget    *float64 `json:"lastYearAvgPriceTarget"`
+	AllTime                   *float64 `json:"allTime"`
+	AllTimeAvgPriceTarget     *float64 `json:"allTimeAvgPriceTarget"`
+	Publishers                string   `json:"publishers"`
 }
 
 // ============================================================================

@@ -50,8 +50,7 @@ type MetricCategory =
   | 'efficiency'
   | 'growth'
   | 'dividends'
-  | 'quality'
-  | 'analyst';
+  | 'quality';
 
 const categoryTabs: { id: MetricCategory; label: string }[] = [
   { id: 'valuation', label: 'Valuation' },
@@ -61,7 +60,6 @@ const categoryTabs: { id: MetricCategory; label: string }[] = [
   { id: 'growth', label: 'Growth' },
   { id: 'dividends', label: 'Dividends' },
   { id: 'quality', label: 'Quality Scores' },
-  { id: 'analyst', label: 'Analyst Ratings' },
 ];
 
 export default function MetricsTab({ symbol }: MetricsTabProps) {
@@ -171,12 +169,6 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
           <QualitySection
             qualityScores={data.data.quality_scores}
             valuation={data.data.valuation}
-          />
-        )}
-        {activeCategory === 'analyst' && (
-          <AnalystRatingsSection
-            analystRatings={data.data.analyst_ratings}
-            currentPrice={data.meta.current_price}
           />
         )}
       </div>

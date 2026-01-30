@@ -1,6 +1,7 @@
 package services
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -180,6 +181,72 @@ func (c *ICScoreClient) GetNews(ticker string, limit int, days int) (*ICScoreNew
 	}
 
 	var result ICScoreNewsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode IC Score API response: %w", err)
+	}
+
+	return &result, nil
+}
+
+// ICScoreAIAnalysisRequest represents the request body for AI analysis
+type ICScoreAIAnalysisRequest struct {
+	Ticker      string  `json:"ticker"`
+	CompanyName *string `json:"company_name,omitempty"`
+	Sector      *string `json:"sector,omitempty"`
+}
+
+// ICScoreAIAnalysisResponse represents the AI analysis response from IC Score service
+type ICScoreAIAnalysisResponse struct {
+	Ticker           string   `json:"ticker"`
+	Analysis         string   `json:"analysis"`
+	KeyStrengths     []string `json:"key_strengths"`
+	KeyConcerns      []string `json:"key_concerns"`
+	InvestmentThesis string   `json:"investment_thesis"`
+	RiskFactors      []string `json:"risk_factors"`
+	GeneratedAt      string   `json:"generated_at"`
+}
+
+// GetAIAnalysis fetches AI-powered analysis of IC Score from the IC Score service
+func (c *ICScoreClient) GetAIAnalysis(ticker string, companyName, sector *string) (*ICScoreAIAnalysisResponse, error) {
+	url := fmt.Sprintf("%s/api/scores/%s/ai-analysis", c.baseURL, ticker)
+
+	reqBody := ICScoreAIAnalysisRequest{
+		Ticker:      ticker,
+		CompanyName: companyName,
+		Sector:      sector,
+	}
+
+	bodyBytes, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request body: %w", err)
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(bodyBytes))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call IC Score API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, fmt.Errorf("AI analysis service is not available")
+	}
+
+	if resp.StatusCode == http.StatusNotFound {
+		return nil, fmt.Errorf("IC Score not found for %s", ticker)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("IC Score API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result ICScoreAIAnalysisResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode IC Score API response: %w", err)
 	}

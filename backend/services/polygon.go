@@ -1325,15 +1325,8 @@ func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice
 		dayData = ticker.PrevDay
 	}
 
-	// Calculate change - use today's open if market is open, otherwise previous close
-	var basePrice float64
-	if useTodayData {
-		// Market is open - compare to today's open
-		basePrice = dayData.Open
-	} else {
-		// Market is closed - compare to previous close
-		basePrice = ticker.PrevDay.Close
-	}
+	// Calculate change - always compare to previous close (standard financial practice)
+	basePrice := ticker.PrevDay.Close
 
 	change := decimal.NewFromFloat(currentPrice - basePrice)
 	changePercent := decimal.Zero
