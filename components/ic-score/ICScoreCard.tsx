@@ -32,6 +32,7 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
   const [error, setError] = useState<string | null>(null);
   const [showFactors, setShowFactors] = useState(false);
   const [showExplainer, setShowExplainer] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     async function fetchICScoreData() {
@@ -79,6 +80,51 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
   }
 
   if (variant === 'compact') {
+    // When expanded, show the full IC Score content
+    if (expanded) {
+      return (
+        <>
+          <div className="bg-ic-surface rounded-lg shadow border border-ic-border overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-ic-border bg-ic-bg-secondary">
+              <h3 className="text-lg font-semibold text-ic-text-primary">IC Score Details</h3>
+              <button
+                onClick={() => setExpanded(false)}
+                className="text-sm text-ic-blue hover:text-blue-700 hover:underline"
+              >
+                ← Back to Summary
+              </button>
+            </div>
+            <div className="p-6 space-y-6">
+              {/* Main Widget */}
+              <div onClick={() => setShowFactors(!showFactors)} className="cursor-pointer">
+                <ICScoreWidget icScore={icScore} showFactors={showFactors} scoreChange={scoreChange} />
+              </div>
+
+              {/* Explainer Link */}
+              <div className="flex justify-center">
+                <ICScoreExplainerButton onClick={() => setShowExplainer(true)} />
+              </div>
+
+              {/* Factor Breakdown - shown when expanded */}
+              {showFactors && (
+                <div className="animate-fadeIn">
+                  <FactorBreakdown icScore={icScore} />
+                </div>
+              )}
+
+              {/* AI Analysis */}
+              <ICScoreAIAnalysis icScore={icScore} />
+            </div>
+          </div>
+
+          {/* Explainer Modal */}
+          {showExplainer && (
+            <ICScoreExplainer icScore={icScore} onClose={() => setShowExplainer(false)} />
+          )}
+        </>
+      );
+    }
+
     return (
       <>
         <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-6">
@@ -90,12 +136,12 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
               </p>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <a
-                href={`/ticker/${ticker}#ic-score`}
+              <button
+                onClick={() => setExpanded(true)}
                 className="text-sm text-ic-blue hover:text-blue-700 hover:underline"
               >
                 View Details →
-              </a>
+              </button>
               <ICScoreExplainerButton onClick={() => setShowExplainer(true)} />
             </div>
           </div>
