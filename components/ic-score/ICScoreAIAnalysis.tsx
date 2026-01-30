@@ -20,7 +20,7 @@ interface ICScoreAIAnalysisProps {
   sector?: string;
 }
 
-const IC_SCORE_API_URL = process.env.NEXT_PUBLIC_IC_SCORE_API_URL || 'http://localhost:8001';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 export default function ICScoreAIAnalysis({ icScore, companyName, sector }: ICScoreAIAnalysisProps) {
   const [analysis, setAnalysis] = useState<AIAnalysis | null>(null);
@@ -33,7 +33,7 @@ export default function ICScoreAIAnalysis({ icScore, companyName, sector }: ICSc
     setError(null);
 
     try {
-      const response = await fetch(`${IC_SCORE_API_URL}/api/scores/${icScore.ticker}/ai-analysis`, {
+      const response = await fetch(`${API_BASE_URL}/stocks/${icScore.ticker}/ic-score/ai-analysis`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

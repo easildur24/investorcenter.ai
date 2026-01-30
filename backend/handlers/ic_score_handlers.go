@@ -1339,3 +1339,58 @@ func GetICScoreHistory(c *gin.Context) {
 		},
 	})
 }
+
+// icScoreClient is a package-level IC Score client instance
+var icScoreClient *services.ICScoreClient
+
+func init() {
+	icScoreClient = services.NewICScoreClient()
+}
+
+// GetICScoreAIAnalysis proxies AI analysis requests to the IC Score service
+// POST /api/v1/stocks/:ticker/ic-score/ai-analysis
+func GetICScoreAIAnalysis(c *gin.Context) {
+	ticker := strings.ToUpper(c.Param("ticker"))
+
+	if ticker == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ticker symbol is required"})
+		return
+	}
+
+	// Parse optional request body
+	var reqBody struct {
+		CompanyName *string `json:"company_name"`
+		Sector      *string `json:"sector"`
+	}
+	c.ShouldBindJSON(&reqBody)
+
+	// Call IC Score service
+	result, err := icScoreClient.GetAIAnalysis(ticker, reqBody.CompanyName, reqBody.Sector)
+	if err != nil {
+		log.Printf("Error fetching AI analysis for %s: %v", ticker, err)
+
+		if strings.Contains(err.Error(), "not available") {
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error":   "AI analysis unavailable",
+				"message": "AI analysis service is currently unavailable",
+			})
+			return
+		}
+
+		if strings.Contains(err.Error(), "not found") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":   "IC Score not found",
+				"message": fmt.Sprintf("No IC Score available for %s", ticker),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch AI analysis",
+			"message": "An error occurred while generating AI analysis",
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, result)
+}
