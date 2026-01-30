@@ -5,6 +5,7 @@ import { getICScore, getICScoreHistory, ICScoreData } from '@/lib/api/ic-score';
 import ICScoreWidget from './ICScoreWidget';
 import FactorBreakdown from './FactorBreakdown';
 import ICScoreExplainer, { ICScoreExplainerButton } from './ICScoreExplainer';
+import ICScoreAIAnalysis from './ICScoreAIAnalysis';
 import { formatRelativeTime } from '@/lib/utils';
 import { ArrowUpIcon, ArrowDownIcon, MinusIcon } from '@heroicons/react/24/solid';
 
@@ -166,6 +167,9 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
             <FactorBreakdown icScore={icScore} />
           </div>
         )}
+
+        {/* AI Analysis */}
+        <ICScoreAIAnalysis icScore={icScore} />
       </div>
 
       {/* Explainer Modal */}
