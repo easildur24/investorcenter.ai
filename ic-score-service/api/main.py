@@ -5,6 +5,7 @@ This service provides REST API endpoints for accessing IC Scores and related dat
 
 import logging
 from datetime import datetime, timedelta, date
+import json
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException, Query, Depends
@@ -1167,6 +1168,306 @@ async def get_ticker_news(
     except Exception as e:
         logger.error(f"Error fetching news for {ticker}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# AI SCORE ANALYSIS ENDPOINTS
+# ============================================================================
+
+import os
+
+try:
+    import google.generativeai as genai
+    GEMINI_AVAILABLE = True
+except ImportError:
+    GEMINI_AVAILABLE = False
+    logger.warning("google-generativeai not installed, AI analysis will be disabled")
+
+
+class AIAnalysisRequest(BaseModel):
+    """Request model for AI analysis."""
+    ticker: str
+    company_name: Optional[str] = None
+    sector: Optional[str] = None
+
+
+class AIAnalysisResponse(BaseModel):
+    """AI-powered IC Score analysis response."""
+    ticker: str
+    analysis: str
+    key_strengths: List[str]
+    key_concerns: List[str]
+    investment_thesis: str
+    risk_factors: List[str]
+    generated_at: datetime
+
+
+# Analysis prompt template
+IC_SCORE_ANALYSIS_PROMPT = """You are a financial analyst providing a concise analysis of a stock's IC Score.
+
+Company: {company_name} ({ticker})
+Sector: {sector}
+
+IC Score Summary:
+- Overall Score: {overall_score}/100 ({rating})
+- Data Completeness: {data_completeness}%
+- Confidence Level: {confidence_level}
+
+Factor Breakdown:
+{factor_breakdown}
+
+Raw Metrics Used:
+{metrics_summary}
+
+Please provide a brief, objective analysis that includes:
+
+1. **Summary** (2-3 sentences): Explain what the overall score means for this stock and why it received this rating.
+
+2. **Key Strengths** (2-4 bullet points): What factors are driving the score positively? Be specific about the metrics.
+
+3. **Key Concerns** (2-4 bullet points): What factors are dragging the score down? Be specific.
+
+4. **Investment Thesis** (2-3 sentences): Based on the data, what type of investor might this stock appeal to?
+
+5. **Risk Factors** (2-3 bullet points): What should investors watch out for?
+
+Important guidelines:
+- Be objective and data-driven
+- Don't use hyperbole or marketing language
+- Acknowledge data limitations if confidence is low
+- Consider sector context (e.g., high P/E is normal for growth tech)
+- This is not investment advice, just analysis of the data
+
+Respond in JSON format:
+{{
+    "summary": "...",
+    "key_strengths": ["...", "..."],
+    "key_concerns": ["...", "..."],
+    "investment_thesis": "...",
+    "risk_factors": ["...", "..."]
+}}"""
+
+
+def format_factor_breakdown(score_data: dict) -> str:
+    """Format factor scores for the prompt."""
+    factors = [
+        ("Value", score_data.get('value_score'), 12),
+        ("Growth", score_data.get('growth_score'), 15),
+        ("Profitability", score_data.get('profitability_score'), 12),
+        ("Financial Health", score_data.get('financial_health_score'), 10),
+        ("Momentum", score_data.get('momentum_score'), 8),
+        ("Analyst Consensus", score_data.get('analyst_consensus_score'), 10),
+        ("Insider Activity", score_data.get('insider_activity_score'), 8),
+        ("Institutional", score_data.get('institutional_score'), 10),
+        ("News Sentiment", score_data.get('news_sentiment_score'), 7),
+        ("Technical", score_data.get('technical_score'), 8),
+    ]
+
+    lines = []
+    for name, score, weight in factors:
+        if score is not None:
+            grade = get_grade_for_score(score)
+            lines.append(f"- {name}: {score:.0f}/100 ({grade}) - Weight: {weight}%")
+        else:
+            lines.append(f"- {name}: N/A - Weight: {weight}%")
+
+    return "\n".join(lines)
+
+
+def get_grade_for_score(score: float) -> str:
+    """Get letter grade for a score."""
+    if score >= 80:
+        return "Strong Buy"
+    elif score >= 65:
+        return "Buy"
+    elif score >= 50:
+        return "Hold"
+    elif score >= 35:
+        return "Underperform"
+    return "Sell"
+
+
+def format_metrics_summary(metadata: dict) -> str:
+    """Format calculation metadata for the prompt."""
+    if not metadata or 'factors' not in metadata:
+        return "Detailed metrics not available."
+
+    lines = []
+    factors = metadata.get('factors', {})
+
+    # Value metrics
+    if 'value' in factors:
+        v = factors['value']
+        if v.get('pe_ratio'):
+            lines.append(f"- P/E Ratio: {v['pe_ratio']:.1f}")
+        if v.get('pb_ratio'):
+            lines.append(f"- P/B Ratio: {v['pb_ratio']:.2f}")
+        if v.get('ps_ratio'):
+            lines.append(f"- P/S Ratio: {v['ps_ratio']:.2f}")
+
+    # Growth metrics
+    if 'growth' in factors:
+        g = factors['growth']
+        if g.get('revenue_growth') is not None:
+            lines.append(f"- Revenue Growth (YoY): {g['revenue_growth']:.1f}%")
+        if g.get('eps_growth') is not None:
+            lines.append(f"- EPS Growth (YoY): {g['eps_growth']:.1f}%")
+
+    # Profitability metrics
+    if 'profitability' in factors:
+        p = factors['profitability']
+        if p.get('net_margin') is not None:
+            lines.append(f"- Net Margin: {p['net_margin']:.1f}%")
+        if p.get('roe') is not None:
+            lines.append(f"- ROE: {p['roe']:.1f}%")
+        if p.get('roa') is not None:
+            lines.append(f"- ROA: {p['roa']:.1f}%")
+
+    # Financial health
+    if 'financial_health' in factors:
+        fh = factors['financial_health']
+        if fh.get('debt_to_equity') is not None:
+            lines.append(f"- Debt/Equity: {fh['debt_to_equity']:.2f}")
+        if fh.get('current_ratio') is not None:
+            lines.append(f"- Current Ratio: {fh['current_ratio']:.2f}")
+
+    # Momentum
+    if 'momentum' in factors:
+        m = factors['momentum']
+        if m.get('return_1m') is not None:
+            lines.append(f"- 1M Return: {m['return_1m']:.1f}%")
+        if m.get('return_12m') is not None:
+            lines.append(f"- 12M Return: {m['return_12m']:.1f}%")
+
+    # Analyst consensus
+    if 'analyst_consensus' in factors:
+        ac = factors['analyst_consensus']
+        if ac.get('buy_count') is not None:
+            total = (ac.get('buy_count', 0) + ac.get('hold_count', 0) + ac.get('sell_count', 0))
+            if total > 0:
+                lines.append(f"- Analyst Ratings: {ac.get('buy_count', 0)} Buy, {ac.get('hold_count', 0)} Hold, {ac.get('sell_count', 0)} Sell")
+        if ac.get('upside_pct') is not None:
+            lines.append(f"- Price Target Upside: {ac['upside_pct']:.1f}%")
+
+    return "\n".join(lines) if lines else "Detailed metrics not available."
+
+
+@app.post("/api/scores/{ticker}/ai-analysis", response_model=AIAnalysisResponse)
+async def get_ai_analysis(
+    ticker: str,
+    request: AIAnalysisRequest = None,
+    session: AsyncSession = Depends(get_session)
+):
+    """Get AI-powered analysis of an IC Score.
+
+    Uses Gemini to provide contextual, intelligent analysis of the score
+    considering sector context, metric relationships, and investment implications.
+
+    Args:
+        ticker: Stock ticker symbol.
+        request: Optional request body with company name and sector.
+
+    Returns:
+        AI-generated analysis with strengths, concerns, thesis, and risks.
+
+    Raises:
+        HTTPException: If ticker not found or AI service unavailable.
+    """
+    if not GEMINI_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="AI analysis service is not available"
+        )
+
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="AI analysis service is not configured"
+        )
+
+    ticker = ticker.upper()
+
+    # Get IC Score data with calculation metadata
+    query = text("""
+        SELECT
+            s.*,
+            t.name as company_name,
+            t.sector
+        FROM ic_scores s
+        LEFT JOIN tickers t ON UPPER(t.symbol) = s.ticker
+        WHERE s.ticker = :ticker
+        ORDER BY s.date DESC
+        LIMIT 1
+    """)
+
+    result = await session.execute(query, {"ticker": ticker})
+    row = result.fetchone()
+
+    if not row:
+        raise HTTPException(status_code=404, detail=f"IC Score not found for ticker {ticker}")
+
+    score_data = row._asdict()
+
+    # Get company info from request or database
+    company_name = (request.company_name if request else None) or score_data.get('company_name') or ticker
+    sector = (request.sector if request else None) or score_data.get('sector') or "Unknown"
+
+    # Format the prompt
+    factor_breakdown = format_factor_breakdown(score_data)
+    metrics_summary = format_metrics_summary(score_data.get('calculation_metadata'))
+
+    prompt = IC_SCORE_ANALYSIS_PROMPT.format(
+        company_name=company_name,
+        ticker=ticker,
+        sector=sector,
+        overall_score=score_data.get('overall_score', 0),
+        rating=score_data.get('rating', 'N/A'),
+        data_completeness=score_data.get('data_completeness', 0),
+        confidence_level=score_data.get('confidence_level', 'Low'),
+        factor_breakdown=factor_breakdown,
+        metrics_summary=metrics_summary
+    )
+
+    try:
+        # Configure and call Gemini
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel("gemini-2.0-flash-lite")
+
+        response = model.generate_content(
+            prompt,
+            generation_config=genai.GenerationConfig(
+                temperature=0.3,  # Lower temperature for more consistent output
+                max_output_tokens=1024,
+            )
+        )
+
+        # Parse JSON response
+        response_text = response.text.strip()
+
+        # Handle markdown code blocks if present
+        if response_text.startswith("```"):
+            lines = response_text.split("\n")
+            response_text = "\n".join(lines[1:-1])
+
+        analysis_data = json.loads(response_text)
+
+        return AIAnalysisResponse(
+            ticker=ticker,
+            analysis=analysis_data.get('summary', ''),
+            key_strengths=analysis_data.get('key_strengths', []),
+            key_concerns=analysis_data.get('key_concerns', []),
+            investment_thesis=analysis_data.get('investment_thesis', ''),
+            risk_factors=analysis_data.get('risk_factors', []),
+            generated_at=datetime.now()
+        )
+
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse AI response for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to parse AI analysis response")
+    except Exception as e:
+        logger.error(f"AI analysis failed for {ticker}: {e}")
+        raise HTTPException(status_code=500, detail=f"AI analysis failed: {str(e)}")
 
 
 # Startup event
