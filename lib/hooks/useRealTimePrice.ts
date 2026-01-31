@@ -44,7 +44,7 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
   const [error, setError] = useState<string | null>(null);
   const [isMarketOpen, setIsMarketOpen] = useState(isMarketCurrentlyOpen);
   const [isCrypto, setIsCrypto] = useState(false);
-  const [updateInterval, setUpdateInterval] = useState(5000);
+  const [updateInterval, setUpdateInterval] = useState(60000);
   const intervalRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
           const data = await cryptoResponse.json();
           setIsCrypto(true);
           setIsMarketOpen(true); // Crypto markets are always open
-          setUpdateInterval(data.update_interval || 5000);
+          setUpdateInterval(data.update_interval || 60000);
 
           setPriceData({
             price: String(data.price),
@@ -83,7 +83,7 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
         const result = await response.json();
         setIsCrypto(false);
         setIsMarketOpen(result.market?.isOpen ?? false);
-        setUpdateInterval(result.market?.updateInterval || 15000);
+        setUpdateInterval(result.market?.updateInterval || 60000);
 
         setPriceData({
           price: result.data.price,
