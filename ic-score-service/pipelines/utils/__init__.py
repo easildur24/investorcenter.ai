@@ -23,6 +23,35 @@ from .dividend_quality import (
     DividendQualityCalculator,
     DividendQualityResult,
 )
+from .score_stabilizer import (
+    ScoreStabilizer,
+    StabilizationResult,
+    ScoreEvent,
+    EventType,
+)
+from .peer_comparison import (
+    PeerComparisonService,
+    PeerComparisonResult,
+    PeerStock,
+)
+from .catalyst_detector import (
+    CatalystService,
+    Catalyst,
+    CatalystDetector,
+    EarningsDetector,
+    AnalystRatingDetector,
+    InsiderTradeDetector,
+    TechnicalBreakoutDetector,
+    DividendDateDetector,
+    FiftyTwoWeekDetector,
+)
+from .score_explainer import (
+    ScoreExplainer,
+    ScoreChangeExplanation,
+    ScoreChangeReason,
+    GranularConfidence,
+    FactorDataStatus,
+)
 
 __all__ = [
     # Sector percentiles
@@ -41,4 +70,29 @@ __all__ = [
     'HistoricalValuationResult',
     'DividendQualityCalculator',
     'DividendQualityResult',
+    # Phase 3: Score stability
+    'ScoreStabilizer',
+    'StabilizationResult',
+    'ScoreEvent',
+    'EventType',
+    # Phase 3: Peer comparison
+    'PeerComparisonService',
+    'PeerComparisonResult',
+    'PeerStock',
+    # Phase 3: Catalysts
+    'CatalystService',
+    'Catalyst',
+    'CatalystDetector',
+    'EarningsDetector',
+    'AnalystRatingDetector',
+    'InsiderTradeDetector',
+    'TechnicalBreakoutDetector',
+    'DividendDateDetector',
+    'FiftyTwoWeekDetector',
+    # Phase 3: Explanations & confidence
+    'ScoreExplainer',
+    'ScoreChangeExplanation',
+    'ScoreChangeReason',
+    'GranularConfidence',
+    'FactorDataStatus',
 ]

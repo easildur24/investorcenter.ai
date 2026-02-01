@@ -36,6 +36,11 @@ from pipelines.utils.lifecycle import LifecycleClassifier, LifecycleStage
 from pipelines.utils.earnings_revisions import EarningsRevisionsCalculator
 from pipelines.utils.historical_valuation import HistoricalValuationCalculator
 from pipelines.utils.dividend_quality import DividendQualityCalculator
+# Phase 3 imports
+from pipelines.utils.score_stabilizer import ScoreStabilizer, StabilizationResult, EventType
+from pipelines.utils.peer_comparison import PeerComparisonService, PeerComparisonResult
+from pipelines.utils.catalyst_detector import CatalystService, Catalyst
+from pipelines.utils.score_explainer import ScoreExplainer, ScoreChangeExplanation
 
 # Setup logging with configurable log directory
 LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
@@ -103,6 +108,12 @@ class ICScoreCalculator:
     USE_HISTORICAL_VALUATION = True
     USE_DIVIDEND_QUALITY = False  # Optional, enable for income mode
 
+    # Phase 3 feature flags
+    USE_SCORE_STABILIZATION = True   # Exponential smoothing to prevent whipsaw
+    USE_PEER_COMPARISON = True       # Similar stock comparison
+    USE_CATALYST_DETECTION = True    # Upcoming event detection
+    USE_SCORE_EXPLANATIONS = True    # Human-readable explanations
+
     # Rating thresholds
     RATING_THRESHOLDS = {
         'Strong Buy': 80,
@@ -168,6 +179,12 @@ class ICScoreCalculator:
         self._historical_valuation_calc: Optional[HistoricalValuationCalculator] = None
         self._dividend_quality_calc: Optional[DividendQualityCalculator] = None
 
+        # Phase 3 components (initialized per-session)
+        self._score_stabilizer: Optional[ScoreStabilizer] = None
+        self._peer_comparison: Optional[PeerComparisonService] = None
+        self._catalyst_detector: Optional[CatalystService] = None
+        self._score_explainer: Optional[ScoreExplainer] = None
+
         # Track progress
         self.processed_count = 0
         self.success_count = 0
@@ -198,6 +215,19 @@ class ICScoreCalculator:
                 session,
                 sector_calculator=self._sector_calculator
             )
+
+        # Initialize Phase 3 components
+        if self.USE_SCORE_STABILIZATION:
+            self._score_stabilizer = ScoreStabilizer(session)
+
+        if self.USE_PEER_COMPARISON:
+            self._peer_comparison = PeerComparisonService(session)
+
+        if self.USE_CATALYST_DETECTION:
+            self._catalyst_detector = CatalystService(session)
+
+        if self.USE_SCORE_EXPLANATIONS:
+            self._score_explainer = ScoreExplainer(session)
 
     async def get_stocks_to_process(
         self,
@@ -1171,11 +1201,40 @@ class ICScoreCalculator:
                     sector, ticker, overall_score
                 )
 
+            # Phase 3: Apply score stabilization
+            raw_score = overall_score
+            previous_score = None
+            smoothing_applied = False
+            stabilization_events = []
+
+            if self._score_stabilizer:
+                # Detect any reset events
+                detected_events = await self._score_stabilizer.detect_events(ticker)
+                stabilization_events = detected_events
+
+                # Get previous score and apply stabilization
+                stabilization_result = await self._score_stabilizer.stabilize(
+                    ticker=ticker,
+                    new_score=overall_score,
+                    events=detected_events
+                )
+
+                overall_score = stabilization_result.final_score
+                previous_score = stabilization_result.previous_score
+                smoothing_applied = stabilization_result.smoothing_applied
+
+                if stabilization_result.previous_score:
+                    logger.debug(
+                        f"{ticker}: Score {stabilization_result.previous_score:.1f} -> {overall_score:.1f} "
+                        f"(raw: {raw_score:.1f}, smoothing: {smoothing_applied})"
+                    )
+
             # Build result with v2.1 enhancements
             result = {
                 'ticker': ticker,
                 'date': date.today(),
                 'overall_score': round(overall_score, 2),
+                'previous_score': round(previous_score, 2) if previous_score else None,
                 'value_score': round(factor_scores.get('value'), 2) if 'value' in factor_scores else None,
                 'growth_score': round(factor_scores.get('growth'), 2) if 'growth' in factor_scores else None,
                 'profitability_score': round(factor_scores.get('profitability'), 2) if 'profitability' in factor_scores else None,
@@ -1205,8 +1264,93 @@ class ICScoreCalculator:
                     'scoring_version': '2.1' if self.use_v2_scoring else '2.0',
                     'income_mode': self.income_mode,
                     'calculated_at': datetime.now().isoformat(),
+                    # Phase 3: Stabilization metadata
+                    'raw_score': round(raw_score, 2),
+                    'smoothing_applied': smoothing_applied,
+                    'stabilization_events': [
+                        {'type': e.event_type.value, 'date': str(e.event_date), 'description': e.description}
+                        for e in stabilization_events
+                    ] if stabilization_events else [],
                 }
             }
+
+            # Phase 3: Add peer comparison data
+            if self._peer_comparison:
+                try:
+                    peer_result = await self._peer_comparison.get_peers(ticker, limit=5)
+                    if peer_result:
+                        result['peers'] = [
+                            {
+                                'ticker': p.ticker,
+                                'company_name': p.company_name,
+                                'ic_score': p.ic_score,
+                                'similarity_score': round(p.similarity_score, 3),
+                            }
+                            for p in peer_result.peers
+                        ]
+                        result['peer_comparison'] = {
+                            'avg_peer_score': round(peer_result.avg_peer_score, 2) if peer_result.avg_peer_score else None,
+                            'sector_rank': peer_result.sector_rank,
+                            'sector_total': peer_result.sector_total,
+                            'vs_peers_delta': round(overall_score - peer_result.avg_peer_score, 2) if peer_result.avg_peer_score else None,
+                        }
+                except Exception as e:
+                    logger.debug(f"{ticker}: Peer comparison error: {e}")
+
+            # Phase 3: Add catalyst data
+            if self._catalyst_detector:
+                try:
+                    catalysts = await self._catalyst_detector.get_catalysts(ticker, limit=5)
+                    if catalysts:
+                        result['catalysts'] = [
+                            {
+                                'event_type': c.event_type,
+                                'title': c.title,
+                                'event_date': str(c.event_date) if c.event_date else None,
+                                'icon': c.icon,
+                                'impact': c.impact,
+                                'confidence': c.confidence,
+                                'days_until': c.days_until,
+                            }
+                            for c in catalysts
+                        ]
+                except Exception as e:
+                    logger.debug(f"{ticker}: Catalyst detection error: {e}")
+
+            # Phase 3: Generate score explanation
+            if self._score_explainer:
+                try:
+                    current_scores = {
+                        'overall_score': overall_score,
+                        **{f'{k}_score': v for k, v in factor_scores.items()}
+                    }
+                    explanation = await self._score_explainer.explain_change(
+                        ticker=ticker,
+                        current_scores=current_scores
+                    )
+                    if explanation:
+                        result['explanation'] = {
+                            'summary': explanation.summary,
+                            'delta': explanation.delta,
+                            'reasons': [
+                                {
+                                    'factor': r.factor,
+                                    'delta': r.delta,
+                                    'contribution': r.contribution,
+                                    'explanation': r.explanation,
+                                }
+                                for r in explanation.reasons
+                            ],
+                            'confidence': {
+                                'level': explanation.confidence.level,
+                                'percentage': explanation.confidence.percentage,
+                                'warnings': explanation.confidence.warnings,
+                            }
+                        }
+                        # Update confidence level from granular confidence
+                        result['confidence_level'] = explanation.confidence.level
+                except Exception as e:
+                    logger.debug(f"{ticker}: Score explanation error: {e}")
 
             return result
 
