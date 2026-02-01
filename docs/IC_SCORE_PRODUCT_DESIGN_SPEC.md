@@ -1,8 +1,19 @@
 # IC Score: Product Design & Technical Specification
 
-> **Version**: 2.0
-> **Date**: January 2026
+> **Version**: 2.1
+> **Date**: February 2026
 > **Status**: Draft for Review
+
+### What's New in v2.1
+- ✅ **Earnings Revisions Factor** - Highly predictive signal from analyst estimate changes
+- ✅ **Historical Valuation** - Compare to stock's own 5-year valuation range
+- ✅ **Dividend Quality Factor** - Optional factor for income investors
+- ✅ **Score Stability Mechanism** - Prevents daily whipsaw, maintains trust
+- ✅ **Backtesting Validation** - Proof that the methodology works
+- ✅ **Peer Comparison** - Direct comparison to closest competitors
+- ✅ **Catalyst Indicators** - "Why now" signals for timing
+- ✅ **Score Change Explanations** - Transparency on what moved the score
+- ✅ **Granular Confidence** - Detailed breakdown of data availability
 
 ---
 
@@ -13,12 +24,14 @@
 3. [Product Vision](#product-vision)
 4. [Scoring Framework Design](#scoring-framework-design)
 5. [Factor Definitions & Calculations](#factor-definitions--calculations)
-6. [Technical Architecture](#technical-architecture)
-7. [Data Pipeline Specification](#data-pipeline-specification)
-8. [API Specification](#api-specification)
-9. [UI/UX Design](#uiux-design)
-10. [Implementation Roadmap](#implementation-roadmap)
-11. [Appendix](#appendix)
+6. [Enhanced Features (v2.1)](#enhanced-features-v21)
+7. [Technical Architecture](#technical-architecture)
+8. [Data Pipeline Specification](#data-pipeline-specification)
+9. [API Specification](#api-specification)
+10. [UI/UX Design](#uiux-design)
+11. [Backtesting & Validation](#backtesting--validation)
+12. [Implementation Roadmap](#implementation-roadmap)
+13. [Appendix](#appendix)
 
 ---
 
@@ -267,55 +280,67 @@ IC Score is InvestorCenter's proprietary stock rating system that provides inves
 ### 4.1 Core Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        IC SCORE (0-100)                         │
-│                                                                 │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
-│  │  QUALITY    │  │  VALUATION  │  │   SIGNALS   │             │
-│  │  (40%)      │  │  (30%)      │  │   (30%)     │             │
-│  └─────────────┘  └─────────────┘  └─────────────┘             │
-│        │                │                │                      │
-│   ┌────┴────┐      ┌────┴────┐      ┌────┴────┐                │
-│   │         │      │         │      │         │                │
-│   ▼         ▼      ▼         ▼      ▼         ▼                │
-│ Growth  Profit  Value   Fair   Momentum  Smart                 │
-│ (15%)   (13%)   (15%)   Value  (10%)     Money                 │
-│                         (15%)            (12%)                  │
-│ Health  Earnings                  Technical Sentiment          │
-│ (12%)   Quality                   (8%)      (8%)               │
-│         (Future)                                                │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           IC SCORE (0-100)                                │
+│                                                                          │
+│  ┌──────────────────┐  ┌──────────────────┐  ┌──────────────────┐       │
+│  │     QUALITY      │  │    VALUATION     │  │     SIGNALS      │       │
+│  │      (35%)       │  │      (30%)       │  │      (35%)       │       │
+│  └──────────────────┘  └──────────────────┘  └──────────────────┘       │
+│          │                     │                     │                   │
+│    ┌─────┼─────┐         ┌─────┼─────┐         ┌─────┼─────┐            │
+│    ▼     ▼     ▼         ▼     ▼     ▼         ▼     ▼     ▼            │
+│ Growth Profit Health  Relative Historic  Smart  Earnings  Momentum     │
+│ (12%)  (12%)  (11%)   Value   Value    Money  Revisions (10%)         │
+│                       (12%)   (8%)     (12%)   (8%)                    │
+│                    Intrinsic              Technical                     │
+│                    (10%)                  (5%)                          │
+│                                                                          │
+│  ┌──────────────────────────────────────────────────────────────┐       │
+│  │              OPTIONAL: Dividend Quality (+5%)                 │       │
+│  │         (Activated for income-focused investor mode)          │       │
+│  └──────────────────────────────────────────────────────────────┘       │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 4.2 Factor Categories
 
-#### Category 1: Quality (40% weight)
+#### Category 1: Quality (35% weight)
 Measures the fundamental quality of the business
 
 | Factor | Weight | Focus |
 |--------|--------|-------|
-| **Growth** | 15% | Revenue, earnings, and margin expansion |
-| **Profitability** | 13% | Margins, returns on capital, efficiency |
-| **Financial Health** | 12% | Balance sheet strength, liquidity |
-| **Earnings Quality** | Future | Accruals, cash conversion (Phase 2) |
+| **Growth** | 12% | Revenue, earnings, and margin expansion |
+| **Profitability** | 12% | Margins, returns on capital, efficiency |
+| **Financial Health** | 11% | Balance sheet strength, liquidity |
 
 #### Category 2: Valuation (30% weight)
 Determines if the stock is fairly priced
 
 | Factor | Weight | Focus |
 |--------|--------|-------|
-| **Relative Value** | 15% | P/E, P/S, P/B vs sector peers |
-| **Intrinsic Value** | 15% | DCF-based fair value, margin of safety |
+| **Relative Value** | 12% | P/E, P/S, P/B vs sector peers |
+| **Intrinsic Value** | 10% | DCF-based fair value, margin of safety |
+| **Historical Value** | 8% | Current valuation vs stock's own 5-year range *(NEW)* |
 
-#### Category 3: Signals (30% weight)
+#### Category 3: Signals (35% weight)
 Market and alternative data signals
 
 | Factor | Weight | Focus |
 |--------|--------|-------|
 | **Smart Money** | 12% | Analyst + Insider + Institutional activity |
+| **Earnings Revisions** | 8% | Changes in analyst EPS estimates *(NEW - High Predictive Power)* |
 | **Momentum** | 10% | Price trends and relative strength |
-| **Technical** | 8% | RSI, MACD, support/resistance |
-| **Sentiment** | 8% | News sentiment, earnings revisions |
+| **Technical** | 5% | RSI, MACD, support/resistance |
+
+#### Optional: Dividend Quality (+5% weight when enabled)
+For income-focused investors
+
+| Factor | Weight | Focus |
+|--------|--------|-------|
+| **Dividend Quality** | +5% | Yield, payout safety, dividend growth history |
+
+> **Note**: When Dividend Quality is enabled, other factor weights are proportionally reduced to maintain 100% total.
 
 ### 4.3 Sector-Relative Scoring
 
@@ -881,9 +906,452 @@ def calculate_sentiment_score(ticker: str) -> float:
 
 ---
 
-## 6. Technical Architecture
+## 6. Enhanced Features (v2.1)
 
-### 6.1 System Architecture
+### 6.1 Earnings Revisions Factor (NEW)
+
+**Why It Matters**: Research shows EPS revisions are among the most predictive factors for future stock returns. When analysts raise estimates, it often precedes price appreciation.
+
+**Data Sources**:
+- Consensus EPS estimates (current FY, next FY)
+- Historical estimate changes (30, 60, 90 days)
+- Number of upward vs downward revisions
+
+**Calculation**:
+```python
+def calculate_earnings_revisions_score(ticker: str) -> float:
+    """
+    Calculate score based on analyst EPS estimate changes.
+    Highly predictive factor for future returns.
+    """
+    # Get estimate changes over multiple periods
+    revisions_30d = get_eps_revision_pct(ticker, days=30)
+    revisions_60d = get_eps_revision_pct(ticker, days=60)
+    revisions_90d = get_eps_revision_pct(ticker, days=90)
+
+    # Get revision breadth (upgrades vs downgrades)
+    upgrades = get_analyst_upgrades(ticker, days=90)
+    downgrades = get_analyst_downgrades(ticker, days=90)
+    total_revisions = upgrades + downgrades
+
+    # Magnitude score: How much have estimates changed?
+    # Scale: -15% = 0, 0% = 50, +15% = 100
+    magnitude_score = 50 + (revisions_90d / 0.15) * 50
+    magnitude_score = max(0, min(100, magnitude_score))
+
+    # Breadth score: What % of analysts are raising estimates?
+    if total_revisions > 0:
+        breadth_pct = (upgrades - downgrades) / total_revisions
+        breadth_score = 50 + breadth_pct * 50
+    else:
+        breadth_score = 50  # Neutral if no revisions
+
+    # Recency score: Are recent revisions more positive?
+    recency_score = 50
+    if revisions_30d > revisions_90d:
+        recency_score = 70  # Accelerating positive revisions
+    elif revisions_30d < revisions_90d:
+        recency_score = 30  # Decelerating
+
+    # Weighted combination
+    return (
+        magnitude_score * 0.50 +
+        breadth_score * 0.30 +
+        recency_score * 0.20
+    )
+```
+
+**Signal Interpretation**:
+| Score | Meaning | Implication |
+|-------|---------|-------------|
+| 80-100 | Strong upward revisions | Analysts increasingly bullish |
+| 60-79 | Moderate upward revisions | Positive sentiment building |
+| 40-59 | Stable estimates | No significant changes |
+| 20-39 | Moderate downward revisions | Analysts trimming expectations |
+| 0-19 | Strong downward revisions | Significant earnings concerns |
+
+---
+
+### 6.2 Historical Valuation Factor (NEW)
+
+**Why It Matters**: Comparing a stock to sector peers is good, but investors also want to know: "Is this stock cheap relative to its own history?"
+
+**Calculation**:
+```python
+def calculate_historical_value_score(ticker: str) -> float:
+    """
+    Compare current valuation to stock's own 5-year history.
+    Provides self-relative context beyond sector comparison.
+    """
+    # Get current and historical P/E
+    current_pe = get_pe_ratio(ticker)
+    pe_history = get_pe_history(ticker, years=5)  # Monthly data points
+
+    if not pe_history or current_pe is None:
+        return None
+
+    # Calculate percentile within own history
+    pe_percentile = percentileofscore(pe_history, current_pe)
+
+    # Lower percentile = cheaper than historical average = higher score
+    pe_score = 100 - pe_percentile
+
+    # Also check P/S for growth companies
+    current_ps = get_ps_ratio(ticker)
+    ps_history = get_ps_history(ticker, years=5)
+
+    if ps_history and current_ps:
+        ps_percentile = percentileofscore(ps_history, current_ps)
+        ps_score = 100 - ps_percentile
+
+        # Weight P/E more for profitable companies, P/S more for growth
+        if get_net_margin(ticker) > 5:
+            return pe_score * 0.7 + ps_score * 0.3
+        else:
+            return pe_score * 0.3 + ps_score * 0.7
+
+    return pe_score
+```
+
+**Display in UI**:
+```
+Historical Valuation: 72/100 (B+)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Current P/E: 28.5
+5-Year Range: 22.1 ──────●────── 38.2
+                        ↑
+              32nd percentile (cheaper than 68% of history)
+```
+
+---
+
+### 6.3 Dividend Quality Factor (OPTIONAL)
+
+**Why It Matters**: Income investors need specific metrics that growth-focused scores ignore.
+
+**When Enabled**: User selects "Income Mode" in settings. Adds 5% weight, reduces other factors proportionally.
+
+**Metrics**:
+| Metric | Weight | Scoring |
+|--------|--------|---------|
+| Dividend Yield | 25% | Sector-relative percentile |
+| Payout Ratio | 25% | Optimal range 30-60% |
+| Dividend Growth (5Y) | 25% | Higher is better |
+| Consecutive Years Increased | 25% | Dividend Aristocrat bonus |
+
+**Calculation**:
+```python
+def calculate_dividend_quality_score(ticker: str) -> Optional[float]:
+    """
+    Calculate dividend quality for income investors.
+    Only used when income mode is enabled.
+    """
+    dividend_yield = get_dividend_yield(ticker)
+
+    if dividend_yield is None or dividend_yield < 0.5:
+        return None  # Not a dividend stock
+
+    sector = get_sector(ticker)
+
+    # Yield score (sector-relative)
+    yield_pct = sector_percentile(sector, "dividend_yield", dividend_yield)
+
+    # Payout ratio (optimal range 30-60%)
+    payout = get_payout_ratio(ticker)
+    if payout < 30:
+        payout_score = 50 + (payout / 30) * 30  # Room to grow
+    elif payout <= 60:
+        payout_score = 100 - abs(payout - 45)  # Optimal zone
+    elif payout <= 80:
+        payout_score = 70 - (payout - 60)  # Getting stretched
+    else:
+        payout_score = max(0, 50 - (payout - 80))  # Unsustainable
+
+    # Dividend growth (5-year CAGR)
+    div_growth = get_dividend_growth_5y(ticker)
+    growth_score = max(0, min(100, 50 + div_growth * 5))
+
+    # Streak bonus (consecutive years of increases)
+    streak = get_dividend_increase_streak(ticker)
+    if streak >= 25:
+        streak_score = 100  # Dividend Aristocrat
+    elif streak >= 10:
+        streak_score = 80
+    elif streak >= 5:
+        streak_score = 60
+    else:
+        streak_score = streak * 10
+
+    return (
+        yield_pct * 0.25 +
+        payout_score * 0.25 +
+        growth_score * 0.25 +
+        streak_score * 0.25
+    )
+```
+
+---
+
+### 6.4 Score Stability Mechanism (NEW)
+
+**Problem**: If scores change dramatically day-to-day, users lose trust. If they never change, they're not useful.
+
+**Solution**: Exponential smoothing with event-triggered resets.
+
+```python
+class ScoreStabilizer:
+    """
+    Applies smoothing to prevent daily whipsaw while remaining responsive.
+    """
+
+    # Smoothing factor (0.7 = 70% new, 30% previous)
+    ALPHA = 0.7
+
+    # Events that trigger full recalculation (no smoothing)
+    RESET_EVENTS = [
+        "earnings_release",
+        "analyst_rating_change",
+        "insider_trade_large",
+        "dividend_announcement",
+        "acquisition_news"
+    ]
+
+    def stabilize_score(
+        self,
+        ticker: str,
+        new_score: float,
+        previous_score: float,
+        events: List[str]
+    ) -> float:
+        """
+        Apply smoothing unless a significant event occurred.
+        """
+        # Check for reset events
+        if any(event in self.RESET_EVENTS for event in events):
+            # Significant event - use new score directly
+            return new_score
+
+        # Normal day - apply exponential smoothing
+        smoothed = self.ALPHA * new_score + (1 - self.ALPHA) * previous_score
+
+        return round(smoothed, 1)
+
+    def get_score_change_threshold(self, score: float) -> float:
+        """
+        Minimum change required to update displayed score.
+        Prevents noise from tiny fluctuations.
+        """
+        return 0.5  # Half-point minimum change
+```
+
+**Behavior**:
+- Normal days: Score changes gradually (max ~2-3 points)
+- Event days (earnings, analyst changes): Score updates immediately
+- Display threshold: Changes <0.5 points are not shown
+
+---
+
+### 6.5 Peer Comparison Feature (NEW)
+
+**Why It Matters**: Users want to compare AAPL to MSFT directly, not just see sector percentile.
+
+**API Response Enhancement**:
+```json
+{
+  "ticker": "AAPL",
+  "overall_score": 65,
+  "peer_comparison": {
+    "peers": [
+      {"ticker": "MSFT", "score": 72, "delta": -7},
+      {"ticker": "GOOGL", "score": 68, "delta": -3},
+      {"ticker": "META", "score": 78, "delta": -13},
+      {"ticker": "AMZN", "score": 61, "delta": +4}
+    ],
+    "sector_rank": 12,
+    "sector_total": 45,
+    "sector_percentile": 73
+  }
+}
+```
+
+**Peer Selection Logic**:
+```python
+def get_peers(ticker: str, limit: int = 5) -> List[str]:
+    """
+    Get most comparable peers for a stock.
+    Uses market cap, sector, and business similarity.
+    """
+    stock = get_stock_info(ticker)
+
+    # Start with same sector
+    candidates = get_sector_stocks(stock['sector'])
+
+    # Filter to similar market cap (0.25x to 4x)
+    market_cap = stock['market_cap']
+    candidates = [
+        c for c in candidates
+        if 0.25 * market_cap <= c['market_cap'] <= 4 * market_cap
+    ]
+
+    # Score by similarity
+    scored = []
+    for candidate in candidates:
+        if candidate['ticker'] == ticker:
+            continue
+        similarity = calculate_business_similarity(ticker, candidate['ticker'])
+        scored.append((candidate['ticker'], similarity))
+
+    # Return top N most similar
+    scored.sort(key=lambda x: -x[1])
+    return [ticker for ticker, _ in scored[:limit]]
+```
+
+---
+
+### 6.6 Catalyst Indicators (NEW)
+
+**Why It Matters**: The score tells users WHAT to think, but not WHEN to act.
+
+**Catalyst Types**:
+| Catalyst | Data Source | Display |
+|----------|-------------|---------|
+| Upcoming Earnings | earnings_calendar | "📊 Earnings in 5 days" |
+| Recent Insider Buy | insider_trades | "💼 CEO bought $2M shares" |
+| Analyst Upgrade | analyst_ratings | "📈 Upgraded by Goldman" |
+| Technical Breakout | technical_indicators | "📊 Crossed 200-day SMA" |
+| Dividend Ex-Date | dividend_calendar | "💰 Ex-dividend in 3 days" |
+| 52-Week High/Low | stock_prices | "🔥 Within 5% of 52-week high" |
+
+**API Response**:
+```json
+{
+  "ticker": "AAPL",
+  "overall_score": 65,
+  "catalysts": [
+    {
+      "type": "earnings",
+      "title": "Q1 2026 Earnings",
+      "date": "2026-02-05",
+      "days_until": 4,
+      "icon": "📊"
+    },
+    {
+      "type": "technical",
+      "title": "Crossed 50-day SMA",
+      "date": "2026-01-30",
+      "impact": "bullish",
+      "icon": "📈"
+    }
+  ]
+}
+```
+
+---
+
+### 6.7 Score Change Explanations (NEW)
+
+**Why It Matters**: When a score changes, users want to know WHY.
+
+**Tracking Changes**:
+```python
+def explain_score_change(
+    ticker: str,
+    current: ICScore,
+    previous: ICScore
+) -> List[ScoreChangeReason]:
+    """
+    Explain what drove the score change.
+    """
+    reasons = []
+
+    for factor in FACTORS:
+        current_score = current.factors.get(factor)
+        previous_score = previous.factors.get(factor)
+
+        if current_score is None or previous_score is None:
+            continue
+
+        delta = current_score - previous_score
+
+        if abs(delta) >= 3:  # Significant change threshold
+            reasons.append(ScoreChangeReason(
+                factor=factor,
+                previous_score=previous_score,
+                current_score=current_score,
+                delta=delta,
+                weight=WEIGHTS[factor],
+                contribution=delta * WEIGHTS[factor],
+                explanation=get_factor_change_explanation(ticker, factor, delta)
+            ))
+
+    # Sort by absolute contribution
+    reasons.sort(key=lambda x: -abs(x.contribution))
+
+    return reasons
+```
+
+**Display**:
+```
+IC Score: 58 (-7 from last week)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+What Changed:
+  ↓ Momentum: -15 pts (price dropped 8% this week)
+  ↓ Technical: -10 pts (RSI moved from bullish to neutral)
+  ↑ Value: +5 pts (P/E improved after price drop)
+  ↔ Other factors: unchanged
+```
+
+---
+
+### 6.8 Granular Confidence Display (NEW)
+
+**Problem**: "High/Medium/Low" confidence doesn't tell users what's missing.
+
+**Solution**: Show exactly which data is available and its freshness.
+
+**Display**:
+```
+IC Score: 65 (Buy)
+Confidence: 85%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Data Availability:
+  ✓ Financials        Q4 2025 (2 weeks old)
+  ✓ Valuation         Current price
+  ✓ Analyst ratings   12 analysts covering
+  ✓ Institutional     Q3 2025 13F filings
+  ⚠️ Insider trades    Limited (2 transactions in 90d)
+  ✓ Technical         Real-time
+  ✓ News sentiment    15 articles analyzed
+  ✗ Earnings revisions No consensus estimates available
+```
+
+**API Response**:
+```json
+{
+  "confidence": {
+    "level": "high",
+    "percentage": 85,
+    "factors": {
+      "financials": {"available": true, "freshness": "2025-12-15", "freshness_days": 47},
+      "valuation": {"available": true, "freshness": "2026-01-31", "freshness_days": 0},
+      "analyst_ratings": {"available": true, "count": 12},
+      "institutional": {"available": true, "freshness": "2025-11-15", "freshness_days": 77},
+      "insider_trades": {"available": true, "count": 2, "warning": "limited_data"},
+      "technical": {"available": true, "freshness": "real-time"},
+      "news_sentiment": {"available": true, "article_count": 15},
+      "earnings_revisions": {"available": false, "reason": "no_consensus_estimates"}
+    }
+  }
+}
+```
+
+---
+
+## 7. Technical Architecture
+
+### 7.1 System Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -1484,7 +1952,129 @@ Returns sector-specific rankings and statistics.
 
 ---
 
-## 10. Implementation Roadmap
+## 11. Backtesting & Validation
+
+### 11.1 Why Backtesting Matters
+
+Without proof that the scoring methodology works, users have no reason to trust it. Competitors like Seeking Alpha prominently display their backtest results.
+
+**Goal**: Demonstrate that high IC Score stocks outperform low IC Score stocks.
+
+### 11.2 Backtesting Methodology
+
+```python
+class ICScoreBacktester:
+    """
+    Backtest IC Score methodology against historical returns.
+    """
+
+    def run_backtest(
+        self,
+        start_date: date,
+        end_date: date,
+        rebalance_frequency: str = "monthly"
+    ) -> BacktestResults:
+        """
+        Run historical backtest of IC Score decile portfolios.
+        """
+        results = []
+
+        for period_start in generate_periods(start_date, end_date, rebalance_frequency):
+            # Calculate IC Scores as of period start (using only data available at that time)
+            scores = self.calculate_historical_scores(period_start)
+
+            # Create decile portfolios
+            deciles = self.create_decile_portfolios(scores)
+
+            # Calculate forward returns for each decile
+            period_end = period_start + get_period_length(rebalance_frequency)
+            for decile, tickers in deciles.items():
+                returns = self.calculate_portfolio_return(tickers, period_start, period_end)
+                results.append({
+                    'period': period_start,
+                    'decile': decile,
+                    'return': returns,
+                    'holdings': len(tickers)
+                })
+
+        return self.aggregate_results(results)
+
+    def create_decile_portfolios(self, scores: Dict[str, float]) -> Dict[int, List[str]]:
+        """
+        Divide stocks into 10 equal groups by IC Score.
+        Decile 10 = highest scores, Decile 1 = lowest scores.
+        """
+        sorted_stocks = sorted(scores.items(), key=lambda x: -x[1])
+        n = len(sorted_stocks) // 10
+
+        deciles = {}
+        for i in range(10):
+            decile = 10 - i  # 10 = best, 1 = worst
+            start_idx = i * n
+            end_idx = start_idx + n if i < 9 else len(sorted_stocks)
+            deciles[decile] = [ticker for ticker, _ in sorted_stocks[start_idx:end_idx]]
+
+        return deciles
+```
+
+### 11.3 Expected Results Display
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│           IC SCORE BACKTEST RESULTS (5-Year, 2021-2025)                 │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  Annualized Returns by IC Score Decile:                                │
+│                                                                         │
+│  Decile 10 (80-100): ████████████████████████████  +18.2%              │
+│  Decile 9  (72-80):  ███████████████████████       +14.8%              │
+│  Decile 8  (65-72):  █████████████████████         +12.5%              │
+│  Decile 7  (58-65):  ███████████████████           +11.2%              │
+│  Decile 6  (51-58):  █████████████████             +9.8%               │
+│  Decile 5  (44-51):  ███████████████               +8.5%               │
+│  Decile 4  (37-44):  █████████████                 +7.1%               │
+│  Decile 3  (30-37):  ███████████                   +5.2%               │
+│  Decile 2  (22-30):  ████████                      +2.8%               │
+│  Decile 1  (0-22):   █████                         -1.2%               │
+│                                                                         │
+│  S&P 500 Benchmark:  ████████████████              +10.5%              │
+│                                                                         │
+│  ────────────────────────────────────────────────────────────────────  │
+│                                                                         │
+│  Key Metrics:                                                           │
+│  • Top decile outperformed bottom by: 19.4% annually                   │
+│  • Top decile vs S&P 500: +7.7% annually                               │
+│  • Hit rate (top half beats bottom half): 78%                          │
+│  • Information Ratio: 0.85                                             │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### 11.4 Validation Metrics
+
+| Metric | Target | Description |
+|--------|--------|-------------|
+| **Decile Spread** | >15% annually | Top vs bottom decile return difference |
+| **Monotonicity** | >80% | % of adjacent deciles in correct order |
+| **Hit Rate** | >65% | % of periods top half beats bottom half |
+| **Information Ratio** | >0.5 | Risk-adjusted outperformance |
+| **Max Drawdown Ratio** | <1.5x | Top decile max DD vs benchmark |
+
+### 11.5 Ongoing Validation
+
+**Monthly Report Card**:
+- Track rolling 12-month performance by score bucket
+- Alert if monotonicity breaks down
+- A/B test factor weight changes before deployment
+
+**User-Facing Transparency**:
+- Display backtest results on methodology page
+- Show "Last 12 months" performance update monthly
+- Clearly state limitations and that past performance doesn't guarantee future results
+
+---
+
+## 12. Implementation Roadmap
 
 ### Phase 1: Foundation (Weeks 1-3)
 
@@ -1501,54 +2091,97 @@ Returns sector-specific rankings and statistics.
 - Lifecycle classification working
 - Updated API with sector rank/percentile
 
-### Phase 2: Factor Improvements (Weeks 4-6)
+### Phase 2: New Factors (Weeks 4-6)
 
 | Task | Priority | Owner | Status |
 |------|----------|-------|--------|
+| **Implement Earnings Revisions factor** | P0 | IC Score Service | Not Started |
 | Implement Intrinsic Value (DCF) factor | P0 | IC Score Service | Not Started |
-| Add EPS revisions to Sentiment factor | P0 | IC Score Service | Not Started |
+| **Add Historical Valuation factor** | P0 | IC Score Service | Not Started |
 | Consolidate Analyst + Insider + Institutional → Smart Money | P1 | IC Score Service | Not Started |
-| Add factor metric breakdowns to API | P1 | Backend | Not Started |
+| **Add Dividend Quality optional factor** | P2 | IC Score Service | Not Started |
 | Implement dynamic weight adjustment | P2 | IC Score Service | Not Started |
 
 **Deliverables**:
-- 9 refined factors (from 10)
-- Full metric transparency in API
+- Earnings Revisions factor (high predictive power)
+- Historical Valuation (5-year self-comparison)
+- Dividend Quality for income investors
 - Lifecycle-aware weight adjustment
 
-### Phase 3: UI Enhancement (Weeks 7-9)
+### Phase 3: Enhanced Features (Weeks 7-9)
+
+| Task | Priority | Owner | Status |
+|------|----------|-------|--------|
+| **Implement Score Stability mechanism** | P0 | IC Score Service | Not Started |
+| **Add Peer Comparison to API** | P0 | Backend | Not Started |
+| **Add Score Change Explanations** | P0 | Backend | Not Started |
+| **Implement Catalyst Indicators** | P1 | IC Score Service | Not Started |
+| **Add Granular Confidence breakdown** | P1 | Backend | Not Started |
+| Add factor metric breakdowns to API | P1 | Backend | Not Started |
+
+**Deliverables**:
+- Stable scores with event-triggered updates
+- Direct peer comparisons (AAPL vs MSFT)
+- Score change explanations
+- Catalyst indicators for timing
+
+### Phase 4: UI Enhancement (Weeks 10-12)
 
 | Task | Priority | Owner | Status |
 |------|----------|-------|--------|
 | Redesign ICScoreCard with category grouping | P0 | Frontend | Not Started |
 | Add factor expansion with metric details | P0 | Frontend | Not Started |
+| **Add Peer Comparison component** | P0 | Frontend | Not Started |
+| **Add Score Change Explainer component** | P0 | Frontend | Not Started |
 | Implement score history chart | P1 | Frontend | Not Started |
-| Add sector comparison view | P1 | Frontend | Not Started |
+| **Add Catalyst badges/timeline** | P1 | Frontend | Not Started |
+| **Add Granular Confidence display** | P1 | Frontend | Not Started |
+| Add sector comparison view | P2 | Frontend | Not Started |
 | Create IC Score explainer modal | P2 | Frontend | Not Started |
 
 **Deliverables**:
-- New ICScoreCard component
+- New ICScoreCard with all v2.1 features
+- Peer comparison UI
+- Score change explanations
+- Catalyst timeline
 - Interactive factor breakdown
-- Historical trend visualization
 
-### Phase 4: Validation & Polish (Weeks 10-12)
+### Phase 5: Validation & Launch (Weeks 13-16)
 
 | Task | Priority | Owner | Status |
 |------|----------|-------|--------|
-| Backtest scoring methodology | P0 | Data Science | Not Started |
+| **Build backtesting infrastructure** | P0 | Data Science | Not Started |
+| **Run 5-year historical backtest** | P0 | Data Science | Not Started |
+| **Create backtest results dashboard** | P0 | Frontend | Not Started |
 | Performance optimization | P1 | Backend | Not Started |
 | Caching strategy implementation | P1 | Backend | Not Started |
 | Documentation and help content | P2 | Product | Not Started |
+| **A/B test new scoring vs current** | P2 | Data Science | Not Started |
 | Beta testing with select users | P2 | Product | Not Started |
 
 **Deliverables**:
-- Validated scoring model
+- Validated scoring model with backtest proof
+- Public backtest results display
 - Sub-100ms API response times
 - User-facing documentation
 
+### Phase 6: Personalization (Weeks 17-20) - Future
+
+| Task | Priority | Owner | Status |
+|------|----------|-------|--------|
+| User preference storage (income mode, etc.) | P2 | Backend | Not Started |
+| Custom factor weight adjustment UI | P3 | Frontend | Not Started |
+| Personalized score calculation | P3 | IC Score Service | Not Started |
+| Watchlist-based peer comparison | P3 | Backend | Not Started |
+
+**Deliverables**:
+- Income mode toggle
+- Advanced users can customize weights
+- Personalized peer comparisons
+
 ---
 
-## 11. Appendix
+## 13. Appendix
 
 ### A. Metric Definitions
 
@@ -1603,6 +2236,7 @@ Using GICS (Global Industry Classification Standard):
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.1 | Feb 2026 | IC Team | Enhanced features: Earnings Revisions, Historical Valuation, Dividend Quality, Score Stability, Peer Comparison, Catalysts, Score Change Explanations, Granular Confidence, Backtesting |
 | 2.0 | Jan 2026 | IC Team | Complete redesign with sector-relative scoring |
 | 1.0 | Oct 2025 | IC Team | Initial IC Score implementation |
 
