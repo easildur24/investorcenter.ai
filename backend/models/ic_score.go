@@ -6,7 +6,19 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// ICScore represents the InvestorCenter proprietary 10-factor stock score
+// LifecycleStage represents the company lifecycle classification
+type LifecycleStage string
+
+const (
+	LifecycleHypergrowth LifecycleStage = "hypergrowth"
+	LifecycleGrowth      LifecycleStage = "growth"
+	LifecycleMature      LifecycleStage = "mature"
+	LifecycleValue       LifecycleStage = "value"
+	LifecycleTurnaround  LifecycleStage = "turnaround"
+)
+
+// ICScore represents the InvestorCenter proprietary IC Score
+// v2.1: Added lifecycle_stage, sector context, and smoothing fields
 type ICScore struct {
 	ID                    int64            `json:"id" db:"id"`
 	Ticker                string           `json:"ticker" db:"ticker"`
@@ -26,11 +38,21 @@ type ICScore struct {
 	SectorPercentile      *decimal.Decimal `json:"sector_percentile" db:"sector_percentile"`
 	ConfidenceLevel       *string          `json:"confidence_level" db:"confidence_level"`
 	DataCompleteness      *decimal.Decimal `json:"data_completeness" db:"data_completeness"`
-	CalculationMetadata   map[string]any   `json:"calculation_metadata,omitempty" db:"calculation_metadata"`
-	CalculatedAt          time.Time        `json:"calculated_at" db:"created_at"`
+
+	// v2.1: Lifecycle and sector context
+	LifecycleStage   *string          `json:"lifecycle_stage" db:"lifecycle_stage"`
+	RawScore         *decimal.Decimal `json:"raw_score" db:"raw_score"`
+	SmoothingApplied bool             `json:"smoothing_applied" db:"smoothing_applied"`
+	WeightsUsed      map[string]any   `json:"weights_used,omitempty" db:"weights_used"`
+	SectorRank       *int             `json:"sector_rank" db:"sector_rank"`
+	SectorTotal      *int             `json:"sector_total" db:"sector_total"`
+
+	CalculationMetadata map[string]any `json:"calculation_metadata,omitempty" db:"calculation_metadata"`
+	CalculatedAt        time.Time      `json:"calculated_at" db:"created_at"`
 }
 
 // ICScoreResponse represents the API response for IC Score
+// v2.1: Added lifecycle_stage, sector_rank, peer_comparison
 type ICScoreResponse struct {
 	Ticker                string   `json:"ticker"`
 	Date                  string   `json:"date"`
@@ -53,6 +75,13 @@ type ICScoreResponse struct {
 	FactorCount           int      `json:"factor_count"`
 	AvailableFactors      []string `json:"available_factors"`
 	MissingFactors        []string `json:"missing_factors"`
+
+	// v2.1: New fields
+	LifecycleStage *string  `json:"lifecycle_stage,omitempty"`
+	SectorRank     *int     `json:"sector_rank,omitempty"`
+	SectorTotal    *int     `json:"sector_total,omitempty"`
+	ScoringVersion string   `json:"scoring_version"`
+	RawScore       *float64 `json:"raw_score,omitempty"`
 }
 
 // ICScoreListItem represents a summary for the admin list view
@@ -176,6 +205,23 @@ func (ic *ICScore) ToResponse() ICScoreResponse {
 	if ic.SectorPercentile != nil {
 		v := toFloat64(*ic.SectorPercentile)
 		response.SectorPercentile = &v
+	}
+
+	// v2.1: Add lifecycle and sector context
+	response.LifecycleStage = ic.LifecycleStage
+	response.SectorRank = ic.SectorRank
+	response.SectorTotal = ic.SectorTotal
+
+	if ic.RawScore != nil {
+		v := toFloat64(*ic.RawScore)
+		response.RawScore = &v
+	}
+
+	// Determine scoring version
+	if ic.LifecycleStage != nil {
+		response.ScoringVersion = "2.1"
+	} else {
+		response.ScoringVersion = "2.0"
 	}
 
 	return response
