@@ -19,6 +19,7 @@ const (
 
 // ICScore represents the InvestorCenter proprietary IC Score
 // v2.1: Added lifecycle_stage, sector context, and smoothing fields
+// Phase 2: Added earnings_revisions, historical_value, dividend_quality
 type ICScore struct {
 	ID                    int64            `json:"id" db:"id"`
 	Ticker                string           `json:"ticker" db:"ticker"`
@@ -34,10 +35,16 @@ type ICScore struct {
 	InstitutionalScore    *decimal.Decimal `json:"institutional_score" db:"institutional_score"`
 	NewsSentimentScore    *decimal.Decimal `json:"news_sentiment_score" db:"news_sentiment_score"`
 	TechnicalScore        *decimal.Decimal `json:"technical_score" db:"technical_score"`
-	Rating                *string          `json:"rating" db:"rating"`
-	SectorPercentile      *decimal.Decimal `json:"sector_percentile" db:"sector_percentile"`
-	ConfidenceLevel       *string          `json:"confidence_level" db:"confidence_level"`
-	DataCompleteness      *decimal.Decimal `json:"data_completeness" db:"data_completeness"`
+
+	// Phase 2: New factor scores
+	EarningsRevisionsScore *decimal.Decimal `json:"earnings_revisions_score" db:"earnings_revisions_score"`
+	HistoricalValueScore   *decimal.Decimal `json:"historical_value_score" db:"historical_value_score"`
+	DividendQualityScore   *decimal.Decimal `json:"dividend_quality_score" db:"dividend_quality_score"`
+
+	Rating           *string          `json:"rating" db:"rating"`
+	SectorPercentile *decimal.Decimal `json:"sector_percentile" db:"sector_percentile"`
+	ConfidenceLevel  *string          `json:"confidence_level" db:"confidence_level"`
+	DataCompleteness *decimal.Decimal `json:"data_completeness" db:"data_completeness"`
 
 	// v2.1: Lifecycle and sector context
 	LifecycleStage   *string          `json:"lifecycle_stage" db:"lifecycle_stage"`
@@ -53,6 +60,7 @@ type ICScore struct {
 
 // ICScoreResponse represents the API response for IC Score
 // v2.1: Added lifecycle_stage, sector_rank, peer_comparison
+// Phase 2: Added earnings_revisions, historical_value, dividend_quality
 type ICScoreResponse struct {
 	Ticker                string   `json:"ticker"`
 	Date                  string   `json:"date"`
@@ -67,14 +75,20 @@ type ICScoreResponse struct {
 	InstitutionalScore    *float64 `json:"institutional_score"`
 	NewsSentimentScore    *float64 `json:"news_sentiment_score"`
 	TechnicalScore        *float64 `json:"technical_score"`
-	Rating                string   `json:"rating"`
-	SectorPercentile      *float64 `json:"sector_percentile"`
-	ConfidenceLevel       string   `json:"confidence_level"`
-	DataCompleteness      float64  `json:"data_completeness"`
-	CalculatedAt          string   `json:"calculated_at"`
-	FactorCount           int      `json:"factor_count"`
-	AvailableFactors      []string `json:"available_factors"`
-	MissingFactors        []string `json:"missing_factors"`
+
+	// Phase 2: New factor scores
+	EarningsRevisionsScore *float64 `json:"earnings_revisions_score,omitempty"`
+	HistoricalValueScore   *float64 `json:"historical_value_score,omitempty"`
+	DividendQualityScore   *float64 `json:"dividend_quality_score,omitempty"`
+
+	Rating           string   `json:"rating"`
+	SectorPercentile *float64 `json:"sector_percentile"`
+	ConfidenceLevel  string   `json:"confidence_level"`
+	DataCompleteness float64  `json:"data_completeness"`
+	CalculatedAt     string   `json:"calculated_at"`
+	FactorCount      int      `json:"factor_count"`
+	AvailableFactors []string `json:"available_factors"`
+	MissingFactors   []string `json:"missing_factors"`
 
 	// v2.1: New fields
 	LifecycleStage *string  `json:"lifecycle_stage,omitempty"`
@@ -82,6 +96,7 @@ type ICScoreResponse struct {
 	SectorTotal    *int     `json:"sector_total,omitempty"`
 	ScoringVersion string   `json:"scoring_version"`
 	RawScore       *float64 `json:"raw_score,omitempty"`
+	IncomeMode     bool     `json:"income_mode"`
 }
 
 // ICScoreListItem represents a summary for the admin list view
@@ -199,6 +214,33 @@ func (ic *ICScore) ToResponse() ICScoreResponse {
 	} else {
 		response.MissingFactors = append(response.MissingFactors, "technical")
 	}
+
+	// Phase 2: New factor scores
+	if ic.EarningsRevisionsScore != nil {
+		v := toFloat64(*ic.EarningsRevisionsScore)
+		response.EarningsRevisionsScore = &v
+		factorCount++
+		response.AvailableFactors = append(response.AvailableFactors, "earnings_revisions")
+	} else {
+		response.MissingFactors = append(response.MissingFactors, "earnings_revisions")
+	}
+
+	if ic.HistoricalValueScore != nil {
+		v := toFloat64(*ic.HistoricalValueScore)
+		response.HistoricalValueScore = &v
+		factorCount++
+		response.AvailableFactors = append(response.AvailableFactors, "historical_value")
+	} else {
+		response.MissingFactors = append(response.MissingFactors, "historical_value")
+	}
+
+	if ic.DividendQualityScore != nil {
+		v := toFloat64(*ic.DividendQualityScore)
+		response.DividendQualityScore = &v
+		factorCount++
+		response.AvailableFactors = append(response.AvailableFactors, "dividend_quality")
+	}
+	// Note: dividend_quality is optional, don't add to missing factors
 
 	response.FactorCount = factorCount
 

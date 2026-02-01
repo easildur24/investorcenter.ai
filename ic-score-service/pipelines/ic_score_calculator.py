@@ -33,6 +33,9 @@ from database.database import get_database
 from models import ICScore, Financial, TechnicalIndicator, InsiderTrade, InstitutionalHolding, AnalystRating, NewsArticle
 from pipelines.utils.sector_percentile import SectorPercentileCalculator
 from pipelines.utils.lifecycle import LifecycleClassifier, LifecycleStage
+from pipelines.utils.earnings_revisions import EarningsRevisionsCalculator
+from pipelines.utils.historical_valuation import HistoricalValuationCalculator
+from pipelines.utils.dividend_quality import DividendQualityCalculator
 
 # Setup logging with configurable log directory
 LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
@@ -55,7 +58,8 @@ class ICScoreCalculator:
     IC Score v2.1 Features:
     - Sector-relative scoring using percentiles
     - Lifecycle-aware weight adjustments
-    - New factors: earnings_revisions, historical_value (Phase 2)
+    - Phase 2 factors: earnings_revisions, historical_value, dividend_quality
+    - Smart Money consolidation (analyst + insider + institutional)
     """
 
     # Base factor weights for v2.1 (sum to 1.0)
@@ -93,6 +97,11 @@ class ICScoreCalculator:
     # Feature flag for v2.1 scoring (set to True to enable)
     USE_SECTOR_RELATIVE_SCORING = True
     USE_LIFECYCLE_WEIGHTS = True
+
+    # Phase 2 feature flags
+    USE_EARNINGS_REVISIONS = True
+    USE_HISTORICAL_VALUATION = True
+    USE_DIVIDEND_QUALITY = False  # Optional, enable for income mode
 
     # Rating thresholds
     RATING_THRESHOLDS = {
@@ -137,19 +146,27 @@ class ICScoreCalculator:
         'insider_scale': 2000.0, # Shares to score scaling
     }
 
-    def __init__(self, use_v2_scoring: bool = True):
+    def __init__(self, use_v2_scoring: bool = True, income_mode: bool = False):
         """Initialize the IC Score calculator.
 
         Args:
             use_v2_scoring: If True, use v2.1 sector-relative scoring.
                            If False, use legacy absolute benchmark scoring.
+            income_mode: If True, include Dividend Quality factor for
+                        income-focused analysis (+5% weight).
         """
         self.db = get_database()
         self.use_v2_scoring = use_v2_scoring
+        self.income_mode = income_mode
 
         # v2.1 components (initialized per-session)
         self._sector_calculator: Optional[SectorPercentileCalculator] = None
         self._lifecycle_classifier: Optional[LifecycleClassifier] = None
+
+        # Phase 2 factor calculators (initialized per-session)
+        self._earnings_revisions_calc: Optional[EarningsRevisionsCalculator] = None
+        self._historical_valuation_calc: Optional[HistoricalValuationCalculator] = None
+        self._dividend_quality_calc: Optional[DividendQualityCalculator] = None
 
         # Track progress
         self.processed_count = 0
@@ -160,7 +177,7 @@ class ICScoreCalculator:
         """Initialize v2.1 scoring components with session.
 
         Called once per calculation batch to set up sector percentile
-        calculator and lifecycle classifier.
+        calculator, lifecycle classifier, and Phase 2 factor calculators.
         """
         if self.use_v2_scoring and self.USE_SECTOR_RELATIVE_SCORING:
             self._sector_calculator = SectorPercentileCalculator(session)
@@ -168,6 +185,19 @@ class ICScoreCalculator:
         else:
             self._sector_calculator = None
             self._lifecycle_classifier = None
+
+        # Initialize Phase 2 factor calculators
+        if self.USE_EARNINGS_REVISIONS:
+            self._earnings_revisions_calc = EarningsRevisionsCalculator(session)
+
+        if self.USE_HISTORICAL_VALUATION:
+            self._historical_valuation_calc = HistoricalValuationCalculator(session)
+
+        if self.USE_DIVIDEND_QUALITY or self.income_mode:
+            self._dividend_quality_calc = DividendQualityCalculator(
+                session,
+                sector_calculator=self._sector_calculator
+            )
 
     async def get_stocks_to_process(
         self,
@@ -1028,6 +1058,45 @@ class ICScoreCalculator:
                 factor_scores['institutional'] = institutional_score
                 factor_metadata['institutional'] = institutional_meta
 
+            # Phase 2: Earnings Revisions factor
+            if self._earnings_revisions_calc:
+                earnings_rev_result = await self._earnings_revisions_calc.calculate(ticker)
+                if earnings_rev_result:
+                    factor_scores['earnings_revisions'] = earnings_rev_result.score
+                    factor_metadata['earnings_revisions'] = {
+                        'score': earnings_rev_result.score,
+                        'magnitude_score': earnings_rev_result.magnitude_score,
+                        'breadth_score': earnings_rev_result.breadth_score,
+                        'recency_score': earnings_rev_result.recency_score,
+                        **earnings_rev_result.metrics
+                    }
+
+            # Phase 2: Historical Valuation factor
+            if self._historical_valuation_calc:
+                hist_val_result = await self._historical_valuation_calc.calculate(ticker)
+                if hist_val_result:
+                    factor_scores['historical_value'] = hist_val_result.score
+                    factor_metadata['historical_value'] = {
+                        'score': hist_val_result.score,
+                        'pe_percentile': hist_val_result.pe_percentile,
+                        'ps_percentile': hist_val_result.ps_percentile,
+                        **hist_val_result.metrics
+                    }
+
+            # Phase 2: Dividend Quality factor (optional, for income mode)
+            if self._dividend_quality_calc and (self.income_mode or self.USE_DIVIDEND_QUALITY):
+                div_quality_result = await self._dividend_quality_calc.calculate(ticker)
+                if div_quality_result and div_quality_result.is_dividend_payer:
+                    factor_scores['dividend_quality'] = div_quality_result.score
+                    factor_metadata['dividend_quality'] = {
+                        'score': div_quality_result.score,
+                        'yield_score': div_quality_result.yield_score,
+                        'payout_score': div_quality_result.payout_score,
+                        'growth_score': div_quality_result.growth_score,
+                        'streak_score': div_quality_result.streak_score,
+                        **div_quality_result.metrics
+                    }
+
             # Calculate data completeness (use legacy weights count for compatibility)
             data_completeness = (len(factor_scores) / len(self.WEIGHTS_LEGACY)) * 100
 
@@ -1052,7 +1121,7 @@ class ICScoreCalculator:
                 return None
 
             # Calculate weighted overall score using lifecycle-adjusted weights
-            # Map legacy factor names to available scores
+            # Map factor names to weights (supports both v2.0 legacy and v2.1)
             factor_weight_mapping = {
                 'value': weights_to_use.get('value', 0.12),
                 'growth': weights_to_use.get('growth', 0.13),
@@ -1064,6 +1133,10 @@ class ICScoreCalculator:
                 'analyst_consensus': weights_to_use.get('smart_money', 0.10) * 0.4,  # 40% of smart money
                 'insider_activity': weights_to_use.get('smart_money', 0.10) * 0.3,   # 30% of smart money
                 'institutional': weights_to_use.get('smart_money', 0.10) * 0.3,      # 30% of smart money
+                # Phase 2 factors
+                'earnings_revisions': weights_to_use.get('earnings_revisions', 0.08),
+                'historical_value': weights_to_use.get('historical_value', 0.08),
+                'dividend_quality': weights_to_use.get('dividend_quality', 0.05) if self.income_mode else 0,
             }
 
             total_weight = sum(
@@ -1113,6 +1186,10 @@ class ICScoreCalculator:
                 'institutional_score': round(factor_scores.get('institutional'), 2) if 'institutional' in factor_scores else None,
                 'news_sentiment_score': round(factor_scores.get('news_sentiment'), 2) if 'news_sentiment' in factor_scores else None,
                 'technical_score': round(factor_scores.get('technical'), 2) if 'technical' in factor_scores else None,
+                # Phase 2 factor scores
+                'earnings_revisions_score': round(factor_scores.get('earnings_revisions'), 2) if 'earnings_revisions' in factor_scores else None,
+                'historical_value_score': round(factor_scores.get('historical_value'), 2) if 'historical_value' in factor_scores else None,
+                'dividend_quality_score': round(factor_scores.get('dividend_quality'), 2) if 'dividend_quality' in factor_scores else None,
                 'rating': rating,
                 'sector_percentile': round((sector_total - sector_rank + 1) / sector_total * 100, 1) if sector_rank and sector_total else None,
                 'confidence_level': confidence,
@@ -1126,6 +1203,7 @@ class ICScoreCalculator:
                     'weights_used': {k: round(factor_weight_mapping.get(k, 0.05), 4) for k in factor_scores.keys()},
                     'lifecycle_stage': lifecycle_stage,
                     'scoring_version': '2.1' if self.use_v2_scoring else '2.0',
+                    'income_mode': self.income_mode,
                     'calculated_at': datetime.now().isoformat(),
                 }
             }
@@ -1258,13 +1336,20 @@ def main():
     parser.add_argument('--sector', type=str, help='Filter by sector')
     parser.add_argument('--all', action='store_true', help='Process all stocks')
     parser.add_argument('--sp500', action='store_true', help='Process S&P 500 only')
+    parser.add_argument('--income-mode', action='store_true',
+                        help='Enable income mode (include Dividend Quality factor)')
+    parser.add_argument('--legacy', action='store_true',
+                        help='Use legacy v2.0 scoring (no sector-relative)')
 
     args = parser.parse_args()
 
     if args.ticker and (args.all or args.limit or args.sector):
         parser.error("--ticker cannot be used with other filters")
 
-    calculator = ICScoreCalculator()
+    calculator = ICScoreCalculator(
+        use_v2_scoring=not args.legacy,
+        income_mode=args.income_mode
+    )
     asyncio.run(calculator.run(
         limit=args.limit,
         ticker=args.ticker,
