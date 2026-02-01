@@ -88,7 +88,13 @@ class Company(Base):
 # ============================================================================
 
 class ICScore(Base):
-    """InvestorCenter proprietary 10-factor stock scores (1-100)."""
+    """InvestorCenter proprietary IC Score (1-100).
+
+    v2.1 Features:
+    - Sector-relative scoring using percentiles
+    - Lifecycle-aware weight adjustments
+    - Enhanced metadata with scoring context
+    """
     __tablename__ = 'ic_scores'
     __table_args__ = (
         UniqueConstraint('ticker', 'date', name='uq_ic_scores_ticker_date'),
@@ -98,6 +104,8 @@ class ICScore(Base):
     ticker: Mapped[str] = mapped_column(String(10), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     overall_score: Mapped[Decimal] = mapped_column(Numeric(5, 2), nullable=False)
+
+    # Factor scores
     value_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     growth_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     profitability_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
@@ -108,15 +116,27 @@ class ICScore(Base):
     institutional_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     news_sentiment_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     technical_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+
+    # Rating and confidence
     rating: Mapped[Optional[str]] = mapped_column(String(20))
     sector_percentile: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
     confidence_level: Mapped[Optional[str]] = mapped_column(String(20))
     data_completeness: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))
+
+    # v2.1: Lifecycle and sector context
+    lifecycle_stage: Mapped[Optional[str]] = mapped_column(String(20))  # hypergrowth, growth, mature, value, turnaround
+    raw_score: Mapped[Optional[Decimal]] = mapped_column(Numeric(5, 2))  # Before smoothing
+    smoothing_applied: Mapped[bool] = mapped_column(Boolean, server_default='false')
+    weights_used: Mapped[Optional[dict]] = mapped_column(JSONB)  # Factor weights applied
+    sector_rank: Mapped[Optional[int]] = mapped_column(Integer)  # Rank within sector
+    sector_total: Mapped[Optional[int]] = mapped_column(Integer)  # Total stocks in sector
+
+    # Metadata
     calculation_metadata: Mapped[Optional[dict]] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
 
     def __repr__(self) -> str:
-        return f"<ICScore(ticker='{self.ticker}', date={self.date}, score={self.overall_score}, rating='{self.rating}')>"
+        return f"<ICScore(ticker='{self.ticker}', date={self.date}, score={self.overall_score}, rating='{self.rating}', lifecycle='{self.lifecycle_stage}')>"
 
 
 # ============================================================================
@@ -632,3 +652,74 @@ class FundamentalMetricsExtended(Base):
 
     def __repr__(self) -> str:
         return f"<FundamentalMetricsExtended(ticker='{self.ticker}', date={self.calculation_date}, roe={self.roe}, quality={self.data_quality_score})>"
+
+
+# ============================================================================
+# SECTOR PERCENTILES (IC Score v2.1)
+# ============================================================================
+
+class SectorPercentile(Base):
+    """Sector-level distribution statistics for relative scoring."""
+    __tablename__ = 'sector_percentiles'
+    __table_args__ = (
+        UniqueConstraint('sector', 'metric_name', 'calculated_at', name='uq_sector_percentiles_sector_metric_date'),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text('gen_random_uuid()')
+    )
+    sector: Mapped[str] = mapped_column(String(50), nullable=False)
+    metric_name: Mapped[str] = mapped_column(String(50), nullable=False)
+    calculated_at: Mapped[date] = mapped_column(Date, nullable=False, server_default=text('CURRENT_DATE'))
+
+    # Distribution statistics
+    min_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    p10_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    p25_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    p50_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))  # median
+    p75_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    p90_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    max_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    mean_value: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    std_dev: Mapped[Optional[Decimal]] = mapped_column(Numeric(20, 4))
+    sample_count: Mapped[Optional[int]] = mapped_column(Integer)
+
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<SectorPercentile(sector='{self.sector}', metric='{self.metric_name}', date={self.calculated_at}, samples={self.sample_count})>"
+
+
+class LifecycleClassification(Base):
+    """Company lifecycle stage classification for weight adjustments."""
+    __tablename__ = 'lifecycle_classifications'
+    __table_args__ = (
+        UniqueConstraint('ticker', 'classified_at', name='uq_lifecycle_ticker_date'),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        server_default=text('gen_random_uuid()')
+    )
+    ticker: Mapped[str] = mapped_column(String(10), nullable=False)
+    classified_at: Mapped[date] = mapped_column(Date, nullable=False, server_default=text('CURRENT_DATE'))
+
+    # Classification result
+    lifecycle_stage: Mapped[str] = mapped_column(String(20), nullable=False)  # hypergrowth, growth, mature, value, turnaround
+
+    # Input metrics used for classification
+    revenue_growth_yoy: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    net_margin: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    pe_ratio: Mapped[Optional[Decimal]] = mapped_column(Numeric(10, 4))
+    market_cap: Mapped[Optional[int]] = mapped_column(BigInteger)
+
+    # Adjusted weights applied
+    weights_applied: Mapped[Optional[dict]] = mapped_column(JSONB)
+
+    created_at: Mapped[datetime] = mapped_column(TIMESTAMP, server_default=text('NOW()'))
+
+    def __repr__(self) -> str:
+        return f"<LifecycleClassification(ticker='{self.ticker}', stage='{self.lifecycle_stage}', date={self.classified_at})>"
