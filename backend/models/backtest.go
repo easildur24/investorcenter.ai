@@ -98,9 +98,9 @@ type CumulativePoint struct {
 
 // RollingMetricPoint represents rolling performance metrics at a point in time
 type RollingMetricPoint struct {
-	Date             string  `json:"date"`
-	RollingReturn    float64 `json:"rolling_return"`
-	RollingSharpe    float64 `json:"rolling_sharpe"`
+	Date              string  `json:"date"`
+	RollingReturn     float64 `json:"rolling_return"`
+	RollingSharpe     float64 `json:"rolling_sharpe"`
 	RollingVolatility float64 `json:"rolling_volatility"`
 }
 
@@ -108,17 +108,17 @@ type RollingMetricPoint struct {
 type BacktestStatus string
 
 const (
-	BacktestStatusPending    BacktestStatus = "pending"
-	BacktestStatusRunning    BacktestStatus = "running"
-	BacktestStatusCompleted  BacktestStatus = "completed"
-	BacktestStatusFailed     BacktestStatus = "failed"
+	BacktestStatusPending   BacktestStatus = "pending"
+	BacktestStatusRunning   BacktestStatus = "running"
+	BacktestStatusCompleted BacktestStatus = "completed"
+	BacktestStatusFailed    BacktestStatus = "failed"
 )
 
 // BacktestJob represents a backtest job in the database
 type BacktestJob struct {
 	ID          string         `json:"id" gorm:"primaryKey"`
 	UserID      *string        `json:"user_id,omitempty"`
-	Config      string         `json:"config" gorm:"type:jsonb"`    // JSON-encoded BacktestConfig
+	Config      string         `json:"config" gorm:"type:jsonb"` // JSON-encoded BacktestConfig
 	Status      BacktestStatus `json:"status"`
 	Result      *string        `json:"result,omitempty" gorm:"type:jsonb"` // JSON-encoded BacktestSummary
 	Error       *string        `json:"error,omitempty"`
@@ -128,15 +128,15 @@ type BacktestJob struct {
 	UpdatedAt   time.Time      `json:"updated_at"`
 }
 
-// ChartData represents data formatted for frontend charts
-type ChartData struct {
+// BacktestChartData represents data formatted for frontend backtest charts
+type BacktestChartData struct {
 	Labels   []string                 `json:"labels"`
 	Datasets []map[string]interface{} `json:"datasets"`
 }
 
 // BacktestCharts represents all chart data for the backtest dashboard
 type BacktestCharts struct {
-	DecileBarChart       ChartData `json:"decile_bar_chart"`
-	CumulativeLineChart  ChartData `json:"cumulative_line_chart"`
-	SpreadChart          ChartData `json:"spread_chart"`
+	DecileBarChart      BacktestChartData `json:"decile_bar_chart"`
+	CumulativeLineChart BacktestChartData `json:"cumulative_line_chart"`
+	SpreadChart         BacktestChartData `json:"spread_chart"`
 }

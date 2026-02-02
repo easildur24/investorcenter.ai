@@ -6,8 +6,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/investorcenter/backend/models"
-	"github.com/jmoiron/sqlx"
+	"investorcenter-api/models"
 )
 
 // ===================

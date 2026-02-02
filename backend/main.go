@@ -152,8 +152,7 @@ func main() {
 		v1.GET("/ic-scores", handlers.GetICScores) // List all IC Scores with pagination
 
 		// IC Score Backtest endpoints
-		backtestRepo := database.NewBacktestRepository(database.DB)
-		backtestService := services.NewBacktestService(backtestRepo)
+		backtestService := services.NewBacktestService()
 		backtestHandler := handlers.NewBacktestHandler(backtestService)
 
 		backtestRoutes := v1.Group("/ic-scores/backtest")

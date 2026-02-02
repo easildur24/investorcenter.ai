@@ -14,15 +14,15 @@ import (
 type ScoreEventType string
 
 const (
-	EventTypeEarningsRelease     ScoreEventType = "earnings_release"
-	EventTypeAnalystRatingChange ScoreEventType = "analyst_rating_change"
-	EventTypeInsiderTradeLarge   ScoreEventType = "insider_trade_large"
+	EventTypeEarningsRelease      ScoreEventType = "earnings_release"
+	EventTypeAnalystRatingChange  ScoreEventType = "analyst_rating_change"
+	EventTypeInsiderTradeLarge    ScoreEventType = "insider_trade_large"
 	EventTypeDividendAnnouncement ScoreEventType = "dividend_announcement"
-	EventTypeAcquisitionNews     ScoreEventType = "acquisition_news"
-	EventTypeGuidanceUpdate      ScoreEventType = "guidance_update"
-	EventTypeTechnicalBreakout   ScoreEventType = "technical_breakout"
-	EventType52WeekHigh          ScoreEventType = "52_week_high"
-	EventType52WeekLow           ScoreEventType = "52_week_low"
+	EventTypeAcquisitionNews      ScoreEventType = "acquisition_news"
+	EventTypeGuidanceUpdate       ScoreEventType = "guidance_update"
+	EventTypeTechnicalBreakout    ScoreEventType = "technical_breakout"
+	EventType52WeekHigh           ScoreEventType = "52_week_high"
+	EventType52WeekLow            ScoreEventType = "52_week_low"
 )
 
 // ImpactDirection represents the direction of impact
@@ -88,23 +88,23 @@ func (e *ICScoreEvent) ToResponse() ICScoreEventResponse {
 
 // StockPeer represents a peer relationship between two stocks
 type StockPeer struct {
-	ID                string           `json:"id" db:"id"`
-	Ticker            string           `json:"ticker" db:"ticker"`
-	PeerTicker        string           `json:"peer_ticker" db:"peer_ticker"`
-	SimilarityScore   decimal.Decimal  `json:"similarity_score" db:"similarity_score"`
-	SimilarityFactors map[string]any   `json:"similarity_factors" db:"similarity_factors"`
-	CalculatedAt      time.Time        `json:"calculated_at" db:"calculated_at"`
-	CreatedAt         time.Time        `json:"created_at" db:"created_at"`
+	ID                string          `json:"id" db:"id"`
+	Ticker            string          `json:"ticker" db:"ticker"`
+	PeerTicker        string          `json:"peer_ticker" db:"peer_ticker"`
+	SimilarityScore   decimal.Decimal `json:"similarity_score" db:"similarity_score"`
+	SimilarityFactors map[string]any  `json:"similarity_factors" db:"similarity_factors"`
+	CalculatedAt      time.Time       `json:"calculated_at" db:"calculated_at"`
+	CreatedAt         time.Time       `json:"created_at" db:"created_at"`
 }
 
 // StockPeerResponse represents the API response for a stock peer
 type StockPeerResponse struct {
-	Ticker            string           `json:"ticker"`
-	PeerTicker        string           `json:"peer_ticker"`
-	CompanyName       string           `json:"company_name,omitempty"`
-	ICScore           *float64         `json:"ic_score,omitempty"`
-	SimilarityScore   float64          `json:"similarity_score"`
-	SimilarityFactors map[string]any   `json:"similarity_factors,omitempty"`
+	Ticker            string         `json:"ticker"`
+	PeerTicker        string         `json:"peer_ticker"`
+	CompanyName       string         `json:"company_name,omitempty"`
+	ICScore           *float64       `json:"ic_score,omitempty"`
+	SimilarityScore   float64        `json:"similarity_score"`
+	SimilarityFactors map[string]any `json:"similarity_factors,omitempty"`
 }
 
 // ToResponse converts StockPeer to API response
@@ -119,13 +119,13 @@ func (p *StockPeer) ToResponse() StockPeerResponse {
 
 // PeerComparisonResponse represents peer comparison summary for a stock
 type PeerComparisonResponse struct {
-	Ticker        string               `json:"ticker"`
-	ICScore       float64              `json:"ic_score"`
-	Peers         []StockPeerResponse  `json:"peers"`
-	AvgPeerScore  *float64             `json:"avg_peer_score"`
-	VsPeersDelta  *float64             `json:"vs_peers_delta"`
-	SectorRank    *int                 `json:"sector_rank"`
-	SectorTotal   *int                 `json:"sector_total"`
+	Ticker       string              `json:"ticker"`
+	ICScore      float64             `json:"ic_score"`
+	Peers        []StockPeerResponse `json:"peers"`
+	AvgPeerScore *float64            `json:"avg_peer_score"`
+	VsPeersDelta *float64            `json:"vs_peers_delta"`
+	SectorRank   *int                `json:"sector_rank"`
+	SectorTotal  *int                `json:"sector_total"`
 }
 
 // ===================
@@ -187,11 +187,11 @@ type CatalystEventResponse struct {
 // ToResponse converts CatalystEvent to API response
 func (c *CatalystEvent) ToResponse() CatalystEventResponse {
 	resp := CatalystEventResponse{
-		EventType:  c.EventType,
-		Title:      c.Title,
-		Icon:       c.Icon,
-		Impact:     c.Impact,
-		DaysUntil:  c.DaysUntil,
+		EventType: c.EventType,
+		Title:     c.Title,
+		Icon:      c.Icon,
+		Impact:    c.Impact,
+		DaysUntil: c.DaysUntil,
 	}
 
 	if c.EventDate != nil {
@@ -235,15 +235,15 @@ type ICScoreChange struct {
 
 // ICScoreChangeResponse represents the API response for a score change
 type ICScoreChangeResponse struct {
-	Ticker           string          `json:"ticker"`
-	CalculatedAt     string          `json:"calculated_at"`
-	PreviousScore    *float64        `json:"previous_score,omitempty"`
-	CurrentScore     float64         `json:"current_score"`
-	Delta            *float64        `json:"delta,omitempty"`
-	FactorChanges    []FactorChange  `json:"factor_changes"`
-	TriggerEvents    []string        `json:"trigger_events,omitempty"`
-	SmoothingApplied bool            `json:"smoothing_applied"`
-	Summary          *string         `json:"summary,omitempty"`
+	Ticker           string         `json:"ticker"`
+	CalculatedAt     string         `json:"calculated_at"`
+	PreviousScore    *float64       `json:"previous_score,omitempty"`
+	CurrentScore     float64        `json:"current_score"`
+	Delta            *float64       `json:"delta,omitempty"`
+	FactorChanges    []FactorChange `json:"factor_changes"`
+	TriggerEvents    []string       `json:"trigger_events,omitempty"`
+	SmoothingApplied bool           `json:"smoothing_applied"`
+	Summary          *string        `json:"summary,omitempty"`
 }
 
 // ToResponse converts ICScoreChange to API response
@@ -366,9 +366,9 @@ type ICScoreV3Response struct {
 
 	// Phase 3: Explanation
 	Explanation *struct {
-		Summary string         `json:"summary"`
-		Delta   float64        `json:"delta"`
-		Reasons []FactorChange `json:"reasons"`
+		Summary    string         `json:"summary"`
+		Delta      float64        `json:"delta"`
+		Reasons    []FactorChange `json:"reasons"`
 		Confidence struct {
 			Level      string   `json:"level"`
 			Percentage float64  `json:"percentage"`

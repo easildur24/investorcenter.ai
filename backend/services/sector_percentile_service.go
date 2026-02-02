@@ -10,8 +10,8 @@ import (
 
 	"github.com/go-redis/redis/v8"
 
-	"investorcenter/backend/database"
-	"investorcenter/backend/models"
+	"investorcenter-api/database"
+	"investorcenter-api/models"
 )
 
 // SectorPercentileService provides sector percentile operations with caching

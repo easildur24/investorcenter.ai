@@ -12,10 +12,10 @@ import (
 
 // EPSEstimate represents analyst EPS estimate data for a stock
 type EPSEstimate struct {
-	ID            string           `json:"id" db:"id"`
-	Ticker        string           `json:"ticker" db:"ticker"`
-	FiscalYear    int              `json:"fiscal_year" db:"fiscal_year"`
-	FiscalQuarter *int             `json:"fiscal_quarter" db:"fiscal_quarter"` // NULL for annual
+	ID            string `json:"id" db:"id"`
+	Ticker        string `json:"ticker" db:"ticker"`
+	FiscalYear    int    `json:"fiscal_year" db:"fiscal_year"`
+	FiscalQuarter *int   `json:"fiscal_quarter" db:"fiscal_quarter"` // NULL for annual
 
 	// Estimate data
 	ConsensusEPS *decimal.Decimal `json:"consensus_eps" db:"consensus_eps"`
@@ -181,7 +181,7 @@ func (v *ValuationHistory) ToResponse() ValuationHistoryResponse {
 type DividendTier string
 
 const (
-	DividendTierKing     DividendTier = "Dividend King"      // 50+ years
+	DividendTierKing     DividendTier = "Dividend King"       // 50+ years
 	DividendTierAristocr DividendTier = "Dividend Aristocrat" // 25+ years
 	DividendTierAchiever DividendTier = "Dividend Achiever"   // 10+ years
 	DividendTierPayer    DividendTier = "Dividend Payer"      // 5+ years

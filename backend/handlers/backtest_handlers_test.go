@@ -104,25 +104,25 @@ func createSampleBacktestSummary() *models.BacktestSummary {
 			{Decile: 2, TotalReturn: 0.20, AnnualizedReturn: 0.10, SharpeRatio: 1.2, MaxDrawdown: 0.18},
 			{Decile: 10, TotalReturn: -0.05, AnnualizedReturn: -0.02, SharpeRatio: -0.5, MaxDrawdown: 0.35},
 		},
-		SpreadCAGR:       0.14,
-		TopVsBenchmark:   0.05,
-		HitRate:          0.65,
+		SpreadCAGR:        0.14,
+		TopVsBenchmark:    0.05,
+		HitRate:           0.65,
 		MonotonicityScore: 0.85,
-		InformationRatio: 0.75,
-		TopDecileSharpe:  1.5,
-		TopDecileMaxDD:   0.15,
-		Benchmark:        "SPY",
-		StartDate:        "2019-01-01",
-		EndDate:          "2024-01-01",
-		NumPeriods:       60,
+		InformationRatio:  0.75,
+		TopDecileSharpe:   1.5,
+		TopDecileMaxDD:    0.15,
+		Benchmark:         "SPY",
+		StartDate:         "2019-01-01",
+		EndDate:           "2024-01-01",
+		NumPeriods:        60,
 	}
 }
 
 func TestRunBacktest(t *testing.T) {
 	router := setupBacktestTestRouter()
 
-	// Create mock service
-	mockService := new(MockBacktestService)
+	// Create mock service (unused for now, but kept for future integration tests)
+	_ = new(MockBacktestService)
 
 	// Create handler with mock service
 	handler := &BacktestHandler{service: &services.BacktestService{}}

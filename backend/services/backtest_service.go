@@ -9,26 +9,24 @@ import (
 	"os"
 	"time"
 
-	"investorcenter/database"
-	"investorcenter/models"
+	"investorcenter-api/database"
+	"investorcenter-api/models"
 )
 
 // BacktestService handles backtest operations
 type BacktestService struct {
-	repo          *database.BacktestRepository
 	icScoreAPIURL string
 	httpClient    *http.Client
 }
 
 // NewBacktestService creates a new backtest service
-func NewBacktestService(repo *database.BacktestRepository) *BacktestService {
+func NewBacktestService() *BacktestService {
 	apiURL := os.Getenv("IC_SCORE_API_URL")
 	if apiURL == "" {
 		apiURL = "http://localhost:8001"
 	}
 
 	return &BacktestService{
-		repo:          repo,
 		icScoreAPIURL: apiURL,
 		httpClient: &http.Client{
 			Timeout: 30 * time.Minute, // Backtests can take a while
@@ -75,7 +73,7 @@ func (s *BacktestService) RunBacktest(config models.BacktestConfig) (*models.Bac
 // SubmitBacktestJob creates a new backtest job and runs it asynchronously
 func (s *BacktestService) SubmitBacktestJob(config models.BacktestConfig, userID *string) (*models.BacktestJob, error) {
 	// Create job in pending state
-	job, err := s.repo.CreateJob(config, userID)
+	job, err := database.CreateBacktestJob(config, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create job: %w", err)
 	}
@@ -89,33 +87,33 @@ func (s *BacktestService) SubmitBacktestJob(config models.BacktestConfig, userID
 // runBacktestJob runs the backtest and updates job status
 func (s *BacktestService) runBacktestJob(jobID string, config models.BacktestConfig) {
 	// Update status to running
-	if err := s.repo.UpdateJobStatus(jobID, models.BacktestStatusRunning); err != nil {
-		s.repo.FailJob(jobID, fmt.Sprintf("failed to update status: %v", err))
+	if err := database.UpdateBacktestJobStatus(jobID, models.BacktestStatusRunning); err != nil {
+		database.FailBacktestJob(jobID, fmt.Sprintf("failed to update status: %v", err))
 		return
 	}
 
 	// Run backtest
 	summary, err := s.RunBacktest(config)
 	if err != nil {
-		s.repo.FailJob(jobID, err.Error())
+		database.FailBacktestJob(jobID, err.Error())
 		return
 	}
 
 	// Mark as completed
-	if err := s.repo.CompleteJob(jobID, summary); err != nil {
-		s.repo.FailJob(jobID, fmt.Sprintf("failed to save results: %v", err))
+	if err := database.CompleteBacktestJob(jobID, summary); err != nil {
+		database.FailBacktestJob(jobID, fmt.Sprintf("failed to save results: %v", err))
 		return
 	}
 }
 
 // GetJobStatus retrieves the status of a backtest job
 func (s *BacktestService) GetJobStatus(jobID string) (*models.BacktestJob, error) {
-	return s.repo.GetJob(jobID)
+	return database.GetBacktestJob(jobID)
 }
 
 // GetJobResult retrieves the result of a completed backtest job
 func (s *BacktestService) GetJobResult(jobID string) (*models.BacktestSummary, error) {
-	job, err := s.repo.GetJob(jobID)
+	job, err := database.GetBacktestJob(jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +136,7 @@ func (s *BacktestService) GetJobResult(jobID string) (*models.BacktestSummary, e
 
 // GetLatestBacktest retrieves the most recent completed backtest
 func (s *BacktestService) GetLatestBacktest() (*models.BacktestSummary, error) {
-	job, err := s.repo.GetRecentCompletedBacktest()
+	job, err := database.GetRecentCompletedBacktest()
 	if err != nil {
 		return nil, err
 	}
@@ -158,7 +156,7 @@ func (s *BacktestService) GetLatestBacktest() (*models.BacktestSummary, error) {
 // GetCachedOrRunBacktest returns cached results if available, otherwise runs new backtest
 func (s *BacktestService) GetCachedOrRunBacktest(config models.BacktestConfig) (*models.BacktestSummary, error) {
 	// Try to get cached result (max 24 hours old)
-	job, err := s.repo.GetCachedBacktestResult(config, 24*time.Hour)
+	job, err := database.GetCachedBacktestResult(config, 24*time.Hour)
 	if err == nil && job.Result != nil {
 		var summary models.BacktestSummary
 		if err := json.Unmarshal([]byte(*job.Result), &summary); err == nil {
@@ -172,7 +170,7 @@ func (s *BacktestService) GetCachedOrRunBacktest(config models.BacktestConfig) (
 
 // GetUserBacktests retrieves backtest history for a user
 func (s *BacktestService) GetUserBacktests(userID string, limit int) ([]models.BacktestJob, error) {
-	return s.repo.GetUserJobs(userID, limit)
+	return database.GetUserBacktestJobs(userID, limit)
 }
 
 // GetDefaultBacktestConfig returns the default backtest configuration
@@ -210,7 +208,7 @@ func (s *BacktestService) GenerateCharts(summary *models.BacktestSummary) *model
 		}
 	}
 
-	charts.DecileBarChart = models.ChartData{
+	charts.DecileBarChart = models.BacktestChartData{
 		Labels: labels,
 		Datasets: []map[string]interface{}{
 			{

@@ -9,10 +9,10 @@ import (
 // SectorPercentile represents distribution statistics for a metric within a sector
 // Used for IC Score v2.1 sector-relative scoring
 type SectorPercentile struct {
-	ID           string          `json:"id" db:"id"`
-	Sector       string          `json:"sector" db:"sector"`
-	MetricName   string          `json:"metric_name" db:"metric_name"`
-	CalculatedAt time.Time       `json:"calculated_at" db:"calculated_at"`
+	ID           string    `json:"id" db:"id"`
+	Sector       string    `json:"sector" db:"sector"`
+	MetricName   string    `json:"metric_name" db:"metric_name"`
+	CalculatedAt time.Time `json:"calculated_at" db:"calculated_at"`
 
 	// Distribution statistics
 	MinValue    *decimal.Decimal `json:"min_value" db:"min_value"`
@@ -67,10 +67,10 @@ func (sp *SectorPercentile) ToResponse() SectorPercentileResponse {
 
 // LifecycleClassification represents a company's lifecycle stage classification
 type LifecycleClassification struct {
-	ID             string          `json:"id" db:"id"`
-	Ticker         string          `json:"ticker" db:"ticker"`
-	ClassifiedAt   time.Time       `json:"classified_at" db:"classified_at"`
-	LifecycleStage string          `json:"lifecycle_stage" db:"lifecycle_stage"`
+	ID             string    `json:"id" db:"id"`
+	Ticker         string    `json:"ticker" db:"ticker"`
+	ClassifiedAt   time.Time `json:"classified_at" db:"classified_at"`
+	LifecycleStage string    `json:"lifecycle_stage" db:"lifecycle_stage"`
 
 	// Input metrics used for classification
 	RevenueGrowthYoY *decimal.Decimal `json:"revenue_growth_yoy" db:"revenue_growth_yoy"`
@@ -155,12 +155,12 @@ var TrackedMetrics = []string{
 
 // LowerIsBetterMetrics are metrics where lower values indicate better performance
 var LowerIsBetterMetrics = map[string]bool{
-	"pe_ratio":          true,
-	"ps_ratio":          true,
-	"pb_ratio":          true,
-	"ev_ebitda":         true,
-	"peg_ratio":         true,
-	"debt_to_equity":    true,
+	"pe_ratio":           true,
+	"ps_ratio":           true,
+	"pb_ratio":           true,
+	"ev_ebitda":          true,
+	"peg_ratio":          true,
+	"debt_to_equity":     true,
 	"net_debt_to_ebitda": true,
 }
 

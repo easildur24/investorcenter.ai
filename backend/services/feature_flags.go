@@ -18,7 +18,7 @@ type FeatureFlagService struct {
 type FeatureFlag struct {
 	Name        string    `json:"name"`
 	Enabled     bool      `json:"enabled"`
-	Percentage  float64   `json:"percentage"`  // 0-100, percentage of users
+	Percentage  float64   `json:"percentage"` // 0-100, percentage of users
 	Description string    `json:"description"`
 	CreatedAt   time.Time `json:"created_at"`
 	UpdatedAt   time.Time `json:"updated_at"`
@@ -26,17 +26,17 @@ type FeatureFlag struct {
 
 // IC Score v2.1 Feature Flag Names
 const (
-	FlagSectorRelativeScoring    = "ic_score_sector_relative_scoring"
-	FlagLifecycleClassification  = "ic_score_lifecycle_classification"
-	FlagEarningsRevisionsFactor  = "ic_score_earnings_revisions_factor"
+	FlagSectorRelativeScoring     = "ic_score_sector_relative_scoring"
+	FlagLifecycleClassification   = "ic_score_lifecycle_classification"
+	FlagEarningsRevisionsFactor   = "ic_score_earnings_revisions_factor"
 	FlagHistoricalValuationFactor = "ic_score_historical_valuation_factor"
-	FlagDividendQualityFactor    = "ic_score_dividend_quality_factor"
-	FlagScoreStability           = "ic_score_score_stability"
-	FlagPeerComparison           = "ic_score_peer_comparison"
-	FlagCatalysts                = "ic_score_catalysts"
-	FlagScoreChangeExplanations  = "ic_score_score_change_explanations"
-	FlagGranularConfidence       = "ic_score_granular_confidence"
-	FlagBacktestDashboard        = "ic_score_backtest_dashboard"
+	FlagDividendQualityFactor     = "ic_score_dividend_quality_factor"
+	FlagScoreStability            = "ic_score_score_stability"
+	FlagPeerComparison            = "ic_score_peer_comparison"
+	FlagCatalysts                 = "ic_score_catalysts"
+	FlagScoreChangeExplanations   = "ic_score_score_change_explanations"
+	FlagGranularConfidence        = "ic_score_granular_confidence"
+	FlagBacktestDashboard         = "ic_score_backtest_dashboard"
 )
 
 // NewFeatureFlagService creates a new feature flag service

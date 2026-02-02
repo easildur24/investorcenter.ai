@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/investorcenter/backend/models"
+	"investorcenter-api/models"
 )
 
 // ===================

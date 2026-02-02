@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"investorcenter/backend/models"
+	"investorcenter-api/models"
 )
 
 // GetSectorPercentile retrieves the latest percentile statistics for a sector/metric combination
