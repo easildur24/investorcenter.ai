@@ -45,8 +45,8 @@ class StabilizationResult:
 
 
 @dataclass
-class DetectedEvent:
-    """A detected market event."""
+class ScoreEvent:
+    """A detected market event that can affect score stabilization."""
     event_type: EventType
     event_date: date
     description: str
@@ -194,7 +194,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: Optional[date] = None
-    ) -> List[DetectedEvent]:
+    ) -> List[ScoreEvent]:
         """Detect significant events since last calculation.
 
         Args:
@@ -264,7 +264,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: date
-    ) -> Optional[DetectedEvent]:
+    ) -> Optional[ScoreEvent]:
         """Check for recent earnings release."""
         try:
             # Check SEC filings for 10-Q or 10-K
@@ -287,7 +287,7 @@ class ScoreStabilizer:
                 form_type = row[0]
                 filing_date = row[1]
 
-                return DetectedEvent(
+                return ScoreEvent(
                     event_type=EventType.EARNINGS_RELEASE,
                     event_date=filing_date,
                     description=f"{form_type} filing on {filing_date}",
@@ -305,7 +305,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: date
-    ) -> Optional[DetectedEvent]:
+    ) -> Optional[ScoreEvent]:
         """Check for recent analyst rating changes."""
         try:
             query = text("""
@@ -344,7 +344,7 @@ class ScoreStabilizer:
                 else:
                     direction = "neutral"
 
-                return DetectedEvent(
+                return ScoreEvent(
                     event_type=EventType.ANALYST_RATING_CHANGE,
                     event_date=rating_date,
                     description=f"{firm}: {prev_rating} → {new_rating}",
@@ -363,7 +363,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: date
-    ) -> Optional[DetectedEvent]:
+    ) -> Optional[ScoreEvent]:
         """Check for large insider trades."""
         try:
             query = text("""
@@ -400,7 +400,7 @@ class ScoreStabilizer:
                 is_buy = trans_type and 'buy' in trans_type.lower()
                 direction = "positive" if is_buy else "negative"
 
-                return DetectedEvent(
+                return ScoreEvent(
                     event_type=EventType.INSIDER_TRADE_LARGE,
                     event_date=latest_date,
                     description=f"Insider {trans_type}: ${total_value:,.0f} ({trade_count} trades)",
@@ -419,7 +419,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: date
-    ) -> Optional[DetectedEvent]:
+    ) -> Optional[ScoreEvent]:
         """Check for dividend announcements."""
         try:
             query = text("""
@@ -443,7 +443,7 @@ class ScoreStabilizer:
 
                 direction = "positive" if growth and float(growth) > 0 else "neutral"
 
-                return DetectedEvent(
+                return ScoreEvent(
                     event_type=EventType.DIVIDEND_ANNOUNCEMENT,
                     event_date=ex_date,
                     description=f"Ex-dividend date: {ex_date}, ${div_amount}",
@@ -461,7 +461,7 @@ class ScoreStabilizer:
         self,
         ticker: str,
         since_date: date
-    ) -> Optional[DetectedEvent]:
+    ) -> Optional[ScoreEvent]:
         """Check for significant price movements."""
         try:
             query = text("""
@@ -486,7 +486,7 @@ class ScoreStabilizer:
                 if abs(return_1d) >= self.SIGNIFICANT_PRICE_MOVE_PCT:
                     direction = "positive" if return_1d > 0 else "negative"
 
-                    return DetectedEvent(
+                    return ScoreEvent(
                         event_type=EventType.PRICE_BREAKOUT,
                         event_date=date.today(),
                         description=f"Price moved {return_1d:+.1f}%",
@@ -501,7 +501,7 @@ class ScoreStabilizer:
             logger.debug(f"Error checking price breakout for {ticker}: {e}")
             return None
 
-    async def store_event(self, ticker: str, event: DetectedEvent) -> bool:
+    async def store_event(self, ticker: str, event: ScoreEvent) -> bool:
         """Store a detected event in the database."""
         try:
             query = text("""

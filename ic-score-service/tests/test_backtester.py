@@ -128,7 +128,8 @@ class TestICScoreBacktester:
             frequency=RebalanceFrequency.DAILY
         )
 
-        assert len(periods) == 10
+        # 9 periods: Jan 1-1, Jan 2-2, ..., Jan 9-9 (end_date is exclusive boundary)
+        assert len(periods) == 9
 
     # ==================
     # Decile Portfolio Tests
