@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/gorilla/mux"
+	"github.com/gin-gonic/gin"
 
-	"investorcenter/models"
-	"investorcenter/services"
+	"investorcenter-api/models"
+	"investorcenter-api/services"
 )
 
 // BacktestHandler handles backtest-related HTTP requests
@@ -22,61 +22,60 @@ func NewBacktestHandler(service *services.BacktestService) *BacktestHandler {
 
 // RunBacktest executes a backtest with the provided configuration
 // POST /api/v1/ic-scores/backtest
-func (h *BacktestHandler) RunBacktest(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) RunBacktest(c *gin.Context) {
 	var config models.BacktestConfig
-	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	// Validate configuration
 	if err := h.service.ValidateConfig(config); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Run backtest (synchronous for simple requests)
 	summary, err := h.service.RunBacktest(config)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	c.JSON(http.StatusOK, summary)
 }
 
 // SubmitBacktestJob creates a new backtest job and runs it asynchronously
 // POST /api/v1/ic-scores/backtest/jobs
-func (h *BacktestHandler) SubmitBacktestJob(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) SubmitBacktestJob(c *gin.Context) {
 	var config models.BacktestConfig
-	if err := json.NewDecoder(r.Body).Decode(&config); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	if err := c.ShouldBindJSON(&config); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
 		return
 	}
 
 	// Validate configuration
 	if err := h.service.ValidateConfig(config); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Get user ID from context if authenticated
 	var userID *string
-	if user, ok := r.Context().Value("user").(*models.User); ok {
-		userID = &user.ID
+	if user, exists := c.Get("user"); exists {
+		if u, ok := user.(*models.User); ok {
+			userID = &u.ID
+		}
 	}
 
 	// Submit job
 	job, err := h.service.SubmitBacktestJob(config, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusAccepted)
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	c.JSON(http.StatusAccepted, gin.H{
 		"job_id":  job.ID,
 		"status":  job.Status,
 		"message": "Backtest job submitted successfully",
@@ -84,23 +83,22 @@ func (h *BacktestHandler) SubmitBacktestJob(w http.ResponseWriter, r *http.Reque
 }
 
 // GetBacktestJobStatus retrieves the status of a backtest job
-// GET /api/v1/ic-scores/backtest/jobs/{jobId}
-func (h *BacktestHandler) GetBacktestJobStatus(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	jobID := vars["jobId"]
+// GET /api/v1/ic-scores/backtest/jobs/:jobId
+func (h *BacktestHandler) GetBacktestJobStatus(c *gin.Context) {
+	jobID := c.Param("jobId")
 
 	if jobID == "" {
-		http.Error(w, "Job ID is required", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job ID is required"})
 		return
 	}
 
 	job, err := h.service.GetJobStatus(jobID)
 	if err != nil {
-		http.Error(w, "Job not found", http.StatusNotFound)
+		c.JSON(http.StatusNotFound, gin.H{"error": "Job not found"})
 		return
 	}
 
-	response := map[string]interface{}{
+	response := gin.H{
 		"job_id":     job.ID,
 		"status":     job.Status,
 		"created_at": job.CreatedAt,
@@ -118,88 +116,86 @@ func (h *BacktestHandler) GetBacktestJobStatus(w http.ResponseWriter, r *http.Re
 		response["error"] = *job.Error
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.JSON(http.StatusOK, response)
 }
 
 // GetBacktestJobResult retrieves the result of a completed backtest job
-// GET /api/v1/ic-scores/backtest/jobs/{jobId}/result
-func (h *BacktestHandler) GetBacktestJobResult(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	jobID := vars["jobId"]
+// GET /api/v1/ic-scores/backtest/jobs/:jobId/result
+func (h *BacktestHandler) GetBacktestJobResult(c *gin.Context) {
+	jobID := c.Param("jobId")
 
 	if jobID == "" {
-		http.Error(w, "Job ID is required", http.StatusBadRequest)
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Job ID is required"})
 		return
 	}
 
 	summary, err := h.service.GetJobResult(jobID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	c.JSON(http.StatusOK, summary)
 }
 
 // GetLatestBacktest retrieves the most recent completed backtest
 // GET /api/v1/ic-scores/backtest/latest
-func (h *BacktestHandler) GetLatestBacktest(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) GetLatestBacktest(c *gin.Context) {
 	summary, err := h.service.GetLatestBacktest()
 	if err != nil {
-		http.Error(w, "No completed backtests found", http.StatusNotFound)
+		c.JSON(http.StatusNotFound, gin.H{"error": "No completed backtests found"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	c.JSON(http.StatusOK, summary)
 }
 
 // GetDefaultConfig returns the default backtest configuration
 // GET /api/v1/ic-scores/backtest/config/default
-func (h *BacktestHandler) GetDefaultConfig(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) GetDefaultConfig(c *gin.Context) {
 	config := h.service.GetDefaultBacktestConfig()
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(config)
+	c.JSON(http.StatusOK, config)
 }
 
 // GetBacktestCharts returns chart data for the backtest dashboard
 // GET /api/v1/ic-scores/backtest/charts
-func (h *BacktestHandler) GetBacktestCharts(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) GetBacktestCharts(c *gin.Context) {
 	// Get the latest backtest results
 	summary, err := h.service.GetLatestBacktest()
 	if err != nil {
-		http.Error(w, "No completed backtests found", http.StatusNotFound)
+		c.JSON(http.StatusNotFound, gin.H{"error": "No completed backtests found"})
 		return
 	}
 
 	charts := h.service.GenerateCharts(summary)
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(charts)
+	c.JSON(http.StatusOK, charts)
 }
 
 // GetUserBacktests retrieves backtest history for the authenticated user
 // GET /api/v1/ic-scores/backtest/history
-func (h *BacktestHandler) GetUserBacktests(w http.ResponseWriter, r *http.Request) {
-	user, ok := r.Context().Value("user").(*models.User)
-	if !ok {
-		http.Error(w, "Authentication required", http.StatusUnauthorized)
+func (h *BacktestHandler) GetUserBacktests(c *gin.Context) {
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authentication required"})
 		return
 	}
 
-	jobs, err := h.service.GetUserBacktests(user.ID, 10)
+	u, ok := user.(*models.User)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid user context"})
+		return
+	}
+
+	jobs, err := h.service.GetUserBacktests(u.ID, 10)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
 	// Transform to response format
-	response := make([]map[string]interface{}, len(jobs))
+	response := make([]gin.H, len(jobs))
 	for i, job := range jobs {
-		response[i] = map[string]interface{}{
+		response[i] = gin.H{
 			"job_id":     job.ID,
 			"status":     job.Status,
 			"created_at": job.CreatedAt,
@@ -212,7 +208,7 @@ func (h *BacktestHandler) GetUserBacktests(w http.ResponseWriter, r *http.Reques
 		// Parse config for display
 		var config models.BacktestConfig
 		if err := json.Unmarshal([]byte(job.Config), &config); err == nil {
-			response[i]["config"] = map[string]interface{}{
+			response[i]["config"] = gin.H{
 				"start_date":          config.StartDate,
 				"end_date":            config.EndDate,
 				"rebalance_frequency": config.RebalanceFrequency,
@@ -221,22 +217,20 @@ func (h *BacktestHandler) GetUserBacktests(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	c.JSON(http.StatusOK, response)
 }
 
 // RunQuickBacktest runs a quick backtest with default settings
 // GET /api/v1/ic-scores/backtest/quick
-func (h *BacktestHandler) RunQuickBacktest(w http.ResponseWriter, r *http.Request) {
+func (h *BacktestHandler) RunQuickBacktest(c *gin.Context) {
 	// Use default config with caching
 	config := h.service.GetDefaultBacktestConfig()
 
 	summary, err := h.service.GetCachedOrRunBacktest(config)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(summary)
+	c.JSON(http.StatusOK, summary)
 }

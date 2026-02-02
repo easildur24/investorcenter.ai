@@ -151,6 +151,23 @@ func main() {
 		// IC Scores admin endpoints (list all scores)
 		v1.GET("/ic-scores", handlers.GetICScores) // List all IC Scores with pagination
 
+		// IC Score Backtest endpoints
+		backtestRepo := database.NewBacktestRepository(database.DB)
+		backtestService := services.NewBacktestService(backtestRepo)
+		backtestHandler := handlers.NewBacktestHandler(backtestService)
+
+		backtestRoutes := v1.Group("/ic-scores/backtest")
+		{
+			backtestRoutes.GET("/latest", backtestHandler.GetLatestBacktest)                // GET /api/v1/ic-scores/backtest/latest
+			backtestRoutes.GET("/config/default", backtestHandler.GetDefaultConfig)         // GET /api/v1/ic-scores/backtest/config/default
+			backtestRoutes.GET("/quick", backtestHandler.RunQuickBacktest)                  // GET /api/v1/ic-scores/backtest/quick
+			backtestRoutes.POST("", backtestHandler.RunBacktest)                            // POST /api/v1/ic-scores/backtest
+			backtestRoutes.GET("/charts", backtestHandler.GetBacktestCharts)                // GET /api/v1/ic-scores/backtest/charts
+			backtestRoutes.POST("/jobs", backtestHandler.SubmitBacktestJob)                 // POST /api/v1/ic-scores/backtest/jobs
+			backtestRoutes.GET("/jobs/:jobId", backtestHandler.GetBacktestJobStatus)        // GET /api/v1/ic-scores/backtest/jobs/:jobId
+			backtestRoutes.GET("/jobs/:jobId/result", backtestHandler.GetBacktestJobResult) // GET /api/v1/ic-scores/backtest/jobs/:jobId/result
+		}
+
 		// Crypto endpoints
 		crypto := v1.Group("/crypto")
 		{
