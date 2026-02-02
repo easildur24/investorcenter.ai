@@ -257,7 +257,15 @@ class ICScoreCalculator:
                 result = await session.execute(query, {"ticker": ticker.upper()})
             else:
                 # Only process stocks (not ETFs, indices, crypto, etc.)
-                where_clauses = ["symbol NOT LIKE '%-%'", "active = true", "asset_type = 'stock'"]
+                # Note: asset_type 'CS' = Common Stock, 'stock' is legacy value
+                # Exclude index tickers (I:*) and crypto (X:*) which may be misclassified
+                where_clauses = [
+                    "symbol NOT LIKE '%-%'",
+                    "symbol NOT LIKE 'I:%'",
+                    "symbol NOT LIKE 'X:%'",
+                    "active = true",
+                    "asset_type IN ('CS', 'stock')"
+                ]
                 params = {}
 
                 if sector:
@@ -1245,10 +1253,6 @@ class ICScoreCalculator:
                 'institutional_score': round(factor_scores.get('institutional'), 2) if 'institutional' in factor_scores else None,
                 'news_sentiment_score': round(factor_scores.get('news_sentiment'), 2) if 'news_sentiment' in factor_scores else None,
                 'technical_score': round(factor_scores.get('technical'), 2) if 'technical' in factor_scores else None,
-                # Phase 2 factor scores
-                'earnings_revisions_score': round(factor_scores.get('earnings_revisions'), 2) if 'earnings_revisions' in factor_scores else None,
-                'historical_value_score': round(factor_scores.get('historical_value'), 2) if 'historical_value' in factor_scores else None,
-                'dividend_quality_score': round(factor_scores.get('dividend_quality'), 2) if 'dividend_quality' in factor_scores else None,
                 'rating': rating,
                 'sector_percentile': round((sector_total - sector_rank + 1) / sector_total * 100, 1) if sector_rank and sector_total else None,
                 'confidence_level': confidence,
@@ -1358,14 +1362,28 @@ class ICScoreCalculator:
             logger.error(f"{ticker}: Error calculating IC Score: {e}", exc_info=True)
             return None
 
+    # Valid columns in ICScore model (used for filtering score_data before storing)
+    IC_SCORE_COLUMNS = {
+        'ticker', 'date', 'overall_score',
+        'value_score', 'growth_score', 'profitability_score', 'financial_health_score',
+        'momentum_score', 'analyst_consensus_score', 'insider_activity_score',
+        'institutional_score', 'news_sentiment_score', 'technical_score',
+        'rating', 'sector_percentile', 'confidence_level', 'data_completeness',
+        'lifecycle_stage', 'raw_score', 'smoothing_applied', 'weights_used',
+        'sector_rank', 'sector_total', 'calculation_metadata',
+    }
+
     async def store_ic_score(self, score_data: Dict[str, Any]) -> bool:
         """Store IC Score in database."""
         try:
+            # Filter to only include valid columns (exclude non-column keys like 'peers', 'previous_score', etc.)
+            filtered_data = {k: v for k, v in score_data.items() if k in self.IC_SCORE_COLUMNS}
+
             async with self.db.session() as session:
-                stmt = pg_insert(ICScore).values(score_data)
+                stmt = pg_insert(ICScore).values(filtered_data)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['ticker', 'date'],
-                    set_={k: stmt.excluded[k] for k in score_data.keys() if k not in ['ticker', 'date']}
+                    set_={k: stmt.excluded[k] for k in filtered_data.keys() if k not in ['ticker', 'date']}
                 )
 
                 await session.execute(stmt)
