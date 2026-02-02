@@ -56,7 +56,7 @@ export default function ScoreChangeExplainer({
       {/* Summary */}
       <div className="mb-4 p-3 bg-gray-50 rounded-lg">
         <div className="flex items-center gap-3 mb-2">
-          {previousScore !== null && (
+          {previousScore != null && (
             <span className="text-gray-500">
               {Math.round(previousScore)} → {Math.round(currentScore)}
             </span>

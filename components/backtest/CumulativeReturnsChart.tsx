@@ -58,7 +58,7 @@ export function CumulativeReturnsChart({
         />
         <Tooltip
           content={({ active, payload, label }) => {
-            if (active && payload && payload.length) {
+            if (active && payload && payload.length && label) {
               const date = new Date(label);
               return (
                 <div className="bg-white border rounded-lg shadow-lg p-3">
