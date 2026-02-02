@@ -1,4 +1,5 @@
--- IC Score v2.1 Phase 2 Tables: New Factors
+-- IC Score Factor Data Tables
+-- Migration: 023_ic_score_factor_data_tables.sql
 -- This migration adds tables for:
 -- 1. EPS Estimates (Earnings Revisions factor)
 -- 2. Valuation History (Historical Valuation factor)
@@ -129,7 +130,7 @@ CREATE TABLE IF NOT EXISTS dividend_history (
 CREATE INDEX IF NOT EXISTS idx_dividend_history_ticker ON dividend_history(ticker, fiscal_year DESC);
 
 -- ====================
--- Add Phase 2 columns to ic_scores table
+-- Add factor score columns to ic_scores table
 -- ====================
 DO $$
 BEGIN
@@ -153,7 +154,7 @@ BEGIN
 END $$;
 
 -- ====================
--- Cronjob Definitions for Phase 2 Pipelines
+-- Cronjob Definitions for Factor Data Pipelines
 -- ====================
 INSERT INTO cronjob_definitions (name, schedule, description, pipeline_name, enabled)
 VALUES

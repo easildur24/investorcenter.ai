@@ -1,4 +1,5 @@
--- IC Score v2.1 Phase 3 Tables: Enhanced Features
+-- IC Score Peer Comparison & Catalyst Tables
+-- Migration: 024_ic_score_peer_catalyst_tables.sql
 -- This migration adds tables for:
 -- 1. IC Score Events (for score stabilization/reset triggers)
 -- 2. Stock Peers (for peer comparison)
@@ -117,7 +118,7 @@ CREATE INDEX IF NOT EXISTS idx_ic_score_changes_ticker_date ON ic_score_changes(
 CREATE INDEX IF NOT EXISTS idx_ic_score_changes_significant ON ic_score_changes(ticker, ABS(delta) DESC);
 
 -- ====================
--- Add Phase 3 columns to ic_scores table
+-- Add peer comparison columns to ic_scores table
 -- ====================
 DO $$
 BEGIN
@@ -238,7 +239,7 @@ WHERE sp.calculated_at = CURRENT_DATE
 GROUP BY sp.ticker, t.company_name, t.sector, i.overall_score;
 
 -- ====================
--- Cronjob Definitions for Phase 3 Pipelines
+-- Cronjob Definitions for Peer & Catalyst Pipelines
 -- ====================
 INSERT INTO cronjob_definitions (name, schedule, description, pipeline_name, enabled)
 VALUES

@@ -1,5 +1,5 @@
--- IC Score v2.1 Phase 5: Validation & Launch Tables
--- Migration: 025_ic_score_v21_phase5_tables.sql
+-- IC Score Backtest & Feature Flag Tables
+-- Migration: 025_ic_score_backtest_tables.sql
 
 -- Backtest Jobs table for tracking async backtest runs
 CREATE TABLE IF NOT EXISTS backtest_jobs (
