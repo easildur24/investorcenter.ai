@@ -118,15 +118,20 @@ func main() {
 			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)                // Get volume data (add ?realtime=true for fresh data)
 			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
 
-			// Additional ticker endpoints
-			tickers.GET("/:symbol/news", handlers.GetTickerNews)
-			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
-			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
-			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
-			// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
-			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
-			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
-		}
+		// Additional ticker endpoints
+		tickers.GET("/:symbol/news", handlers.GetTickerNews)
+		tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
+		tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
+		// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
+		// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
+		// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
+		// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
+
+		// Manual fundamentals endpoints (user-ingested data)
+		tickers.GET("/:symbol/manual-fundamentals", handlers.GetManualFundamentals)       // Get manually ingested data
+		tickers.POST("/:symbol/manual-fundamentals", handlers.PostManualFundamentals)     // Upload fundamental data
+		tickers.DELETE("/:symbol/manual-fundamentals", handlers.DeleteManualFundamentals) // Delete fundamental data
+	}
 
 		// IC Score endpoints
 		stocks := v1.Group("/stocks")

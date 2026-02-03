@@ -157,9 +157,10 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         setLoading(true);
         console.log(`🔥 Fetching fundamentals for ${symbol}...`);
 
-        // Fetch all data sources in parallel
-        const [tickerResponse, financialsResponse, riskResponse] = await Promise.all([
+        // Fetch all data sources in parallel (including manual fundamentals)
+        const [tickerResponse, manualFundamentalsResponse, financialsResponse, riskResponse] = await Promise.all([
           fetch(`/api/v1/tickers/${symbol}`),
+          fetch(`/api/v1/tickers/${symbol}/manual-fundamentals`).catch(() => null),
           fetch(`/api/v1/stocks/${symbol}/financials`).catch(() => null),
           fetch(`/api/v1/stocks/${symbol}/risk?period=1Y`).catch(() => null)
         ]);
@@ -182,15 +183,29 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         const polygonFundamentals = tickerResult.data.summary.fundamentals || {};
         const polygonKeyMetrics = tickerResult.data.summary.keyMetrics || {};
 
+        // Extract manual fundamentals if available (HIGHEST PRIORITY)
+        let manualFundamentals: any = {};
+        if (manualFundamentalsResponse?.ok) {
+          const manualResult = await manualFundamentalsResponse.json();
+          manualFundamentals = manualResult.data || {};
+          console.log('✨ Manual Fundamentals:', manualFundamentals);
+          // Capture the update date
+          if (manualResult.meta?.updated_at) {
+            setIcScoreDataDate(manualResult.meta.updated_at);
+          }
+        }
+
         // Extract IC Score financial metrics if available
         let icScoreFinancials: any = {};
         if (financialsResponse?.ok) {
           const financialsResult = await financialsResponse.json();
           icScoreFinancials = financialsResult.data || {};
           console.log('📊 IC Score Financials:', icScoreFinancials);
-          // Capture the filing date if available
-          if (icScoreFinancials.period_end_date || icScoreFinancials.filing_date) {
-            setIcScoreDataDate(icScoreFinancials.period_end_date || icScoreFinancials.filing_date);
+          // Capture the filing date if available (only if no manual data)
+          if (!manualFundamentals || Object.keys(manualFundamentals).length === 0) {
+            if (icScoreFinancials.period_end_date || icScoreFinancials.filing_date) {
+              setIcScoreDataDate(icScoreFinancials.period_end_date || icScoreFinancials.filing_date);
+            }
           }
         }
 
@@ -202,36 +217,36 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           console.log('📊 IC Score Risk:', icScoreRisk);
         }
 
-        // Merge data - prefer IC Score data when available, fallback to Polygon
+        // Merge data - PRIORITY: Manual > IC Score > Polygon
         const mappedFundamentals: Fundamentals = {
-          pe: polygonFundamentals?.pe || icScoreFinancials?.pe_ratio || 'N/A',
-          pb: polygonFundamentals?.pb || icScoreFinancials?.pb_ratio || 'N/A',
-          ps: polygonFundamentals?.ps || icScoreFinancials?.ps_ratio || 'N/A',
-          // Prefer IC Score margins (from SEC filings) as they're more accurate
-          roe: isValidValue(icScoreFinancials?.roe) ? icScoreFinancials.roe : (polygonFundamentals?.roe || 'N/A'),
-          roa: isValidValue(icScoreFinancials?.roa) ? icScoreFinancials.roa : (polygonFundamentals?.roa || 'N/A'),
-          revenue: polygonFundamentals?.revenue || '0',
-          netIncome: polygonFundamentals?.netIncome || '0',
-          eps: polygonFundamentals?.eps || 'N/A',
-          debtToEquity: isValidValue(icScoreFinancials?.debt_to_equity) ? icScoreFinancials.debt_to_equity : (polygonKeyMetrics?.debtToEquity || 'N/A'),
-          currentRatio: isValidValue(icScoreFinancials?.current_ratio) ? icScoreFinancials.current_ratio : (polygonKeyMetrics?.currentRatio || 'N/A'),
-          grossMargin: isValidValue(icScoreFinancials?.gross_margin) ? icScoreFinancials.gross_margin : (polygonFundamentals?.grossMargin || 'N/A'),
-          operatingMargin: isValidValue(icScoreFinancials?.operating_margin) ? icScoreFinancials.operating_margin : (polygonFundamentals?.operatingMargin || 'N/A'),
-          netMargin: isValidValue(icScoreFinancials?.net_margin) ? icScoreFinancials.net_margin : (polygonFundamentals?.netMargin || 'N/A')
+          pe: manualFundamentals?.pe_ratio || polygonFundamentals?.pe || icScoreFinancials?.pe_ratio || 'N/A',
+          pb: manualFundamentals?.pb_ratio || polygonFundamentals?.pb || icScoreFinancials?.pb_ratio || 'N/A',
+          ps: manualFundamentals?.ps_ratio || polygonFundamentals?.ps || icScoreFinancials?.ps_ratio || 'N/A',
+          // Prefer Manual > IC Score > Polygon
+          roe: isValidValue(manualFundamentals?.roe) ? manualFundamentals.roe : (isValidValue(icScoreFinancials?.roe) ? icScoreFinancials.roe : (polygonFundamentals?.roe || 'N/A')),
+          roa: isValidValue(manualFundamentals?.roa) ? manualFundamentals.roa : (isValidValue(icScoreFinancials?.roa) ? icScoreFinancials.roa : (polygonFundamentals?.roa || 'N/A')),
+          revenue: manualFundamentals?.revenue_ttm || polygonFundamentals?.revenue || '0',
+          netIncome: manualFundamentals?.net_income_ttm || polygonFundamentals?.netIncome || '0',
+          eps: manualFundamentals?.eps_diluted_ttm || polygonFundamentals?.eps || 'N/A',
+          debtToEquity: isValidValue(manualFundamentals?.debt_to_equity) ? manualFundamentals.debt_to_equity : (isValidValue(icScoreFinancials?.debt_to_equity) ? icScoreFinancials.debt_to_equity : (polygonKeyMetrics?.debtToEquity || 'N/A')),
+          currentRatio: isValidValue(manualFundamentals?.current_ratio) ? manualFundamentals.current_ratio : (isValidValue(icScoreFinancials?.current_ratio) ? icScoreFinancials.current_ratio : (polygonKeyMetrics?.currentRatio || 'N/A')),
+          grossMargin: isValidValue(manualFundamentals?.gross_margin) ? manualFundamentals.gross_margin : (isValidValue(icScoreFinancials?.gross_margin) ? icScoreFinancials.gross_margin : (polygonFundamentals?.grossMargin || 'N/A')),
+          operatingMargin: isValidValue(manualFundamentals?.operating_margin) ? manualFundamentals.operating_margin : (isValidValue(icScoreFinancials?.operating_margin) ? icScoreFinancials.operating_margin : (polygonFundamentals?.operatingMargin || 'N/A')),
+          netMargin: isValidValue(manualFundamentals?.net_margin) ? manualFundamentals.net_margin : (isValidValue(icScoreFinancials?.net_margin) ? icScoreFinancials.net_margin : (polygonFundamentals?.netMargin || 'N/A'))
         };
 
         const mappedKeyMetrics: KeyMetrics = {
           week52High: polygonKeyMetrics?.week52High || '0',
           week52Low: polygonKeyMetrics?.week52Low || '0',
           ytdChange: polygonKeyMetrics?.ytdChange || '0',
-          // Prefer IC Score beta from risk_metrics table
-          beta: isValidValue(icScoreRisk?.beta) ? icScoreRisk.beta : (polygonKeyMetrics?.beta || '1.0'),
+          // Prefer Manual > IC Score Risk > Polygon
+          beta: isValidValue(manualFundamentals?.beta) ? manualFundamentals.beta : (isValidValue(icScoreRisk?.beta) ? icScoreRisk.beta : (polygonKeyMetrics?.beta || '1.0')),
           averageVolume: polygonKeyMetrics?.averageVolume || '0',
-          // Prefer IC Score shares outstanding from SEC filings
-          sharesOutstanding: isValidValue(icScoreFinancials?.shares_outstanding) ? icScoreFinancials.shares_outstanding : (polygonKeyMetrics?.sharesOutstanding || '0'),
-          // Prefer IC Score growth metrics
-          revenueGrowth1Y: isValidValue(icScoreFinancials?.revenue_growth_yoy) ? icScoreFinancials.revenue_growth_yoy : (polygonKeyMetrics?.revenueGrowth1Y || '0'),
-          earningsGrowth1Y: isValidValue(icScoreFinancials?.earnings_growth_yoy) ? icScoreFinancials.earnings_growth_yoy : (polygonKeyMetrics?.earningsGrowth1Y || '0')
+          // Prefer Manual > IC Score > Polygon
+          sharesOutstanding: isValidValue(manualFundamentals?.shares_outstanding) ? manualFundamentals.shares_outstanding : (isValidValue(icScoreFinancials?.shares_outstanding) ? icScoreFinancials.shares_outstanding : (polygonKeyMetrics?.sharesOutstanding || '0')),
+          // Prefer Manual > IC Score growth metrics
+          revenueGrowth1Y: isValidValue(manualFundamentals?.revenue_growth_yoy) ? manualFundamentals.revenue_growth_yoy : (isValidValue(icScoreFinancials?.revenue_growth_yoy) ? icScoreFinancials.revenue_growth_yoy : (polygonKeyMetrics?.revenueGrowth1Y || '0')),
+          earningsGrowth1Y: isValidValue(manualFundamentals?.earnings_growth_yoy) ? manualFundamentals.earnings_growth_yoy : (isValidValue(icScoreFinancials?.earnings_growth_yoy) ? icScoreFinancials.earnings_growth_yoy : (polygonKeyMetrics?.earningsGrowth1Y || '0'))
         };
 
         console.log('✅ Merged Fundamentals:', mappedFundamentals);
