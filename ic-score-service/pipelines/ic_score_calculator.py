@@ -294,11 +294,14 @@ class ICScoreCalculator:
     async def fetch_financial_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch latest financial data for a stock."""
         async with self.db.session() as session:
+            # Prefer rows with actual metrics (net_margin not null)
             query = text("""
                 SELECT *
                 FROM financials
                 WHERE ticker = :ticker
-                ORDER BY period_end_date DESC
+                ORDER BY
+                    period_end_date DESC,
+                    CASE WHEN net_margin IS NOT NULL THEN 0 ELSE 1 END
                 LIMIT 20
             """)
             result = await session.execute(query, {"ticker": ticker})
@@ -307,11 +310,58 @@ class ICScoreCalculator:
             if not rows:
                 return None
 
-            # Get latest quarterly and annual data
+            # Get latest row with actual metrics
             latest = rows[0]._asdict() if rows else {}
             historical = [row._asdict() for row in rows]
 
             return {'latest': latest, 'historical': historical}
+
+    async def fetch_fundamental_metrics(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch latest fundamental metrics from fundamental_metrics_extended.
+
+        This table contains pre-calculated growth rates, profitability metrics,
+        and other derived values that are more reliable than calculating from
+        raw financials.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT
+                    revenue_growth_yoy, eps_growth_yoy,
+                    net_margin, roe, roa, roic,
+                    gross_margin, operating_margin,
+                    dividend_yield, payout_ratio,
+                    debt_to_equity, current_ratio, quick_ratio,
+                    ev_to_ebitda, ev_to_revenue,
+                    calculation_date
+                FROM fundamental_metrics_extended
+                WHERE ticker = :ticker
+                ORDER BY calculation_date DESC
+                LIMIT 1
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                'revenue_growth_yoy': float(row[0]) if row[0] is not None else None,
+                'eps_growth_yoy': float(row[1]) if row[1] is not None else None,
+                'net_margin': float(row[2]) if row[2] is not None else None,
+                'roe': float(row[3]) if row[3] is not None else None,
+                'roa': float(row[4]) if row[4] is not None else None,
+                'roic': float(row[5]) if row[5] is not None else None,
+                'gross_margin': float(row[6]) if row[6] is not None else None,
+                'operating_margin': float(row[7]) if row[7] is not None else None,
+                'dividend_yield': float(row[8]) if row[8] is not None else None,
+                'payout_ratio': float(row[9]) if row[9] is not None else None,
+                'debt_to_equity': float(row[10]) if row[10] is not None else None,
+                'current_ratio': float(row[11]) if row[11] is not None else None,
+                'quick_ratio': float(row[12]) if row[12] is not None else None,
+                'ev_to_ebitda': float(row[13]) if row[13] is not None else None,
+                'ev_to_revenue': float(row[14]) if row[14] is not None else None,
+                'calculation_date': row[15],
+            }
 
     async def fetch_technical_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch latest technical indicators for a stock."""
@@ -596,12 +646,14 @@ class ICScoreCalculator:
 
     async def calculate_growth_score(
         self,
-        financial_data: Dict[str, Any],
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]],
         sector: Optional[str]
     ) -> Tuple[Optional[float], Dict]:
         """Calculate growth score based on revenue, EPS, FCF growth.
 
         v2.1 Scoring methodology (sector-relative):
+        - Uses pre-calculated growth rates from fundamental_metrics_extended
         - Uses sector percentiles for growth comparison
         - Higher growth vs sector = higher score
 
@@ -610,31 +662,35 @@ class ICScoreCalculator:
         - +20% growth = 100 (maximum score)
         - -20% growth = 0 (minimum score)
         """
-        if not financial_data or len(financial_data.get('historical', [])) < 4:
-            return None, {}
-
-        historical = financial_data['historical']
         metadata = {}
         growth_scale = self.SCALE_FACTORS['growth_scale']
         scores = []
 
-        # Calculate year-over-year growth rates
+        # Prefer pre-calculated growth rates from fundamental_metrics_extended
         rev_growth = None
         eps_growth = None
 
-        if historical[0].get('revenue') and historical[3].get('revenue'):
-            rev_current = float(historical[0]['revenue'])
-            rev_prior = float(historical[3]['revenue'])
-            if rev_prior > 0:
-                rev_growth = ((rev_current / rev_prior) - 1) * 100
+        if fundamental_metrics:
+            rev_growth = fundamental_metrics.get('revenue_growth_yoy')
+            eps_growth = fundamental_metrics.get('eps_growth_yoy')
+            if rev_growth is not None:
                 metadata['revenue_growth_yoy'] = rev_growth
-
-        if historical[0].get('eps_diluted') and historical[3].get('eps_diluted'):
-            eps_current = float(historical[0]['eps_diluted'])
-            eps_prior = float(historical[3]['eps_diluted'])
-            if eps_prior > 0:
-                eps_growth = ((eps_current / eps_prior) - 1) * 100
+            if eps_growth is not None:
                 metadata['eps_growth_yoy'] = eps_growth
+
+        # Fallback: Calculate from raw financials if pre-calculated not available
+        if rev_growth is None and financial_data and len(financial_data.get('historical', [])) >= 4:
+            historical = financial_data['historical']
+            if historical[0].get('revenue') and historical[3].get('revenue'):
+                rev_current = float(historical[0]['revenue'])
+                rev_prior = float(historical[3]['revenue'])
+                if rev_prior > 0:
+                    rev_growth = ((rev_current / rev_prior) - 1) * 100
+                    metadata['revenue_growth_yoy'] = rev_growth
+                    metadata['growth_source'] = 'calculated'
+
+        if rev_growth is None and eps_growth is None:
+            return None, metadata
 
         # v2.1: Use sector-relative percentiles
         if self._sector_calculator and sector and self.USE_SECTOR_RELATIVE_SCORING:
@@ -676,12 +732,14 @@ class ICScoreCalculator:
 
     async def calculate_profitability_score(
         self,
-        financial_data: Dict[str, Any],
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]],
         sector: Optional[str]
     ) -> Tuple[Optional[float], Dict]:
         """Calculate profitability score based on margins, ROE, ROA.
 
         v2.1 Scoring methodology (sector-relative):
+        - Uses pre-calculated metrics from fundamental_metrics_extended
         - Uses sector percentiles for profitability comparison
         - Higher margins/ROE/ROA vs sector = higher score
 
@@ -689,16 +747,31 @@ class ICScoreCalculator:
         - 0% margin/ROE = 0, 20% = 100
         - 0% ROA = 0, 10% = 100 (ROA typically lower than ROE)
         """
-        if not financial_data:
-            return None, {}
-
-        latest = financial_data.get('latest', {})
         metadata = {}
         scores = []
 
-        margin = float(latest['net_margin']) if latest.get('net_margin') else None
-        roe = float(latest['roe']) if latest.get('roe') else None
-        roa = float(latest['roa']) if latest.get('roa') else None
+        # Prefer data from fundamental_metrics_extended
+        margin = None
+        roe = None
+        roa = None
+
+        if fundamental_metrics:
+            margin = fundamental_metrics.get('net_margin')
+            roe = fundamental_metrics.get('roe')
+            roa = fundamental_metrics.get('roa')
+
+        # Fallback to financials table
+        if financial_data and (margin is None or roe is None or roa is None):
+            latest = financial_data.get('latest', {})
+            if margin is None and latest.get('net_margin'):
+                margin = float(latest['net_margin'])
+            if roe is None and latest.get('roe'):
+                roe = float(latest['roe'])
+            if roa is None and latest.get('roa'):
+                roa = float(latest['roa'])
+
+        if margin is None and roe is None and roa is None:
+            return None, {}
 
         if margin is not None:
             metadata['net_margin'] = margin
@@ -756,31 +829,45 @@ class ICScoreCalculator:
 
         return np.mean(scores), metadata
 
-    def calculate_financial_health_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
+    def calculate_financial_health_score(
+        self,
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]]
+    ) -> Tuple[Optional[float], Dict]:
         """Calculate financial health score based on D/E, current ratio.
 
         Scoring methodology:
         - D/E: 0 = 100 (no debt), 2+ = 0 (high debt)
         - Current ratio: 2.0 = 100 (optimal), 0 or 5+ = 0 (extremes)
         """
-        if not financial_data:
-            return None, {}
-
-        latest = financial_data.get('latest', {})
         metadata = {}
         scores = []
 
+        # Get debt_to_equity and current_ratio from best source
+        de = None
+        cr = None
+
+        if fundamental_metrics:
+            de = fundamental_metrics.get('debt_to_equity')
+            cr = fundamental_metrics.get('current_ratio')
+
+        # Fallback to financials table
+        if financial_data:
+            latest = financial_data.get('latest', {})
+            if de is None and latest.get('debt_to_equity') is not None:
+                de = float(latest['debt_to_equity'])
+            if cr is None and latest.get('current_ratio'):
+                cr = float(latest['current_ratio'])
+
         # Debt to equity (lower is better)
-        if latest.get('debt_to_equity') is not None:
-            de = float(latest['debt_to_equity'])
+        if de is not None:
             de_scale = self.SCALE_FACTORS['de_scale']
             de_score = max(0, min(100, 100 - de * de_scale))
             scores.append(de_score)
             metadata['debt_to_equity'] = de
 
         # Current ratio (optimal around 1.5-2.0)
-        if latest.get('current_ratio'):
-            cr = float(latest['current_ratio'])
+        if cr is not None:
             cr_optimal = self.SCALE_FACTORS['cr_optimal']
             cr_scale = self.SCALE_FACTORS['cr_scale']
             cr_score = max(0, min(100, 100 - abs(cr - cr_optimal) * cr_scale))
@@ -1008,6 +1095,7 @@ class ICScoreCalculator:
         try:
             # Fetch all data sources
             financial_data = await self.fetch_financial_data(ticker)
+            fundamental_metrics = await self.fetch_fundamental_metrics(ticker)
             valuation_data = await self.fetch_valuation_data(ticker)
             technical_data = await self.fetch_technical_data(ticker)
             insider_data = await self.fetch_insider_data(ticker)
@@ -1019,18 +1107,30 @@ class ICScoreCalculator:
             lifecycle_stage = None
             weights_to_use = self.WEIGHTS_LEGACY  # Default to legacy weights
 
-            if self._lifecycle_classifier and self.USE_LIFECYCLE_WEIGHTS and financial_data:
-                latest = financial_data.get('latest', {})
-                lifecycle_data = {
-                    'revenue_growth_yoy': latest.get('revenue_growth_yoy'),
-                    'net_margin': latest.get('net_margin'),
-                    'pe_ratio': valuation_data.get('pe_ratio') if valuation_data else None,
-                    'market_cap': valuation_data.get('market_cap') if valuation_data else None,
-                }
-                classification = self._lifecycle_classifier.classify(lifecycle_data)
-                lifecycle_stage = classification.stage.value
-                weights_to_use = classification.adjusted_weights
-                logger.debug(f"{ticker}: Lifecycle={lifecycle_stage}, weights adjusted")
+            if self._lifecycle_classifier and self.USE_LIFECYCLE_WEIGHTS:
+                # Prefer fundamental_metrics for lifecycle classification (has pre-calculated values)
+                lifecycle_data = {}
+                if fundamental_metrics:
+                    lifecycle_data = {
+                        'revenue_growth_yoy': fundamental_metrics.get('revenue_growth_yoy'),
+                        'net_margin': fundamental_metrics.get('net_margin'),
+                        'pe_ratio': valuation_data.get('pe_ratio') if valuation_data else None,
+                        'market_cap': valuation_data.get('market_cap') if valuation_data else None,
+                    }
+                elif financial_data:
+                    latest = financial_data.get('latest', {})
+                    lifecycle_data = {
+                        'revenue_growth_yoy': latest.get('revenue_growth_yoy'),
+                        'net_margin': latest.get('net_margin'),
+                        'pe_ratio': valuation_data.get('pe_ratio') if valuation_data else None,
+                        'market_cap': valuation_data.get('market_cap') if valuation_data else None,
+                    }
+
+                if lifecycle_data:
+                    classification = self._lifecycle_classifier.classify(lifecycle_data)
+                    lifecycle_stage = classification.stage.value
+                    weights_to_use = classification.adjusted_weights
+                    logger.debug(f"{ticker}: Lifecycle={lifecycle_stage}, weights adjusted")
 
             # Calculate individual factor scores
             factor_scores = {}
@@ -1042,20 +1142,20 @@ class ICScoreCalculator:
                 factor_scores['value'] = value_score
                 factor_metadata['value'] = value_meta
 
-            # Growth score (uses sector percentiles in v2.1)
-            growth_score, growth_meta = await self.calculate_growth_score(financial_data, sector)
+            # Growth score (uses pre-calculated metrics from fundamental_metrics_extended)
+            growth_score, growth_meta = await self.calculate_growth_score(fundamental_metrics, financial_data, sector)
             if growth_score is not None:
                 factor_scores['growth'] = growth_score
                 factor_metadata['growth'] = growth_meta
 
-            # Profitability score (uses sector percentiles in v2.1)
-            profit_score, profit_meta = await self.calculate_profitability_score(financial_data, sector)
+            # Profitability score (uses pre-calculated metrics from fundamental_metrics_extended)
+            profit_score, profit_meta = await self.calculate_profitability_score(fundamental_metrics, financial_data, sector)
             if profit_score is not None:
                 factor_scores['profitability'] = profit_score
                 factor_metadata['profitability'] = profit_meta
 
-            # Financial health score
-            health_score, health_meta = self.calculate_financial_health_score(financial_data)
+            # Financial health score (uses fundamental_metrics for better data availability)
+            health_score, health_meta = self.calculate_financial_health_score(fundamental_metrics, financial_data)
             if health_score is not None:
                 factor_scores['financial_health'] = health_score
                 factor_metadata['financial_health'] = health_meta
