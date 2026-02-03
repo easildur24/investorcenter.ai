@@ -1500,23 +1500,28 @@ class ICScoreCalculator:
 
         v2.1: Initializes sector percentile calculator and lifecycle classifier
         within a database session context.
+
+        Note: Each stock is processed in its own session to prevent transaction
+        errors in one stock from affecting subsequent stocks.
         """
         progress_bar = tqdm(total=len(stocks), desc="Calculating IC Scores") if show_progress else None
 
-        # v2.1: Initialize components with session
-        async with self.db.session() as session:
-            await self._init_v2_components(session)
+        if self.use_v2_scoring:
+            logger.info("Using IC Score v2.1 with sector-relative scoring")
+        else:
+            logger.info("Using IC Score v2.0 (legacy) scoring")
 
-            if self.use_v2_scoring:
-                logger.info("Using IC Score v2.1 with sector-relative scoring")
-            else:
-                logger.info("Using IC Score v2.0 (legacy) scoring")
+        for stock in stocks:
+            ticker = stock['ticker']
+            sector = stock.get('sector')
 
-            for stock in stocks:
-                ticker = stock['ticker']
-                sector = stock.get('sector')
+            try:
+                # Create a fresh session for each stock to prevent transaction cascade failures
+                async with self.db.session() as session:
+                    # Initialize v2 components with this session
+                    await self._init_v2_components(session)
 
-                score_data = await self.calculate_ic_score(ticker, sector)
+                    score_data = await self.calculate_ic_score(ticker, sector)
 
                 if score_data:
                     success = await self.store_ic_score(score_data)
@@ -1526,15 +1531,18 @@ class ICScoreCalculator:
                         self.error_count += 1
                 else:
                     self.error_count += 1
+            except Exception as e:
+                logger.error(f"{ticker}: Unhandled error: {e}")
+                self.error_count += 1
 
-                self.processed_count += 1
+            self.processed_count += 1
 
-                if progress_bar:
-                    progress_bar.update(1)
-                    progress_bar.set_postfix({
-                        'success': self.success_count,
-                        'errors': self.error_count
-                    })
+            if progress_bar:
+                progress_bar.update(1)
+                progress_bar.set_postfix({
+                    'success': self.success_count,
+                    'errors': self.error_count
+                })
 
         if progress_bar:
             progress_bar.close()
