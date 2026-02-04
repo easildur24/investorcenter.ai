@@ -67,7 +67,7 @@ class ICScoreCalculator:
     - Smart Money consolidation (analyst + insider + institutional)
     """
 
-    # Base factor weights for v2.1 (sum to 1.0)
+    # Base factor weights (sum to 1.0)
     # Can be adjusted by lifecycle classification
     WEIGHTS = {
         # Quality (35%)
@@ -85,21 +85,7 @@ class ICScoreCalculator:
         'technical': 0.07,
     }
 
-    # Legacy weights for backward compatibility (v2.0)
-    WEIGHTS_LEGACY = {
-        'value': 0.12,
-        'growth': 0.15,
-        'profitability': 0.12,
-        'financial_health': 0.10,
-        'momentum': 0.08,
-        'analyst_consensus': 0.10,
-        'insider_activity': 0.08,
-        'institutional': 0.10,
-        'news_sentiment': 0.07,
-        'technical': 0.08,
-    }
-
-    # Feature flag for v2.1 scoring (set to True to enable)
+    # Feature flags
     USE_SECTOR_RELATIVE_SCORING = True
     USE_LIFECYCLE_WEIGHTS = True
 
@@ -157,17 +143,14 @@ class ICScoreCalculator:
         'insider_scale': 2000.0, # Shares to score scaling
     }
 
-    def __init__(self, use_v2_scoring: bool = True, income_mode: bool = False):
+    def __init__(self, income_mode: bool = False):
         """Initialize the IC Score calculator.
 
         Args:
-            use_v2_scoring: If True, use v2.1 sector-relative scoring.
-                           If False, use legacy absolute benchmark scoring.
             income_mode: If True, include Dividend Quality factor for
                         income-focused analysis (+5% weight).
         """
         self.db = get_database()
-        self.use_v2_scoring = use_v2_scoring
         self.income_mode = income_mode
 
         # v2.1 components (initialized per-session)
@@ -191,16 +174,19 @@ class ICScoreCalculator:
         self.error_count = 0
 
     async def _init_v2_components(self, session):
-        """Initialize v2.1 scoring components with session.
+        """Initialize scoring components with session.
 
         Called once per calculation batch to set up sector percentile
         calculator, lifecycle classifier, and Phase 2 factor calculators.
         """
-        if self.use_v2_scoring and self.USE_SECTOR_RELATIVE_SCORING:
+        if self.USE_SECTOR_RELATIVE_SCORING:
             self._sector_calculator = SectorPercentileCalculator(session)
-            self._lifecycle_classifier = LifecycleClassifier(session)
         else:
             self._sector_calculator = None
+
+        if self.USE_LIFECYCLE_WEIGHTS:
+            self._lifecycle_classifier = LifecycleClassifier(session)
+        else:
             self._lifecycle_classifier = None
 
         # Initialize Phase 2 factor calculators
@@ -295,10 +281,12 @@ class ICScoreCalculator:
         """Fetch latest financial data for a stock."""
         async with self.db.session() as session:
             # Prefer rows with actual metrics (net_margin not null)
+            # Filter out future dates to handle data quality issues
             query = text("""
                 SELECT *
                 FROM financials
                 WHERE ticker = :ticker
+                  AND period_end_date <= CURRENT_DATE
                 ORDER BY
                     period_end_date DESC,
                     CASE WHEN net_margin IS NOT NULL THEN 0 ELSE 1 END
@@ -1103,11 +1091,11 @@ class ICScoreCalculator:
             analyst_data = await self.fetch_analyst_data(ticker)
             institutional_data = await self.fetch_institutional_data(ticker)
 
-            # v2.1: Determine lifecycle stage and adjust weights
+            # Determine lifecycle stage and adjust weights
             lifecycle_stage = None
-            weights_to_use = self.WEIGHTS_LEGACY  # Default to legacy weights
+            weights_to_use = self.WEIGHTS  # Default weights
 
-            if self._lifecycle_classifier and self.USE_LIFECYCLE_WEIGHTS:
+            if self._lifecycle_classifier:
                 # Prefer fundamental_metrics for lifecycle classification (has pre-calculated values)
                 lifecycle_data = {}
                 if fundamental_metrics:
@@ -1235,8 +1223,8 @@ class ICScoreCalculator:
                         **div_quality_result.metrics
                     }
 
-            # Calculate data completeness (use legacy weights count for compatibility)
-            data_completeness = (len(factor_scores) / len(self.WEIGHTS_LEGACY)) * 100
+            # Calculate data completeness
+            data_completeness = (len(factor_scores) / len(self.WEIGHTS)) * 100
 
             if not factor_scores:
                 logger.warning(f"{ticker}: No factor scores calculated")
@@ -1365,7 +1353,7 @@ class ICScoreCalculator:
                     'factors': factor_metadata,
                     'weights_used': {k: round(factor_weight_mapping.get(k, 0.05), 4) for k in factor_scores.keys()},
                     'lifecycle_stage': lifecycle_stage,
-                    'scoring_version': '2.1' if self.use_v2_scoring else '2.0',
+                    'scoring_version': '2.1',
                     'income_mode': self.income_mode,
                     'calculated_at': datetime.now().isoformat(),
                     # Phase 3: Stabilization metadata
@@ -1506,10 +1494,7 @@ class ICScoreCalculator:
         """
         progress_bar = tqdm(total=len(stocks), desc="Calculating IC Scores") if show_progress else None
 
-        if self.use_v2_scoring:
-            logger.info("Using IC Score v2.1 with sector-relative scoring")
-        else:
-            logger.info("Using IC Score v2.0 (legacy) scoring")
+        logger.info("Using IC Score v2.1 with sector-relative scoring")
 
         for stock in stocks:
             ticker = stock['ticker']
@@ -1608,18 +1593,13 @@ def main():
     parser.add_argument('--sp500', action='store_true', help='Process S&P 500 only')
     parser.add_argument('--income-mode', action='store_true',
                         help='Enable income mode (include Dividend Quality factor)')
-    parser.add_argument('--legacy', action='store_true',
-                        help='Use legacy v2.0 scoring (no sector-relative)')
 
     args = parser.parse_args()
 
     if args.ticker and (args.all or args.limit or args.sector):
         parser.error("--ticker cannot be used with other filters")
 
-    calculator = ICScoreCalculator(
-        use_v2_scoring=not args.legacy,
-        income_mode=args.income_mode
-    )
+    calculator = ICScoreCalculator(income_mode=args.income_mode)
     asyncio.run(calculator.run(
         limit=args.limit,
         ticker=args.ticker,
