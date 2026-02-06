@@ -1,10 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: reddit-collector
+  name: reddit-heatmap-collector
   namespace: investorcenter
   labels:
-    app: reddit-collector
+    app: reddit-heatmap-collector
     component: data-collection
 spec:
   # Run daily at 2 AM UTC
@@ -18,12 +18,12 @@ spec:
       template:
         metadata:
           labels:
-            app: reddit-collector
+            app: reddit-heatmap-collector
         spec:
           restartPolicy: OnFailure
           containers:
-          - name: reddit-collector
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-collector:latest
+          - name: reddit-heatmap-collector
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-heatmap-collector:latest
             imagePullPolicy: Always
             command:
             - /bin/sh
@@ -38,7 +38,7 @@ spec:
               echo "✓ Collection complete!"
             env:
             - name: DB_HOST
-              value: "postgres-service"
+              value: "postgres-simple-service"
             - name: DB_PORT
               value: "5432"
             - name: DB_USER
@@ -64,4 +64,4 @@ spec:
           - name: ecr-secret
 ---
 # Manual job trigger (for testing)
-# kubectl create job --from=cronjob/reddit-collector reddit-collector-manual -n investorcenter
+# kubectl create job --from=cronjob/reddit-heatmap-collector reddit-heatmap-manual -n investorcenter

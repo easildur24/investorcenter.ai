@@ -1,14 +1,14 @@
 #!/bin/bash
-# Deploy Reddit Collector to AWS EKS
+# Deploy Reddit Heatmap Collector (ApeWisdom) to AWS EKS
 set -e
 
-echo "🚀 Deploying Reddit Collector to AWS EKS"
+echo "🚀 Deploying Reddit Heatmap Collector to AWS EKS"
 
 # Configuration
-AWS_PROFILE="AdministratorAccess-360358043271"
+AWS_PROFILE="investorcenter"
 AWS_REGION="us-east-1"
 ECR_REGISTRY="360358043271.dkr.ecr.us-east-1.amazonaws.com"
-IMAGE_NAME="investorcenter/reddit-collector"
+IMAGE_NAME="investorcenter/reddit-heatmap-collector"
 TAG="latest"
 
 # Step 1: Build Docker image for linux/amd64 platform (EKS runs on AMD64)
@@ -16,7 +16,7 @@ echo ""
 echo "📦 Building Docker image..."
 docker build \
   --platform linux/amd64 \
-  -f scripts/Dockerfile.reddit-collector \
+  -f scripts/Dockerfile.reddit-heatmap \
   -t ${IMAGE_NAME}:${TAG} \
   .
 
@@ -46,28 +46,33 @@ echo ""
 echo "⬆️  Pushing image to ECR..."
 docker push ${ECR_REGISTRY}/${IMAGE_NAME}:${TAG}
 
-# Step 6: Deploy to Kubernetes
+# Step 6: Remove old CronJob if exists
+echo ""
+echo "🗑️  Removing old reddit-collector CronJob if exists..."
+kubectl delete cronjob reddit-collector -n investorcenter 2>/dev/null || true
+
+# Step 7: Deploy to Kubernetes
 echo ""
 echo "☸️  Deploying to Kubernetes..."
-kubectl apply -f k8s/reddit-collector-cronjob.yaml
+kubectl apply -f k8s/reddit-heatmap-cronjob.yaml
 
-# Step 7: Verify deployment
+# Step 8: Verify deployment
 echo ""
 echo "✅ Verifying CronJob..."
-kubectl get cronjob reddit-collector -n investorcenter
+kubectl get cronjob reddit-heatmap-collector -n investorcenter
 
 echo ""
 echo "✓ Deployment complete!"
 echo ""
 echo "📊 Useful commands:"
 echo "  # View CronJob schedule:"
-echo "  kubectl get cronjob reddit-collector -n investorcenter"
+echo "  kubectl get cronjob reddit-heatmap-collector -n investorcenter"
 echo ""
 echo "  # Manually trigger a job:"
-echo "  kubectl create job --from=cronjob/reddit-collector reddit-collector-manual -n investorcenter"
+echo "  kubectl create job --from=cronjob/reddit-heatmap-collector reddit-heatmap-manual -n investorcenter"
 echo ""
 echo "  # View job logs:"
-echo "  kubectl logs -n investorcenter -l app=reddit-collector --tail=100"
+echo "  kubectl logs -n investorcenter -l app=reddit-heatmap-collector --tail=100"
 echo ""
 echo "  # Check job history:"
-echo "  kubectl get jobs -n investorcenter -l app=reddit-collector"
+echo "  kubectl get jobs -n investorcenter -l app=reddit-heatmap-collector"

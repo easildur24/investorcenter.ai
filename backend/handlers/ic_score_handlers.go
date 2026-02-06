@@ -10,9 +10,21 @@ import (
 
 	"investorcenter-api/database"
 	"investorcenter-api/models"
+	"investorcenter-api/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+// fmpClient is a package-level FMP client instance
+var fmpClient *services.FMPClient
+
+// polygonClient is a package-level Polygon client instance
+var polygonClient *services.PolygonClient
+
+func init() {
+	fmpClient = services.NewFMPClient()
+	polygonClient = services.NewPolygonClient()
+}
 
 // GetICScore retrieves the IC Score for a specific ticker
 // GET /api/v1/stocks/:ticker/ic-score
@@ -205,7 +217,8 @@ func GetICScores(c *gin.Context) {
 	})
 }
 
-// GetFinancialMetrics retrieves financial metrics for a ticker from the financials table
+// GetFinancialMetrics retrieves financial metrics for a ticker
+// Uses FMP API as primary source with database as fallback
 // GET /api/v1/stocks/:ticker/financials
 func GetFinancialMetrics(c *gin.Context) {
 	ticker := strings.ToUpper(c.Param("ticker"))
@@ -224,13 +237,27 @@ func GetFinancialMetrics(c *gin.Context) {
 		return
 	}
 
-	// Query latest financial data with YoY comparison
+	// Try to fetch from FMP API (real-time TTM ratios)
+	var fmpData *services.FMPRatiosTTM
+	var fmpErr error
+	if fmpClient != nil && fmpClient.APIKey != "" {
+		fmpData, fmpErr = fmpClient.GetRatiosTTM(ticker)
+		if fmpErr != nil {
+			log.Printf("FMP API error for %s (falling back to DB): %v", ticker, fmpErr)
+		}
+	}
+
+	// Query latest financial data from database (with YoY comparison)
+	// Note: ORDER BY uses CASE to prioritize rows with actual data over NULL rows
+	// (there can be duplicate rows where some have NULL margins/ratios)
 	query := `
 		WITH latest AS (
 			SELECT *
 			FROM financials
 			WHERE ticker = $1
-			ORDER BY period_end_date DESC
+			ORDER BY period_end_date DESC,
+			         CASE WHEN gross_margin IS NOT NULL THEN 0 ELSE 1 END,
+			         CASE WHEN roe IS NOT NULL THEN 0 ELSE 1 END
 			LIMIT 1
 		),
 		prior_year AS (
@@ -277,7 +304,10 @@ func GetFinancialMetrics(c *gin.Context) {
 	}
 
 	err := database.DB.Get(&result, query, ticker)
-	if err != nil {
+	dbHasData := err == nil
+
+	// If both FMP and DB failed, return error
+	if fmpData == nil && !dbHasData {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{
 				"error":   "Financial data not found",
@@ -294,7 +324,16 @@ func GetFinancialMetrics(c *gin.Context) {
 		return
 	}
 
-	// Calculate YoY growth rates
+	// Merge FMP + DB data (FMP as primary, DB as fallback)
+	merged := services.MergeWithDBData(
+		fmpData,
+		result.GrossMargin, result.OperatingMargin, result.NetMargin,
+		result.ROE, result.ROA,
+		result.DebtToEquity, result.CurrentRatio, result.QuickRatio,
+		result.PERatio, result.PBRatio, result.PSRatio,
+	)
+
+	// Calculate YoY growth rates (always from DB)
 	var revenueGrowthYoY *float64
 	var earningsGrowthYoY *float64
 
@@ -308,30 +347,40 @@ func GetFinancialMetrics(c *gin.Context) {
 		earningsGrowthYoY = &growth
 	}
 
+	// Determine data source for logging/debugging
+	dataSource := "database"
+	if merged.FMPAvailable {
+		dataSource = "fmp+database"
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
-			"ticker":              result.Ticker,
+			"ticker":              ticker,
 			"period_end_date":     result.PeriodEndDate,
 			"fiscal_year":         result.FiscalYear,
 			"fiscal_quarter":      result.FiscalQuarter,
-			"gross_margin":        result.GrossMargin,
-			"operating_margin":    result.OperatingMargin,
-			"net_margin":          result.NetMargin,
-			"roe":                 result.ROE,
-			"roa":                 result.ROA,
-			"debt_to_equity":      result.DebtToEquity,
-			"current_ratio":       result.CurrentRatio,
-			"quick_ratio":         result.QuickRatio,
-			"pe_ratio":            result.PERatio,
-			"pb_ratio":            result.PBRatio,
-			"ps_ratio":            result.PSRatio,
+			"gross_margin":        merged.GrossMargin,
+			"operating_margin":    merged.OperatingMargin,
+			"net_margin":          merged.NetMargin,
+			"roe":                 merged.ROE,
+			"roa":                 merged.ROA,
+			"debt_to_equity":      merged.DebtToEquity,
+			"current_ratio":       merged.CurrentRatio,
+			"quick_ratio":         merged.QuickRatio,
+			"pe_ratio":            merged.PERatio,
+			"pb_ratio":            merged.PBRatio,
+			"ps_ratio":            merged.PSRatio,
 			"revenue_growth_yoy":  revenueGrowthYoY,
 			"earnings_growth_yoy": earningsGrowthYoY,
 			"shares_outstanding":  result.SharesOutstanding,
 			"statement_type":      result.StatementType,
 		},
 		"meta": gin.H{
-			"ticker": ticker,
+			"ticker":      ticker,
+			"data_source": dataSource,
+		},
+		"debug": gin.H{
+			"sources": merged.Sources,
 		},
 	})
 }
@@ -342,6 +391,683 @@ func abs(x float64) float64 {
 		return -x
 	}
 	return x
+}
+
+// GetComprehensiveFinancialMetrics retrieves all financial metrics for a ticker
+// Uses FMP API endpoints (ratios-ttm, key-metrics-ttm, financial-growth, analyst-estimates, score)
+// GET /api/v1/stocks/:ticker/metrics
+func GetComprehensiveFinancialMetrics(c *gin.Context) {
+	ticker := strings.ToUpper(c.Param("ticker"))
+
+	if ticker == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Ticker symbol is required"})
+		return
+	}
+
+	// Get current stock price for Forward P/E and Forward Dividend Yield calculations
+	var currentPrice float64 = 0
+	if database.DB != nil {
+		var priceResult struct {
+			Price *float64 `db:"current_price"`
+		}
+		priceQuery := `SELECT current_price FROM tickers WHERE symbol = $1 AND active = true`
+		if err := database.DB.Get(&priceResult, priceQuery, ticker); err == nil && priceResult.Price != nil {
+			currentPrice = *priceResult.Price
+		}
+	}
+
+	// Fallback: fetch real-time price from Polygon API if database value is NULL
+	if currentPrice == 0 && polygonClient != nil {
+		log.Printf("Database current_price is NULL for %s, fetching real-time price from Polygon API", ticker)
+		if priceData, err := polygonClient.GetStockRealTimePrice(ticker); err == nil && priceData != nil {
+			currentPriceFloat, _ := priceData.Price.Float64()
+			currentPrice = currentPriceFloat
+			log.Printf("✓ Fetched real-time price for %s from Polygon API: $%.2f", ticker, currentPrice)
+		} else {
+			log.Printf("⚠️ Failed to fetch real-time price from Polygon API for %s: %v", ticker, err)
+		}
+	}
+
+	// Final fallback: derive current price from P/E ratio and EPS if all other methods failed
+	// We'll set this after getting FMP data if currentPrice is still 0
+
+	// Fetch all FMP data in parallel
+	var allMetrics *services.FMPAllMetrics
+	if fmpClient != nil && fmpClient.APIKey != "" {
+		allMetrics = fmpClient.GetAllMetrics(ticker)
+
+		// Log any errors for debugging
+		for endpoint, err := range allMetrics.Errors {
+			log.Printf("FMP %s error for %s: %v", endpoint, ticker, err)
+		}
+	}
+
+	// Merge all FMP data
+	merged := services.MergeAllData(allMetrics, currentPrice)
+
+	// If current price is still 0, try to derive it from P/E ratio and EPS
+	if currentPrice == 0 && merged.PERatio != nil && *merged.PERatio > 0 && merged.EPSDiluted != nil && *merged.EPSDiluted > 0 {
+		currentPrice = *merged.PERatio * *merged.EPSDiluted
+		log.Printf("Derived current price for %s from P/E (%.2f) × EPS (%.2f) = $%.2f", ticker, *merged.PERatio, *merged.EPSDiluted, currentPrice)
+	}
+
+	// Fetch database fallbacks for missing metrics from fundamental_metrics_extended
+	// Note: The database stores percentages as percentage values (e.g., 31.18 for 31.18%), not decimals
+	if database.DB != nil {
+		var dbFallback struct {
+			// Profitability
+			GrossMargin     *float64 `db:"gross_margin"`
+			OperatingMargin *float64 `db:"operating_margin"`
+			NetMargin       *float64 `db:"net_margin"`
+			EBITDAMargin    *float64 `db:"ebitda_margin"`
+			ROE             *float64 `db:"roe"`
+			ROA             *float64 `db:"roa"`
+			ROIC            *float64 `db:"roic"`
+			// Growth
+			RevenueGrowthYoY    *float64 `db:"revenue_growth_yoy"`
+			RevenueGrowth3YCAGR *float64 `db:"revenue_growth_3y_cagr"`
+			RevenueGrowth5YCAGR *float64 `db:"revenue_growth_5y_cagr"`
+			EPSGrowthYoY        *float64 `db:"eps_growth_yoy"`
+			EPSGrowth3YCAGR     *float64 `db:"eps_growth_3y_cagr"`
+			EPSGrowth5YCAGR     *float64 `db:"eps_growth_5y_cagr"`
+			FCFGrowthYoY        *float64 `db:"fcf_growth_yoy"`
+			// Valuation
+			EnterpriseValue *float64 `db:"enterprise_value"`
+			EVToRevenue     *float64 `db:"ev_to_revenue"`
+			EVToEBITDA      *float64 `db:"ev_to_ebitda"`
+			EVToFCF         *float64 `db:"ev_to_fcf"`
+			// Liquidity
+			CurrentRatio *float64 `db:"current_ratio"`
+			QuickRatio   *float64 `db:"quick_ratio"`
+			// Leverage
+			DebtToEquity     *float64 `db:"debt_to_equity"`
+			InterestCoverage *float64 `db:"interest_coverage"`
+			NetDebtToEBITDA  *float64 `db:"net_debt_to_ebitda"`
+			// Dividends
+			DividendYield            *float64 `db:"dividend_yield"`
+			PayoutRatio              *float64 `db:"payout_ratio"`
+			ConsecutiveDividendYears *int     `db:"consecutive_dividend_years"`
+		}
+		fallbackQuery := `
+			SELECT m.gross_margin, m.operating_margin, m.net_margin, m.ebitda_margin,
+			       m.roe, m.roa, m.roic,
+			       m.revenue_growth_yoy, m.revenue_growth_3y_cagr, m.revenue_growth_5y_cagr,
+			       m.eps_growth_yoy, m.eps_growth_3y_cagr, m.eps_growth_5y_cagr, m.fcf_growth_yoy,
+			       m.enterprise_value, m.ev_to_revenue, m.ev_to_ebitda, m.ev_to_fcf,
+			       m.current_ratio, m.quick_ratio,
+			       m.debt_to_equity, m.interest_coverage, m.net_debt_to_ebitda,
+			       m.dividend_yield, m.payout_ratio, m.consecutive_dividend_years
+			FROM fundamental_metrics_extended m
+			WHERE m.ticker = $1
+			ORDER BY m.calculation_date DESC
+			LIMIT 1
+		`
+		if err := database.DB.Get(&dbFallback, fallbackQuery, ticker); err == nil {
+			// Profitability fallbacks
+			if merged.GrossMargin == nil && dbFallback.GrossMargin != nil {
+				merged.GrossMargin = dbFallback.GrossMargin
+				merged.Sources.GrossMargin = services.SourceDatabase
+			}
+			if merged.OperatingMargin == nil && dbFallback.OperatingMargin != nil {
+				merged.OperatingMargin = dbFallback.OperatingMargin
+				merged.Sources.OperatingMargin = services.SourceDatabase
+			}
+			if merged.NetMargin == nil && dbFallback.NetMargin != nil {
+				merged.NetMargin = dbFallback.NetMargin
+				merged.Sources.NetMargin = services.SourceDatabase
+			}
+			if merged.EBITDAMargin == nil && dbFallback.EBITDAMargin != nil {
+				merged.EBITDAMargin = dbFallback.EBITDAMargin
+				merged.Sources.EBITDAMargin = services.SourceDatabase
+			}
+			if merged.ROE == nil && dbFallback.ROE != nil {
+				merged.ROE = dbFallback.ROE
+				merged.Sources.ROE = services.SourceDatabase
+			}
+			if merged.ROA == nil && dbFallback.ROA != nil {
+				merged.ROA = dbFallback.ROA
+				merged.Sources.ROA = services.SourceDatabase
+			}
+			if merged.ROIC == nil && dbFallback.ROIC != nil {
+				merged.ROIC = dbFallback.ROIC
+				merged.Sources.ROIC = services.SourceDatabase
+			}
+			// Growth fallbacks
+			if merged.RevenueGrowthYoY == nil && dbFallback.RevenueGrowthYoY != nil {
+				merged.RevenueGrowthYoY = dbFallback.RevenueGrowthYoY
+				merged.Sources.RevenueGrowthYoY = services.SourceDatabase
+			}
+			if merged.RevenueGrowth3YCAGR == nil && dbFallback.RevenueGrowth3YCAGR != nil {
+				merged.RevenueGrowth3YCAGR = dbFallback.RevenueGrowth3YCAGR
+				merged.Sources.RevenueGrowth3Y = services.SourceDatabase
+			}
+			if merged.RevenueGrowth5YCAGR == nil && dbFallback.RevenueGrowth5YCAGR != nil {
+				merged.RevenueGrowth5YCAGR = dbFallback.RevenueGrowth5YCAGR
+				merged.Sources.RevenueGrowth5Y = services.SourceDatabase
+			}
+			if merged.EPSGrowthYoY == nil && dbFallback.EPSGrowthYoY != nil {
+				merged.EPSGrowthYoY = dbFallback.EPSGrowthYoY
+				merged.Sources.EPSGrowthYoY = services.SourceDatabase
+			}
+			if merged.EPSGrowth3YCAGR == nil && dbFallback.EPSGrowth3YCAGR != nil {
+				merged.EPSGrowth3YCAGR = dbFallback.EPSGrowth3YCAGR
+			}
+			if merged.EPSGrowth5YCAGR == nil && dbFallback.EPSGrowth5YCAGR != nil {
+				merged.EPSGrowth5YCAGR = dbFallback.EPSGrowth5YCAGR
+				merged.Sources.EPSGrowth5Y = services.SourceDatabase
+			}
+			if merged.FCFGrowthYoY == nil && dbFallback.FCFGrowthYoY != nil {
+				merged.FCFGrowthYoY = dbFallback.FCFGrowthYoY
+			}
+			// Valuation fallbacks
+			if merged.EnterpriseValue == nil && dbFallback.EnterpriseValue != nil {
+				merged.EnterpriseValue = dbFallback.EnterpriseValue
+			}
+			if merged.EVToSales == nil && dbFallback.EVToRevenue != nil {
+				merged.EVToSales = dbFallback.EVToRevenue
+				merged.Sources.EVToSales = services.SourceDatabase
+			}
+			if merged.EVToEBITDA == nil && dbFallback.EVToEBITDA != nil {
+				merged.EVToEBITDA = dbFallback.EVToEBITDA
+				merged.Sources.EVToEBITDA = services.SourceDatabase
+			}
+			if merged.EVToFCF == nil && dbFallback.EVToFCF != nil {
+				merged.EVToFCF = dbFallback.EVToFCF
+				merged.Sources.EVToFCF = services.SourceDatabase
+			}
+			// Liquidity fallbacks
+			if merged.CurrentRatio == nil && dbFallback.CurrentRatio != nil {
+				merged.CurrentRatio = dbFallback.CurrentRatio
+				merged.Sources.CurrentRatio = services.SourceDatabase
+			}
+			if merged.QuickRatio == nil && dbFallback.QuickRatio != nil {
+				merged.QuickRatio = dbFallback.QuickRatio
+				merged.Sources.QuickRatio = services.SourceDatabase
+			}
+			// Leverage fallbacks
+			if merged.DebtToEquity == nil && dbFallback.DebtToEquity != nil {
+				merged.DebtToEquity = dbFallback.DebtToEquity
+				merged.Sources.DebtToEquity = services.SourceDatabase
+			}
+			if merged.InterestCoverage == nil && dbFallback.InterestCoverage != nil {
+				merged.InterestCoverage = dbFallback.InterestCoverage
+				merged.Sources.InterestCoverage = services.SourceDatabase
+			}
+			if merged.NetDebtToEBITDA == nil && dbFallback.NetDebtToEBITDA != nil {
+				merged.NetDebtToEBITDA = dbFallback.NetDebtToEBITDA
+			}
+			// Dividend fallbacks
+			if merged.DividendYield == nil && dbFallback.DividendYield != nil {
+				merged.DividendYield = dbFallback.DividendYield
+				merged.Sources.DividendYield = services.SourceDatabase
+			}
+			if merged.PayoutRatio == nil && dbFallback.PayoutRatio != nil {
+				merged.PayoutRatio = dbFallback.PayoutRatio
+				merged.Sources.PayoutRatio = services.SourceDatabase
+			}
+			if merged.ConsecutiveDividendYears == nil && dbFallback.ConsecutiveDividendYears != nil {
+				merged.ConsecutiveDividendYears = dbFallback.ConsecutiveDividendYears
+			}
+		}
+
+		// Fetch Market Cap from tickers table if not available from FMP
+		if merged.MarketCap == nil {
+			var marketCapResult struct {
+				MarketCap *float64 `db:"market_cap"`
+			}
+			marketCapQuery := `SELECT market_cap FROM tickers WHERE symbol = $1 AND active = true`
+			if err := database.DB.Get(&marketCapResult, marketCapQuery, ticker); err == nil && marketCapResult.MarketCap != nil {
+				merged.MarketCap = marketCapResult.MarketCap
+				merged.Sources.MarketCap = services.SourceDatabase
+			}
+		}
+
+		// Fetch debt data from financials table to improve Net Debt and Debt/EBITDA calculations
+		var debtResult struct {
+			ShortTermDebt      *int64 `db:"short_term_debt"`
+			LongTermDebt       *int64 `db:"long_term_debt"`
+			CashAndEquivalents *int64 `db:"cash_and_equivalents"`
+		}
+		debtQuery := `
+			SELECT short_term_debt, long_term_debt, cash_and_equivalents
+			FROM financials
+			WHERE ticker = $1
+			ORDER BY period_end_date DESC
+			LIMIT 1
+		`
+		if err := database.DB.Get(&debtResult, debtQuery, ticker); err == nil {
+			// Calculate Net Debt from database if we have the components
+			if merged.NetDebt == nil && debtResult.LongTermDebt != nil && debtResult.CashAndEquivalents != nil {
+				// Total Debt = Short-term + Long-term (handle NULL short-term)
+				var totalDebt int64
+				if debtResult.ShortTermDebt != nil {
+					totalDebt = *debtResult.ShortTermDebt + *debtResult.LongTermDebt
+				} else {
+					totalDebt = *debtResult.LongTermDebt
+				}
+				// Net Debt = Total Debt - Cash
+				netDebt := float64(totalDebt - *debtResult.CashAndEquivalents)
+				merged.NetDebt = &netDebt
+				merged.Sources.NetDebt = services.SourceDatabase
+				log.Printf("Fetched Net Debt for %s from database: $%.0f (Total Debt: $%.0f - Cash: $%.0f)",
+					ticker, netDebt, float64(totalDebt), float64(*debtResult.CashAndEquivalents))
+			}
+		}
+
+		// Fetch EBIT and EBT from financial_statements to calculate Interest Expense and Interest Coverage
+		if merged.InterestCoverage == nil {
+			var incomeResult struct {
+				EBIT *string `db:"ebit"`
+				EBT  *string `db:"ebt"`
+			}
+			incomeQuery := `
+				SELECT
+					fs.data->>'operating_income_loss' as ebit,
+					fs.data->>'income_loss_from_continuing_operations_before_tax' as ebt
+				FROM financial_statements fs
+				JOIN tickers t ON fs.ticker_id = t.id
+				WHERE t.symbol = $1 AND fs.statement_type = 'income'
+				ORDER BY fs.period_end DESC
+				LIMIT 1
+			`
+			if err := database.DB.Get(&incomeResult, incomeQuery, ticker); err == nil && incomeResult.EBIT != nil && incomeResult.EBT != nil {
+				// Parse string values to float64
+				var ebit, ebt float64
+				if _, err := fmt.Sscanf(*incomeResult.EBIT, "%f", &ebit); err == nil {
+					if _, err := fmt.Sscanf(*incomeResult.EBT, "%f", &ebt); err == nil {
+						// Interest Expense = EBIT - EBT (when EBT < EBIT, meaning company has interest expense)
+						// If EBT > EBIT, company has net interest income, so Interest Coverage doesn't apply
+						if ebit > ebt && ebit > 0 {
+							interestExpense := ebit - ebt
+							if interestExpense > 0 {
+								interestCoverage := ebit / interestExpense
+								merged.InterestCoverage = &interestCoverage
+								merged.Sources.InterestCoverage = services.SourceCalculated
+								log.Printf("Calculated Interest Coverage for %s: EBIT ($%.0f) / Interest Expense ($%.0f) = %.2fx",
+									ticker, ebit, interestExpense, interestCoverage)
+							}
+						} else if ebt > ebit {
+							log.Printf("Skipping Interest Coverage for %s: EBT > EBIT indicates net interest income (EBT: $%.0f, EBIT: $%.0f)",
+								ticker, ebt, ebit)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Calculate derived metrics as fallbacks if primary sources are missing
+
+	// PEG Ratio: P/E / EPS Growth Rate (use 5Y EPS CAGR if available)
+	if merged.PEGRatio == nil && merged.PERatio != nil && *merged.PERatio > 0 {
+		// Try using 5-year EPS CAGR first, then YoY
+		var epsGrowth *float64
+		if merged.EPSGrowth5YCAGR != nil && *merged.EPSGrowth5YCAGR > 0 {
+			epsGrowth = merged.EPSGrowth5YCAGR
+		} else if merged.EPSGrowthYoY != nil && *merged.EPSGrowthYoY > 0 {
+			epsGrowth = merged.EPSGrowthYoY
+		}
+		if epsGrowth != nil {
+			pegRatio := *merged.PERatio / *epsGrowth
+			merged.PEGRatio = &pegRatio
+			merged.Sources.PEGRatio = services.SourceCalculated
+			// Add PEG interpretation
+			interp, _ := services.GetPEGInterpretation(pegRatio)
+			merged.PEGInterpretation = &interp
+		}
+	}
+
+	// Earnings Yield: inverse of P/E ratio (1 / PE * 100)
+	if merged.EarningsYield == nil && merged.PERatio != nil && *merged.PERatio > 0 {
+		earningsYield := (1.0 / *merged.PERatio) * 100
+		merged.EarningsYield = &earningsYield
+		merged.Sources.EarningsYield = services.SourceCalculated
+	}
+
+	// FCF Yield: inverse of Price to FCF ratio (1 / P/FCF * 100)
+	if merged.FCFYield == nil && merged.PriceToFCF != nil && *merged.PriceToFCF > 0 {
+		fcfYield := (1.0 / *merged.PriceToFCF) * 100
+		merged.FCFYield = &fcfYield
+		merged.Sources.FCFYield = services.SourceCalculated
+	}
+
+	// Forward P/E calculated fallback: Use projected EPS from historical growth
+	if merged.ForwardPE == nil && merged.PERatio != nil && *merged.PERatio > 0 && merged.EPSDiluted != nil && *merged.EPSDiluted > 0 {
+		// Use EPS growth rate to project next year's EPS
+		var epsGrowthRate float64 = 0.10 // Default 10% growth assumption
+		if merged.EPSGrowth5YCAGR != nil && *merged.EPSGrowth5YCAGR > 0 {
+			epsGrowthRate = *merged.EPSGrowth5YCAGR / 100 // Convert percentage to decimal
+		} else if merged.EPSGrowthYoY != nil && *merged.EPSGrowthYoY > 0 {
+			epsGrowthRate = *merged.EPSGrowthYoY / 100
+		}
+
+		// Project next year's EPS: CurrentEPS * (1 + growth rate)
+		projectedEPS := *merged.EPSDiluted * (1 + epsGrowthRate)
+
+		// Calculate Forward P/E from current price and projected EPS
+		if currentPrice > 0 && projectedEPS > 0 {
+			forwardPE := currentPrice / projectedEPS
+			merged.ForwardPE = &forwardPE
+			merged.Sources.ForwardPE = services.SourceCalculated
+		}
+	}
+
+	// EV/EBITDA calculated fallback: Derive EBITDA from available metrics
+	if merged.EVToEBITDA == nil && merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 {
+		var ebitda *float64
+
+		// Method 1: Calculate from Revenue * EBITDA Margin
+		if merged.RevenuePerShare != nil && merged.EBITDAMargin != nil && *merged.RevenuePerShare > 0 && *merged.EBITDAMargin > 0 {
+			// EBITDA = Revenue * EBITDA Margin / 100
+			// Need to multiply by shares outstanding, but we can use Market Cap / Price as proxy
+			if merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				revenue := *merged.RevenuePerShare * sharesOutstanding
+				ebitdaValue := revenue * (*merged.EBITDAMargin / 100)
+				ebitda = &ebitdaValue
+			}
+		}
+
+		// Method 2: Calculate from Net Income and margins if Method 1 failed
+		if ebitda == nil && merged.NetMargin != nil && merged.EBITDAMargin != nil &&
+			*merged.NetMargin > 0 && *merged.EBITDAMargin > 0 &&
+			merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 {
+			if merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				revenue := *merged.RevenuePerShare * sharesOutstanding
+				ebitdaValue := revenue * (*merged.EBITDAMargin / 100)
+				ebitda = &ebitdaValue
+			}
+		}
+
+		// Calculate EV/EBITDA if we derived EBITDA
+		if ebitda != nil && *ebitda > 0 {
+			evToEBITDA := *merged.EnterpriseValue / *ebitda
+			merged.EVToEBITDA = &evToEBITDA
+			merged.Sources.EVToEBITDA = services.SourceCalculated
+		}
+	}
+
+	// EV/Sales calculated fallback: EV / Revenue (using Market Cap as proxy when EV is available)
+	if merged.EVToSales == nil && merged.EnterpriseValue != nil && merged.PSRatio != nil && merged.MarketCap != nil && *merged.MarketCap > 0 {
+		// EV/Sales = EV / Revenue, and P/S = Price / Revenue per share = Market Cap / Revenue
+		// So Revenue = Market Cap / P/S, and EV/Sales = EV / (Market Cap / P/S) = EV * P/S / Market Cap
+		evToSales := (*merged.EnterpriseValue * *merged.PSRatio) / *merged.MarketCap
+		merged.EVToSales = &evToSales
+		merged.Sources.EVToSales = services.SourceCalculated
+	}
+
+	// ROIC calculated fallback: Net Income / Invested Capital
+	if merged.ROIC == nil && merged.InvestedCapital != nil && *merged.InvestedCapital > 0 &&
+		merged.EPSDiluted != nil && merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		// Net Income = EPS × Shares Outstanding, Shares Outstanding = Market Cap / Price
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		netIncome := *merged.EPSDiluted * sharesOutstanding
+		if netIncome != 0 {
+			roic := (netIncome / *merged.InvestedCapital) * 100 // Convert to percentage
+			merged.ROIC = &roic
+			merged.Sources.ROIC = services.SourceCalculated
+		}
+	}
+
+	// ROCE calculated fallback: EBIT / Capital Employed (using Invested Capital as proxy)
+	if merged.ROCE == nil && merged.InvestedCapital != nil && *merged.InvestedCapital > 0 &&
+		merged.EBITMargin != nil && merged.RevenuePerShare != nil && *merged.RevenuePerShare > 0 &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		// EBIT = Revenue × EBIT Margin / 100
+		// Revenue = Revenue per Share × Shares Outstanding
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		revenue := *merged.RevenuePerShare * sharesOutstanding
+		ebit := revenue * (*merged.EBITMargin / 100)
+		if ebit != 0 {
+			// Capital Employed ≈ Invested Capital (approximation)
+			roce := (ebit / *merged.InvestedCapital) * 100 // Convert to percentage
+			merged.ROCE = &roce
+			merged.Sources.ROCE = services.SourceCalculated
+		}
+	}
+
+	// Debt/Capital calculated fallback: D/C = D/E / (1 + D/E)
+	if merged.DebtToCapital == nil && merged.DebtToEquity != nil && *merged.DebtToEquity >= 0 {
+		debtToCapital := *merged.DebtToEquity / (1 + *merged.DebtToEquity)
+		merged.DebtToCapital = &debtToCapital
+		merged.Sources.DebtToCapital = services.SourceCalculated
+	}
+
+	// Net Debt calculated fallback method 1: (InterestDebtPerShare - CashPerShare) × SharesOutstanding
+	if merged.NetDebt == nil && merged.InterestDebtPerShare != nil && merged.CashPerShare != nil &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 && currentPrice > 0 {
+		sharesOutstanding := *merged.MarketCap / currentPrice
+		netDebt := (*merged.InterestDebtPerShare - *merged.CashPerShare) * sharesOutstanding
+		merged.NetDebt = &netDebt
+		merged.Sources.NetDebt = services.SourceCalculated
+	}
+
+	// Net Debt calculated fallback method 2: Derive from NetDebtToEBITDA × EBITDA when InterestDebtPerShare is missing
+	if merged.NetDebt == nil && merged.NetDebtToEBITDA != nil && *merged.NetDebtToEBITDA != 0 &&
+		merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
+		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 {
+		// EBITDA = EV / (EV/EBITDA)
+		ebitda := *merged.EnterpriseValue / *merged.EVToEBITDA
+		if ebitda > 0 {
+			// Net Debt = NetDebtToEBITDA × EBITDA
+			netDebt := *merged.NetDebtToEBITDA * ebitda
+			merged.NetDebt = &netDebt
+			merged.Sources.NetDebt = services.SourceCalculated
+			log.Printf("Calculated Net Debt for %s from NetDebtToEBITDA (%.4f) × EBITDA (%.0f) = $%.0f", ticker, *merged.NetDebtToEBITDA, ebitda, netDebt)
+		}
+	}
+
+	// Debt/EBITDA calculated fallback: derive from Net Debt and EBITDA
+	if merged.DebtToEBITDA == nil && merged.EVToEBITDA != nil && *merged.EVToEBITDA > 0 &&
+		merged.EnterpriseValue != nil && *merged.EnterpriseValue > 0 &&
+		merged.MarketCap != nil && *merged.MarketCap > 0 {
+		// EBITDA = EV / (EV/EBITDA)
+		ebitda := *merged.EnterpriseValue / *merged.EVToEBITDA
+		if ebitda > 0 {
+			// Calculate Total Debt from Net Debt + Cash
+			var totalDebt float64
+			if merged.NetDebt != nil && merged.CashPerShare != nil && currentPrice > 0 {
+				sharesOutstanding := *merged.MarketCap / currentPrice
+				cash := *merged.CashPerShare * sharesOutstanding
+				totalDebt = *merged.NetDebt + cash
+				log.Printf("Calculated Total Debt for %s: NetDebt ($%.0f) + Cash ($%.0f) = $%.0f", ticker, *merged.NetDebt, cash, totalDebt)
+			} else if merged.NetDebt != nil {
+				// Approximation: assume Cash is small relative to debt
+				totalDebt = *merged.NetDebt
+				log.Printf("Approximated Total Debt for %s ≈ Net Debt: $%.0f", ticker, totalDebt)
+			}
+
+			if totalDebt > 0 {
+				debtToEBITDA := totalDebt / ebitda
+				merged.DebtToEBITDA = &debtToEBITDA
+				merged.Sources.DebtToEBITDA = services.SourceCalculated
+				log.Printf("Calculated Debt/EBITDA for %s: Total Debt ($%.0f) / EBITDA ($%.0f) = %.2f", ticker, totalDebt, ebitda, debtToEBITDA)
+			}
+		}
+	}
+
+	// Interest Coverage: EBIT / Interest Expense - Cannot calculate without interest expense data
+
+	// If no data available at all, return error
+	if !merged.FMPAvailable && allMetrics != nil && len(allMetrics.Errors) == 6 {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error":   "Financial data not found",
+			"message": fmt.Sprintf("No financial data available for %s from FMP", ticker),
+			"ticker":  ticker,
+		})
+		return
+	}
+
+	// Build response with all metrics organized by category
+	response := gin.H{
+		// === VALUATION ===
+		"valuation": gin.H{
+			"pe_ratio":           merged.PERatio,
+			"forward_pe":         merged.ForwardPE,
+			"pb_ratio":           merged.PBRatio,
+			"ps_ratio":           merged.PSRatio,
+			"price_to_fcf":       merged.PriceToFCF,
+			"price_to_ocf":       merged.PriceToOCF,
+			"peg_ratio":          merged.PEGRatio,
+			"peg_interpretation": merged.PEGInterpretation,
+			"enterprise_value":   merged.EnterpriseValue,
+			"ev_to_sales":        merged.EVToSales,
+			"ev_to_ebitda":       merged.EVToEBITDA,
+			"ev_to_ebit":         merged.EVToEBIT,
+			"ev_to_fcf":          merged.EVToFCF,
+			"earnings_yield":     merged.EarningsYield,
+			"fcf_yield":          merged.FCFYield,
+			"market_cap":         merged.MarketCap,
+		},
+
+		// === PROFITABILITY ===
+		"profitability": gin.H{
+			"gross_margin":     merged.GrossMargin,
+			"operating_margin": merged.OperatingMargin,
+			"net_margin":       merged.NetMargin,
+			"ebitda_margin":    merged.EBITDAMargin,
+			"ebit_margin":      merged.EBITMargin,
+			"fcf_margin":       merged.FCFMargin,
+			"pretax_margin":    merged.PretaxMargin,
+			"roe":              merged.ROE,
+			"roa":              merged.ROA,
+			"roic":             merged.ROIC,
+			"roce":             merged.ROCE,
+		},
+
+		// === LIQUIDITY ===
+		"liquidity": gin.H{
+			"current_ratio":   merged.CurrentRatio,
+			"quick_ratio":     merged.QuickRatio,
+			"cash_ratio":      merged.CashRatio,
+			"working_capital": merged.WorkingCapital,
+		},
+
+		// === LEVERAGE ===
+		"leverage": gin.H{
+			"debt_to_equity":     merged.DebtToEquity,
+			"debt_to_assets":     merged.DebtToAssets,
+			"debt_to_ebitda":     merged.DebtToEBITDA,
+			"debt_to_capital":    merged.DebtToCapital,
+			"interest_coverage":  merged.InterestCoverage,
+			"net_debt_to_ebitda": merged.NetDebtToEBITDA,
+			"net_debt":           merged.NetDebt,
+			"invested_capital":   merged.InvestedCapital,
+		},
+
+		// === EFFICIENCY ===
+		"efficiency": gin.H{
+			"asset_turnover":             merged.AssetTurnover,
+			"inventory_turnover":         merged.InventoryTurnover,
+			"receivables_turnover":       merged.ReceivablesTurnover,
+			"payables_turnover":          merged.PayablesTurnover,
+			"fixed_asset_turnover":       merged.FixedAssetTurnover,
+			"days_sales_outstanding":     merged.DaysOfSalesOutstanding,
+			"days_inventory_outstanding": merged.DaysOfInventoryOutstanding,
+			"days_payables_outstanding":  merged.DaysOfPayablesOutstanding,
+			"cash_conversion_cycle":      merged.CashConversionCycle,
+		},
+
+		// === GROWTH ===
+		"growth": gin.H{
+			"revenue_growth_yoy":          merged.RevenueGrowthYoY,
+			"revenue_growth_3y_cagr":      merged.RevenueGrowth3YCAGR,
+			"revenue_growth_5y_cagr":      merged.RevenueGrowth5YCAGR,
+			"gross_profit_growth_yoy":     merged.GrossProfitGrowthYoY,
+			"operating_income_growth_yoy": merged.OperatingIncomeGrowthYoY,
+			"net_income_growth_yoy":       merged.NetIncomeGrowthYoY,
+			"eps_growth_yoy":              merged.EPSGrowthYoY,
+			"eps_growth_3y_cagr":          merged.EPSGrowth3YCAGR,
+			"eps_growth_5y_cagr":          merged.EPSGrowth5YCAGR,
+			"fcf_growth_yoy":              merged.FCFGrowthYoY,
+			"book_value_growth_yoy":       merged.BookValueGrowthYoY,
+			"dividend_growth_5y_cagr":     merged.DividendGrowth5YCAGR,
+		},
+
+		// === PER SHARE ===
+		"per_share": gin.H{
+			"eps_diluted":             merged.EPSDiluted,
+			"book_value_per_share":    merged.BookValuePerShare,
+			"tangible_book_per_share": merged.TangibleBookPerShare,
+			"revenue_per_share":       merged.RevenuePerShare,
+			"operating_cf_per_share":  merged.OperatingCFPerShare,
+			"fcf_per_share":           merged.FCFPerShare,
+			"cash_per_share":          merged.CashPerShare,
+			"dividend_per_share":      merged.DividendPerShare,
+			"graham_number":           merged.GrahamNumber,
+		},
+
+		// === DIVIDENDS ===
+		"dividends": gin.H{
+			"dividend_yield":             merged.DividendYield,
+			"forward_dividend_yield":     merged.ForwardDividendYield,
+			"payout_ratio":               merged.PayoutRatio,
+			"payout_interpretation":      merged.PayoutInterpretation,
+			"fcf_payout_ratio":           merged.FCFPayoutRatio,
+			"consecutive_dividend_years": merged.ConsecutiveDividendYears,
+			"ex_dividend_date":           merged.ExDividendDate,
+			"payment_date":               merged.PaymentDate,
+			"dividend_frequency":         merged.DividendFrequency,
+		},
+
+		// === QUALITY SCORES ===
+		"quality_scores": gin.H{
+			"altman_z_score":             merged.AltmanZScore,
+			"altman_z_interpretation":    merged.AltmanZInterpretation,
+			"altman_z_description":       merged.AltmanZDescription,
+			"piotroski_f_score":          merged.PiotroskiFScore,
+			"piotroski_f_interpretation": merged.PiotroskiFInterpretation,
+			"piotroski_f_description":    merged.PiotroskiFDescription,
+		},
+
+		// === FORWARD ESTIMATES ===
+		"forward_estimates": gin.H{
+			"forward_eps":          merged.ForwardEPS,
+			"forward_eps_high":     merged.ForwardEPSHigh,
+			"forward_eps_low":      merged.ForwardEPSLow,
+			"forward_revenue":      merged.ForwardRevenue,
+			"forward_ebitda":       merged.ForwardEBITDA,
+			"forward_net_income":   merged.ForwardNetIncome,
+			"num_analysts_eps":     merged.NumAnalystsEPS,
+			"num_analysts_revenue": merged.NumAnalystsRevenue,
+		},
+
+		// === ANALYST RATINGS ===
+		"analyst_ratings": gin.H{
+			"analyst_rating_strong_buy":  merged.AnalystRatingStrongBuy,
+			"analyst_rating_buy":         merged.AnalystRatingBuy,
+			"analyst_rating_hold":        merged.AnalystRatingHold,
+			"analyst_rating_sell":        merged.AnalystRatingSell,
+			"analyst_rating_strong_sell": merged.AnalystRatingStrongSell,
+			"analyst_consensus":          merged.AnalystConsensus,
+			"target_high":                merged.TargetHigh,
+			"target_low":                 merged.TargetLow,
+			"target_consensus":           merged.TargetConsensus,
+			"target_median":              merged.TargetMedian,
+		},
+	}
+
+	// Collect errors for debugging
+	var errors []string
+	if allMetrics != nil {
+		for endpoint, err := range allMetrics.Errors {
+			errors = append(errors, fmt.Sprintf("%s: %v", endpoint, err))
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": response,
+		"meta": gin.H{
+			"ticker":        ticker,
+			"fmp_available": merged.FMPAvailable,
+			"current_price": currentPrice,
+		},
+		"debug": gin.H{
+			"sources": merged.Sources,
+			"errors":  errors,
+		},
+	})
 }
 
 // GetRiskMetrics retrieves risk metrics for a ticker from the risk_metrics table

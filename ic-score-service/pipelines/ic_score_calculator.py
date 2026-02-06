@@ -31,6 +31,16 @@ from tqdm import tqdm
 
 from database.database import get_database
 from models import ICScore, Financial, TechnicalIndicator, InsiderTrade, InstitutionalHolding, AnalystRating, NewsArticle
+from pipelines.utils.sector_percentile import SectorPercentileCalculator
+from pipelines.utils.lifecycle import LifecycleClassifier, LifecycleStage
+from pipelines.utils.earnings_revisions import EarningsRevisionsCalculator
+from pipelines.utils.historical_valuation import HistoricalValuationCalculator
+from pipelines.utils.dividend_quality import DividendQualityCalculator
+# Phase 3 imports
+from pipelines.utils.score_stabilizer import ScoreStabilizer, StabilizationResult, EventType
+from pipelines.utils.peer_comparison import PeerComparisonService, PeerComparisonResult
+from pipelines.utils.catalyst_detector import CatalystService, Catalyst
+from pipelines.utils.score_explainer import ScoreExplainer, ScoreChangeExplanation
 
 # Setup logging with configurable log directory
 LOG_DIR = os.environ.get('LOG_DIR', '/app/logs')
@@ -48,21 +58,47 @@ logger = logging.getLogger(__name__)
 
 
 class ICScoreCalculator:
-    """Calculator for InvestorCenter proprietary IC Scores."""
+    """Calculator for InvestorCenter proprietary IC Scores.
 
-    # Factor weights (must sum to 1.0)
+    IC Score v2.1 Features:
+    - Sector-relative scoring using percentiles
+    - Lifecycle-aware weight adjustments
+    - Phase 2 factors: earnings_revisions, historical_value, dividend_quality
+    - Smart Money consolidation (analyst + insider + institutional)
+    """
+
+    # Base factor weights (sum to 1.0)
+    # Can be adjusted by lifecycle classification
     WEIGHTS = {
-        'value': 0.12,
-        'growth': 0.15,
+        # Quality (35%)
         'profitability': 0.12,
         'financial_health': 0.10,
-        'momentum': 0.08,
-        'analyst_consensus': 0.10,
-        'insider_activity': 0.08,
-        'institutional': 0.10,
-        'news_sentiment': 0.07,
-        'technical': 0.08,
+        'growth': 0.13,
+        # Valuation (30%)
+        'value': 0.12,
+        'intrinsic_value': 0.10,
+        'historical_value': 0.08,
+        # Signals (35%)
+        'momentum': 0.10,
+        'smart_money': 0.10,  # Combined: analyst + insider + institutional
+        'earnings_revisions': 0.08,
+        'technical': 0.07,
     }
+
+    # Feature flags
+    USE_SECTOR_RELATIVE_SCORING = True
+    USE_LIFECYCLE_WEIGHTS = True
+
+    # Phase 2 feature flags
+    USE_EARNINGS_REVISIONS = True
+    USE_HISTORICAL_VALUATION = True
+    USE_DIVIDEND_QUALITY = False  # Optional, enable for income mode
+
+    # Phase 3 feature flags
+    USE_SCORE_STABILIZATION = True   # Exponential smoothing to prevent whipsaw
+    USE_PEER_COMPARISON = True       # Similar stock comparison
+    USE_CATALYST_DETECTION = True    # Upcoming event detection
+    USE_SCORE_EXPLANATIONS = True    # Human-readable explanations
 
     # Rating thresholds
     RATING_THRESHOLDS = {
@@ -107,15 +143,77 @@ class ICScoreCalculator:
         'insider_scale': 2000.0, # Shares to score scaling
     }
 
-    def __init__(self):
-        """Initialize the IC Score calculator."""
+    def __init__(self, income_mode: bool = False):
+        """Initialize the IC Score calculator.
+
+        Args:
+            income_mode: If True, include Dividend Quality factor for
+                        income-focused analysis (+5% weight).
+        """
         self.db = get_database()
-        self.sector_percentiles = {}  # Cache for sector percentiles
+        self.income_mode = income_mode
+
+        # v2.1 components (initialized per-session)
+        self._sector_calculator: Optional[SectorPercentileCalculator] = None
+        self._lifecycle_classifier: Optional[LifecycleClassifier] = None
+
+        # Phase 2 factor calculators (initialized per-session)
+        self._earnings_revisions_calc: Optional[EarningsRevisionsCalculator] = None
+        self._historical_valuation_calc: Optional[HistoricalValuationCalculator] = None
+        self._dividend_quality_calc: Optional[DividendQualityCalculator] = None
+
+        # Phase 3 components (initialized per-session)
+        self._score_stabilizer: Optional[ScoreStabilizer] = None
+        self._peer_comparison: Optional[PeerComparisonService] = None
+        self._catalyst_detector: Optional[CatalystService] = None
+        self._score_explainer: Optional[ScoreExplainer] = None
 
         # Track progress
         self.processed_count = 0
         self.success_count = 0
         self.error_count = 0
+
+    async def _init_v2_components(self, session):
+        """Initialize scoring components with session.
+
+        Called once per calculation batch to set up sector percentile
+        calculator, lifecycle classifier, and Phase 2 factor calculators.
+        """
+        if self.USE_SECTOR_RELATIVE_SCORING:
+            self._sector_calculator = SectorPercentileCalculator(session)
+        else:
+            self._sector_calculator = None
+
+        if self.USE_LIFECYCLE_WEIGHTS:
+            self._lifecycle_classifier = LifecycleClassifier(session)
+        else:
+            self._lifecycle_classifier = None
+
+        # Initialize Phase 2 factor calculators
+        if self.USE_EARNINGS_REVISIONS:
+            self._earnings_revisions_calc = EarningsRevisionsCalculator(session)
+
+        if self.USE_HISTORICAL_VALUATION:
+            self._historical_valuation_calc = HistoricalValuationCalculator(session)
+
+        if self.USE_DIVIDEND_QUALITY or self.income_mode:
+            self._dividend_quality_calc = DividendQualityCalculator(
+                session,
+                sector_calculator=self._sector_calculator
+            )
+
+        # Initialize Phase 3 components
+        if self.USE_SCORE_STABILIZATION:
+            self._score_stabilizer = ScoreStabilizer(session)
+
+        if self.USE_PEER_COMPARISON:
+            self._peer_comparison = PeerComparisonService(session)
+
+        if self.USE_CATALYST_DETECTION:
+            self._catalyst_detector = CatalystService(session)
+
+        if self.USE_SCORE_EXPLANATIONS:
+            self._score_explainer = ScoreExplainer(session)
 
     async def get_stocks_to_process(
         self,
@@ -145,7 +243,15 @@ class ICScoreCalculator:
                 result = await session.execute(query, {"ticker": ticker.upper()})
             else:
                 # Only process stocks (not ETFs, indices, crypto, etc.)
-                where_clauses = ["symbol NOT LIKE '%-%'", "active = true", "asset_type = 'stock'"]
+                # Note: asset_type 'CS' = Common Stock, 'stock' is legacy value
+                # Exclude index tickers (I:*) and crypto (X:*) which may be misclassified
+                where_clauses = [
+                    "symbol NOT LIKE '%-%'",
+                    "symbol NOT LIKE 'I:%'",
+                    "symbol NOT LIKE 'X:%'",
+                    "active = true",
+                    "asset_type IN ('CS', 'stock')"
+                ]
                 params = {}
 
                 if sector:
@@ -174,11 +280,16 @@ class ICScoreCalculator:
     async def fetch_financial_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch latest financial data for a stock."""
         async with self.db.session() as session:
+            # Prefer rows with actual metrics (net_margin not null)
+            # Filter out future dates to handle data quality issues
             query = text("""
                 SELECT *
                 FROM financials
                 WHERE ticker = :ticker
-                ORDER BY period_end_date DESC
+                  AND period_end_date <= CURRENT_DATE
+                ORDER BY
+                    period_end_date DESC,
+                    CASE WHEN net_margin IS NOT NULL THEN 0 ELSE 1 END
                 LIMIT 20
             """)
             result = await session.execute(query, {"ticker": ticker})
@@ -187,11 +298,58 @@ class ICScoreCalculator:
             if not rows:
                 return None
 
-            # Get latest quarterly and annual data
+            # Get latest row with actual metrics
             latest = rows[0]._asdict() if rows else {}
             historical = [row._asdict() for row in rows]
 
             return {'latest': latest, 'historical': historical}
+
+    async def fetch_fundamental_metrics(self, ticker: str) -> Optional[Dict[str, Any]]:
+        """Fetch latest fundamental metrics from fundamental_metrics_extended.
+
+        This table contains pre-calculated growth rates, profitability metrics,
+        and other derived values that are more reliable than calculating from
+        raw financials.
+        """
+        async with self.db.session() as session:
+            query = text("""
+                SELECT
+                    revenue_growth_yoy, eps_growth_yoy,
+                    net_margin, roe, roa, roic,
+                    gross_margin, operating_margin,
+                    dividend_yield, payout_ratio,
+                    debt_to_equity, current_ratio, quick_ratio,
+                    ev_to_ebitda, ev_to_revenue,
+                    calculation_date
+                FROM fundamental_metrics_extended
+                WHERE ticker = :ticker
+                ORDER BY calculation_date DESC
+                LIMIT 1
+            """)
+            result = await session.execute(query, {"ticker": ticker})
+            row = result.fetchone()
+
+            if not row:
+                return None
+
+            return {
+                'revenue_growth_yoy': float(row[0]) if row[0] is not None else None,
+                'eps_growth_yoy': float(row[1]) if row[1] is not None else None,
+                'net_margin': float(row[2]) if row[2] is not None else None,
+                'roe': float(row[3]) if row[3] is not None else None,
+                'roa': float(row[4]) if row[4] is not None else None,
+                'roic': float(row[5]) if row[5] is not None else None,
+                'gross_margin': float(row[6]) if row[6] is not None else None,
+                'operating_margin': float(row[7]) if row[7] is not None else None,
+                'dividend_yield': float(row[8]) if row[8] is not None else None,
+                'payout_ratio': float(row[9]) if row[9] is not None else None,
+                'debt_to_equity': float(row[10]) if row[10] is not None else None,
+                'current_ratio': float(row[11]) if row[11] is not None else None,
+                'quick_ratio': float(row[12]) if row[12] is not None else None,
+                'ev_to_ebitda': float(row[13]) if row[13] is not None else None,
+                'ev_to_revenue': float(row[14]) if row[14] is not None else None,
+                'calculation_date': row[15],
+            }
 
     async def fetch_technical_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch latest technical indicators for a stock."""
@@ -386,25 +544,32 @@ class ICScoreCalculator:
                 'calculation_date': row[5]
             }
 
-    def calculate_value_score(self, valuation_data: Optional[Dict[str, Any]], sector_data: Dict) -> Tuple[Optional[float], Dict]:
-        """Calculate value score based on P/E, P/B, P/S ratios vs sector median.
+    async def calculate_value_score(
+        self,
+        valuation_data: Optional[Dict[str, Any]],
+        sector: Optional[str]
+    ) -> Tuple[Optional[float], Dict]:
+        """Calculate value score based on P/E, P/B, P/S ratios.
 
-        Scoring methodology:
-        - Lower valuation ratios = higher value scores
-        - Scores normalized to 0-100 scale centered on benchmark values
-        - P/E benchmark: ~15 (S&P 500 historical average)
-        - P/B, P/S benchmarks: ~2 (typical fair value)
+        v2.1 Scoring methodology (sector-relative):
+        - Uses sector percentiles instead of absolute benchmarks
+        - Lower valuation = higher percentile = higher score
+        - Falls back to legacy scoring if sector data unavailable
+
+        Legacy scoring methodology (absolute benchmarks):
+        - P/E benchmark: 15 (S&P 500 historical average)
+        - P/B, P/S benchmarks: 2 (typical fair value)
 
         Args:
-            valuation_data: Dict with pe_ratio, pb_ratio, ps_ratio from valuation_ratios table
-            sector_data: Dict with sector median data (for future use)
+            valuation_data: Dict with pe_ratio, pb_ratio, ps_ratio
+            sector: GICS sector for percentile comparison
         """
         if not valuation_data:
             return None, {}
 
         metadata = {}
+        scores = []
 
-        # Get valuation metrics from valuation_ratios table
         pe = valuation_data.get('pe_ratio')
         pb = valuation_data.get('pb_ratio')
         ps = valuation_data.get('ps_ratio')
@@ -412,148 +577,285 @@ class ICScoreCalculator:
         if not any([pe, pb, ps]):
             return None, metadata
 
-        # In production, compare against sector medians
-        # For now, use simple percentile logic (lower is better for value)
-        scores = []
-        if pe and pe > 0:
-            # Lower P/E is better, normalize to 0-100 scale
-            pe_benchmark = self.VALUATION_BENCHMARKS['pe_ratio']
-            pe_scale = self.SCALE_FACTORS['pe_scale']
-            pe_score = max(0, min(100, 100 - (pe - pe_benchmark) * pe_scale))
-            scores.append(pe_score)
-            metadata['pe_ratio'] = float(pe)
+        # v2.1: Use sector-relative percentiles
+        if self._sector_calculator and sector and self.USE_SECTOR_RELATIVE_SCORING:
+            if pe and pe > 0:
+                pe_pct = await self._sector_calculator.get_percentile(sector, 'pe_ratio', pe)
+                if pe_pct is not None:
+                    scores.append(pe_pct)
+                    metadata['pe_ratio'] = float(pe)
+                    metadata['pe_sector_percentile'] = pe_pct
 
-        if pb and pb > 0:
-            pb_benchmark = self.VALUATION_BENCHMARKS['pb_ratio']
-            pb_scale = self.SCALE_FACTORS['pb_scale']
-            pb_score = max(0, min(100, 100 - (pb - pb_benchmark) * pb_scale))
-            scores.append(pb_score)
-            metadata['pb_ratio'] = float(pb)
+            if pb and pb > 0:
+                pb_pct = await self._sector_calculator.get_percentile(sector, 'pb_ratio', pb)
+                if pb_pct is not None:
+                    scores.append(pb_pct)
+                    metadata['pb_ratio'] = float(pb)
+                    metadata['pb_sector_percentile'] = pb_pct
 
-        if ps and ps > 0:
-            ps_benchmark = self.VALUATION_BENCHMARKS['ps_ratio']
-            ps_scale = self.SCALE_FACTORS['ps_scale']
-            ps_score = max(0, min(100, 100 - (ps - ps_benchmark) * ps_scale))
-            scores.append(ps_score)
-            metadata['ps_ratio'] = float(ps)
+            if ps and ps > 0:
+                ps_pct = await self._sector_calculator.get_percentile(sector, 'ps_ratio', ps)
+                if ps_pct is not None:
+                    scores.append(ps_pct)
+                    metadata['ps_ratio'] = float(ps)
+                    metadata['ps_sector_percentile'] = ps_pct
+
+            metadata['scoring_method'] = 'sector_relative'
+
+        # Fallback or legacy: Use absolute benchmarks
+        if not scores:
+            metadata['scoring_method'] = 'absolute_benchmark'
+
+            if pe and pe > 0:
+                pe_benchmark = self.VALUATION_BENCHMARKS['pe_ratio']
+                pe_scale = self.SCALE_FACTORS['pe_scale']
+                pe_score = max(0, min(100, 100 - (pe - pe_benchmark) * pe_scale))
+                scores.append(pe_score)
+                metadata['pe_ratio'] = float(pe)
+
+            if pb and pb > 0:
+                pb_benchmark = self.VALUATION_BENCHMARKS['pb_ratio']
+                pb_scale = self.SCALE_FACTORS['pb_scale']
+                pb_score = max(0, min(100, 100 - (pb - pb_benchmark) * pb_scale))
+                scores.append(pb_score)
+                metadata['pb_ratio'] = float(pb)
+
+            if ps and ps > 0:
+                ps_benchmark = self.VALUATION_BENCHMARKS['ps_ratio']
+                ps_scale = self.SCALE_FACTORS['ps_scale']
+                ps_score = max(0, min(100, 100 - (ps - ps_benchmark) * ps_scale))
+                scores.append(ps_score)
+                metadata['ps_ratio'] = float(ps)
 
         if not scores:
             return None, metadata
 
         return np.mean(scores), metadata
 
-    def calculate_growth_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
+    async def calculate_growth_score(
+        self,
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]],
+        sector: Optional[str]
+    ) -> Tuple[Optional[float], Dict]:
         """Calculate growth score based on revenue, EPS, FCF growth.
 
-        Scoring methodology:
+        v2.1 Scoring methodology (sector-relative):
+        - Uses pre-calculated growth rates from fundamental_metrics_extended
+        - Uses sector percentiles for growth comparison
+        - Higher growth vs sector = higher score
+
+        Legacy scoring methodology:
         - 0% growth = 50 (neutral)
         - +20% growth = 100 (maximum score)
         - -20% growth = 0 (minimum score)
         """
-        if not financial_data or len(financial_data.get('historical', [])) < 4:
-            return None, {}
-
-        historical = financial_data['historical']
         metadata = {}
         growth_scale = self.SCALE_FACTORS['growth_scale']
-
-        # Calculate year-over-year growth rates
         scores = []
 
-        # Revenue growth (convert Decimal to float to avoid type errors)
-        if historical[0].get('revenue') and historical[3].get('revenue'):
-            rev_current = float(historical[0]['revenue'])
-            rev_prior = float(historical[3]['revenue'])
-            if rev_prior > 0:
-                rev_growth = ((rev_current / rev_prior) - 1) * 100
-                # Normalize: 0% = 50, 20% = 100, -20% = 0
+        # Prefer pre-calculated growth rates from fundamental_metrics_extended
+        rev_growth = None
+        eps_growth = None
+
+        if fundamental_metrics:
+            rev_growth = fundamental_metrics.get('revenue_growth_yoy')
+            eps_growth = fundamental_metrics.get('eps_growth_yoy')
+            if rev_growth is not None:
+                metadata['revenue_growth_yoy'] = rev_growth
+            if eps_growth is not None:
+                metadata['eps_growth_yoy'] = eps_growth
+
+        # Fallback: Calculate from raw financials if pre-calculated not available
+        if rev_growth is None and financial_data and len(financial_data.get('historical', [])) >= 4:
+            historical = financial_data['historical']
+            if historical[0].get('revenue') and historical[3].get('revenue'):
+                rev_current = float(historical[0]['revenue'])
+                rev_prior = float(historical[3]['revenue'])
+                if rev_prior > 0:
+                    rev_growth = ((rev_current / rev_prior) - 1) * 100
+                    metadata['revenue_growth_yoy'] = rev_growth
+                    metadata['growth_source'] = 'calculated'
+
+        if rev_growth is None and eps_growth is None:
+            return None, metadata
+
+        # v2.1: Use sector-relative percentiles
+        if self._sector_calculator and sector and self.USE_SECTOR_RELATIVE_SCORING:
+            if rev_growth is not None:
+                rev_pct = await self._sector_calculator.get_percentile(
+                    sector, 'revenue_growth_yoy', rev_growth
+                )
+                if rev_pct is not None:
+                    scores.append(rev_pct)
+                    metadata['revenue_growth_sector_percentile'] = rev_pct
+
+            if eps_growth is not None:
+                eps_pct = await self._sector_calculator.get_percentile(
+                    sector, 'eps_growth_yoy', eps_growth
+                )
+                if eps_pct is not None:
+                    scores.append(eps_pct)
+                    metadata['eps_growth_sector_percentile'] = eps_pct
+
+            if scores:
+                metadata['scoring_method'] = 'sector_relative'
+
+        # Fallback or legacy: Use absolute scaling
+        if not scores:
+            metadata['scoring_method'] = 'absolute_benchmark'
+
+            if rev_growth is not None:
                 rev_score = max(0, min(100, 50 + rev_growth * growth_scale))
                 scores.append(rev_score)
-                metadata['revenue_growth_yoy'] = rev_growth
 
-        # EPS growth (convert Decimal to float to avoid type errors)
-        if historical[0].get('eps_diluted') and historical[3].get('eps_diluted'):
-            eps_current = float(historical[0]['eps_diluted'])
-            eps_prior = float(historical[3]['eps_diluted'])
-            if eps_prior > 0:
-                eps_growth = ((eps_current / eps_prior) - 1) * 100
+            if eps_growth is not None:
                 eps_score = max(0, min(100, 50 + eps_growth * growth_scale))
                 scores.append(eps_score)
-                metadata['eps_growth_yoy'] = eps_growth
 
         if not scores:
             return None, metadata
 
         return np.mean(scores), metadata
 
-    def calculate_profitability_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
+    async def calculate_profitability_score(
+        self,
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]],
+        sector: Optional[str]
+    ) -> Tuple[Optional[float], Dict]:
         """Calculate profitability score based on margins, ROE, ROA.
 
-        Scoring methodology:
+        v2.1 Scoring methodology (sector-relative):
+        - Uses pre-calculated metrics from fundamental_metrics_extended
+        - Uses sector percentiles for profitability comparison
+        - Higher margins/ROE/ROA vs sector = higher score
+
+        Legacy scoring methodology:
         - 0% margin/ROE = 0, 20% = 100
         - 0% ROA = 0, 10% = 100 (ROA typically lower than ROE)
         """
-        if not financial_data:
-            return None, {}
-
-        latest = financial_data.get('latest', {})
         metadata = {}
         scores = []
 
-        # Net margin
-        if latest.get('net_margin'):
-            margin = float(latest['net_margin'])
-            margin_scale = self.SCALE_FACTORS['margin_scale']
-            margin_score = max(0, min(100, margin * margin_scale))
-            scores.append(margin_score)
+        # Prefer data from fundamental_metrics_extended
+        margin = None
+        roe = None
+        roa = None
+
+        if fundamental_metrics:
+            margin = fundamental_metrics.get('net_margin')
+            roe = fundamental_metrics.get('roe')
+            roa = fundamental_metrics.get('roa')
+
+        # Fallback to financials table
+        if financial_data and (margin is None or roe is None or roa is None):
+            latest = financial_data.get('latest', {})
+            if margin is None and latest.get('net_margin'):
+                margin = float(latest['net_margin'])
+            if roe is None and latest.get('roe'):
+                roe = float(latest['roe'])
+            if roa is None and latest.get('roa'):
+                roa = float(latest['roa'])
+
+        if margin is None and roe is None and roa is None:
+            return None, {}
+
+        if margin is not None:
             metadata['net_margin'] = margin
-
-        # ROE
-        if latest.get('roe'):
-            roe = float(latest['roe'])
-            roe_scale = self.SCALE_FACTORS['roe_scale']
-            roe_score = max(0, min(100, roe * roe_scale))
-            scores.append(roe_score)
+        if roe is not None:
             metadata['roe'] = roe
-
-        # ROA
-        if latest.get('roa'):
-            roa = float(latest['roa'])
-            roa_scale = self.SCALE_FACTORS['roa_scale']
-            roa_score = max(0, min(100, roa * roa_scale))
-            scores.append(roa_score)
+        if roa is not None:
             metadata['roa'] = roa
+
+        # v2.1: Use sector-relative percentiles
+        if self._sector_calculator and sector and self.USE_SECTOR_RELATIVE_SCORING:
+            if margin is not None:
+                margin_pct = await self._sector_calculator.get_percentile(
+                    sector, 'net_margin', margin
+                )
+                if margin_pct is not None:
+                    scores.append(margin_pct)
+                    metadata['net_margin_sector_percentile'] = margin_pct
+
+            if roe is not None:
+                roe_pct = await self._sector_calculator.get_percentile(sector, 'roe', roe)
+                if roe_pct is not None:
+                    scores.append(roe_pct)
+                    metadata['roe_sector_percentile'] = roe_pct
+
+            if roa is not None:
+                roa_pct = await self._sector_calculator.get_percentile(sector, 'roa', roa)
+                if roa_pct is not None:
+                    scores.append(roa_pct)
+                    metadata['roa_sector_percentile'] = roa_pct
+
+            if scores:
+                metadata['scoring_method'] = 'sector_relative'
+
+        # Fallback or legacy: Use absolute scaling
+        if not scores:
+            metadata['scoring_method'] = 'absolute_benchmark'
+
+            if margin is not None:
+                margin_scale = self.SCALE_FACTORS['margin_scale']
+                margin_score = max(0, min(100, margin * margin_scale))
+                scores.append(margin_score)
+
+            if roe is not None:
+                roe_scale = self.SCALE_FACTORS['roe_scale']
+                roe_score = max(0, min(100, roe * roe_scale))
+                scores.append(roe_score)
+
+            if roa is not None:
+                roa_scale = self.SCALE_FACTORS['roa_scale']
+                roa_score = max(0, min(100, roa * roa_scale))
+                scores.append(roa_score)
 
         if not scores:
             return None, metadata
 
         return np.mean(scores), metadata
 
-    def calculate_financial_health_score(self, financial_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
+    def calculate_financial_health_score(
+        self,
+        fundamental_metrics: Optional[Dict[str, Any]],
+        financial_data: Optional[Dict[str, Any]]
+    ) -> Tuple[Optional[float], Dict]:
         """Calculate financial health score based on D/E, current ratio.
 
         Scoring methodology:
         - D/E: 0 = 100 (no debt), 2+ = 0 (high debt)
         - Current ratio: 2.0 = 100 (optimal), 0 or 5+ = 0 (extremes)
         """
-        if not financial_data:
-            return None, {}
-
-        latest = financial_data.get('latest', {})
         metadata = {}
         scores = []
 
+        # Get debt_to_equity and current_ratio from best source
+        de = None
+        cr = None
+
+        if fundamental_metrics:
+            de = fundamental_metrics.get('debt_to_equity')
+            cr = fundamental_metrics.get('current_ratio')
+
+        # Fallback to financials table
+        if financial_data:
+            latest = financial_data.get('latest', {})
+            if de is None and latest.get('debt_to_equity') is not None:
+                de = float(latest['debt_to_equity'])
+            if cr is None and latest.get('current_ratio'):
+                cr = float(latest['current_ratio'])
+
         # Debt to equity (lower is better)
-        if latest.get('debt_to_equity') is not None:
-            de = float(latest['debt_to_equity'])
+        if de is not None:
             de_scale = self.SCALE_FACTORS['de_scale']
             de_score = max(0, min(100, 100 - de * de_scale))
             scores.append(de_score)
             metadata['debt_to_equity'] = de
 
         # Current ratio (optimal around 1.5-2.0)
-        if latest.get('current_ratio'):
-            cr = float(latest['current_ratio'])
+        if cr is not None:
             cr_optimal = self.SCALE_FACTORS['cr_optimal']
             cr_scale = self.SCALE_FACTORS['cr_scale']
             cr_score = max(0, min(100, 100 - abs(cr - cr_optimal) * cr_scale))
@@ -766,9 +1068,14 @@ class ICScoreCalculator:
     ) -> Optional[Dict[str, Any]]:
         """Calculate complete IC Score for a stock.
 
+        v2.1 Features:
+        - Sector-relative scoring using percentiles
+        - Lifecycle-aware weight adjustments
+        - Enhanced metadata with sector context
+
         Args:
             ticker: Stock ticker symbol.
-            sector: Company sector.
+            sector: Company sector (GICS classification).
 
         Returns:
             IC Score data dictionary or None.
@@ -776,6 +1083,7 @@ class ICScoreCalculator:
         try:
             # Fetch all data sources
             financial_data = await self.fetch_financial_data(ticker)
+            fundamental_metrics = await self.fetch_fundamental_metrics(ticker)
             valuation_data = await self.fetch_valuation_data(ticker)
             technical_data = await self.fetch_technical_data(ticker)
             insider_data = await self.fetch_insider_data(ticker)
@@ -783,30 +1091,59 @@ class ICScoreCalculator:
             analyst_data = await self.fetch_analyst_data(ticker)
             institutional_data = await self.fetch_institutional_data(ticker)
 
+            # Determine lifecycle stage and adjust weights
+            lifecycle_stage = None
+            weights_to_use = self.WEIGHTS  # Default weights
+
+            if self._lifecycle_classifier:
+                # Prefer fundamental_metrics for lifecycle classification (has pre-calculated values)
+                lifecycle_data = {}
+                if fundamental_metrics:
+                    lifecycle_data = {
+                        'revenue_growth_yoy': fundamental_metrics.get('revenue_growth_yoy'),
+                        'net_margin': fundamental_metrics.get('net_margin'),
+                        'pe_ratio': valuation_data.get('pe_ratio') if valuation_data else None,
+                        'market_cap': valuation_data.get('market_cap') if valuation_data else None,
+                    }
+                elif financial_data:
+                    latest = financial_data.get('latest', {})
+                    lifecycle_data = {
+                        'revenue_growth_yoy': latest.get('revenue_growth_yoy'),
+                        'net_margin': latest.get('net_margin'),
+                        'pe_ratio': valuation_data.get('pe_ratio') if valuation_data else None,
+                        'market_cap': valuation_data.get('market_cap') if valuation_data else None,
+                    }
+
+                if lifecycle_data:
+                    classification = self._lifecycle_classifier.classify(lifecycle_data)
+                    lifecycle_stage = classification.stage.value
+                    weights_to_use = classification.adjusted_weights
+                    logger.debug(f"{ticker}: Lifecycle={lifecycle_stage}, weights adjusted")
+
             # Calculate individual factor scores
             factor_scores = {}
             factor_metadata = {}
 
-            # Value score (uses valuation_ratios table for TTM P/E, P/B, P/S)
-            value_score, value_meta = self.calculate_value_score(valuation_data, {})
+            # Value score (uses sector percentiles in v2.1)
+            value_score, value_meta = await self.calculate_value_score(valuation_data, sector)
             if value_score is not None:
                 factor_scores['value'] = value_score
                 factor_metadata['value'] = value_meta
 
-            # Growth score
-            growth_score, growth_meta = self.calculate_growth_score(financial_data)
+            # Growth score (uses pre-calculated metrics from fundamental_metrics_extended)
+            growth_score, growth_meta = await self.calculate_growth_score(fundamental_metrics, financial_data, sector)
             if growth_score is not None:
                 factor_scores['growth'] = growth_score
                 factor_metadata['growth'] = growth_meta
 
-            # Profitability score
-            profit_score, profit_meta = self.calculate_profitability_score(financial_data)
+            # Profitability score (uses pre-calculated metrics from fundamental_metrics_extended)
+            profit_score, profit_meta = await self.calculate_profitability_score(fundamental_metrics, financial_data, sector)
             if profit_score is not None:
                 factor_scores['profitability'] = profit_score
                 factor_metadata['profitability'] = profit_meta
 
-            # Financial health score
-            health_score, health_meta = self.calculate_financial_health_score(financial_data)
+            # Financial health score (uses fundamental_metrics for better data availability)
+            health_score, health_meta = self.calculate_financial_health_score(fundamental_metrics, financial_data)
             if health_score is not None:
                 factor_scores['financial_health'] = health_score
                 factor_metadata['financial_health'] = health_meta
@@ -847,6 +1184,45 @@ class ICScoreCalculator:
                 factor_scores['institutional'] = institutional_score
                 factor_metadata['institutional'] = institutional_meta
 
+            # Phase 2: Earnings Revisions factor
+            if self._earnings_revisions_calc:
+                earnings_rev_result = await self._earnings_revisions_calc.calculate(ticker)
+                if earnings_rev_result:
+                    factor_scores['earnings_revisions'] = earnings_rev_result.score
+                    factor_metadata['earnings_revisions'] = {
+                        'score': earnings_rev_result.score,
+                        'magnitude_score': earnings_rev_result.magnitude_score,
+                        'breadth_score': earnings_rev_result.breadth_score,
+                        'recency_score': earnings_rev_result.recency_score,
+                        **earnings_rev_result.metrics
+                    }
+
+            # Phase 2: Historical Valuation factor
+            if self._historical_valuation_calc:
+                hist_val_result = await self._historical_valuation_calc.calculate(ticker)
+                if hist_val_result:
+                    factor_scores['historical_value'] = hist_val_result.score
+                    factor_metadata['historical_value'] = {
+                        'score': hist_val_result.score,
+                        'pe_percentile': hist_val_result.pe_percentile,
+                        'ps_percentile': hist_val_result.ps_percentile,
+                        **hist_val_result.metrics
+                    }
+
+            # Phase 2: Dividend Quality factor (optional, for income mode)
+            if self._dividend_quality_calc and (self.income_mode or self.USE_DIVIDEND_QUALITY):
+                div_quality_result = await self._dividend_quality_calc.calculate(ticker)
+                if div_quality_result and div_quality_result.is_dividend_payer:
+                    factor_scores['dividend_quality'] = div_quality_result.score
+                    factor_metadata['dividend_quality'] = {
+                        'score': div_quality_result.score,
+                        'yield_score': div_quality_result.yield_score,
+                        'payout_score': div_quality_result.payout_score,
+                        'growth_score': div_quality_result.growth_score,
+                        'streak_score': div_quality_result.streak_score,
+                        **div_quality_result.metrics
+                    }
+
             # Calculate data completeness
             data_completeness = (len(factor_scores) / len(self.WEIGHTS)) * 100
 
@@ -870,10 +1246,31 @@ class ICScoreCalculator:
                 )
                 return None
 
-            # Calculate weighted overall score (only for available factors)
-            total_weight = sum(self.WEIGHTS[factor] for factor in factor_scores.keys())
+            # Calculate weighted overall score using lifecycle-adjusted weights
+            # Map factor names to weights (supports both v2.0 legacy and v2.1)
+            factor_weight_mapping = {
+                'value': weights_to_use.get('value', 0.12),
+                'growth': weights_to_use.get('growth', 0.13),
+                'profitability': weights_to_use.get('profitability', 0.12),
+                'financial_health': weights_to_use.get('financial_health', 0.10),
+                'momentum': weights_to_use.get('momentum', 0.10),
+                'technical': weights_to_use.get('technical', 0.07),
+                'news_sentiment': weights_to_use.get('news_sentiment', 0.05),
+                'analyst_consensus': weights_to_use.get('smart_money', 0.10) * 0.4,  # 40% of smart money
+                'insider_activity': weights_to_use.get('smart_money', 0.10) * 0.3,   # 30% of smart money
+                'institutional': weights_to_use.get('smart_money', 0.10) * 0.3,      # 30% of smart money
+                # Phase 2 factors
+                'earnings_revisions': weights_to_use.get('earnings_revisions', 0.08),
+                'historical_value': weights_to_use.get('historical_value', 0.08),
+                'dividend_quality': weights_to_use.get('dividend_quality', 0.05) if self.income_mode else 0,
+            }
+
+            total_weight = sum(
+                factor_weight_mapping.get(factor, 0.05)
+                for factor in factor_scores.keys()
+            )
             overall_score = sum(
-                float(factor_scores[factor]) * self.WEIGHTS[factor]
+                float(factor_scores[factor]) * factor_weight_mapping.get(factor, 0.05)
                 for factor in factor_scores.keys()
             ) / total_weight if total_weight > 0 else 0
 
@@ -892,11 +1289,48 @@ class ICScoreCalculator:
             else:
                 confidence = 'Low'
 
-            # Build result
+            # v2.1: Get sector rank
+            sector_rank = None
+            sector_total = None
+            if self._sector_calculator and sector:
+                sector_rank, sector_total = await self._sector_calculator.get_sector_rank(
+                    sector, ticker, overall_score
+                )
+
+            # Phase 3: Apply score stabilization
+            raw_score = overall_score
+            previous_score = None
+            smoothing_applied = False
+            stabilization_events = []
+
+            if self._score_stabilizer:
+                # Detect any reset events
+                detected_events = await self._score_stabilizer.detect_events(ticker)
+                stabilization_events = detected_events
+
+                # Get previous score and apply stabilization
+                stabilization_result = await self._score_stabilizer.stabilize(
+                    ticker=ticker,
+                    new_score=overall_score,
+                    events=detected_events
+                )
+
+                overall_score = stabilization_result.final_score
+                previous_score = stabilization_result.previous_score
+                smoothing_applied = stabilization_result.smoothing_applied
+
+                if stabilization_result.previous_score:
+                    logger.debug(
+                        f"{ticker}: Score {stabilization_result.previous_score:.1f} -> {overall_score:.1f} "
+                        f"(raw: {raw_score:.1f}, smoothing: {smoothing_applied})"
+                    )
+
+            # Build result with v2.1 enhancements
             result = {
                 'ticker': ticker,
                 'date': date.today(),
                 'overall_score': round(overall_score, 2),
+                'previous_score': round(previous_score, 2) if previous_score else None,
                 'value_score': round(factor_scores.get('value'), 2) if 'value' in factor_scores else None,
                 'growth_score': round(factor_scores.get('growth'), 2) if 'growth' in factor_scores else None,
                 'profitability_score': round(factor_scores.get('profitability'), 2) if 'profitability' in factor_scores else None,
@@ -908,15 +1342,107 @@ class ICScoreCalculator:
                 'news_sentiment_score': round(factor_scores.get('news_sentiment'), 2) if 'news_sentiment' in factor_scores else None,
                 'technical_score': round(factor_scores.get('technical'), 2) if 'technical' in factor_scores else None,
                 'rating': rating,
-                'sector_percentile': None,  # Would calculate from sector distribution
+                'sector_percentile': round((sector_total - sector_rank + 1) / sector_total * 100, 1) if sector_rank and sector_total else None,
                 'confidence_level': confidence,
                 'data_completeness': round(data_completeness, 2),
+                # v2.1 new fields
+                'lifecycle_stage': lifecycle_stage,
+                'sector_rank': sector_rank,
+                'sector_total': sector_total,
                 'calculation_metadata': {
                     'factors': factor_metadata,
-                    'weights_used': {k: self.WEIGHTS[k] for k in factor_scores.keys()},
+                    'weights_used': {k: round(factor_weight_mapping.get(k, 0.05), 4) for k in factor_scores.keys()},
+                    'lifecycle_stage': lifecycle_stage,
+                    'scoring_version': '2.1',
+                    'income_mode': self.income_mode,
                     'calculated_at': datetime.now().isoformat(),
+                    # Phase 3: Stabilization metadata
+                    'raw_score': round(raw_score, 2),
+                    'smoothing_applied': smoothing_applied,
+                    'stabilization_events': [
+                        {'type': e.event_type.value, 'date': str(e.event_date), 'description': e.description}
+                        for e in stabilization_events
+                    ] if stabilization_events else [],
                 }
             }
+
+            # Phase 3: Add peer comparison data
+            if self._peer_comparison:
+                try:
+                    peer_result = await self._peer_comparison.get_peers(ticker, limit=5)
+                    if peer_result:
+                        result['peers'] = [
+                            {
+                                'ticker': p.ticker,
+                                'company_name': p.company_name,
+                                'ic_score': p.ic_score,
+                                'similarity_score': round(p.similarity_score, 3),
+                            }
+                            for p in peer_result.peers
+                        ]
+                        result['peer_comparison'] = {
+                            'avg_peer_score': round(peer_result.avg_peer_score, 2) if peer_result.avg_peer_score else None,
+                            'sector_rank': peer_result.sector_rank,
+                            'sector_total': peer_result.sector_total,
+                            'vs_peers_delta': round(overall_score - peer_result.avg_peer_score, 2) if peer_result.avg_peer_score else None,
+                        }
+                except Exception as e:
+                    logger.debug(f"{ticker}: Peer comparison error: {e}")
+
+            # Phase 3: Add catalyst data
+            if self._catalyst_detector:
+                try:
+                    catalysts = await self._catalyst_detector.get_catalysts(ticker, limit=5)
+                    if catalysts:
+                        result['catalysts'] = [
+                            {
+                                'event_type': c.event_type,
+                                'title': c.title,
+                                'event_date': str(c.event_date) if c.event_date else None,
+                                'icon': c.icon,
+                                'impact': c.impact,
+                                'confidence': c.confidence,
+                                'days_until': c.days_until,
+                            }
+                            for c in catalysts
+                        ]
+                except Exception as e:
+                    logger.debug(f"{ticker}: Catalyst detection error: {e}")
+
+            # Phase 3: Generate score explanation
+            if self._score_explainer:
+                try:
+                    current_scores = {
+                        'overall_score': overall_score,
+                        **{f'{k}_score': v for k, v in factor_scores.items()}
+                    }
+                    explanation = await self._score_explainer.explain_change(
+                        ticker=ticker,
+                        current_scores=current_scores
+                    )
+                    if explanation:
+                        result['explanation'] = {
+                            'summary': explanation.summary,
+                            'delta': explanation.delta,
+                            'reasons': [
+                                {
+                                    'factor': r.factor,
+                                    'delta': r.delta,
+                                    'contribution': r.contribution,
+                                    'explanation': r.explanation,
+                                }
+                                for r in explanation.reasons
+                            ],
+                            'confidence': {
+                                'level': explanation.confidence.level,
+                                'percentage': explanation.confidence.percentage,
+                                'warnings': explanation.confidence.warnings,
+                            }
+                        }
+                        # Update confidence level from granular confidence
+                        result['confidence_level'] = explanation.confidence.level
+                except Exception as e:
+                    logger.debug(f"{ticker}: Score explanation error: {e}")
 
             return result
 
@@ -924,14 +1450,28 @@ class ICScoreCalculator:
             logger.error(f"{ticker}: Error calculating IC Score: {e}", exc_info=True)
             return None
 
+    # Valid columns in ICScore model (used for filtering score_data before storing)
+    IC_SCORE_COLUMNS = {
+        'ticker', 'date', 'overall_score',
+        'value_score', 'growth_score', 'profitability_score', 'financial_health_score',
+        'momentum_score', 'analyst_consensus_score', 'insider_activity_score',
+        'institutional_score', 'news_sentiment_score', 'technical_score',
+        'rating', 'sector_percentile', 'confidence_level', 'data_completeness',
+        'lifecycle_stage', 'raw_score', 'smoothing_applied', 'weights_used',
+        'sector_rank', 'sector_total', 'calculation_metadata',
+    }
+
     async def store_ic_score(self, score_data: Dict[str, Any]) -> bool:
         """Store IC Score in database."""
         try:
+            # Filter to only include valid columns (exclude non-column keys like 'peers', 'previous_score', etc.)
+            filtered_data = {k: v for k, v in score_data.items() if k in self.IC_SCORE_COLUMNS}
+
             async with self.db.session() as session:
-                stmt = pg_insert(ICScore).values(score_data)
+                stmt = pg_insert(ICScore).values(filtered_data)
                 stmt = stmt.on_conflict_do_update(
                     index_elements=['ticker', 'date'],
-                    set_={k: stmt.excluded[k] for k in score_data.keys() if k not in ['ticker', 'date']}
+                    set_={k: stmt.excluded[k] for k in filtered_data.keys() if k not in ['ticker', 'date']}
                 )
 
                 await session.execute(stmt)
@@ -944,22 +1484,40 @@ class ICScoreCalculator:
             return False
 
     async def process_stocks(self, stocks: List[Dict[str, Any]], show_progress: bool = True):
-        """Process a list of stocks."""
+        """Process a list of stocks.
+
+        v2.1: Initializes sector percentile calculator and lifecycle classifier
+        within a database session context.
+
+        Note: Each stock is processed in its own session to prevent transaction
+        errors in one stock from affecting subsequent stocks.
+        """
         progress_bar = tqdm(total=len(stocks), desc="Calculating IC Scores") if show_progress else None
+
+        logger.info("Using IC Score v2.1 with sector-relative scoring")
 
         for stock in stocks:
             ticker = stock['ticker']
             sector = stock.get('sector')
 
-            score_data = await self.calculate_ic_score(ticker, sector)
+            try:
+                # Create a fresh session for each stock to prevent transaction cascade failures
+                async with self.db.session() as session:
+                    # Initialize v2 components with this session
+                    await self._init_v2_components(session)
 
-            if score_data:
-                success = await self.store_ic_score(score_data)
-                if success:
-                    self.success_count += 1
+                    score_data = await self.calculate_ic_score(ticker, sector)
+
+                if score_data:
+                    success = await self.store_ic_score(score_data)
+                    if success:
+                        self.success_count += 1
+                    else:
+                        self.error_count += 1
                 else:
                     self.error_count += 1
-            else:
+            except Exception as e:
+                logger.error(f"{ticker}: Unhandled error: {e}")
                 self.error_count += 1
 
             self.processed_count += 1
@@ -1033,13 +1591,15 @@ def main():
     parser.add_argument('--sector', type=str, help='Filter by sector')
     parser.add_argument('--all', action='store_true', help='Process all stocks')
     parser.add_argument('--sp500', action='store_true', help='Process S&P 500 only')
+    parser.add_argument('--income-mode', action='store_true',
+                        help='Enable income mode (include Dividend Quality factor)')
 
     args = parser.parse_args()
 
     if args.ticker and (args.all or args.limit or args.sector):
         parser.error("--ticker cannot be used with other filters")
 
-    calculator = ICScoreCalculator()
+    calculator = ICScoreCalculator(income_mode=args.income_mode)
     asyncio.run(calculator.run(
         limit=args.limit,
         ticker=args.ticker,

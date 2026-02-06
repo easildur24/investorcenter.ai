@@ -5,9 +5,10 @@ This service provides REST API endpoints for accessing IC Scores and related dat
 
 import logging
 from datetime import datetime, timedelta, date
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+from enum import Enum
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import text, select, desc
@@ -19,6 +20,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.database import get_database, get_session
 from models import ICScore, Financial, TechnicalIndicator, NewsArticle
+from backtesting.backtester import ICScoreBacktester, BacktestConfig as BacktesterConfig, RebalanceFrequency
 
 # Setup logging
 logging.basicConfig(
@@ -201,7 +203,7 @@ async def root():
     """Root endpoint."""
     return {
         "service": "IC Score API",
-        "version": "1.2.0",
+        "version": "2.1.0",
         "endpoints": {
             "health": "/health",
             "score": "/api/scores/{ticker}",
@@ -212,7 +214,13 @@ async def root():
             "financials_ttm": "/api/financials/{ticker}/ttm",
             "metrics": "/api/metrics/{ticker}",
             "risk": "/api/risk/{ticker}",
-            "technical": "/api/technical/{ticker}"
+            "technical": "/api/technical/{ticker}",
+            "news": "/api/news/{ticker}",
+            "backtest": "/api/backtest",
+            "backtest_config": "/api/backtest/config/default",
+            "backtest_jobs": "/api/backtest/jobs",
+            "backtest_job_status": "/api/backtest/jobs/{job_id}",
+            "backtest_job_result": "/api/backtest/jobs/{job_id}/result"
         }
     }
 
@@ -1167,6 +1175,325 @@ async def get_ticker_news(
     except Exception as e:
         logger.error(f"Error fetching news for {ticker}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================================
+# BACKTEST ENDPOINTS
+# ============================================================================
+
+class RebalanceFrequencyEnum(str, Enum):
+    """Rebalance frequency options."""
+    daily = "daily"
+    weekly = "weekly"
+    monthly = "monthly"
+    quarterly = "quarterly"
+
+
+class UniverseEnum(str, Enum):
+    """Stock universe options."""
+    sp500 = "sp500"
+    sp1500 = "sp1500"
+    all = "all"
+
+
+class BacktestConfigRequest(BaseModel):
+    """Backtest configuration request model."""
+    start_date: date
+    end_date: date
+    rebalance_frequency: RebalanceFrequencyEnum = RebalanceFrequencyEnum.monthly
+    universe: UniverseEnum = UniverseEnum.sp500
+    benchmark: str = "SPY"
+    transaction_cost_bps: float = Field(default=10.0, ge=0, le=100)
+    slippage_bps: float = Field(default=5.0, ge=0, le=100)
+    exclude_financials: bool = False
+    exclude_utilities: bool = False
+    use_smoothed_scores: bool = True
+
+
+class DecilePerformanceResponse(BaseModel):
+    """Performance metrics for a single decile."""
+    decile: int
+    total_return: float
+    annualized_return: float
+    sharpe_ratio: Optional[float] = None
+    max_drawdown: float
+    num_periods: int
+
+
+class BacktestSummaryResponse(BaseModel):
+    """Backtest results summary."""
+    config: Dict[str, Any]
+    decile_performance: List[DecilePerformanceResponse]
+    spread_cagr: float
+    top_vs_benchmark: float
+    hit_rate: float
+    monotonicity_score: float
+    information_ratio: float
+    top_decile_sharpe: float
+    top_decile_max_dd: float
+    benchmark: str
+    start_date: date
+    end_date: date
+    num_periods: int
+
+
+class BacktestJobResponse(BaseModel):
+    """Response for async backtest job submission."""
+    job_id: str
+    status: str
+    message: str
+
+
+# In-memory job storage (in production, use Redis or database)
+_backtest_jobs: Dict[str, Dict[str, Any]] = {}
+
+
+@app.get("/api/backtest/config/default")
+async def get_default_backtest_config():
+    """Get default backtest configuration.
+
+    Returns:
+        Default configuration values for running a backtest.
+    """
+    return {
+        "start_date": (date.today() - timedelta(days=365*5)).isoformat(),
+        "end_date": date.today().isoformat(),
+        "rebalance_frequency": "monthly",
+        "universe": "sp500",
+        "benchmark": "SPY",
+        "transaction_cost_bps": 10.0,
+        "slippage_bps": 5.0,
+        "exclude_financials": False,
+        "exclude_utilities": False,
+        "use_smoothed_scores": True,
+    }
+
+
+@app.post("/api/backtest", response_model=BacktestSummaryResponse)
+async def run_backtest(
+    config: BacktestConfigRequest,
+    session: AsyncSession = Depends(get_session)
+):
+    """Run a backtest with the specified configuration.
+
+    This endpoint runs a synchronous backtest and returns results.
+    For long-running backtests, use the async job endpoint instead.
+
+    Args:
+        config: Backtest configuration parameters.
+
+    Returns:
+        Backtest summary with decile performance metrics.
+    """
+    try:
+        # Convert request to backtester config
+        backtester_config = BacktesterConfig(
+            start_date=config.start_date,
+            end_date=config.end_date,
+            rebalance_frequency=RebalanceFrequency(config.rebalance_frequency.value),
+            universe=config.universe.value,
+            benchmark=config.benchmark,
+            transaction_cost_bps=config.transaction_cost_bps,
+            slippage_bps=config.slippage_bps,
+            exclude_financials=config.exclude_financials,
+            exclude_utilities=config.exclude_utilities,
+            use_smoothed_scores=config.use_smoothed_scores,
+        )
+
+        # Run backtest
+        backtester = ICScoreBacktester(session)
+        results = await backtester.run_backtest(backtester_config)
+
+        # Convert results to response format
+        decile_perf = []
+        for decile in range(1, 11):
+            decile_perf.append(DecilePerformanceResponse(
+                decile=decile,
+                total_return=results.total_return_by_decile.get(decile, 0.0),
+                annualized_return=results.annualized_return_by_decile.get(decile, 0.0),
+                sharpe_ratio=results.sharpe_ratio_by_decile.get(decile),
+                max_drawdown=results.max_drawdown_by_decile.get(decile, 0.0),
+                num_periods=len([pr for pr in results.period_results if pr.decile == decile]),
+            ))
+
+        return BacktestSummaryResponse(
+            config={
+                "start_date": config.start_date.isoformat(),
+                "end_date": config.end_date.isoformat(),
+                "rebalance_frequency": config.rebalance_frequency.value,
+                "universe": config.universe.value,
+                "benchmark": config.benchmark,
+                "transaction_cost_bps": config.transaction_cost_bps,
+                "slippage_bps": config.slippage_bps,
+                "exclude_financials": config.exclude_financials,
+                "exclude_utilities": config.exclude_utilities,
+            },
+            decile_performance=decile_perf,
+            spread_cagr=results.top_bottom_spread,
+            top_vs_benchmark=results.top_vs_benchmark,
+            hit_rate=results.hit_rate,
+            monotonicity_score=results.monotonicity_score,
+            information_ratio=results.information_ratio,
+            top_decile_sharpe=results.sharpe_ratio_by_decile.get(1, 0.0),
+            top_decile_max_dd=results.max_drawdown_by_decile.get(1, 0.0),
+            benchmark=config.benchmark,
+            start_date=config.start_date,
+            end_date=config.end_date,
+            num_periods=len(results.period_results) // 10 if results.period_results else 0,
+        )
+
+    except Exception as e:
+        logger.error(f"Backtest failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Backtest failed: {str(e)}")
+
+
+async def _run_backtest_async(job_id: str, config: BacktestConfigRequest):
+    """Background task to run backtest asynchronously."""
+    try:
+        _backtest_jobs[job_id]["status"] = "running"
+        _backtest_jobs[job_id]["started_at"] = datetime.now().isoformat()
+
+        db = get_database()
+        async with db.get_session() as session:
+            backtester_config = BacktesterConfig(
+                start_date=config.start_date,
+                end_date=config.end_date,
+                rebalance_frequency=RebalanceFrequency(config.rebalance_frequency.value),
+                universe=config.universe.value,
+                benchmark=config.benchmark,
+                transaction_cost_bps=config.transaction_cost_bps,
+                slippage_bps=config.slippage_bps,
+                exclude_financials=config.exclude_financials,
+                exclude_utilities=config.exclude_utilities,
+                use_smoothed_scores=config.use_smoothed_scores,
+            )
+
+            backtester = ICScoreBacktester(session)
+            results = await backtester.run_backtest(backtester_config)
+
+            # Store results
+            decile_perf = []
+            for decile in range(1, 11):
+                decile_perf.append({
+                    "decile": decile,
+                    "total_return": results.total_return_by_decile.get(decile, 0.0),
+                    "annualized_return": results.annualized_return_by_decile.get(decile, 0.0),
+                    "sharpe_ratio": results.sharpe_ratio_by_decile.get(decile),
+                    "max_drawdown": results.max_drawdown_by_decile.get(decile, 0.0),
+                })
+
+            _backtest_jobs[job_id]["result"] = {
+                "decile_performance": decile_perf,
+                "spread_cagr": results.top_bottom_spread,
+                "top_vs_benchmark": results.top_vs_benchmark,
+                "hit_rate": results.hit_rate,
+                "monotonicity_score": results.monotonicity_score,
+                "information_ratio": results.information_ratio,
+            }
+            _backtest_jobs[job_id]["status"] = "completed"
+            _backtest_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+
+    except Exception as e:
+        logger.error(f"Async backtest {job_id} failed: {e}")
+        _backtest_jobs[job_id]["status"] = "failed"
+        _backtest_jobs[job_id]["error"] = str(e)
+        _backtest_jobs[job_id]["completed_at"] = datetime.now().isoformat()
+
+
+@app.post("/api/backtest/jobs", response_model=BacktestJobResponse)
+async def submit_backtest_job(
+    config: BacktestConfigRequest,
+    background_tasks: BackgroundTasks
+):
+    """Submit a backtest job to run asynchronously.
+
+    Use this for long-running backtests. Poll the status endpoint
+    to check when the job is complete.
+
+    Args:
+        config: Backtest configuration parameters.
+
+    Returns:
+        Job ID and initial status.
+    """
+    import uuid
+    job_id = str(uuid.uuid4())
+
+    _backtest_jobs[job_id] = {
+        "id": job_id,
+        "status": "pending",
+        "config": config.model_dump(),
+        "created_at": datetime.now().isoformat(),
+        "started_at": None,
+        "completed_at": None,
+        "result": None,
+        "error": None,
+    }
+
+    background_tasks.add_task(_run_backtest_async, job_id, config)
+
+    return BacktestJobResponse(
+        job_id=job_id,
+        status="pending",
+        message="Backtest job submitted successfully"
+    )
+
+
+@app.get("/api/backtest/jobs/{job_id}")
+async def get_backtest_job_status(job_id: str):
+    """Get the status of a backtest job.
+
+    Args:
+        job_id: The ID of the backtest job.
+
+    Returns:
+        Job status and metadata.
+    """
+    if job_id not in _backtest_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = _backtest_jobs[job_id]
+
+    response = {
+        "job_id": job["id"],
+        "status": job["status"],
+        "created_at": job["created_at"],
+    }
+
+    if job["started_at"]:
+        response["started_at"] = job["started_at"]
+
+    if job["completed_at"]:
+        response["completed_at"] = job["completed_at"]
+
+    if job["error"]:
+        response["error"] = job["error"]
+
+    return response
+
+
+@app.get("/api/backtest/jobs/{job_id}/result")
+async def get_backtest_job_result(job_id: str):
+    """Get the result of a completed backtest job.
+
+    Args:
+        job_id: The ID of the backtest job.
+
+    Returns:
+        Backtest results if job is completed.
+    """
+    if job_id not in _backtest_jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+
+    job = _backtest_jobs[job_id]
+
+    if job["status"] != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Job is not completed. Current status: {job['status']}"
+        )
+
+    return job["result"]
 
 
 # Startup event

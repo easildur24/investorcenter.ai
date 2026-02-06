@@ -136,11 +136,12 @@ func main() {
 		// IC Score endpoints
 		stocks := v1.Group("/stocks")
 		{
-			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                // Get IC Score for a ticker
-			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory) // Get IC Score history
-			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)     // Get financial metrics from SEC filings (legacy)
-			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                // Get risk metrics (Beta, Alpha, Sharpe)
-			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)   // Get technical indicators
+			stocks.GET("/:ticker/ic-score", handlers.GetICScore)                      // Get IC Score for a ticker
+			stocks.GET("/:ticker/ic-score/history", handlers.GetICScoreHistory)       // Get IC Score history
+			stocks.GET("/:ticker/financials", handlers.GetFinancialMetrics)           // Get financial metrics from SEC filings (legacy)
+			stocks.GET("/:ticker/metrics", handlers.GetComprehensiveFinancialMetrics) // Get comprehensive financial metrics (FMP)
+			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                      // Get risk metrics (Beta, Alpha, Sharpe)
+			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)         // Get technical indicators
 
 			// Financial Statements endpoints (SEC EDGAR data)
 			financialsHandler := handlers.NewFinancialsHandler()
@@ -154,6 +155,22 @@ func main() {
 
 		// IC Scores admin endpoints (list all scores)
 		v1.GET("/ic-scores", handlers.GetICScores) // List all IC Scores with pagination
+
+		// IC Score Backtest endpoints
+		backtestService := services.NewBacktestService()
+		backtestHandler := handlers.NewBacktestHandler(backtestService)
+
+		backtestRoutes := v1.Group("/ic-scores/backtest")
+		{
+			backtestRoutes.GET("/latest", backtestHandler.GetLatestBacktest)                // GET /api/v1/ic-scores/backtest/latest
+			backtestRoutes.GET("/config/default", backtestHandler.GetDefaultConfig)         // GET /api/v1/ic-scores/backtest/config/default
+			backtestRoutes.GET("/quick", backtestHandler.RunQuickBacktest)                  // GET /api/v1/ic-scores/backtest/quick
+			backtestRoutes.POST("", backtestHandler.RunBacktest)                            // POST /api/v1/ic-scores/backtest
+			backtestRoutes.GET("/charts", backtestHandler.GetBacktestCharts)                // GET /api/v1/ic-scores/backtest/charts
+			backtestRoutes.POST("/jobs", backtestHandler.SubmitBacktestJob)                 // POST /api/v1/ic-scores/backtest/jobs
+			backtestRoutes.GET("/jobs/:jobId", backtestHandler.GetBacktestJobStatus)        // GET /api/v1/ic-scores/backtest/jobs/:jobId
+			backtestRoutes.GET("/jobs/:jobId/result", backtestHandler.GetBacktestJobResult) // GET /api/v1/ic-scores/backtest/jobs/:jobId/result
+		}
 
 		// Crypto endpoints
 		crypto := v1.Group("/crypto")

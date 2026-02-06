@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { safeToFixed, safeParseNumber, formatLargeNumber, formatPercent, formatRelativeTime } from '@/lib/utils';
+import { useAuth } from '@/lib/auth/AuthContext';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -90,14 +91,31 @@ const metricConfigs: Record<MetricType, MetricConfig> = {
 };
 
 // Contextual N/A display component
+// Debug sources interface for admin mode
+interface DebugSources {
+  pe_ratio?: string;
+  pb_ratio?: string;
+  ps_ratio?: string;
+  gross_margin?: string;
+  operating_margin?: string;
+  net_margin?: string;
+  roe?: string;
+  roa?: string;
+  current_ratio?: string;
+  quick_ratio?: string;
+  debt_to_equity?: string;
+}
+
 interface MetricValueProps {
   value: number | string;
   metricType?: MetricType;
   formatter?: (val: number | string) => string;
   colorClass?: string;
+  dataSource?: string;
+  isAdmin?: boolean;
 }
 
-function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-ic-text-primary' }: MetricValueProps) {
+function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-ic-text-primary', dataSource, isAdmin }: MetricValueProps) {
   const config = metricConfigs[metricType];
 
   // Check if value is null/undefined/N/A
@@ -140,6 +158,23 @@ function MetricValue({ value, metricType = 'default', formatter, colorClass = 't
     );
   }
 
+  // Show data source badge for admin users
+  if (isAdmin && dataSource) {
+    const sourceColor = dataSource === 'fmp' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400';
+    const sourceLabel = dataSource === 'fmp' ? 'FMP' : 'DB';
+    return (
+      <span className="inline-flex items-center gap-1.5">
+        <span className={`font-medium ${colorClass}`}>{displayValue}</span>
+        <span
+          className={`text-[10px] px-1 py-0.5 rounded ${sourceColor} cursor-help`}
+          title={`Data source: ${dataSource === 'fmp' ? 'Financial Modeling Prep API (real-time)' : 'Database (SEC filings)'}`}
+        >
+          {sourceLabel}
+        </span>
+      </span>
+    );
+  }
+
   return <span className={`font-medium ${colorClass}`}>{displayValue}</span>;
 }
 
@@ -150,6 +185,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   const [isCrypto, setIsCrypto] = useState(false);
   const [dataFetchedAt, setDataFetchedAt] = useState<Date | null>(null);
   const [icScoreDataDate, setIcScoreDataDate] = useState<string | null>(null);
+  const [debugSources, setDebugSources] = useState<DebugSources | null>(null);
+
+  // Get admin status from auth context
+  const { user } = useAuth();
+  const isAdmin = user?.is_admin ?? false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -206,6 +246,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
             if (icScoreFinancials.period_end_date || icScoreFinancials.filing_date) {
               setIcScoreDataDate(icScoreFinancials.period_end_date || icScoreFinancials.filing_date);
             }
+          }
+          // Capture debug sources for admin mode
+          if (financialsResult.debug?.sources) {
+            setDebugSources(financialsResult.debug.sources);
+            console.log('🔍 Debug sources:', financialsResult.debug.sources);
           }
         }
 
@@ -314,17 +359,17 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
       <div className="mb-6">
         <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Valuation</h4>
         <div className="space-y-3">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">P/E Ratio</span>
-            <MetricValue value={fundamentals.pe} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
+            <MetricValue value={fundamentals.pe} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.pe_ratio} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Price/Book</span>
-            <MetricValue value={fundamentals.pb} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
+            <MetricValue value={fundamentals.pb} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.pb_ratio} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Price/Sales</span>
-            <MetricValue value={fundamentals.ps} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} />
+            <MetricValue value={fundamentals.ps} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.ps_ratio} isAdmin={isAdmin} />
           </div>
         </div>
       </div>
@@ -333,21 +378,21 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
       <div className="mb-6">
         <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Profitability</h4>
         <div className="space-y-3">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">ROE</span>
-            <MetricValue value={fundamentals.roe} metricType="ratio" formatter={formatPercent} />
+            <MetricValue value={fundamentals.roe} metricType="ratio" formatter={formatPercent} dataSource={debugSources?.roe} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">ROA</span>
-            <MetricValue value={fundamentals.roa} metricType="ratio" formatter={formatPercent} />
+            <MetricValue value={fundamentals.roa} metricType="ratio" formatter={formatPercent} dataSource={debugSources?.roa} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Gross Margin</span>
-            <MetricValue value={fundamentals.grossMargin} metricType="margin" formatter={formatPercent} />
+            <MetricValue value={fundamentals.grossMargin} metricType="margin" formatter={formatPercent} dataSource={debugSources?.gross_margin} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Net Margin</span>
-            <MetricValue value={fundamentals.netMargin} metricType="margin" formatter={formatPercent} />
+            <MetricValue value={fundamentals.netMargin} metricType="margin" formatter={formatPercent} dataSource={debugSources?.net_margin} isAdmin={isAdmin} />
           </div>
         </div>
       </div>
@@ -356,13 +401,13 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
       <div className="mb-6">
         <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Financial Health</h4>
         <div className="space-y-3">
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Debt/Equity</span>
-            <MetricValue value={fundamentals.debtToEquity} metricType="debt" formatter={(v) => safeToFixed(v, 1)} />
+            <MetricValue value={fundamentals.debtToEquity} metricType="debt" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.debt_to_equity} isAdmin={isAdmin} />
           </div>
-          <div className="flex justify-between">
+          <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Current Ratio</span>
-            <MetricValue value={fundamentals.currentRatio} metricType="ratio" formatter={(v) => safeToFixed(v, 1)} />
+            <MetricValue value={fundamentals.currentRatio} metricType="ratio" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.current_ratio} isAdmin={isAdmin} />
           </div>
         </div>
       </div>
