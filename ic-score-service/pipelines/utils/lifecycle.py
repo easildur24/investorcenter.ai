@@ -261,10 +261,32 @@ class LifecycleClassifier:
         """
         result = self.classify(data)
 
-        if self.session:
+        # Only store if ticker fits in VARCHAR(10) column
+        if self.session and len(ticker) <= 10:
             await self._store_classification(ticker, result, data)
 
         return result
+
+    def _clamp_numeric(self, value: Any, min_val: float = -999999, max_val: float = 999999) -> Optional[float]:
+        """Clamp numeric value to valid range for NUMERIC(10,4) field.
+
+        Args:
+            value: Value to clamp
+            min_val: Minimum allowed value
+            max_val: Maximum allowed value
+
+        Returns:
+            Clamped value or None if input is None/invalid
+        """
+        if value is None:
+            return None
+        try:
+            float_val = float(value)
+            if not (-1e10 < float_val < 1e10):  # Filter extreme outliers
+                return None
+            return max(min_val, min(max_val, float_val))
+        except (ValueError, TypeError):
+            return None
 
     async def _store_classification(
         self,
@@ -294,12 +316,13 @@ class LifecycleClassifier:
         """)
 
         import json
+        # Clamp values to valid ranges for NUMERIC(10,4) fields
         await self.session.execute(query, {
             "ticker": ticker,
             "stage": result.stage.value,
-            "revenue_growth": data.get('revenue_growth_yoy'),
-            "net_margin": data.get('net_margin'),
-            "pe_ratio": data.get('pe_ratio'),
+            "revenue_growth": self._clamp_numeric(data.get('revenue_growth_yoy'), -1000, 10000),
+            "net_margin": self._clamp_numeric(data.get('net_margin'), -1000, 1000),
+            "pe_ratio": self._clamp_numeric(data.get('pe_ratio'), -10000, 100000),
             "market_cap": data.get('market_cap'),
             "weights": json.dumps(result.adjusted_weights),
         })

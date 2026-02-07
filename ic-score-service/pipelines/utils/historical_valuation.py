@@ -154,10 +154,12 @@ class HistoricalValuationCalculator:
             Net margin percentage or None.
         """
         try:
+            # Filter out future dates to handle data quality issues
             query = text("""
                 SELECT net_margin
                 FROM financials
                 WHERE ticker = :ticker
+                  AND period_end_date <= CURRENT_DATE
                 ORDER BY period_end_date DESC
                 LIMIT 1
             """)
