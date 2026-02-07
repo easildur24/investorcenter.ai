@@ -73,7 +73,11 @@ func GetTicker(c *gin.Context) {
 			log.Printf("✓ Got crypto price for %s from Redis: $%.2f", symbol, cryptoData.CurrentPrice)
 		} else {
 			log.Printf("Failed to get crypto price for %s from Redis", symbol)
-			priceData = generateMockPrice(symbol, stock)
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error":  "Price data temporarily unavailable",
+				"symbol": symbol,
+			})
+			return
 		}
 		marketStatus = "open" // Crypto markets are always open
 		shouldUpdateRealtime = true
@@ -90,14 +94,17 @@ func GetTicker(c *gin.Context) {
 			shouldUpdateRealtime = false
 		}
 
-		// If real-time data fails, generate mock data
 		if priceErr != nil {
 			log.Printf("Failed to get real-time price data for %s: %v", symbol, priceErr)
-			priceData = generateMockPrice(symbol, stock)
+			c.JSON(http.StatusServiceUnavailable, gin.H{
+				"error":  "Price data temporarily unavailable",
+				"symbol": symbol,
+			})
+			return
 		}
 	}
 
-	// Get fundamentals (try real data first, fallback to mock)
+	// Get fundamentals from Polygon (nil if unavailable)
 	var fundamentals *models.Fundamentals
 	if !isCrypto { // Only get fundamentals for stocks, not crypto
 		// Use a timeout channel to avoid hanging
@@ -114,11 +121,11 @@ func GetTicker(c *gin.Context) {
 		case <-done:
 			if fundamentalsErr != nil {
 				log.Printf("Failed to get fundamentals for %s: %v", symbol, fundamentalsErr)
-				fundamentals = generateMockFundamentals(symbol)
+				fundamentals = &models.Fundamentals{Symbol: symbol, Period: "N/A", Year: time.Now().Year(), UpdatedAt: time.Now()}
 			}
 		case <-time.After(3 * time.Second):
-			log.Printf("Fundamentals request timed out for %s, using mock data", symbol)
-			fundamentals = generateMockFundamentals(symbol)
+			log.Printf("Fundamentals request timed out for %s", symbol)
+			fundamentals = &models.Fundamentals{Symbol: symbol, Period: "N/A", Year: time.Now().Year(), UpdatedAt: time.Now()}
 		}
 	} else {
 		// For crypto, create minimal fundamentals
@@ -259,10 +266,8 @@ func GetTickerChart(c *gin.Context) {
 
 		if chartErr != nil {
 			log.Printf("Failed to get chart data for %s: %v", symbol, chartErr)
-			// Fallback to mock data for stocks
-			mockChart := generateMockChartData(symbol, period)
-			chartData = mockChart.DataPoints
-			dataSource = "mock"
+			chartData = []models.ChartDataPoint{}
+			dataSource = "none"
 		}
 	}
 
@@ -355,60 +360,6 @@ func getDataSource(isCrypto bool) string {
 	return "polygon" // Stock data from Polygon API
 }
 
-func generateMockPrice(symbol string, stock *models.Stock) *models.StockPrice {
-	// Generate deterministic mock price based on symbol hash
-	// Use symbol length and ASCII sum for consistent but varied prices
-	asciiSum := 0
-	for _, char := range symbol {
-		asciiSum += int(char)
-	}
-
-	// Generate consistent base price (between $50-$500)
-	basePrice := 50.0 + float64(asciiSum%450)
-
-	// Use deterministic values based on symbol
-	open := basePrice * 1.00                           // Base price as open
-	high := open * (1.0 + float64(len(symbol)%3)*0.01) // 0-2% higher
-	low := open * (1.0 - float64(asciiSum%3)*0.01)     // 0-2% lower
-	close := low + (high-low)*0.7                      // 70% of the range
-
-	change := decimal.NewFromFloat(close - open)
-	changePercent := decimal.Zero
-	if open != 0 {
-		changePercent = change.Div(decimal.NewFromFloat(open)).Mul(decimal.NewFromInt(100))
-	}
-
-	return &models.StockPrice{
-		Symbol:        symbol,
-		Price:         decimal.NewFromFloat(close),
-		Open:          decimal.NewFromFloat(open),
-		High:          decimal.NewFromFloat(high),
-		Low:           decimal.NewFromFloat(low),
-		Close:         decimal.NewFromFloat(close),
-		Volume:        int64(1000000 + asciiSum*1000),
-		Change:        change,
-		ChangePercent: changePercent,
-		Timestamp:     time.Now(),
-	}
-}
-
-func generateMockFundamentals(symbol string) *models.Fundamentals {
-	// Generate basic mock fundamentals
-	return &models.Fundamentals{
-		Symbol:    symbol,
-		Period:    "TTM",
-		Year:      time.Now().Year(),
-		PE:        decimalPtrComprehensive(20.5 + float64(len(symbol))),
-		PB:        decimalPtrComprehensive(3.2 + float64(len(symbol))*0.1),
-		PS:        decimalPtrComprehensive(5.8 + float64(len(symbol))*0.2),
-		Revenue:   decimalPtrComprehensive(50000000000.0),
-		EPS:       decimalPtrComprehensive(8.50),
-		ROE:       decimalPtrComprehensive(0.18),
-		ROA:       decimalPtrComprehensive(0.12),
-		UpdatedAt: time.Now(),
-	}
-}
-
 func buildKeyMetrics(price *models.StockPrice, fundamentals *models.Fundamentals, stock *models.Stock) gin.H {
 	metrics := gin.H{
 		"volume":    price.Volume,
@@ -429,12 +380,6 @@ func buildKeyMetrics(price *models.StockPrice, fundamentals *models.Fundamentals
 	}
 
 	return metrics
-}
-
-// decimalPtr helper function (avoiding redeclaration with mock_data.go)
-func decimalPtrComprehensive(f float64) *decimal.Decimal {
-	d := decimal.NewFromFloat(f)
-	return &d
 }
 
 // GetTickerRealTimePrice returns just the current price for real-time updates
@@ -568,15 +513,14 @@ func GetTickerNews(c *gin.Context) {
 	resp, err := polygonClient.Client.Get(url)
 
 	if err != nil || resp.StatusCode != 200 {
-		log.Printf("Failed to get news from Polygon for %s: %v, using mock data", symbol, err)
-		mockArticles := generateMockNews(symbol)
+		log.Printf("Failed to get news from Polygon for %s: %v", symbol, err)
 		c.JSON(http.StatusOK, gin.H{
-			"data": mockArticles,
+			"data": []interface{}{},
 			"meta": gin.H{
 				"symbol":    symbol,
-				"count":     len(mockArticles),
+				"count":     0,
 				"timestamp": time.Now().UTC(),
-				"source":    "mock",
+				"source":    "none",
 			},
 		})
 		return
@@ -586,14 +530,13 @@ func GetTickerNews(c *gin.Context) {
 	var polygonResp map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&polygonResp); err != nil {
 		log.Printf("Failed to decode Polygon news response: %v", err)
-		mockArticles := generateMockNews(symbol)
 		c.JSON(http.StatusOK, gin.H{
-			"data": mockArticles,
+			"data": []interface{}{},
 			"meta": gin.H{
 				"symbol":    symbol,
-				"count":     len(mockArticles),
+				"count":     0,
 				"timestamp": time.Now().UTC(),
-				"source":    "mock",
+				"source":    "none",
 			},
 		})
 		return
@@ -617,15 +560,14 @@ func GetTickerEarnings(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerEarnings called for symbol: %s", symbol)
 
-	// Generate mock earnings data (same as in mock_data.go)
-	earnings := generateMockEarnings(symbol)
-
+	// TODO: Implement real earnings data from database or API
 	c.JSON(http.StatusOK, gin.H{
-		"data": earnings,
+		"data": []interface{}{},
 		"meta": gin.H{
 			"symbol":    symbol,
-			"count":     len(earnings),
+			"count":     0,
 			"timestamp": time.Now().UTC(),
+			"source":    "none",
 		},
 	})
 }
@@ -635,15 +577,14 @@ func GetTickerAnalysts(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	log.Printf("GetTickerAnalysts called for symbol: %s", symbol)
 
-	// Generate mock analyst data (same as in mock_data.go)
-	analysts := generateMockAnalystRatings(symbol)
-
+	// TODO: Implement real analyst data from database or API
 	c.JSON(http.StatusOK, gin.H{
-		"data": analysts,
+		"data": []interface{}{},
 		"meta": gin.H{
 			"symbol":    symbol,
-			"count":     len(analysts),
+			"count":     0,
 			"timestamp": time.Now().UTC(),
+			"source":    "none",
 		},
 	})
 }

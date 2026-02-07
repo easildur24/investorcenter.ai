@@ -377,24 +377,12 @@ class ApiClient {
   }
 
   // Ticker page methods
-  async getTickerOverview(symbol: string) {
-    return this.request(`/tickers/${symbol}`);
-  }
-
   async getTickerChart(symbol: string, period: string = '1Y') {
     return this.request(`/tickers/${symbol}/chart?period=${period}`);
   }
 
   async getTickerFundamentals(symbol: string, years: number = 5) {
     return this.request(`/tickers/${symbol}/fundamentals?years=${years}`);
-  }
-
-  async getTickerNews(symbol: string, limit: number = 20) {
-    return this.request(`/tickers/${symbol}/news?limit=${limit}`);
-  }
-
-  async getTickerEarnings(symbol: string) {
-    return this.request(`/tickers/${symbol}/earnings`);
   }
 
   async getTickerDividends(symbol: string) {
