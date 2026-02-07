@@ -69,48 +69,6 @@ class ApiClient {
     }
   }
 
-  // Authentication methods
-  async login(email: string, password: string) {
-    const response = await this.request<{
-      token: string;
-      user: {
-        id: number;
-        email: string;
-        firstName: string;
-        lastName: string;
-      };
-    }>('/users/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-    });
-
-    this.token = response.data.token;
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', this.token);
-    }
-
-    return response;
-  }
-
-  async register(userData: {
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-  }) {
-    return this.request('/users/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
-  }
-
-  logout() {
-    this.token = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
-    }
-  }
-
   // Market data methods
   async getMarketIndices() {
     return this.request<Array<{
@@ -159,79 +117,6 @@ class ApiClient {
         volume: number;
       }>;
     }>(`/markets/movers?limit=${limit}`);
-  }
-
-  // Portfolio methods
-  async getPortfolios() {
-    return this.request<Array<{
-      id: number;
-      name: string;
-      description: string;
-      value: number;
-      change: number;
-      changePercent: number;
-      createdAt: string;
-    }>>('/portfolios');
-  }
-
-  async createPortfolio(data: { name: string; description?: string }) {
-    return this.request('/portfolios', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async getPortfolio(id: string) {
-    return this.request(`/portfolios/${id}`);
-  }
-
-  async updatePortfolio(id: string, data: { name?: string; description?: string }) {
-    return this.request(`/portfolios/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
-
-  async deletePortfolio(id: string) {
-    return this.request(`/portfolios/${id}`, {
-      method: 'DELETE',
-    });
-  }
-
-  async getPortfolioPerformance(id: string, period: string = '1m') {
-    return this.request(`/portfolios/${id}/performance?period=${period}`);
-  }
-
-  // Analytics methods
-  async getSectorPerformance() {
-    return this.request<Array<{
-      name: string;
-      change: number;
-      changePercent: number;
-    }>>('/analytics/sectors');
-  }
-
-  async getMarketTrends() {
-    return this.request<{
-      bullishSentiment: number;
-      bearishSentiment: number;
-      volatilityIndex: number;
-      topGainers: Array<{
-        symbol: string;
-        change: number;
-        changePercent: number;
-      }>;
-      topLosers: Array<{
-        symbol: string;
-        change: number;
-        changePercent: number;
-      }>;
-    }>('/analytics/trends');
-  }
-
-  async runStockScreener(criteria?: any) {
-    const query = criteria ? `?${new URLSearchParams(criteria).toString()}` : '';
-    return this.request(`/analytics/screener${query}`);
   }
 
   // Screener methods
@@ -376,42 +261,6 @@ class ApiClient {
     }>(`/volume/top?limit=${limit}&type=${assetType}`);
   }
 
-  // Ticker page methods
-  async getTickerChart(symbol: string, period: string = '1Y') {
-    return this.request(`/tickers/${symbol}/chart?period=${period}`);
-  }
-
-  async getTickerFundamentals(symbol: string, years: number = 5) {
-    return this.request(`/tickers/${symbol}/fundamentals?years=${years}`);
-  }
-
-  async getTickerDividends(symbol: string) {
-    return this.request(`/tickers/${symbol}/dividends`);
-  }
-
-  async getTickerAnalysts(symbol: string) {
-    return this.request(`/tickers/${symbol}/analysts`);
-  }
-
-  async getTickerInsiders(symbol: string) {
-    return this.request(`/tickers/${symbol}/insiders`);
-  }
-
-  async getTickerPeers(symbol: string) {
-    return this.request(`/tickers/${symbol}/peers`);
-  }
-
-  // User profile methods
-  async getUserProfile() {
-    return this.request('/users/profile');
-  }
-
-  async updateUserProfile(data: { firstName?: string; lastName?: string }) {
-    return this.request('/users/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-  }
 }
 
 // Export singleton instance
