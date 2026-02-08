@@ -103,6 +103,7 @@ class TTMFinancialsCalculator:
             Dict with annual financial data, or None if not found.
         """
         async with self.db.session() as session:
+            # Filter out future dates to handle data quality issues
             query = text("""
                 SELECT
                     id, ticker, period_end_date, fiscal_year, filing_date, statement_type,
@@ -114,6 +115,7 @@ class TTMFinancialsCalculator:
                 WHERE ticker = :ticker
                   AND statement_type = '10-K'
                   AND fiscal_quarter IS NULL
+                  AND period_end_date <= CURRENT_DATE
                 ORDER BY period_end_date DESC
                 LIMIT 1
             """)
@@ -158,6 +160,7 @@ class TTMFinancialsCalculator:
             List of quarterly data dicts, ordered from newest to oldest.
         """
         async with self.db.session() as session:
+            # Filter out future dates to handle data quality issues
             query = text("""
                 SELECT
                     id, ticker, period_end_date, fiscal_year, fiscal_quarter, filing_date,
@@ -172,6 +175,7 @@ class TTMFinancialsCalculator:
                 WHERE ticker = :ticker
                   AND statement_type = '10-Q'
                   AND fiscal_quarter IS NOT NULL
+                  AND period_end_date <= CURRENT_DATE
                 ORDER BY period_end_date DESC
                 LIMIT :limit
             """)

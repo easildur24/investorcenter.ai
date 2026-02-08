@@ -435,6 +435,7 @@ class FundamentalMetricsCalculator:
             Dict mapping fiscal_year -> value
         """
         async with self.db.session() as session:
+            # Filter out future dates to handle data quality issues
             query = text(f"""
                 SELECT fiscal_year, {field}
                 FROM financials
@@ -442,13 +443,16 @@ class FundamentalMetricsCalculator:
                   AND statement_type = '10-K'
                   AND fiscal_quarter IS NULL
                   AND fiscal_year >= :min_year
+                  AND fiscal_year <= :max_year
+                  AND period_end_date <= CURRENT_DATE
                   AND {field} IS NOT NULL
                 ORDER BY fiscal_year DESC
             """)
 
             result = await session.execute(query, {
                 "ticker": ticker,
-                "min_year": date.today().year - years_back
+                "min_year": date.today().year - years_back,
+                "max_year": date.today().year
             })
 
             return {row[0]: Decimal(str(row[1])) for row in result.fetchall() if row[1] is not None}
@@ -467,7 +471,13 @@ class FundamentalMetricsCalculator:
         eps_history = await self.get_historical_annual_values(ticker, 'eps_diluted', 5)
         fcf_history = await self.get_historical_annual_values(ticker, 'free_cash_flow', 5)
 
-        current_year = date.today().year - 1  # Most recent complete fiscal year
+        # Use the most recent fiscal year with available revenue data
+        # This handles the case where FY2025 10-Ks aren't filed yet (filed 60-90 days after fiscal year end)
+        # For calendar-year companies, FY2025 10-Ks won't be available until Feb-March 2026
+        if revenue_history:
+            current_year = max(revenue_history.keys())
+        else:
+            current_year = date.today().year - 1
 
         growth_rates = {}
 

@@ -189,21 +189,21 @@ class PeerComparisonService:
             query = text("""
                 SELECT
                     t.symbol as ticker,
-                    t.company_name,
+                    t.name,
                     t.sector,
                     t.market_cap,
-                    f.revenue_growth_yoy,
-                    f.net_margin,
-                    f.roe,
+                    fme.revenue_growth_yoy,
+                    fme.net_margin,
+                    fme.roe,
                     v.ttm_pe_ratio as pe_ratio
                 FROM tickers t
                 LEFT JOIN LATERAL (
                     SELECT revenue_growth_yoy, net_margin, roe
-                    FROM financials
+                    FROM fundamental_metrics_extended
                     WHERE ticker = t.symbol
-                    ORDER BY period_end_date DESC
+                    ORDER BY calculation_date DESC
                     LIMIT 1
-                ) f ON true
+                ) fme ON true
                 LEFT JOIN LATERAL (
                     SELECT ttm_pe_ratio
                     FROM valuation_ratios
@@ -252,21 +252,21 @@ class PeerComparisonService:
             query = text("""
                 SELECT
                     t.symbol as ticker,
-                    t.company_name,
+                    t.name,
                     t.sector,
                     t.market_cap,
-                    f.revenue_growth_yoy,
-                    f.net_margin,
-                    f.roe,
+                    fme.revenue_growth_yoy,
+                    fme.net_margin,
+                    fme.roe,
                     v.ttm_pe_ratio as pe_ratio
                 FROM tickers t
                 LEFT JOIN LATERAL (
                     SELECT revenue_growth_yoy, net_margin, roe
-                    FROM financials
+                    FROM fundamental_metrics_extended
                     WHERE ticker = t.symbol
-                    ORDER BY period_end_date DESC
+                    ORDER BY calculation_date DESC
                     LIMIT 1
-                ) f ON true
+                ) fme ON true
                 LEFT JOIN LATERAL (
                     SELECT ttm_pe_ratio
                     FROM valuation_ratios

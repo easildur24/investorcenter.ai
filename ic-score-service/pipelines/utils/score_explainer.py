@@ -71,21 +71,18 @@ class ScoreExplainer:
     explanations for why a stock's IC Score changed.
     """
 
-    # Factor weights for v2.1
+    # Factor weights for v2.1 (only factors with database columns)
     FACTOR_WEIGHTS = {
-        'value': 0.12,
-        'growth': 0.13,
-        'profitability': 0.12,
-        'financial_health': 0.10,
-        'momentum': 0.10,
-        'technical': 0.07,
-        'analyst_consensus': 0.04,  # Part of smart_money
-        'insider_activity': 0.03,   # Part of smart_money
-        'institutional': 0.03,       # Part of smart_money
+        'value': 0.15,
+        'growth': 0.15,
+        'profitability': 0.15,
+        'financial_health': 0.12,
+        'momentum': 0.12,
+        'technical': 0.10,
+        'analyst_consensus': 0.06,  # Part of smart_money
+        'insider_activity': 0.05,   # Part of smart_money
+        'institutional': 0.05,      # Part of smart_money
         'news_sentiment': 0.05,
-        'earnings_revisions': 0.08,
-        'historical_value': 0.08,
-        'dividend_quality': 0.05,
     }
 
     # Minimum delta to report as significant
@@ -132,18 +129,6 @@ class ScoreExplainer:
         'news_sentiment': {
             'positive': "News sentiment improved",
             'negative': "News sentiment worsened",
-        },
-        'earnings_revisions': {
-            'positive': "Analyst EPS estimates raised",
-            'negative': "Analyst EPS estimates lowered",
-        },
-        'historical_value': {
-            'positive': "Trading cheaper vs own history",
-            'negative': "Trading more expensive vs own history",
-        },
-        'dividend_quality': {
-            'positive': "Dividend metrics improved",
-            'negative': "Dividend metrics weakened",
         },
     }
 
@@ -288,10 +273,7 @@ class ScoreExplainer:
                     insider_activity_score,
                     institutional_score,
                     news_sentiment_score,
-                    technical_score,
-                    earnings_revisions_score,
-                    historical_value_score,
-                    dividend_quality_score
+                    technical_score
                 FROM ic_scores
                 WHERE ticker = :ticker
                   AND date < CURRENT_DATE
@@ -317,9 +299,6 @@ class ScoreExplainer:
                 'institutional_score': float(row[8]) if row[8] else None,
                 'news_sentiment_score': float(row[9]) if row[9] else None,
                 'technical_score': float(row[10]) if row[10] else None,
-                'earnings_revisions_score': float(row[11]) if row[11] else None,
-                'historical_value_score': float(row[12]) if row[12] else None,
-                'dividend_quality_score': float(row[13]) if row[13] else None,
             }
 
         except Exception as e:
@@ -399,7 +378,7 @@ class ScoreExplainer:
         # Map factors to their data sources
         source_queries = {
             'value': ("valuation_ratios", "calculation_date"),
-            'growth': ("financials", "period_end_date"),
+            'growth': ("fundamental_metrics_extended", "calculation_date"),
             'profitability': ("financials", "period_end_date"),
             'financial_health': ("financials", "period_end_date"),
             'momentum': ("technical_indicators", "time"),
@@ -408,9 +387,6 @@ class ScoreExplainer:
             'insider_activity': ("insider_trades", "transaction_date"),
             'institutional': ("institutional_holdings", "filing_date"),
             'news_sentiment': ("news_articles", "published_at"),
-            'earnings_revisions': ("eps_estimates", "fetched_at"),
-            'historical_value': ("valuation_history", "snapshot_date"),
-            'dividend_quality': ("dividend_history", "updated_at"),
         }
 
         if factor not in source_queries:
@@ -477,9 +453,6 @@ class ScoreExplainer:
             'insider_activity': "No insider trades reported",
             'institutional': "No institutional holdings data",
             'news_sentiment': "No recent news articles",
-            'earnings_revisions': "No EPS estimate data",
-            'historical_value': "Insufficient valuation history",
-            'dividend_quality': "Stock does not pay dividends",
         }
         return reasons.get(factor, "Data not available")
 

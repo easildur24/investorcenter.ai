@@ -43,25 +43,25 @@ class SectorPercentileCalculator:
 
     # Metrics where lower values are better (inverted scoring)
     LOWER_IS_BETTER: Set[str] = {
-        'pe_ratio', 'ps_ratio', 'pb_ratio', 'ev_ebitda', 'peg_ratio',
-        'debt_to_equity', 'net_debt_to_ebitda', 'interest_coverage_inv',
-        'current_ratio_inv', 'quick_ratio_inv'
+        'pe_ratio', 'ps_ratio', 'pb_ratio', 'ev_ebitda',
+        'debt_to_equity', 'net_debt_to_ebitda'
     }
 
     # All metrics tracked for sector percentiles
+    # Only include metrics that exist in our database schema
     TRACKED_METRICS: List[str] = [
-        # Valuation (lower is better)
-        'pe_ratio', 'ps_ratio', 'pb_ratio', 'ev_ebitda', 'peg_ratio',
-        # Profitability (higher is better)
+        # Valuation (lower is better) - from financials
+        'pe_ratio', 'ps_ratio', 'pb_ratio',
+        # Valuation (lower is better) - from fundamental_metrics_extended
+        'ev_ebitda',
+        # Profitability (higher is better) - from financials
         'roe', 'roa', 'roic', 'gross_margin', 'operating_margin', 'net_margin',
-        # Growth (higher is better)
-        'revenue_growth_yoy', 'earnings_growth_yoy', 'eps_growth_yoy',
-        # Financial Health
-        'current_ratio', 'quick_ratio', 'debt_to_equity', 'interest_coverage',
-        # Efficiency
-        'asset_turnover', 'inventory_turnover', 'receivables_turnover',
-        # Market
-        'dividend_yield', 'free_cash_flow_yield', 'earnings_yield',
+        # Growth (higher is better) - from fundamental_metrics_extended
+        'revenue_growth_yoy', 'eps_growth_yoy',
+        # Financial Health - from financials
+        'current_ratio', 'quick_ratio', 'debt_to_equity',
+        # Market - from fundamental_metrics_extended
+        'dividend_yield',
     ]
 
     def __init__(self, session: AsyncSession):
@@ -356,25 +356,28 @@ class SectorPercentileAggregator:
         filtering out NULL values and obvious outliers.
         """
         # Map metric names to database columns
+        # Note: fme = fundamental_metrics_extended, f = financials, vr = valuation_ratios
         column_mapping = {
-            'pe_ratio': 'f.pe_ratio',
-            'ps_ratio': 'f.ps_ratio',
-            'pb_ratio': 'f.pb_ratio',
+            # Valuation ratios from valuation_ratios table (TTM values)
+            'pe_ratio': 'vr.ttm_pe_ratio',
+            'ps_ratio': 'vr.ttm_ps_ratio',
+            'pb_ratio': 'vr.ttm_pb_ratio',
+            # Profitability from financials
             'roe': 'f.roe',
             'roa': 'f.roa',
             'roic': 'f.roic',
             'gross_margin': 'f.gross_margin',
             'operating_margin': 'f.operating_margin',
             'net_margin': 'f.net_margin',
+            # Financial health from financials
             'debt_to_equity': 'f.debt_to_equity',
             'current_ratio': 'f.current_ratio',
             'quick_ratio': 'f.quick_ratio',
-            'dividend_yield': 'vr.dividend_yield',
-            'ev_ebitda': 'vr.ev_ebitda',
-            'revenue_growth_yoy': 'fm.revenue_growth_yoy',
-            'earnings_growth_yoy': 'fm.earnings_growth_yoy',
-            'eps_growth_yoy': 'fm.eps_growth_yoy',
-            'peg_ratio': 'vr.peg_ratio',
+            # Growth from fundamental_metrics_extended
+            'dividend_yield': 'fme.dividend_yield',
+            'ev_ebitda': 'fme.ev_to_ebitda',
+            'revenue_growth_yoy': 'fme.revenue_growth_yoy',
+            'eps_growth_yoy': 'fme.eps_growth_yoy',
         }
 
         column = column_mapping.get(metric)
@@ -382,19 +385,19 @@ class SectorPercentileAggregator:
             return []
 
         # Determine which table to query based on metric
-        if column.startswith('vr.'):
+        if column.startswith('fme.'):
+            table_join = """
+                JOIN fundamental_metrics_extended fme ON c.ticker = fme.ticker
+                AND fme.calculation_date = (
+                    SELECT MAX(calculation_date) FROM fundamental_metrics_extended WHERE ticker = c.ticker
+                )
+            """
+            col_ref = column
+        elif column.startswith('vr.'):
             table_join = """
                 JOIN valuation_ratios vr ON c.ticker = vr.ticker
                 AND vr.calculation_date = (
                     SELECT MAX(calculation_date) FROM valuation_ratios WHERE ticker = c.ticker
-                )
-            """
-            col_ref = column
-        elif column.startswith('fm.'):
-            table_join = """
-                JOIN fundamental_metrics fm ON c.ticker = fm.ticker
-                AND fm.calculation_date = (
-                    SELECT MAX(calculation_date) FROM fundamental_metrics WHERE ticker = c.ticker
                 )
             """
             col_ref = column

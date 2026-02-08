@@ -50,7 +50,7 @@ async def calculate_sector_percentiles(
     db = get_database()
 
     try:
-        async with db.get_session() as session:
+        async with db.session() as session:
             aggregator = SectorPercentileAggregator(session)
 
             if sector:
@@ -119,27 +119,27 @@ async def run_lifecycle_classification(dry_run: bool = False) -> dict:
     results = {stage.value: 0 for stage in LifecycleStage}
 
     try:
-        async with db.get_session() as session:
+        async with db.session() as session:
             classifier = LifecycleClassifier(session)
 
             # Get all active companies with their metrics
             query = text("""
                 SELECT
                     c.ticker,
-                    fm.revenue_growth_yoy,
-                    fm.net_margin,
+                    fme.revenue_growth_yoy,
+                    fme.net_margin,
                     vr.ttm_pe_ratio as pe_ratio,
                     c.market_cap
                 FROM companies c
                 LEFT JOIN (
                     SELECT ticker, revenue_growth_yoy, net_margin
-                    FROM fundamental_metrics
+                    FROM fundamental_metrics_extended
                     WHERE (ticker, calculation_date) IN (
                         SELECT ticker, MAX(calculation_date)
-                        FROM fundamental_metrics
+                        FROM fundamental_metrics_extended
                         GROUP BY ticker
                     )
-                ) fm ON c.ticker = fm.ticker
+                ) fme ON c.ticker = fme.ticker
                 LEFT JOIN (
                     SELECT ticker, ttm_pe_ratio
                     FROM valuation_ratios
@@ -215,9 +215,8 @@ async def main(args: argparse.Namespace):
     logger.info("IC Score v2.1 - Sector Percentiles & Lifecycle Pipeline")
     logger.info("=" * 60)
 
-    # Initialize database
+    # Get database (no async initialization needed - engine created on first use)
     db = get_database()
-    await db.initialize()
 
     results = {}
 

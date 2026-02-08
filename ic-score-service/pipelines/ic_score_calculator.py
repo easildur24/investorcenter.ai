@@ -127,21 +127,64 @@ class ICScoreCalculator:
     # Scoring scale factors
     # Higher factor = more sensitive to deviations from benchmark
     SCALE_FACTORS = {
-        'pe_scale': 2.0,         # P/E deviation scaling
-        'pb_scale': 20.0,        # P/B deviation scaling
-        'ps_scale': 20.0,        # P/S deviation scaling
-        'growth_scale': 2.5,     # Growth rate scaling (50 + growth * scale)
-        'margin_scale': 5.0,     # Margin % to score (margin * scale)
-        'roe_scale': 5.0,        # ROE % to score (roe * scale)
-        'roa_scale': 10.0,       # ROA % to score (roa * scale)
-        'de_scale': 50.0,        # D/E ratio scaling (100 - de * scale)
-        'cr_optimal': 2.0,       # Optimal current ratio
-        'cr_scale': 40.0,        # Current ratio deviation scaling
-        'return_scale': 2.5,     # Return % to score adjustment
-        'macd_scale': 10.0,      # MACD histogram scaling
-        'trend_scale': 5.0,      # Price vs SMA scaling
-        'insider_scale': 2000.0, # Shares to score scaling
+        'pe_scale': 2.0,            # P/E deviation scaling
+        'pb_scale': 20.0,           # P/B deviation scaling
+        'ps_scale': 20.0,           # P/S deviation scaling
+        'growth_scale': 2.5,        # Growth rate scaling (50 + growth * scale)
+        'margin_scale': 5.0,        # Net margin % to score (margin * scale)
+        'gross_margin_scale': 1.5,  # Gross margin % to score (typically 20-80%)
+        'operating_margin_scale': 3.0,  # Operating margin % to score (typically 5-30%)
+        'roe_scale': 5.0,           # ROE % to score (roe * scale)
+        'roa_scale': 10.0,          # ROA % to score (roa * scale)
+        'de_scale': 50.0,           # D/E ratio scaling (100 - de * scale)
+        'cr_optimal': 2.0,          # Optimal current ratio
+        'cr_scale': 40.0,           # Current ratio deviation scaling
+        'qr_scale': 40.0,           # Quick ratio deviation scaling
+        'return_scale': 2.5,        # Return % to score adjustment
+        'macd_scale': 10.0,         # MACD histogram scaling
+        'trend_scale': 5.0,         # Price vs SMA scaling
+        'insider_scale': 2000.0,    # Shares to score scaling (fallback for missing dollar values)
     }
+
+    # Insider activity scaling: dollar value for full 50-point score swing
+    INSIDER_VALUE_SCALE = 1_000_000.0  # $1M net buying/selling = max/min score
+
+    # Intrinsic value factor parameters
+    INTRINSIC_VALUE_UPSIDE_CAP = 50.0  # ±50% upside maps to full 0-100 range
+    INTRINSIC_DCF_WEIGHT = 0.60        # DCF component weight within intrinsic value
+    INTRINSIC_GRAHAM_WEIGHT = 0.40     # Graham Number component weight
+
+    # News sentiment recency blend weights
+    NEWS_RECENT_WEIGHT = 0.60   # 7-day sentiment weight
+    NEWS_OVERALL_WEIGHT = 0.40  # 30-day sentiment weight
+
+    # Analyst consensus blend weights
+    ANALYST_RATING_WEIGHT = 0.60        # Buy/Hold/Sell rating consensus
+    ANALYST_PRICE_TARGET_WEIGHT = 0.40  # Price target upside
+    ANALYST_UPSIDE_CAP = 30.0           # ±30% upside maps to full 0-100 range
+
+    # Institutional score component weights
+    INSTITUTIONAL_BREADTH_WEIGHT = 0.40   # Log-scaled institution count
+    INSTITUTIONAL_OWNERSHIP_WEIGHT = 0.30 # Ownership as % of shares outstanding
+    INSTITUTIONAL_CHANGE_WEIGHT = 0.30    # Quarter-over-quarter holdings change
+    INSTITUTIONAL_LOG_SCALE = 10.0        # log2(institutions) * this = score
+
+    # Momentum recency weights (must sum to 1.0)
+    MOMENTUM_PERIOD_WEIGHTS = {
+        '1m_return': 0.35,
+        '3m_return': 0.30,
+        '6m_return': 0.20,
+        '12m_return': 0.15,
+    }
+
+    # Technical/news_sentiment weight split from the technical allocation
+    # NOTE (v2.2 breaking change): In v2.1, news_sentiment used a hardcoded 0.05
+    # weight that didn't participate in lifecycle adjustments. In v2.2, news_sentiment
+    # shares the 'technical' allocation (7%) as a 60/40 split. Any saved weight
+    # configs with a separate 'news_sentiment' key will have it ignored. The default
+    # fallback for unknown factors also changed from 0.05 to 0.
+    TECHNICAL_SCORE_SPLIT = 0.60      # Share of technical allocation for technical score
+    NEWS_SENTIMENT_SCORE_SPLIT = 0.40 # Share of technical allocation for news sentiment
 
     def __init__(self, income_mode: bool = False):
         """Initialize the IC Score calculator.
@@ -320,7 +363,9 @@ class ICScoreCalculator:
                     dividend_yield, payout_ratio,
                     debt_to_equity, current_ratio, quick_ratio,
                     ev_to_ebitda, ev_to_revenue,
-                    calculation_date
+                    calculation_date,
+                    fcf_growth_yoy,
+                    dcf_fair_value, dcf_upside_percent, graham_number
                 FROM fundamental_metrics_extended
                 WHERE ticker = :ticker
                 ORDER BY calculation_date DESC
@@ -332,23 +377,34 @@ class ICScoreCalculator:
             if not row:
                 return None
 
+            # Use column-name mapping instead of positional indexing
+            # to avoid silent breakage if SELECT column order changes
+            r = row._mapping
+
+            def _float(val):
+                return float(val) if val is not None else None
+
             return {
-                'revenue_growth_yoy': float(row[0]) if row[0] is not None else None,
-                'eps_growth_yoy': float(row[1]) if row[1] is not None else None,
-                'net_margin': float(row[2]) if row[2] is not None else None,
-                'roe': float(row[3]) if row[3] is not None else None,
-                'roa': float(row[4]) if row[4] is not None else None,
-                'roic': float(row[5]) if row[5] is not None else None,
-                'gross_margin': float(row[6]) if row[6] is not None else None,
-                'operating_margin': float(row[7]) if row[7] is not None else None,
-                'dividend_yield': float(row[8]) if row[8] is not None else None,
-                'payout_ratio': float(row[9]) if row[9] is not None else None,
-                'debt_to_equity': float(row[10]) if row[10] is not None else None,
-                'current_ratio': float(row[11]) if row[11] is not None else None,
-                'quick_ratio': float(row[12]) if row[12] is not None else None,
-                'ev_to_ebitda': float(row[13]) if row[13] is not None else None,
-                'ev_to_revenue': float(row[14]) if row[14] is not None else None,
-                'calculation_date': row[15],
+                'revenue_growth_yoy': _float(r['revenue_growth_yoy']),
+                'eps_growth_yoy': _float(r['eps_growth_yoy']),
+                'net_margin': _float(r['net_margin']),
+                'roe': _float(r['roe']),
+                'roa': _float(r['roa']),
+                'roic': _float(r['roic']),
+                'gross_margin': _float(r['gross_margin']),
+                'operating_margin': _float(r['operating_margin']),
+                'dividend_yield': _float(r['dividend_yield']),
+                'payout_ratio': _float(r['payout_ratio']),
+                'debt_to_equity': _float(r['debt_to_equity']),
+                'current_ratio': _float(r['current_ratio']),
+                'quick_ratio': _float(r['quick_ratio']),
+                'ev_to_ebitda': _float(r['ev_to_ebitda']),
+                'ev_to_revenue': _float(r['ev_to_revenue']),
+                'calculation_date': r['calculation_date'],
+                'fcf_growth_yoy': _float(r['fcf_growth_yoy']),
+                'dcf_fair_value': _float(r['dcf_fair_value']),
+                'dcf_upside_percent': _float(r['dcf_upside_percent']),
+                'graham_number': _float(r['graham_number']),
             }
 
     async def fetch_technical_data(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -379,9 +435,13 @@ class ICScoreCalculator:
     async def fetch_insider_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch insider trading data for a stock."""
         async with self.db.session() as session:
-            # Get last 90 days of insider trades
+            # Get last 90 days of insider trades with share counts, dollar values,
+            # and actual trade count per transaction type
             query = text("""
-                SELECT transaction_type, SUM(shares) as total_shares, SUM(total_value) as total_value
+                SELECT transaction_type,
+                       SUM(shares) as total_shares,
+                       SUM(total_value) as total_value,
+                       COUNT(*) as trade_count
                 FROM insider_trades
                 WHERE ticker = :ticker
                   AND transaction_date >= NOW() - INTERVAL '90 days'
@@ -393,19 +453,29 @@ class ICScoreCalculator:
             if not rows:
                 return None
 
-            net_buying = 0
+            net_buying_shares = 0
+            net_buying_value = 0
+            total_transactions = 0
             for row in rows:
+                trade_count = row[3] or 0
+                total_transactions += trade_count
                 if row[0] and 'buy' in row[0].lower():
-                    net_buying += row[1] or 0
+                    net_buying_shares += row[1] or 0
+                    net_buying_value += float(row[2] or 0)
                 elif row[0] and 'sell' in row[0].lower():
-                    net_buying -= row[1] or 0
+                    net_buying_shares -= row[1] or 0
+                    net_buying_value -= float(row[2] or 0)
 
-            return {'net_buying_90d': net_buying}
+            return {
+                'net_buying_90d': net_buying_shares,
+                'net_buying_value_90d': net_buying_value,
+                'total_transactions': total_transactions,
+            }
 
     async def fetch_news_sentiment_data(self, ticker: str) -> Optional[Dict[str, Any]]:
-        """Fetch news sentiment data for a stock."""
+        """Fetch news sentiment data for a stock with recency weighting."""
         async with self.db.session() as session:
-            # Get articles from last 30 days
+            # Get overall 30-day stats
             query = text("""
                 SELECT
                     COUNT(*) as article_count,
@@ -423,13 +493,38 @@ class ICScoreCalculator:
             if not row or row[0] == 0:
                 return None
 
-            return {
+            # Get recent 7-day sentiment for recency weighting
+            recent_query = text("""
+                SELECT
+                    COUNT(*) as article_count,
+                    AVG(sentiment_score) as avg_sentiment
+                FROM news_articles
+                WHERE :ticker = ANY(tickers)
+                  AND published_at >= NOW() - INTERVAL '7 days'
+            """)
+            recent_result = await session.execute(recent_query, {"ticker": ticker})
+            recent_row = recent_result.fetchone()
+
+            # Only include recent sentiment data if there were articles in the window
+            recent_article_count = recent_row[0] if recent_row else 0
+            recent_avg_sentiment = None
+            if recent_article_count and recent_article_count > 0 and recent_row[1] is not None:
+                recent_avg_sentiment = float(recent_row[1])
+
+            data = {
                 'article_count': row[0],
                 'avg_sentiment': float(row[1]) if row[1] else 0,
                 'positive_count': row[2] or 0,
                 'negative_count': row[3] or 0,
-                'neutral_count': row[4] or 0
+                'neutral_count': row[4] or 0,
             }
+
+            # Only include recent period data when articles exist in the 7-day window
+            if recent_article_count > 0:
+                data['recent_article_count'] = recent_article_count
+                data['recent_avg_sentiment'] = recent_avg_sentiment
+
+            return data
 
     async def fetch_analyst_data(self, ticker: str) -> Optional[Dict[str, Any]]:
         """Fetch analyst ratings data for a stock."""
@@ -502,11 +597,28 @@ class ICScoreCalculator:
 
             prev_shares = prev_row[0] if prev_row and prev_row[0] else None
 
+            # Get shares outstanding for ownership percentage
+            shares_outstanding = None
+            shares_query = text("""
+                SELECT shares_outstanding_diluted
+                FROM financials
+                WHERE ticker = :ticker
+                  AND shares_outstanding_diluted IS NOT NULL
+                  AND period_end_date <= CURRENT_DATE
+                ORDER BY period_end_date DESC
+                LIMIT 1
+            """)
+            shares_result = await session.execute(shares_query, {"ticker": ticker})
+            shares_row = shares_result.fetchone()
+            if shares_row and shares_row[0]:
+                shares_outstanding = int(shares_row[0])
+
             return {
                 'total_shares': int(row[0]) if row[0] else 0,
                 'total_value': float(row[1]) if row[1] else 0,
                 'num_institutions': row[2] or 0,
-                'prev_shares': int(prev_shares) if prev_shares else None
+                'prev_shares': int(prev_shares) if prev_shares else None,
+                'shares_outstanding': shares_outstanding,
             }
 
     async def fetch_valuation_data(self, ticker: str) -> Optional[Dict[str, Any]]:
@@ -630,7 +742,7 @@ class ICScoreCalculator:
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(float(np.mean(scores)), 2), metadata
 
     async def calculate_growth_score(
         self,
@@ -657,14 +769,18 @@ class ICScoreCalculator:
         # Prefer pre-calculated growth rates from fundamental_metrics_extended
         rev_growth = None
         eps_growth = None
+        fcf_growth = None
 
         if fundamental_metrics:
             rev_growth = fundamental_metrics.get('revenue_growth_yoy')
             eps_growth = fundamental_metrics.get('eps_growth_yoy')
+            fcf_growth = fundamental_metrics.get('fcf_growth_yoy')
             if rev_growth is not None:
                 metadata['revenue_growth_yoy'] = rev_growth
             if eps_growth is not None:
                 metadata['eps_growth_yoy'] = eps_growth
+            if fcf_growth is not None:
+                metadata['fcf_growth_yoy'] = fcf_growth
 
         # Fallback: Calculate from raw financials if pre-calculated not available
         if rev_growth is None and financial_data and len(financial_data.get('historical', [])) >= 4:
@@ -677,7 +793,7 @@ class ICScoreCalculator:
                     metadata['revenue_growth_yoy'] = rev_growth
                     metadata['growth_source'] = 'calculated'
 
-        if rev_growth is None and eps_growth is None:
+        if rev_growth is None and eps_growth is None and fcf_growth is None:
             return None, metadata
 
         # v2.1: Use sector-relative percentiles
@@ -713,10 +829,17 @@ class ICScoreCalculator:
                 eps_score = max(0, min(100, 50 + eps_growth * growth_scale))
                 scores.append(eps_score)
 
+        # FCF growth as supplemental signal (always use absolute scaling since
+        # sector percentiles for FCF growth aren't tracked yet)
+        if fcf_growth is not None:
+            fcf_score = max(0, min(100, 50 + fcf_growth * growth_scale))
+            scores.append(fcf_score)
+            metadata['fcf_growth_score'] = round(fcf_score, 2)
+
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(float(np.mean(scores)), 2), metadata
 
     async def calculate_profitability_score(
         self,
@@ -740,11 +863,15 @@ class ICScoreCalculator:
 
         # Prefer data from fundamental_metrics_extended
         margin = None
+        gross_margin = None
+        operating_margin = None
         roe = None
         roa = None
 
         if fundamental_metrics:
             margin = fundamental_metrics.get('net_margin')
+            gross_margin = fundamental_metrics.get('gross_margin')
+            operating_margin = fundamental_metrics.get('operating_margin')
             roe = fundamental_metrics.get('roe')
             roa = fundamental_metrics.get('roa')
 
@@ -753,16 +880,24 @@ class ICScoreCalculator:
             latest = financial_data.get('latest', {})
             if margin is None and latest.get('net_margin'):
                 margin = float(latest['net_margin'])
+            if gross_margin is None and latest.get('gross_margin'):
+                gross_margin = float(latest['gross_margin'])
+            if operating_margin is None and latest.get('operating_margin'):
+                operating_margin = float(latest['operating_margin'])
             if roe is None and latest.get('roe'):
                 roe = float(latest['roe'])
             if roa is None and latest.get('roa'):
                 roa = float(latest['roa'])
 
-        if margin is None and roe is None and roa is None:
+        if margin is None and roe is None and roa is None and gross_margin is None and operating_margin is None:
             return None, {}
 
         if margin is not None:
             metadata['net_margin'] = margin
+        if gross_margin is not None:
+            metadata['gross_margin'] = gross_margin
+        if operating_margin is not None:
+            metadata['operating_margin'] = operating_margin
         if roe is not None:
             metadata['roe'] = roe
         if roa is not None:
@@ -777,6 +912,22 @@ class ICScoreCalculator:
                 if margin_pct is not None:
                     scores.append(margin_pct)
                     metadata['net_margin_sector_percentile'] = margin_pct
+
+            if gross_margin is not None:
+                gm_pct = await self._sector_calculator.get_percentile(
+                    sector, 'gross_margin', gross_margin
+                )
+                if gm_pct is not None:
+                    scores.append(gm_pct)
+                    metadata['gross_margin_sector_percentile'] = gm_pct
+
+            if operating_margin is not None:
+                om_pct = await self._sector_calculator.get_percentile(
+                    sector, 'operating_margin', operating_margin
+                )
+                if om_pct is not None:
+                    scores.append(om_pct)
+                    metadata['operating_margin_sector_percentile'] = om_pct
 
             if roe is not None:
                 roe_pct = await self._sector_calculator.get_percentile(sector, 'roe', roe)
@@ -802,6 +953,16 @@ class ICScoreCalculator:
                 margin_score = max(0, min(100, margin * margin_scale))
                 scores.append(margin_score)
 
+            if gross_margin is not None:
+                gm_scale = self.SCALE_FACTORS['gross_margin_scale']
+                gm_score = max(0, min(100, gross_margin * gm_scale))
+                scores.append(gm_score)
+
+            if operating_margin is not None:
+                om_scale = self.SCALE_FACTORS['operating_margin_scale']
+                om_score = max(0, min(100, operating_margin * om_scale))
+                scores.append(om_score)
+
             if roe is not None:
                 roe_scale = self.SCALE_FACTORS['roe_scale']
                 roe_score = max(0, min(100, roe * roe_scale))
@@ -815,29 +976,37 @@ class ICScoreCalculator:
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(float(np.mean(scores)), 2), metadata
 
-    def calculate_financial_health_score(
+    async def calculate_financial_health_score(
         self,
         fundamental_metrics: Optional[Dict[str, Any]],
-        financial_data: Optional[Dict[str, Any]]
+        financial_data: Optional[Dict[str, Any]],
+        sector: Optional[str] = None
     ) -> Tuple[Optional[float], Dict]:
-        """Calculate financial health score based on D/E, current ratio.
+        """Calculate financial health score based on D/E, current ratio, quick ratio.
 
-        Scoring methodology:
+        v2.1 Scoring methodology (sector-relative):
+        - Uses sector percentiles for D/E and current ratio
+        - Lower D/E vs sector = higher score
+        - Current ratio closer to sector median = higher score
+
+        Legacy scoring methodology (absolute benchmarks):
         - D/E: 0 = 100 (no debt), 2+ = 0 (high debt)
         - Current ratio: 2.0 = 100 (optimal), 0 or 5+ = 0 (extremes)
         """
         metadata = {}
         scores = []
 
-        # Get debt_to_equity and current_ratio from best source
+        # Get debt_to_equity, current_ratio, quick_ratio from best source
         de = None
         cr = None
+        qr = None
 
         if fundamental_metrics:
             de = fundamental_metrics.get('debt_to_equity')
             cr = fundamental_metrics.get('current_ratio')
+            qr = fundamental_metrics.get('quick_ratio')
 
         # Fallback to financials table
         if financial_data:
@@ -846,53 +1015,102 @@ class ICScoreCalculator:
                 de = float(latest['debt_to_equity'])
             if cr is None and latest.get('current_ratio'):
                 cr = float(latest['current_ratio'])
+            if qr is None and latest.get('quick_ratio'):
+                qr = float(latest['quick_ratio'])
 
-        # Debt to equity (lower is better)
         if de is not None:
-            de_scale = self.SCALE_FACTORS['de_scale']
-            de_score = max(0, min(100, 100 - de * de_scale))
-            scores.append(de_score)
             metadata['debt_to_equity'] = de
-
-        # Current ratio (optimal around 1.5-2.0)
         if cr is not None:
-            cr_optimal = self.SCALE_FACTORS['cr_optimal']
-            cr_scale = self.SCALE_FACTORS['cr_scale']
-            cr_score = max(0, min(100, 100 - abs(cr - cr_optimal) * cr_scale))
-            scores.append(cr_score)
             metadata['current_ratio'] = cr
+        if qr is not None:
+            metadata['quick_ratio'] = qr
+
+        # v2.1: Use sector-relative percentiles
+        if self._sector_calculator and sector and self.USE_SECTOR_RELATIVE_SCORING:
+            if de is not None:
+                de_pct = await self._sector_calculator.get_percentile(
+                    sector, 'debt_to_equity', de
+                )
+                if de_pct is not None:
+                    scores.append(de_pct)
+                    metadata['de_sector_percentile'] = de_pct
+
+            if cr is not None:
+                cr_pct = await self._sector_calculator.get_percentile(
+                    sector, 'current_ratio', cr
+                )
+                if cr_pct is not None:
+                    scores.append(cr_pct)
+                    metadata['cr_sector_percentile'] = cr_pct
+
+            if qr is not None:
+                qr_pct = await self._sector_calculator.get_percentile(
+                    sector, 'quick_ratio', qr
+                )
+                if qr_pct is not None:
+                    scores.append(qr_pct)
+                    metadata['qr_sector_percentile'] = qr_pct
+
+            if scores:
+                metadata['scoring_method'] = 'sector_relative'
+
+        # Fallback or legacy: Use absolute scaling
+        if not scores:
+            metadata['scoring_method'] = 'absolute_benchmark'
+
+            # Debt to equity (lower is better)
+            if de is not None:
+                de_scale = self.SCALE_FACTORS['de_scale']
+                de_score = max(0, min(100, 100 - de * de_scale))
+                scores.append(de_score)
+
+            # Current ratio (optimal around 1.5-2.0)
+            if cr is not None:
+                cr_optimal = self.SCALE_FACTORS['cr_optimal']
+                cr_scale = self.SCALE_FACTORS['cr_scale']
+                cr_score = max(0, min(100, 100 - abs(cr - cr_optimal) * cr_scale))
+                scores.append(cr_score)
+
+            # Quick ratio (optimal around 1.0-1.5)
+            if qr is not None:
+                qr_score = max(0, min(100, 100 - abs(qr - 1.5) * self.SCALE_FACTORS['qr_scale']))
+                scores.append(qr_score)
 
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(float(np.mean(scores)), 2), metadata
 
     def calculate_momentum_score(self, technical_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
-        """Calculate momentum score based on price returns.
+        """Calculate momentum score based on price returns with recency weighting.
 
         Scoring methodology:
         - -20% return = 0, 0% = 50, +20% = 100
+        - Recent returns weighted more heavily (1m: 35%, 3m: 30%, 6m: 20%, 12m: 15%)
         """
         if not technical_data:
             return None, {}
 
         metadata = {}
-        scores = []
+        weighted_scores = []
         return_scale = self.SCALE_FACTORS['return_scale']
 
-        # Use various period returns
-        for period in ['1m_return', '3m_return', '6m_return', '12m_return']:
+        for period, weight in self.MOMENTUM_PERIOD_WEIGHTS.items():
             if period in technical_data:
                 ret = technical_data[period]
                 # Normalize: -20% = 0, 0% = 50, 20% = 100
                 score = max(0, min(100, 50 + ret * return_scale))
-                scores.append(score)
+                weighted_scores.append((score, weight))
                 metadata[period] = ret
 
-        if not scores:
+        if not weighted_scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        # Weighted average with recency bias
+        total_weight = sum(w for _, w in weighted_scores)
+        momentum_score = sum(s * w for s, w in weighted_scores) / total_weight
+
+        return round(momentum_score, 2), metadata
 
     def calculate_technical_score(self, technical_data: Dict[str, Any]) -> Tuple[Optional[float], Dict]:
         """Calculate technical score based on RSI, MACD, trend.
@@ -943,39 +1161,69 @@ class ICScoreCalculator:
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(float(np.mean(scores)), 2), metadata
 
     def calculate_news_sentiment_score(self, news_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
-        """Calculate news sentiment score based on article sentiment analysis."""
+        """Calculate news sentiment score with recency weighting and volume context.
+
+        Scoring methodology:
+        - Blends 30-day and 7-day sentiment (60% recent, 40% overall)
+        - Incorporates positive/negative article ratio
+        - Low article count reduces confidence but doesn't penalize score
+        """
         if not news_data or news_data.get('article_count', 0) == 0:
             return None, {}
 
         metadata = {}
         scores = []
 
-        # Average sentiment score (already 0-100 from sentiment analysis)
+        # 30-day overall sentiment (already 0-100 from sentiment analysis)
         avg_sentiment = news_data.get('avg_sentiment', 0)
-        sentiment_score = max(0, min(100, avg_sentiment))
-        scores.append(sentiment_score)
-        metadata['avg_sentiment'] = avg_sentiment
+        overall_score = max(0, min(100, avg_sentiment))
+        metadata['avg_sentiment_30d'] = avg_sentiment
 
-        # Positive vs negative ratio
+        # 7-day recent sentiment (weighted more heavily)
+        recent_sentiment = news_data.get('recent_avg_sentiment')
+
+        if recent_sentiment is not None:
+            recent_score = max(0, min(100, recent_sentiment))
+            blended_score = recent_score * self.NEWS_RECENT_WEIGHT + overall_score * self.NEWS_OVERALL_WEIGHT
+            scores.append(blended_score)
+            metadata['avg_sentiment_7d'] = recent_sentiment
+            metadata['scoring_method'] = 'recency_weighted'
+        else:
+            scores.append(overall_score)
+            metadata['scoring_method'] = 'overall_only'
+
+        # Positive vs negative ratio as supplemental signal
         positive_count = news_data.get('positive_count', 0)
         negative_count = news_data.get('negative_count', 0)
         total_articles = news_data.get('article_count', 0)
 
         if total_articles > 0:
             positive_ratio = (positive_count / total_articles) * 100
-            metadata['positive_ratio'] = positive_ratio
+            # Convert ratio to score: 100% positive = 100, 50/50 = 50, 100% negative = 0
+            ratio_score = max(0, min(100, positive_ratio))
+            scores.append(ratio_score)
+            metadata['positive_ratio'] = round(positive_ratio, 1)
             metadata['article_count'] = total_articles
 
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        return round(np.mean(scores), 2), metadata
 
-    def calculate_analyst_consensus_score(self, analyst_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
-        """Calculate analyst consensus score based on buy/hold/sell ratings."""
+    def calculate_analyst_consensus_score(
+        self,
+        analyst_data: Optional[Dict[str, Any]],
+        valuation_data: Optional[Dict[str, Any]] = None
+    ) -> Tuple[Optional[float], Dict]:
+        """Calculate analyst consensus score based on ratings and price target upside.
+
+        Scoring methodology:
+        - Rating consensus: Buy=100, Hold=50, Sell=0 (60% weight)
+        - Price target upside: >30% upside=100, 0%=50, <-30%=0 (40% weight)
+        """
         if not analyst_data or analyst_data.get('total_analysts', 0) == 0:
             return None, {}
 
@@ -985,53 +1233,77 @@ class ICScoreCalculator:
         hold_count = analyst_data.get('hold_count', 0)
         sell_count = analyst_data.get('sell_count', 0)
 
-        # Calculate consensus score: 100 = all buy, 50 = all hold, 0 = all sell
+        # Rating consensus score: 100 = all buy, 50 = all hold, 0 = all sell
         if total_analysts > 0:
-            # Weight: Buy = 100, Hold = 50, Sell = 0
             weighted_score = ((buy_count * 100) + (hold_count * 50) + (sell_count * 0)) / total_analysts
-            consensus_score = max(0, min(100, weighted_score))
+            rating_score = max(0, min(100, weighted_score))
         else:
-            consensus_score = 50  # Neutral if no clear ratings
+            rating_score = 50
 
         metadata['total_analysts'] = total_analysts
         metadata['buy_count'] = buy_count
         metadata['hold_count'] = hold_count
         metadata['sell_count'] = sell_count
-        metadata['avg_price_target'] = analyst_data.get('avg_price_target')
+        metadata['rating_score'] = round(rating_score, 2)
 
-        return consensus_score, metadata
+        # Price target upside score
+        avg_price_target = analyst_data.get('avg_price_target')
+        stock_price = valuation_data.get('stock_price') if valuation_data else None
+        metadata['avg_price_target'] = avg_price_target
+
+        if avg_price_target and stock_price and stock_price > 0:
+            upside_pct = ((avg_price_target / stock_price) - 1) * 100
+            upside_score = max(0, min(100, 50 + (upside_pct / self.ANALYST_UPSIDE_CAP) * 50))
+            metadata['price_target_upside_pct'] = round(upside_pct, 2)
+            metadata['upside_score'] = round(upside_score, 2)
+
+            consensus_score = rating_score * self.ANALYST_RATING_WEIGHT + upside_score * self.ANALYST_PRICE_TARGET_WEIGHT
+        else:
+            consensus_score = rating_score
+
+        return round(consensus_score, 2), metadata
 
     def calculate_insider_activity_score(self, insider_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
-        """Calculate insider activity score based on net buying/selling.
+        """Calculate insider activity score based on net buying/selling dollar value.
 
-        Scoring methodology:
-        - Heavy buying (+100k shares) = 100
-        - Neutral (0 shares) = 50
-        - Heavy selling (-100k shares) = 0
+        Scoring methodology (dollar-value based):
+        - Heavy buying (+$1M) = 100
+        - Neutral ($0) = 50
+        - Heavy selling (-$1M) = 0
+
+        Uses dollar values instead of share counts for cross-stock comparability.
         """
         if not insider_data:
             return None, {}
 
         metadata = {}
-        net_buying = insider_data.get('net_buying_90d', 0)
-        insider_scale = self.SCALE_FACTORS['insider_scale']
 
-        # Normalize: Heavy buying = 100, neutral = 50, heavy selling = 0
-        if net_buying > 0:
-            # Positive net buying
-            score = min(100, 50 + (net_buying / insider_scale))
-        elif net_buying < 0:
-            # Net selling
-            score = max(0, 50 + (net_buying / insider_scale))
+        # Prefer dollar values for cross-stock comparability
+        net_buying_value = insider_data.get('net_buying_value_90d', 0)
+        net_buying_shares = insider_data.get('net_buying_90d', 0)
+
+        if net_buying_value != 0:
+            score = max(0, min(100, 50 + (net_buying_value / self.INSIDER_VALUE_SCALE) * 50))
+        elif net_buying_shares != 0:
+            # Fallback to share-based scoring if no dollar values
+            insider_scale = self.SCALE_FACTORS['insider_scale']
+            score = max(0, min(100, 50 + (net_buying_shares / insider_scale)))
         else:
             score = 50  # Neutral
 
-        metadata['net_buying_90d'] = net_buying
+        metadata['net_buying_90d'] = net_buying_shares
+        metadata['net_buying_value_90d'] = net_buying_value
 
-        return score, metadata
+        return round(score, 2), metadata
 
     def calculate_institutional_score(self, institutional_data: Optional[Dict[str, Any]]) -> Tuple[Optional[float], Dict]:
-        """Calculate institutional ownership score based on holdings changes."""
+        """Calculate institutional ownership score based on holdings changes.
+
+        Scoring methodology:
+        - Institutional breadth: log-scaled institution count (40% weight)
+        - Ownership level: institutional shares as % of outstanding (30% weight)
+        - Holdings change: quarter-over-quarter change (30% weight)
+        """
         if not institutional_data or institutional_data.get('num_institutions', 0) == 0:
             return None, {}
 
@@ -1039,27 +1311,107 @@ class ICScoreCalculator:
         num_institutions = institutional_data['num_institutions']
         total_shares = institutional_data.get('total_shares', 0)
         prev_shares = institutional_data.get('prev_shares')
+        shares_outstanding = institutional_data.get('shares_outstanding')
 
-        scores = []
+        weighted_scores = []
 
-        # Number of institutions (more is better, up to a point)
-        # Normalize: 50 institutions = 50, 100+ = 100
-        inst_score = min(100, (num_institutions / 100) * 100)
-        scores.append(inst_score)
-        metadata['num_institutions'] = num_institutions
+        # Number of institutions (log-scaled for better differentiation)
+        # log2(10) ~= 3.3 -> 33, log2(100) ~= 6.6 -> 66, log2(1000) ~= 10 -> 100
+        if num_institutions > 0:
+            inst_score = min(100, np.log2(num_institutions) * self.INSTITUTIONAL_LOG_SCALE)
+            weighted_scores.append((inst_score, self.INSTITUTIONAL_BREADTH_WEIGHT))
+            metadata['num_institutions'] = num_institutions
+
+        # Institutional ownership as % of shares outstanding
+        if shares_outstanding and shares_outstanding > 0 and total_shares > 0:
+            ownership_pct = (total_shares / shares_outstanding) * 100
+            # 0% = 0, 50% = 75, 80%+ = 100 (diminishing returns above 50%)
+            if ownership_pct <= 50:
+                ownership_score = ownership_pct * 1.5
+            else:
+                ownership_score = 75 + min(25, (ownership_pct - 50) * 0.5)
+            ownership_score = max(0, min(100, ownership_score))
+            weighted_scores.append((ownership_score, self.INSTITUTIONAL_OWNERSHIP_WEIGHT))
+            metadata['institutional_ownership_pct'] = round(ownership_pct, 2)
 
         # Change in holdings (increasing = positive)
         if prev_shares is not None and prev_shares > 0:
             change_pct = ((total_shares - prev_shares) / prev_shares) * 100
             # Normalize: +10% = 100, 0% = 50, -10% = 0
             change_score = max(0, min(100, 50 + (change_pct * 5)))
-            scores.append(change_score)
-            metadata['holdings_change_pct'] = change_pct
+            weighted_scores.append((change_score, self.INSTITUTIONAL_CHANGE_WEIGHT))
+            metadata['holdings_change_pct'] = round(change_pct, 2)
+
+        if not weighted_scores:
+            return None, metadata
+
+        total_weight = sum(w for _, w in weighted_scores)
+        final_score = sum(s * w for s, w in weighted_scores) / total_weight
+
+        return round(final_score, 2), metadata
+
+    def calculate_intrinsic_value_score(
+        self,
+        fundamental_metrics: Optional[Dict[str, Any]],
+        valuation_data: Optional[Dict[str, Any]]
+    ) -> Tuple[Optional[float], Dict]:
+        """Calculate intrinsic value score using DCF fair value and Graham Number.
+
+        Uses pre-calculated fair value estimates from fundamental_metrics_extended:
+        - DCF upside: margin of safety vs current price (60% weight)
+        - Graham Number upside: conservative value vs price (40% weight)
+
+        Scoring:
+        - Stock at 50%+ discount to fair value = 100
+        - Stock at fair value = 50
+        - Stock at 50%+ premium to fair value = 0
+        """
+        if not fundamental_metrics or not valuation_data:
+            return None, {}
+
+        metadata = {}
+        scores = []
+        stock_price = valuation_data.get('stock_price')
+
+        if not stock_price or stock_price <= 0:
+            return None, {}
+
+        # DCF-based upside (pre-calculated as dcf_upside_percent)
+        dcf_upside = fundamental_metrics.get('dcf_upside_percent')
+        dcf_fair_value = fundamental_metrics.get('dcf_fair_value')
+
+        if dcf_upside is not None and dcf_fair_value is not None and dcf_fair_value > 0:
+            # Clamp extreme outliers before scoring (e.g. erroneous DCF producing 10000% upside)
+            clamped_dcf_upside = max(-self.INTRINSIC_VALUE_UPSIDE_CAP, min(self.INTRINSIC_VALUE_UPSIDE_CAP, dcf_upside))
+            if abs(dcf_upside) > self.INTRINSIC_VALUE_UPSIDE_CAP:
+                logger.debug(f"DCF upside {dcf_upside:.1f}% clamped to ±{self.INTRINSIC_VALUE_UPSIDE_CAP}%")
+            # Scale: -50% upside = 0, 0% = 50, +50% = 100
+            dcf_score = max(0, min(100, 50 + (clamped_dcf_upside / self.INTRINSIC_VALUE_UPSIDE_CAP) * 50))
+            scores.append(('dcf', dcf_score, self.INTRINSIC_DCF_WEIGHT))
+            metadata['dcf_fair_value'] = dcf_fair_value
+            metadata['dcf_upside_pct'] = dcf_upside
+
+        # Graham Number upside
+        graham_number = fundamental_metrics.get('graham_number')
+        if graham_number is not None and graham_number > 0:
+            graham_upside = ((graham_number / stock_price) - 1) * 100
+            clamped_graham_upside = max(-self.INTRINSIC_VALUE_UPSIDE_CAP, min(self.INTRINSIC_VALUE_UPSIDE_CAP, graham_upside))
+            if abs(graham_upside) > self.INTRINSIC_VALUE_UPSIDE_CAP:
+                logger.debug(f"Graham upside {graham_upside:.1f}% clamped to ±{self.INTRINSIC_VALUE_UPSIDE_CAP}%")
+            # Scale: -50% upside = 0, 0% = 50, +50% = 100
+            graham_score = max(0, min(100, 50 + (clamped_graham_upside / self.INTRINSIC_VALUE_UPSIDE_CAP) * 50))
+            scores.append(('graham', graham_score, self.INTRINSIC_GRAHAM_WEIGHT))
+            metadata['graham_number'] = graham_number
+            metadata['graham_upside_pct'] = round(graham_upside, 2)
 
         if not scores:
             return None, metadata
 
-        return np.mean(scores), metadata
+        # Weighted average of available methods
+        total_weight = sum(w for _, _, w in scores)
+        weighted_score = sum(s * w for _, s, w in scores) / total_weight
+
+        return round(weighted_score, 2), metadata
 
     async def calculate_ic_score(
         self,
@@ -1142,8 +1494,8 @@ class ICScoreCalculator:
                 factor_scores['profitability'] = profit_score
                 factor_metadata['profitability'] = profit_meta
 
-            # Financial health score (uses fundamental_metrics for better data availability)
-            health_score, health_meta = self.calculate_financial_health_score(fundamental_metrics, financial_data)
+            # Financial health score (uses sector-relative scoring in v2.1)
+            health_score, health_meta = await self.calculate_financial_health_score(fundamental_metrics, financial_data, sector)
             if health_score is not None:
                 factor_scores['financial_health'] = health_score
                 factor_metadata['financial_health'] = health_meta
@@ -1166,8 +1518,8 @@ class ICScoreCalculator:
                 factor_scores['news_sentiment'] = news_score
                 factor_metadata['news_sentiment'] = news_meta
 
-            # Analyst consensus score
-            analyst_score, analyst_meta = self.calculate_analyst_consensus_score(analyst_data)
+            # Analyst consensus score (now includes price target upside)
+            analyst_score, analyst_meta = self.calculate_analyst_consensus_score(analyst_data, valuation_data)
             if analyst_score is not None:
                 factor_scores['analyst_consensus'] = analyst_score
                 factor_metadata['analyst_consensus'] = analyst_meta
@@ -1183,6 +1535,12 @@ class ICScoreCalculator:
             if institutional_score is not None:
                 factor_scores['institutional'] = institutional_score
                 factor_metadata['institutional'] = institutional_meta
+
+            # Intrinsic value score (uses DCF fair value and Graham Number)
+            intrinsic_score, intrinsic_meta = self.calculate_intrinsic_value_score(fundamental_metrics, valuation_data)
+            if intrinsic_score is not None:
+                factor_scores['intrinsic_value'] = intrinsic_score
+                factor_metadata['intrinsic_value'] = intrinsic_meta
 
             # Phase 2: Earnings Revisions factor
             if self._earnings_revisions_calc:
@@ -1248,17 +1606,22 @@ class ICScoreCalculator:
 
             # Calculate weighted overall score using lifecycle-adjusted weights
             # Map factor names to weights (supports both v2.0 legacy and v2.1)
+            smart_money_weight = weights_to_use.get('smart_money', 0.10)
+            technical_weight = weights_to_use.get('technical', 0.07)
             factor_weight_mapping = {
                 'value': weights_to_use.get('value', 0.12),
                 'growth': weights_to_use.get('growth', 0.13),
                 'profitability': weights_to_use.get('profitability', 0.12),
                 'financial_health': weights_to_use.get('financial_health', 0.10),
                 'momentum': weights_to_use.get('momentum', 0.10),
-                'technical': weights_to_use.get('technical', 0.07),
-                'news_sentiment': weights_to_use.get('news_sentiment', 0.05),
-                'analyst_consensus': weights_to_use.get('smart_money', 0.10) * 0.4,  # 40% of smart money
-                'insider_activity': weights_to_use.get('smart_money', 0.10) * 0.3,   # 30% of smart money
-                'institutional': weights_to_use.get('smart_money', 0.10) * 0.3,      # 30% of smart money
+                'technical': technical_weight * self.TECHNICAL_SCORE_SPLIT,
+                'news_sentiment': technical_weight * self.NEWS_SENTIMENT_SCORE_SPLIT,
+                # Smart money sub-factors: split smart_money weight among the three
+                'analyst_consensus': smart_money_weight * 0.4,    # 40% of smart money
+                'insider_activity': smart_money_weight * 0.3,     # 30% of smart money
+                'institutional': smart_money_weight * 0.3,        # 30% of smart money
+                # Intrinsic value factor (was missing before - 10% weight)
+                'intrinsic_value': weights_to_use.get('intrinsic_value', 0.10),
                 # Phase 2 factors
                 'earnings_revisions': weights_to_use.get('earnings_revisions', 0.08),
                 'historical_value': weights_to_use.get('historical_value', 0.08),
@@ -1266,11 +1629,11 @@ class ICScoreCalculator:
             }
 
             total_weight = sum(
-                factor_weight_mapping.get(factor, 0.05)
+                factor_weight_mapping.get(factor, 0)
                 for factor in factor_scores.keys()
             )
             overall_score = sum(
-                float(factor_scores[factor]) * factor_weight_mapping.get(factor, 0.05)
+                float(factor_scores[factor]) * factor_weight_mapping.get(factor, 0)
                 for factor in factor_scores.keys()
             ) / total_weight if total_weight > 0 else 0
 
@@ -1351,9 +1714,9 @@ class ICScoreCalculator:
                 'sector_total': sector_total,
                 'calculation_metadata': {
                     'factors': factor_metadata,
-                    'weights_used': {k: round(factor_weight_mapping.get(k, 0.05), 4) for k in factor_scores.keys()},
+                    'weights_used': {k: round(factor_weight_mapping.get(k, 0), 4) for k in factor_scores.keys()},
                     'lifecycle_stage': lifecycle_stage,
-                    'scoring_version': '2.1',
+                    'scoring_version': '2.2',
                     'income_mode': self.income_mode,
                     'calculated_at': datetime.now().isoformat(),
                     # Phase 3: Stabilization metadata
