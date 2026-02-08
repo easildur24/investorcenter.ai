@@ -80,14 +80,12 @@ def test_database_connection() -> bool:
                     return False
 
                 # Check if stocks table exists
-                cur.execute(
-                    """
+                cur.execute("""
                     SELECT EXISTS (
                         SELECT FROM information_schema.tables
                         WHERE table_name = 'stocks'
                     )
-                """
-                )
+                """)
                 table_result = cur.fetchone()
                 if not table_result:
                     logger.error("Failed to check if stocks table exists")
@@ -266,24 +264,20 @@ def get_database_stats() -> dict:
                     stats["total_stocks"] = 0
 
                 # Stocks by exchange
-                cur.execute(
-                    """
+                cur.execute("""
                     SELECT exchange, COUNT(*)
                     FROM stocks
                     WHERE exchange IS NOT NULL
                     GROUP BY exchange
                     ORDER BY COUNT(*) DESC
-                """
-                )
+                """)
                 stats["by_exchange"] = dict(cur.fetchall())
 
                 # Recent additions
-                cur.execute(
-                    """
+                cur.execute("""
                     SELECT COUNT(*) FROM stocks
                     WHERE created_at >= NOW() - INTERVAL '24 hours'
-                """
-                )
+                """)
                 recent_result = cur.fetchone()
                 if recent_result:
                     stats["added_last_24h"] = recent_result[0]
