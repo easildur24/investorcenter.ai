@@ -18,7 +18,7 @@ export default function InputTab({ symbol }: InputTabProps) {
     setLoadingExisting(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/v1/tickers/${symbol}/manual-fundamentals`);
+      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`);
       if (response.ok) {
         const result = await response.json();
         setExistingData(result);
@@ -49,7 +49,7 @@ export default function InputTab({ symbol }: InputTabProps) {
       const parsedData = JSON.parse(jsonInput);
 
       // Send to API
-      const response = await fetch(`/api/v1/tickers/${symbol}/manual-fundamentals`, {
+      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -86,7 +86,7 @@ export default function InputTab({ symbol }: InputTabProps) {
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/tickers/${symbol}/manual-fundamentals`, {
+      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`, {
         method: 'DELETE',
       });
 
@@ -272,9 +272,9 @@ export default function InputTab({ symbol }: InputTabProps) {
       {/* API Info */}
       <div className="mt-4 p-4 bg-ic-bg-secondary rounded text-xs text-ic-text-dim">
         <p className="font-semibold mb-1">API Endpoints:</p>
-        <code className="block mb-1">GET /api/v1/tickers/{symbol}/manual-fundamentals</code>
-        <code className="block mb-1">POST /api/v1/tickers/{symbol}/manual-fundamentals</code>
-        <code className="block">DELETE /api/v1/tickers/{symbol}/manual-fundamentals</code>
+        <code className="block mb-1">GET /api/v1/tickers/{symbol}/keystats</code>
+        <code className="block mb-1">POST /api/v1/tickers/{symbol}/keystats</code>
+        <code className="block">DELETE /api/v1/tickers/{symbol}/keystats</code>
       </div>
     </div>
   );

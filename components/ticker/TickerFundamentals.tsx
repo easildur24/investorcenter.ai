@@ -200,7 +200,7 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         // Fetch all data sources in parallel (including manual fundamentals)
         const [tickerResponse, manualFundamentalsResponse, financialsResponse, riskResponse] = await Promise.all([
           fetch(`/api/v1/tickers/${symbol}`),
-          fetch(`/api/v1/tickers/${symbol}/manual-fundamentals`).catch(() => null),
+          fetch(`/api/v1/tickers/${symbol}/keystats`).catch(() => null),
           fetch(`/api/v1/stocks/${symbol}/financials`).catch(() => null),
           fetch(`/api/v1/stocks/${symbol}/risk?period=1Y`).catch(() => null)
         ]);
