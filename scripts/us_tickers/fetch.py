@@ -79,7 +79,7 @@ def _download_file(
     try:
         response = session.get(url)
         response.raise_for_status()
-        content = response.text
+        content: str = response.text
         msg = f"Successfully downloaded {url} ({len(content)} characters)"
         logger.info(msg)
         return content
