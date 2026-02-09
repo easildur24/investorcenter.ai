@@ -1,6 +1,6 @@
 # ClawdBot Task Queue System: Product & Technical Spec
 
-> **Version**: 2.0
+> **Version**: 3.0
 > **Date**: February 2026
 > **Status**: Draft for Review
 
@@ -11,18 +11,20 @@
 1. [Executive Summary](#1-executive-summary)
 2. [Problem Statement](#2-problem-statement)
 3. [Product Vision](#3-product-vision)
-4. [Phase 1: Task Queue, Task Manager & ClawdBots](#4-phase-1-task-queue-task-manager--clawdbots)
-5. [Phase 2: Autonomous Agent & Metrics](#5-phase-2-autonomous-agent--metrics)
-6. [Technical Architecture](#6-technical-architecture)
-7. [Database Schema](#7-database-schema)
-8. [API Specification](#8-api-specification)
-9. [Task Manager Design](#9-task-manager-design)
-10. [ClawdBot Worker Design](#10-clawdbot-worker-design)
-11. [Prompt System](#11-prompt-system)
-12. [Communication Layer](#12-communication-layer)
-13. [Security & Auth](#13-security--auth)
-14. [Implementation Roadmap](#14-implementation-roadmap)
-15. [Open Questions & Decisions](#15-open-questions--decisions)
+4. [Phase 0: Basic Task Queue & Admin UI](#4-phase-0-basic-task-queue--admin-ui)
+5. [Phase 1: Task Manager Agent & ClawdBots](#5-phase-1-task-manager-agent--clawdbots)
+6. [Phase 2: Autonomous Agent & Metrics](#6-phase-2-autonomous-agent--metrics)
+7. [Technical Architecture](#7-technical-architecture)
+8. [Database Schema](#8-database-schema)
+9. [API Specification](#9-api-specification)
+10. [Task Manager Design](#10-task-manager-design)
+11. [ClawdBot Worker Design](#11-clawdbot-worker-design)
+12. [Prompt System](#12-prompt-system)
+13. [ClawdBot Context Window Management](#13-clawdbot-context-window-management)
+14. [Communication Layer](#14-communication-layer)
+15. [Security & Auth](#15-security--auth)
+16. [Implementation Roadmap](#16-implementation-roadmap)
+17. [Open Questions & Decisions](#17-open-questions--decisions)
 
 ---
 
@@ -35,6 +37,8 @@ A distributed task execution system with three layers:
 1. **Task Queue** — A PostgreSQL-backed queue where tasks (with full AI prompts) are stored and tracked
 2. **Task Manager** — A central Claude agent that orchestrates the queue: assigns tasks to workers, generates prompts, monitors progress, and communicates with humans via Telegram
 3. **ClawdBots** — AI agent sessions (Claude Code or similar) running on any machine (your Mac, a friend's machine, cloud VMs) that receive task assignments with prompts, execute them, and report back
+
+The system is built in three phases: **Phase 0** (basic queue + admin UI at `/admin/workers`), **Phase 1** (Task Manager agent + ClawdBots), **Phase 2** (autonomous scheduling + metrics).
 
 The key insight: **ClawdBots are AI agents, not scripts.** Each task carries a full natural-language prompt that tells the ClawdBot exactly what to do. The Task Manager generates these prompts and intelligently assigns them to available workers.
 
@@ -67,6 +71,7 @@ This system bridges the gap between the existing scheduled pipelines and a flexi
 ## 3. Product Vision
 
 ```
+Phase 0: "Humans create tasks via /admin/workers UI -> manually assign to ClawdBots -> ClawdBots execute"
 Phase 1: "Humans add tasks -> Task Manager assigns them with prompts -> ClawdBots execute"
 Phase 2: "Task Manager autonomously creates tasks based on data gaps + metrics track everything"
 ```
@@ -75,9 +80,9 @@ Phase 2: "Task Manager autonomously creates tasks based on data gaps + metrics t
 
 | Persona | What it is | Phase |
 |---------|-----------|-------|
-| **Human Operator** | You and your team. Add tasks, monitor progress, give instructions via dashboard or Telegram | P1 |
+| **Human Operator** | You and your team. Add tasks, monitor progress via `/admin/workers` UI. Give instructions via dashboard or Telegram | P0+ |
 | **Task Manager** | A central Claude agent. Assigns tasks to workers, generates prompts, monitors health, communicates via Telegram | P1 |
-| **ClawdBot Worker** | An AI agent session (Claude Code) on any machine. Receives a prompt, executes it, reports back | P1 |
+| **ClawdBot Worker** | An AI agent session (Claude Code) on any machine. Receives a prompt, executes it, reports back | P0+ |
 | **Autonomous Scheduler** | The Task Manager evolves to also create tasks based on data gaps, staleness, and priority | P2 |
 
 ### How It Differs From v1 of This Spec
@@ -92,9 +97,83 @@ Phase 2: "Task Manager autonomously creates tasks based on data gaps + metrics t
 
 ---
 
-## 4. Phase 1: Task Queue, Task Manager & ClawdBots
+## 4. Phase 0: Basic Task Queue & Admin UI
 
-### 4.1 Core Capabilities
+Phase 0 is the MVP: a working task queue with a human-operated admin UI. No Task Manager agent yet — humans create tasks, manually assign them to ClawdBots, and ClawdBots pull their assignments via the API.
+
+### 4.1 What's in Phase 0
+
+- **Task table + CRUD API** — PostgreSQL `tasks` table with all the fields from the schema. Go endpoints for create, list, get, retry, cancel.
+- **Worker table + registration** — Workers register and get API keys. Check-in endpoint returns any assigned task.
+- **Admin UI at `/admin/workers`** — Reuse the existing admin workers page. Add a task queue tab/section with:
+  - Task list view with status filters (pending/running/succeeded/failed)
+  - Create task form (select type, fill params, or write a custom prompt)
+  - Manual worker assignment (dropdown: "Assign to which ClawdBot?")
+  - Task detail view (prompt, result, event timeline)
+- **Prompt templates in DB** — Seed initial templates. Admin UI can edit them.
+- **ClawdBot CLAUDE.md** — Workers check in, get assigned tasks, execute, report back.
+
+### 4.2 Phase 0 Flow
+
+```
++--------+         +-----------------+         +-------------+
+| Human  |         |  /admin/workers |         |  ClawdBot   |
+| (You)  |         |  (Next.js UI)   |         |  (Claude    |
+|        |         |                 |         |   Code)     |
++---+----+         +--------+--------+         +------+------+
+    |                       |                         |
+    | 1. Create task        |                         |
+    |  (pick type, params)  |                         |
+    +---------------------> |                         |
+    |                       |                         |
+    | 2. Generate prompt    |                         |
+    |  (template + params)  |                         |
+    |  [done server-side]   |                         |
+    |                       |                         |
+    | 3. Assign to worker   |                         |
+    |  (pick from dropdown) |                         |
+    +---------------------> |                         |
+    |                       |                         |
+    |                       |  4. ClawdBot checks in  |
+    |                       | <-----------------------+
+    |                       |                         |
+    |                       |  5. Return assignment   |
+    |                       |    (task + prompt)      |
+    |                       | +---------------------> |
+    |                       |                         |
+    |                       |  6. Execute prompt      |
+    |                       |    (crawl, analyze...)  |
+    |                       |                         |
+    |                       |  7. Report results      |
+    |                       | <-----------------------+
+    |                       |                         |
+    | 8. View results in UI |                         |
+    | <---------------------+                         |
+```
+
+### 4.3 What Phase 0 Does NOT Include
+
+- No Task Manager agent (humans do the orchestration)
+- No Telegram bot (use the web UI only)
+- No autonomous scheduling
+- No smart routing or prompt rewriting on retry
+- No metrics dashboard (just the task list)
+
+### 4.4 Why Phase 0 Matters
+
+- **Validates the schema** — We'll know if the task/worker tables need changes before building the agent
+- **Validates the API** — ClawdBots can run end-to-end against real endpoints
+- **Validates prompt templates** — We'll see what prompts work and what needs tweaking
+- **Low risk** — Just a CRUD API + admin UI page, no AI agent complexity yet
+- **Immediately useful** — Even without the Task Manager, humans can dispatch tasks to ClawdBots
+
+---
+
+## 5. Phase 1: Task Manager Agent & ClawdBots
+
+Phase 1 adds the AI brain: a Task Manager agent that automatically assigns tasks, generates prompts, handles failures, and communicates via Telegram. This builds on the Phase 0 infrastructure.
+
+### 5.1 Core Capabilities (Added Over Phase 0)
 
 #### Task Queue
 - **Task storage** -- PostgreSQL table with status tracking, prompt, context, and results
@@ -111,19 +190,12 @@ Phase 2: "Task Manager autonomously creates tasks based on data gaps + metrics t
 - **Smart routing** -- Considers worker capabilities, current load, and task requirements when assigning
 - **Human interface** -- Receives commands via Telegram (`/status`, `/add reddit NVDA`, `/retry 123`)
 
-#### ClawdBot Workers
-- **AI agent sessions** -- Claude Code (or similar) running on any machine
-- **Prompt-driven** -- Receive a full prompt that tells them exactly what to do, including API endpoints, data formats, and expected outputs
-- **Session-based** -- Come online, do work, go away. Not persistent daemons
-- **Heterogeneous** -- Your MacBook, a friend's machine, a cloud VM, a K8s pod
-- **Self-reporting** -- Report results and status back to the Task Manager via the API
-
-#### Human Oversight
-- **Admin dashboard** -- View all tasks, filter by status/type/ticker, retry failed tasks, create new tasks
+#### Human Oversight (Enhanced)
+- **Admin UI at `/admin/workers`** -- Same UI from Phase 0, now also shows Task Manager activity and agent decisions
 - **Telegram bot** -- Real-time notifications + interactive commands for quick operations
-- **Manual intervention** -- Cancel tasks, reprioritize, add notes, override Task Manager decisions
+- **Manual override** -- Cancel tasks, reprioritize, add notes, override Task Manager decisions
 
-### 4.2 Task Types (Phase 1)
+### 5.2 Task Types
 
 | Task Type | Description | Example Prompt Summary |
 |-----------|-------------|----------------------|
@@ -136,17 +208,18 @@ Phase 2: "Task Manager autonomously creates tasks based on data gaps + metrics t
 | `api_update` | Post processed data to internal API | "POST the following batch of records to the InvestorCenter API at endpoint /api/v1/reddit/posts..." |
 | `custom` | Any ad-hoc task defined by prompt | Whatever the human writes |
 
-### 4.3 User Flows
+### 5.3 User Flows (Phase 1)
 
-#### Flow 1: Human Adds a Task via Dashboard
+#### Flow 1: Human Adds a Task via Admin UI
 ```
-1. Human opens Admin -> Task Queue page
+1. Human opens /admin/workers -> Task Queue tab
 2. Selects task type (e.g., "Reddit Crawl") or "Custom"
 3. For typed tasks: fills in parameters (ticker: NVDA, subreddits, date range)
    -> Task Manager auto-generates the full prompt from the template
    For custom: writes the prompt directly
 4. Sets priority (normal)
 5. Submits -> task status = "pending"
+6. Task Manager automatically assigns when a ClawdBot checks in
 ```
 
 #### Flow 2: Task Manager Assigns Work to a ClawdBot
@@ -174,9 +247,9 @@ Bot:   Retrying task #42: twitter_crawl for $AAPL (was: rate limited)
 
 ---
 
-## 5. Phase 2: Autonomous Agent & Metrics
+## 6. Phase 2: Autonomous Agent & Metrics
 
-### 5.1 Task Manager Evolves Into Autonomous Scheduler
+### 6.1 Task Manager Evolves Into Autonomous Scheduler
 
 In Phase 2, the Task Manager gains the ability to **create tasks on its own**, not just assign human-created ones:
 
@@ -200,7 +273,7 @@ Every N minutes, the Task Manager:
   7. Send daily digest to Telegram
 ```
 
-### 5.2 Metrics & Monitoring System
+### 6.2 Metrics & Monitoring System
 
 #### Dashboard Metrics
 | Metric | Description |
@@ -226,9 +299,9 @@ Every N minutes, the Task Manager:
 
 ---
 
-## 6. Technical Architecture
+## 7. Technical Architecture
 
-### 6.1 Architecture Overview
+### 7.1 Architecture Overview
 
 ```
 +--------------------------------------------------------------------+
