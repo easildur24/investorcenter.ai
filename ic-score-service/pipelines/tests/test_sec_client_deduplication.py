@@ -285,5 +285,226 @@ class TestSECClientDeduplication:
         assert quarterly_record['revenue'] == 30000000000
 
 
+    def test_banking_revenue_synthesis(self):
+        """Test that banking revenue is synthesized from InterestIncomeExpenseNet + NoninterestIncome."""
+        company_facts = {
+            "facts": {
+                "us-gaap": {
+                    # No standard "Revenues" tag - this is typical for banks
+                    "InterestIncomeExpenseNet": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-09-30",
+                                    "filed": "2025-10-14",
+                                    "fy": 2025,
+                                    "fp": "Q3",
+                                    "val": 23500000000,
+                                },
+                            ]
+                        }
+                    },
+                    "NoninterestIncome": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-09-30",
+                                    "filed": "2025-10-14",
+                                    "fy": 2025,
+                                    "fp": "Q3",
+                                    "val": 23600000000,
+                                },
+                            ]
+                        }
+                    },
+                    "NetIncomeLoss": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-09-30",
+                                    "filed": "2025-10-14",
+                                    "fy": 2025,
+                                    "fp": "Q3",
+                                    "val": 14390000000,
+                                },
+                            ]
+                        }
+                    },
+                    "NoninterestExpense": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-09-30",
+                                    "filed": "2025-10-14",
+                                    "fy": 2025,
+                                    "fp": "Q3",
+                                    "val": 23700000000,
+                                },
+                            ]
+                        }
+                    },
+                }
+            }
+        }
+
+        financials = self.client.parse_financial_data(company_facts, num_periods=10)
+
+        q3_records = [
+            f for f in financials
+            if f['fiscal_year'] == 2025 and f['fiscal_quarter'] == 3
+        ]
+        assert len(q3_records) == 1
+
+        record = q3_records[0]
+
+        # Revenue should be synthesized: NII + Noninterest Income
+        assert record['revenue'] == 23500000000 + 23600000000, (
+            f"Expected revenue={23500000000 + 23600000000}, got {record.get('revenue')}"
+        )
+
+        # Original fields should be preserved
+        assert record['net_interest_income'] == 23500000000
+        assert record['noninterest_income'] == 23600000000
+
+        # Net margin should be calculated from synthesized revenue
+        expected_margin = (14390000000 / (23500000000 + 23600000000)) * 100
+        assert abs(record['net_margin'] - expected_margin) < 0.01
+
+        # Operating expenses should use NoninterestExpense fallback
+        assert record['operating_expenses'] == 23700000000
+
+    def test_insurance_revenue_synthesis(self):
+        """Test that insurance revenue is synthesized from PremiumsEarnedNet."""
+        company_facts = {
+            "facts": {
+                "us-gaap": {
+                    # No standard "Revenues" tag - typical for insurance companies
+                    "PremiumsEarnedNet": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-06-30",
+                                    "filed": "2025-08-01",
+                                    "fy": 2025,
+                                    "fp": "Q2",
+                                    "val": 42000000000,
+                                },
+                            ]
+                        }
+                    },
+                    "NetIncomeLoss": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-06-30",
+                                    "filed": "2025-08-01",
+                                    "fy": 2025,
+                                    "fp": "Q2",
+                                    "val": 6300000000,
+                                },
+                            ]
+                        }
+                    },
+                }
+            }
+        }
+
+        financials = self.client.parse_financial_data(company_facts, num_periods=10)
+
+        q2_records = [
+            f for f in financials
+            if f['fiscal_year'] == 2025 and f['fiscal_quarter'] == 2
+        ]
+        assert len(q2_records) == 1
+
+        record = q2_records[0]
+
+        # Revenue should be synthesized from premiums
+        assert record['revenue'] == 42000000000, (
+            f"Expected revenue=42000000000, got {record.get('revenue')}"
+        )
+
+        # Original field preserved
+        assert record['premiums_earned'] == 42000000000
+
+        # Net margin calculated from synthesized revenue
+        expected_margin = (6300000000 / 42000000000) * 100
+        assert abs(record['net_margin'] - expected_margin) < 0.01
+
+    def test_standard_revenue_not_overridden_by_industry_fields(self):
+        """Test that when standard Revenues tag exists, industry-specific fields don't override it."""
+        company_facts = {
+            "facts": {
+                "us-gaap": {
+                    # Standard revenue IS present
+                    "Revenues": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-06-30",
+                                    "filed": "2025-08-01",
+                                    "fy": 2025,
+                                    "fp": "Q2",
+                                    "val": 50000000000,
+                                },
+                            ]
+                        }
+                    },
+                    # Also has banking-specific fields (some diversified financials report both)
+                    "InterestIncomeExpenseNet": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-06-30",
+                                    "filed": "2025-08-01",
+                                    "fy": 2025,
+                                    "fp": "Q2",
+                                    "val": 25000000000,
+                                },
+                            ]
+                        }
+                    },
+                    "NoninterestIncome": {
+                        "units": {
+                            "USD": [
+                                {
+                                    "form": "10-Q",
+                                    "end": "2025-06-30",
+                                    "filed": "2025-08-01",
+                                    "fy": 2025,
+                                    "fp": "Q2",
+                                    "val": 20000000000,
+                                },
+                            ]
+                        }
+                    },
+                }
+            }
+        }
+
+        financials = self.client.parse_financial_data(company_facts, num_periods=10)
+
+        q2_records = [
+            f for f in financials
+            if f['fiscal_year'] == 2025 and f['fiscal_quarter'] == 2
+        ]
+        assert len(q2_records) == 1
+
+        record = q2_records[0]
+
+        # Standard Revenues should be used, NOT the synthesized banking sum
+        assert record['revenue'] == 50000000000, (
+            f"Expected revenue=50000000000 (from Revenues tag), got {record.get('revenue')}"
+        )
+
+
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

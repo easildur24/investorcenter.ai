@@ -124,6 +124,20 @@ export default function Header() {
                     >
                       Settings
                     </Link>
+                    {user.is_worker && (
+                      <>
+                        <div className="border-t border-ic-border my-1"></div>
+                        <Link
+                          href="/worker/dashboard"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          My Tasks
+                        </Link>
+                      </>
+                    )}
+                    {user.is_admin && (
+                    <>
                     <div className="border-t border-ic-border my-1"></div>
                     <div className="px-4 py-2 text-xs font-semibold text-ic-text-dim uppercase">
                       Admin
@@ -149,6 +163,22 @@ export default function Header() {
                     >
                       IC Score Admin
                     </Link>
+                    <Link
+                      href="/admin/notes"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Feature Notes
+                    </Link>
+                    <Link
+                      href="/admin/workers"
+                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                      onClick={() => setShowDropdown(false)}
+                    >
+                      Workers & Tasks
+                    </Link>
+                    </>
+                    )}
                     <div className="border-t border-ic-border my-1"></div>
                     <button
                       onClick={() => {

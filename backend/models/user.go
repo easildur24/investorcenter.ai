@@ -22,6 +22,8 @@ type User struct {
 	IsPremium                  bool       `json:"is_premium" db:"is_premium"`
 	IsActive                   bool       `json:"is_active" db:"is_active"`
 	IsAdmin                    bool       `json:"is_admin" db:"is_admin"`
+	IsWorker                   bool       `json:"is_worker" db:"is_worker"`
+	LastActivityAt             *time.Time `json:"last_activity_at" db:"last_activity_at"`
 }
 
 // UserPublic is the public-facing user data (safe to expose in API)
@@ -33,8 +35,10 @@ type UserPublic struct {
 	CreatedAt     time.Time  `json:"created_at"`
 	EmailVerified bool       `json:"email_verified"`
 	IsPremium     bool       `json:"is_premium"`
-	IsAdmin       bool       `json:"is_admin"`
-	LastLoginAt   *time.Time `json:"last_login_at"`
+	IsAdmin        bool       `json:"is_admin"`
+	IsWorker       bool       `json:"is_worker"`
+	LastLoginAt    *time.Time `json:"last_login_at"`
+	LastActivityAt *time.Time `json:"last_activity_at"`
 }
 
 // ToPublic converts User to UserPublic (safe for API responses)
@@ -47,8 +51,10 @@ func (u *User) ToPublic() UserPublic {
 		CreatedAt:     u.CreatedAt,
 		EmailVerified: u.EmailVerified,
 		IsPremium:     u.IsPremium,
-		IsAdmin:       u.IsAdmin,
-		LastLoginAt:   u.LastLoginAt,
+		IsAdmin:        u.IsAdmin,
+		IsWorker:       u.IsWorker,
+		LastLoginAt:    u.LastLoginAt,
+		LastActivityAt: u.LastActivityAt,
 	}
 }
 

@@ -118,15 +118,20 @@ func main() {
 			tickers.GET("/:symbol/volume", handlers.GetTickerVolume)                // Get volume data (add ?realtime=true for fresh data)
 			tickers.GET("/:symbol/volume/aggregates", handlers.GetVolumeAggregates) // Get volume aggregates
 
-			// Additional ticker endpoints
-			tickers.GET("/:symbol/news", handlers.GetTickerNews)
-			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
-			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
-			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
-			// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
-			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
-			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
-		}
+		// Additional ticker endpoints
+		tickers.GET("/:symbol/news", handlers.GetTickerNews)
+		tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
+		tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
+		// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
+		// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
+		// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
+		// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
+
+		// Key stats endpoints (user-ingested data)
+		tickers.GET("/:symbol/keystats", handlers.GetKeyStats)       // Get key stats data
+		tickers.POST("/:symbol/keystats", handlers.PostKeyStats)     // Upload key stats data
+		tickers.DELETE("/:symbol/keystats", handlers.DeleteKeyStats) // Delete key stats data
+	}
 
 		// IC Score endpoints
 		stocks := v1.Group("/stocks")
@@ -353,6 +358,54 @@ func main() {
 		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
 		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
 		adminRoutes.GET("/risk-metrics", adminDataHandler.GetRiskMetrics)                     // GET /api/v1/admin/risk-metrics
+
+		// Notes/brainstorming endpoints
+		notes := adminRoutes.Group("/notes")
+		{
+			notes.GET("/tree", handlers.GetNotesTree)                             // GET /api/v1/admin/notes/tree
+			// Groups
+			notes.GET("/groups", handlers.ListFeatureGroups)                      // GET /api/v1/admin/notes/groups
+			notes.POST("/groups", handlers.CreateFeatureGroup)                    // POST /api/v1/admin/notes/groups
+			notes.PUT("/groups/:id", handlers.UpdateFeatureGroup)                 // PUT /api/v1/admin/notes/groups/:id
+			notes.DELETE("/groups/:id", handlers.DeleteFeatureGroup)              // DELETE /api/v1/admin/notes/groups/:id
+			// Features
+			notes.GET("/groups/:groupId/features", handlers.ListFeatures)         // GET /api/v1/admin/notes/groups/:groupId/features
+			notes.POST("/groups/:groupId/features", handlers.CreateFeature)       // POST /api/v1/admin/notes/groups/:groupId/features
+			notes.PUT("/features/:id", handlers.UpdateFeature)                    // PUT /api/v1/admin/notes/features/:id
+			notes.DELETE("/features/:id", handlers.DeleteFeature)                 // DELETE /api/v1/admin/notes/features/:id
+			// Notes
+			notes.GET("/features/:featureId/notes", handlers.ListFeatureNotes)    // GET /api/v1/admin/notes/features/:featureId/notes
+			notes.POST("/features/:featureId/notes", handlers.CreateFeatureNote)  // POST /api/v1/admin/notes/features/:featureId/notes
+			notes.PUT("/notes/:id", handlers.UpdateFeatureNote)                   // PUT /api/v1/admin/notes/notes/:id
+			notes.DELETE("/notes/:id", handlers.DeleteFeatureNote)                // DELETE /api/v1/admin/notes/notes/:id
+		}
+
+		// Worker management endpoints
+		workers := adminRoutes.Group("/workers")
+		{
+			workers.GET("", handlers.ListWorkers)                              // GET /api/v1/admin/workers
+			workers.POST("", handlers.RegisterWorker)                          // POST /api/v1/admin/workers
+			workers.DELETE("/:id", handlers.DeleteWorker)                      // DELETE /api/v1/admin/workers/:id
+			// Task management
+			workers.GET("/tasks", handlers.ListTasks)                          // GET /api/v1/admin/workers/tasks
+			workers.POST("/tasks", handlers.CreateTask)                        // POST /api/v1/admin/workers/tasks
+			workers.GET("/tasks/:id", handlers.GetTask)                        // GET /api/v1/admin/workers/tasks/:id
+			workers.PUT("/tasks/:id", handlers.UpdateTask)                     // PUT /api/v1/admin/workers/tasks/:id
+			workers.DELETE("/tasks/:id", handlers.DeleteTask)                  // DELETE /api/v1/admin/workers/tasks/:id
+			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)        // GET /api/v1/admin/workers/tasks/:id/updates
+		}
+	}
+
+	// Worker API routes (authenticated workers only)
+	workerRoutes := v1.Group("/worker")
+	workerRoutes.Use(auth.AuthMiddleware())
+	{
+		workerRoutes.GET("/tasks", handlers.WorkerGetMyTasks)                  // GET /api/v1/worker/tasks
+		workerRoutes.GET("/tasks/:id", handlers.WorkerGetTask)                 // GET /api/v1/worker/tasks/:id
+		workerRoutes.PUT("/tasks/:id/status", handlers.WorkerUpdateTaskStatus) // PUT /api/v1/worker/tasks/:id/status
+		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)   // GET /api/v1/worker/tasks/:id/updates
+		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)     // POST /api/v1/worker/tasks/:id/updates
+		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)              // POST /api/v1/worker/heartbeat
 	}
 
 	// Start server

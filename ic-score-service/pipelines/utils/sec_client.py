@@ -44,7 +44,7 @@ class SECClient:
                    'SalesRevenueNet', 'RevenueFromContractWithCustomer'],
         'cost_of_revenue': ['CostOfRevenue', 'CostOfGoodsAndServicesSold', 'CostOfGoodsSold'],
         'gross_profit': ['GrossProfit'],
-        'operating_expenses': ['OperatingExpenses', 'CostsAndExpenses'],
+        'operating_expenses': ['OperatingExpenses', 'CostsAndExpenses', 'NoninterestExpense'],
         'operating_income': ['OperatingIncomeLoss', 'OperatingIncome'],
         'net_income': ['NetIncomeLoss', 'ProfitLoss', 'NetIncomeLossAvailableToCommonStockholdersBasic'],
         'eps_basic': ['EarningsPerShareBasic'],
@@ -64,6 +64,17 @@ class SECClient:
         'investing_cash_flow': ['NetCashProvidedByUsedInInvestingActivities'],
         'financing_cash_flow': ['NetCashProvidedByUsedInFinancingActivities'],
         'capex': ['PaymentsToAcquirePropertyPlantAndEquipment', 'CapitalExpenditures'],
+
+        # Industry-specific revenue fields (used to synthesize revenue when standard tags are missing)
+        # Banking / Financial Services
+        'net_interest_income': ['InterestIncomeExpenseNet',
+                               'InterestIncomeExpenseAfterProvisionForLoanLoss'],
+        'noninterest_income': ['NoninterestIncome'],
+        # Insurance
+        'premiums_earned': ['PremiumsEarnedNet', 'PremiumsEarned', 'NetPremiumsEarned'],
+        # REIT / Real Estate
+        'real_estate_revenue': ['RealEstateRevenueNet',
+                                'OperatingLeasesIncomeStatementLeaseRevenue'],
     }
 
     def __init__(self, user_agent: Optional[str] = None):
@@ -235,12 +246,15 @@ class SECClient:
             if not records:
                 continue
 
-            # Sort by: 1) Has revenue (descending), 2) period_end_date (descending)
+            # Sort by: 1) Has revenue data (descending), 2) period_end_date (descending)
             best_record = sorted(
                 records,
                 key=lambda r: (
-                    r.get('revenue') is not None,  # Prefer records with revenue
-                    r.get('period_end_date', ''),  # Then most recent period_end
+                    r.get('revenue') is not None
+                    or r.get('net_interest_income') is not None
+                    or r.get('premiums_earned') is not None
+                    or r.get('real_estate_revenue') is not None,
+                    r.get('period_end_date', ''),
                 ),
                 reverse=True
             )[0]
@@ -416,6 +430,30 @@ class SECClient:
                 return None
 
         revenue = get_decimal('revenue')
+
+        # Synthesize revenue from industry-specific fields when standard tags are missing
+        if revenue is None:
+            # Banking: Net Interest Income + Noninterest Income
+            nii = get_decimal('net_interest_income')
+            noninterest = get_decimal('noninterest_income')
+            if nii is not None or noninterest is not None:
+                revenue = (nii or Decimal('0')) + (noninterest or Decimal('0'))
+                financial['revenue'] = float(revenue)
+
+        if revenue is None:
+            # Insurance: Premiums Earned
+            premiums = get_decimal('premiums_earned')
+            if premiums is not None:
+                revenue = premiums
+                financial['revenue'] = float(revenue)
+
+        if revenue is None:
+            # REIT: Real Estate Revenue
+            re_revenue = get_decimal('real_estate_revenue')
+            if re_revenue is not None:
+                revenue = re_revenue
+                financial['revenue'] = float(revenue)
+
         cost_of_revenue = get_decimal('cost_of_revenue')
         gross_profit = get_decimal('gross_profit')
         operating_income = get_decimal('operating_income')

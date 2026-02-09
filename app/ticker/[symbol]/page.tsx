@@ -13,6 +13,8 @@ import RiskTab from '@/components/ticker/tabs/RiskTab';
 import FinancialsTab from '@/components/ticker/tabs/FinancialsTab';
 import MetricsTab from '@/components/ticker/tabs/MetricsTab';
 import OwnershipTab from '@/components/ticker/tabs/OwnershipTab';
+import KeyStatsTab from '@/components/ticker/tabs/KeyStatsTab';
+import InputTab from '@/components/ticker/tabs/InputTab';
 
 interface PageProps {
   params: {
@@ -81,6 +83,8 @@ const stockTabs = [
   { id: 'financials', label: 'Financials' },
   { id: 'metrics', label: 'Metrics' },
   { id: 'ownership', label: 'Ownership' },
+  { id: 'keystats', label: 'Key Stats' },
+  { id: 'input', label: 'Input' },
 ];
 
 export default async function TickerPage({ params, searchParams }: PageProps) {
@@ -155,6 +159,12 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
 
                   {/* Ownership Tab */}
                   <OwnershipTab symbol={symbol} />
+
+                  {/* Key Stats Tab */}
+                  <KeyStatsTab symbol={symbol} />
+
+                  {/* Input Tab */}
+                  <InputTab symbol={symbol} />
                 </TickerTabs>
               </Suspense>
             </div>

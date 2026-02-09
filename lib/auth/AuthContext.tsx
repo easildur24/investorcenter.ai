@@ -12,6 +12,7 @@ interface User {
   email_verified: boolean;
   is_premium: boolean;
   is_admin: boolean;
+  is_worker: boolean;
   last_login_at?: string;
 }
 
@@ -108,7 +109,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('refresh_token', data.refresh_token);
     localStorage.setItem('user', JSON.stringify(data.user));
 
-    router.push('/');
+    // Redirect workers to their dashboard, everyone else to home
+    if (data.user.is_worker) {
+      router.push('/worker/dashboard');
+    } else {
+      router.push('/');
+    }
   };
 
   const signup = async (email: string, password: string, fullName: string) => {
