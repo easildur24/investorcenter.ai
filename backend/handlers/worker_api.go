@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"encoding/json"
 	"log"
 	"net/http"
 	"time"
@@ -47,18 +48,22 @@ func WorkerGetMyTasks(c *gin.Context) {
 	status := c.Query("status")
 
 	query := `
-		SELECT id, title, description, assigned_to, status, priority, created_by, created_at, updated_at
-		FROM worker_tasks
-		WHERE assigned_to = $1
+		SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
+		       t.task_type_id, t.params, t.result,
+		       t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
+		       tt.id, tt.name, tt.label, tt.sop
+		FROM worker_tasks t
+		LEFT JOIN task_types tt ON t.task_type_id = tt.id
+		WHERE t.assigned_to = $1
 	`
 	args := []interface{}{userID}
 
 	if status != "" {
-		query += " AND status = $2"
+		query += " AND t.status = $2"
 		args = append(args, status)
 	}
 
-	query += " ORDER BY CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, created_at DESC"
+	query += " ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, t.created_at DESC"
 
 	rows, err := database.DB.Query(query, args...)
 	if err != nil {
@@ -71,11 +76,22 @@ func WorkerGetMyTasks(c *gin.Context) {
 	tasks := []WorkerTask{}
 	for rows.Next() {
 		var t WorkerTask
+		var ttID *int
+		var ttName, ttLabel, ttSOP *string
 		err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-			&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
+			&t.TaskTypeID, &t.Params, &t.Result,
+			&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
+			&ttID, &ttName, &ttLabel, &ttSOP)
 		if err != nil {
 			log.Printf("Error scanning task: %v", err)
 			continue
+		}
+		if ttID != nil {
+			tt := &TaskType{ID: *ttID, Name: *ttName, Label: *ttLabel}
+			if ttSOP != nil {
+				tt.SOP = *ttSOP
+			}
+			t.TaskType = tt
 		}
 		tasks = append(tasks, t)
 	}
@@ -96,13 +112,21 @@ func WorkerGetTask(c *gin.Context) {
 	taskID := c.Param("id")
 
 	var t WorkerTask
+	var ttID *int
+	var ttName, ttLabel, ttSOP *string
 	err := database.DB.QueryRow(
-		`SELECT id, title, description, assigned_to, status, priority, created_by, created_at, updated_at
-		 FROM worker_tasks
-		 WHERE id = $1 AND assigned_to = $2`,
+		`SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
+		        t.task_type_id, t.params, t.result,
+		        t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
+		        tt.id, tt.name, tt.label, tt.sop
+		 FROM worker_tasks t
+		 LEFT JOIN task_types tt ON t.task_type_id = tt.id
+		 WHERE t.id = $1 AND t.assigned_to = $2`,
 		taskID, userID,
 	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
+		&t.TaskTypeID, &t.Params, &t.Result,
+		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
+		&ttID, &ttName, &ttLabel, &ttSOP)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
@@ -111,6 +135,13 @@ func WorkerGetTask(c *gin.Context) {
 		log.Printf("Error fetching task: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task"})
 		return
+	}
+	if ttID != nil {
+		tt := &TaskType{ID: *ttID, Name: *ttName, Label: *ttLabel}
+		if ttSOP != nil {
+			tt.SOP = *ttSOP
+		}
+		t.TaskType = tt
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -143,14 +174,28 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 		return
 	}
 
+	// Build query with timestamp updates based on status
+	var query string
+	switch req.Status {
+	case "in_progress":
+		query = `UPDATE worker_tasks SET status = $1, started_at = NOW()
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+	case "completed", "failed":
+		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW()
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+	default:
+		query = `UPDATE worker_tasks SET status = $1
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+	}
+
 	var t WorkerTask
-	err := database.DB.QueryRow(
-		`UPDATE worker_tasks SET status = $1
-		 WHERE id = $2 AND assigned_to = $3
-		 RETURNING id, title, description, assigned_to, status, priority, created_by, created_at, updated_at`,
-		req.Status, taskID, userID,
+	err := database.DB.QueryRow(query, req.Status, taskID, userID,
 	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt)
+		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
+		&t.StartedAt, &t.CompletedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
@@ -259,6 +304,48 @@ func WorkerGetTaskUpdates(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data":    updates,
+	})
+}
+
+// WorkerPostResult handles POST /worker/tasks/:id/result
+func WorkerPostResult(c *gin.Context) {
+	userID, ok := verifyWorker(c)
+	if !ok {
+		return
+	}
+
+	taskID := c.Param("id")
+
+	var req struct {
+		Result json.RawMessage `json:"result" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	var t WorkerTask
+	err := database.DB.QueryRow(
+		`UPDATE worker_tasks SET result = $1
+		 WHERE id = $2 AND assigned_to = $3
+		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`,
+		req.Result, taskID, userID,
+	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
+		&t.StartedAt, &t.CompletedAt)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
+			return
+		}
+		log.Printf("Error posting task result: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save result"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    t,
 	})
 }
 

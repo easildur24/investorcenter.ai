@@ -35,6 +35,17 @@ export const PRIORITY_COLORS: Record<TaskPriority, string> = {
   urgent: 'bg-red-100 text-red-700',
 };
 
+export interface TaskType {
+  id: number;
+  name: string;
+  label: string;
+  sop?: string;
+  param_schema?: Record<string, string> | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Worker {
   id: string;
   email: string;
@@ -54,10 +65,16 @@ export interface WorkerTask {
   assigned_to_name?: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  task_type_id: number | null;
+  task_type?: { id: number; name: string; label: string; sop?: string } | null;
+  params: Record<string, unknown> | null;
+  result: Record<string, unknown> | null;
   created_by: string | null;
   created_by_name?: string | null;
   created_at: string;
   updated_at: string;
+  started_at: string | null;
+  completed_at: string | null;
 }
 
 export interface TaskUpdate {
@@ -92,11 +109,41 @@ export async function removeWorker(id: string): Promise<void> {
   await apiClient.delete(`${BASE}/${id}`);
 }
 
+// Task Types
+export async function listTaskTypes(): Promise<TaskType[]> {
+  const res = await apiClient.get<ApiResponse<TaskType[]>>(`${BASE}/task-types`);
+  return res.data;
+}
+
+export async function createTaskType(data: {
+  name: string;
+  label: string;
+  sop?: string;
+  param_schema?: Record<string, string> | null;
+}): Promise<TaskType> {
+  const res = await apiClient.post<ApiResponse<TaskType>>(`${BASE}/task-types`, data);
+  return res.data;
+}
+
+export async function updateTaskType(id: number, data: {
+  label?: string;
+  sop?: string;
+  param_schema?: Record<string, string> | null;
+}): Promise<TaskType> {
+  const res = await apiClient.put<ApiResponse<TaskType>>(`${BASE}/task-types/${id}`, data);
+  return res.data;
+}
+
+export async function deleteTaskType(id: number): Promise<void> {
+  await apiClient.delete(`${BASE}/task-types/${id}`);
+}
+
 // Tasks
-export async function listTasks(params?: { status?: TaskStatus; assigned_to?: string }): Promise<WorkerTask[]> {
+export async function listTasks(params?: { status?: TaskStatus; assigned_to?: string; task_type?: string }): Promise<WorkerTask[]> {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
   if (params?.assigned_to) query.set('assigned_to', params.assigned_to);
+  if (params?.task_type) query.set('task_type', params.task_type);
   const qs = query.toString();
   const res = await apiClient.get<ApiResponse<WorkerTask[]>>(`${BASE}/tasks${qs ? '?' + qs : ''}`);
   return res.data;
@@ -112,6 +159,8 @@ export async function createTask(data: {
   description?: string;
   assigned_to?: string;
   priority?: TaskPriority;
+  task_type_id?: number;
+  params?: Record<string, unknown>;
 }): Promise<WorkerTask> {
   const res = await apiClient.post<ApiResponse<WorkerTask>>(`${BASE}/tasks`, data);
   return res.data;
@@ -123,6 +172,8 @@ export async function updateTask(id: string, data: {
   assigned_to?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
+  task_type_id?: number;
+  params?: Record<string, unknown>;
 }): Promise<WorkerTask> {
   const res = await apiClient.put<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}`, data);
   return res.data;
@@ -138,4 +189,7 @@ export async function listTaskUpdates(taskId: string): Promise<TaskUpdate[]> {
   return res.data;
 }
 
-// Note: Task updates are created by workers via the worker API, not by admins
+export async function createTaskUpdate(taskId: string, content: string): Promise<TaskUpdate> {
+  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, { content });
+  return res.data;
+}

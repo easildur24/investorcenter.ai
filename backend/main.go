@@ -386,6 +386,11 @@ func main() {
 			workers.GET("", handlers.ListWorkers)                              // GET /api/v1/admin/workers
 			workers.POST("", handlers.RegisterWorker)                          // POST /api/v1/admin/workers
 			workers.DELETE("/:id", handlers.DeleteWorker)                      // DELETE /api/v1/admin/workers/:id
+			// Task type management
+			workers.GET("/task-types", handlers.ListTaskTypes)                 // GET /api/v1/admin/workers/task-types
+			workers.POST("/task-types", handlers.CreateTaskType)               // POST /api/v1/admin/workers/task-types
+			workers.PUT("/task-types/:id", handlers.UpdateTaskType)            // PUT /api/v1/admin/workers/task-types/:id
+			workers.DELETE("/task-types/:id", handlers.DeleteTaskType)         // DELETE /api/v1/admin/workers/task-types/:id
 			// Task management
 			workers.GET("/tasks", handlers.ListTasks)                          // GET /api/v1/admin/workers/tasks
 			workers.POST("/tasks", handlers.CreateTask)                        // POST /api/v1/admin/workers/tasks
@@ -393,6 +398,7 @@ func main() {
 			workers.PUT("/tasks/:id", handlers.UpdateTask)                     // PUT /api/v1/admin/workers/tasks/:id
 			workers.DELETE("/tasks/:id", handlers.DeleteTask)                  // DELETE /api/v1/admin/workers/tasks/:id
 			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)        // GET /api/v1/admin/workers/tasks/:id/updates
+			workers.POST("/tasks/:id/updates", handlers.CreateTaskUpdate)      // POST /api/v1/admin/workers/tasks/:id/updates
 		}
 	}
 
@@ -400,10 +406,13 @@ func main() {
 	workerRoutes := v1.Group("/worker")
 	workerRoutes.Use(auth.AuthMiddleware())
 	{
+		workerRoutes.GET("/task-types", handlers.ListTaskTypes)                 // GET /api/v1/worker/task-types
+		workerRoutes.GET("/task-types/:id", handlers.WorkerGetTaskType)         // GET /api/v1/worker/task-types/:id
 		workerRoutes.GET("/tasks", handlers.WorkerGetMyTasks)                  // GET /api/v1/worker/tasks
 		workerRoutes.GET("/tasks/:id", handlers.WorkerGetTask)                 // GET /api/v1/worker/tasks/:id
 		workerRoutes.PUT("/tasks/:id/status", handlers.WorkerUpdateTaskStatus) // PUT /api/v1/worker/tasks/:id/status
-		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)   // GET /api/v1/worker/tasks/:id/updates
+		workerRoutes.POST("/tasks/:id/result", handlers.WorkerPostResult)      // POST /api/v1/worker/tasks/:id/result
+		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)  // GET /api/v1/worker/tasks/:id/updates
 		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)     // POST /api/v1/worker/tasks/:id/updates
 		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)              // POST /api/v1/worker/heartbeat
 	}

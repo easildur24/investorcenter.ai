@@ -10,9 +10,14 @@ import {
   updateTask,
   deleteTask,
   listTaskUpdates,
+  createTaskUpdate,
+  listTaskTypes,
+  createTaskType,
+  deleteTaskType,
   Worker,
   WorkerTask,
   TaskUpdate,
+  TaskType,
   TaskStatus,
   TaskPriority,
   TASK_STATUSES,
@@ -33,15 +38,24 @@ import {
   ListTodo,
   Users,
   Circle,
+  FileText,
+  Send,
+  ChevronDown,
+  ChevronRight,
+  Braces,
+  CheckCircle2,
+  XCircle,
+  PlayCircle,
 } from 'lucide-react';
 
-type View = 'workers' | 'tasks';
-type RightPanel = 'none' | 'worker' | 'task' | 'create-worker' | 'create-task';
+type View = 'workers' | 'tasks' | 'task-types';
+type RightPanel = 'none' | 'worker' | 'task' | 'create-worker' | 'create-task' | 'task-type' | 'create-task-type';
 
 export default function WorkersPage() {
   const [view, setView] = useState<View>('workers');
   const [workers, setWorkers] = useState<Worker[]>([]);
   const [tasks, setTasks] = useState<WorkerTask[]>([]);
+  const [taskTypes, setTaskTypes] = useState<TaskType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,6 +63,7 @@ export default function WorkersPage() {
   const [rightPanel, setRightPanel] = useState<RightPanel>('none');
   const [selectedWorker, setSelectedWorker] = useState<Worker | null>(null);
   const [selectedTask, setSelectedTask] = useState<WorkerTask | null>(null);
+  const [selectedTaskType, setSelectedTaskType] = useState<TaskType | null>(null);
   const [workerTasks, setWorkerTasks] = useState<WorkerTask[]>([]);
   const [taskUpdates, setTaskUpdates] = useState<TaskUpdate[]>([]);
 
@@ -63,9 +78,25 @@ export default function WorkersPage() {
   const [newTaskDesc, setNewTaskDesc] = useState('');
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
   const [newTaskPriority, setNewTaskPriority] = useState<TaskPriority>('medium');
+  const [newTaskTypeId, setNewTaskTypeId] = useState<number | ''>('');
+  const [newTaskParams, setNewTaskParams] = useState<Record<string, string>>({});
+
+  // Create task type form
+  const [newTTName, setNewTTName] = useState('');
+  const [newTTLabel, setNewTTLabel] = useState('');
+  const [newTTSop, setNewTTSop] = useState('');
+
+  // Task update form
+  const [newUpdateContent, setNewUpdateContent] = useState('');
+  const [sendingUpdate, setSendingUpdate] = useState(false);
 
   // Task filter
   const [taskFilter, setTaskFilter] = useState<TaskStatus | ''>('');
+
+  // Collapsible sections
+  const [showSop, setShowSop] = useState(false);
+  const [showResult, setShowResult] = useState(false);
+  const [showParams, setShowParams] = useState(true);
 
   // Fetch data
   const fetchWorkers = useCallback(async () => {
@@ -88,11 +119,20 @@ export default function WorkersPage() {
     }
   }, [taskFilter]);
 
+  const fetchTaskTypes = useCallback(async () => {
+    try {
+      const data = await listTaskTypes();
+      setTaskTypes(data || []);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }, []);
+
   const fetchAll = useCallback(async () => {
     setLoading(true);
-    await Promise.all([fetchWorkers(), fetchTasks()]);
+    await Promise.all([fetchWorkers(), fetchTasks(), fetchTaskTypes()]);
     setLoading(false);
-  }, [fetchWorkers, fetchTasks]);
+  }, [fetchWorkers, fetchTasks, fetchTaskTypes]);
 
   useEffect(() => {
     fetchAll();
@@ -122,6 +162,7 @@ export default function WorkersPage() {
   const selectWorker = (worker: Worker) => {
     setSelectedWorker(worker);
     setSelectedTask(null);
+    setSelectedTaskType(null);
     setRightPanel('worker');
     fetchWorkerTasks(worker.id);
   };
@@ -129,8 +170,20 @@ export default function WorkersPage() {
   // Select task
   const selectTask = (task: WorkerTask) => {
     setSelectedTask(task);
+    setSelectedTaskType(null);
     setRightPanel('task');
+    setShowSop(false);
+    setShowResult(false);
+    setShowParams(true);
     fetchTaskUpdates(task.id);
+  };
+
+  // Select task type
+  const selectTaskType = (tt: TaskType) => {
+    setSelectedTaskType(tt);
+    setSelectedTask(null);
+    setSelectedWorker(null);
+    setRightPanel('task-type');
   };
 
   // Create worker
@@ -166,21 +219,65 @@ export default function WorkersPage() {
     }
   };
 
+  // Get selected task type's param schema
+  const getSelectedTaskTypeSchema = (): Record<string, string> | null => {
+    if (!newTaskTypeId) return null;
+    const tt = taskTypes.find((t) => t.id === newTaskTypeId);
+    return tt?.param_schema || null;
+  };
+
+  // Handle task type change in create task form
+  const handleTaskTypeChange = (id: number | '') => {
+    setNewTaskTypeId(id);
+    if (id) {
+      const tt = taskTypes.find((t) => t.id === id);
+      if (tt?.param_schema) {
+        const defaults: Record<string, string> = {};
+        for (const key of Object.keys(tt.param_schema)) {
+          defaults[key] = '';
+        }
+        setNewTaskParams(defaults);
+      } else {
+        setNewTaskParams({});
+      }
+    } else {
+      setNewTaskParams({});
+    }
+  };
+
   // Create task
   const handleCreateTask = async () => {
     if (!newTaskTitle) return;
     setCreating(true);
     try {
+      const params: Record<string, unknown> = {};
+      // Convert param values — attempt number conversion
+      for (const [key, val] of Object.entries(newTaskParams)) {
+        if (val === '') continue;
+        // Try to parse as JSON for arrays/objects
+        try {
+          params[key] = JSON.parse(val);
+        } catch {
+          // If it looks like a number, convert it
+          const num = Number(val);
+          params[key] = !isNaN(num) && val.trim() !== '' ? num : val;
+        }
+      }
+
       await createTask({
         title: newTaskTitle,
         description: newTaskDesc,
         assigned_to: newTaskAssignee || undefined,
         priority: newTaskPriority,
+        task_type_id: newTaskTypeId || undefined,
+        params: Object.keys(params).length > 0 ? params : undefined,
       });
       setNewTaskTitle('');
       setNewTaskDesc('');
       setNewTaskAssignee('');
       setNewTaskPriority('medium');
+      setNewTaskTypeId('');
+      setNewTaskParams({});
       setRightPanel('none');
       fetchTasks();
       if (selectedWorker) fetchWorkerTasks(selectedWorker.id);
@@ -188,6 +285,43 @@ export default function WorkersPage() {
       alert('Failed to create task: ' + err.message);
     } finally {
       setCreating(false);
+    }
+  };
+
+  // Create task type
+  const handleCreateTaskType = async () => {
+    if (!newTTName || !newTTLabel) return;
+    setCreating(true);
+    try {
+      await createTaskType({
+        name: newTTName,
+        label: newTTLabel,
+        sop: newTTSop || undefined,
+      });
+      setNewTTName('');
+      setNewTTLabel('');
+      setNewTTSop('');
+      setRightPanel('none');
+      fetchTaskTypes();
+    } catch (err: any) {
+      alert('Failed to create task type: ' + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Delete task type
+  const handleDeleteTaskType = async (id: number) => {
+    if (!confirm('Delete this task type? Existing tasks using it will keep their reference.')) return;
+    try {
+      await deleteTaskType(id);
+      if (selectedTaskType?.id === id) {
+        setSelectedTaskType(null);
+        setRightPanel('none');
+      }
+      fetchTaskTypes();
+    } catch (err: any) {
+      alert('Failed to delete task type: ' + err.message);
     }
   };
 
@@ -219,6 +353,27 @@ export default function WorkersPage() {
     }
   };
 
+  // Send task update
+  const handleSendUpdate = async () => {
+    if (!selectedTask || !newUpdateContent.trim()) return;
+    setSendingUpdate(true);
+    try {
+      await createTaskUpdate(selectedTask.id, newUpdateContent.trim());
+      setNewUpdateContent('');
+      fetchTaskUpdates(selectedTask.id);
+    } catch (err: any) {
+      alert('Failed to send update: ' + err.message);
+    } finally {
+      setSendingUpdate(false);
+    }
+  };
+
+  // Format timestamp
+  const formatTime = (ts: string | null) => {
+    if (!ts) return '--';
+    return new Date(ts).toLocaleString();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
@@ -240,6 +395,8 @@ export default function WorkersPage() {
             <span className="text-ic-text-secondary">{workers.length} workers</span>
             <span className="text-ic-text-secondary">|</span>
             <span className="text-ic-text-secondary">{tasks.length} tasks</span>
+            <span className="text-ic-text-secondary">|</span>
+            <span className="text-ic-text-secondary">{taskTypes.length} types</span>
           </div>
         </div>
       </div>
@@ -251,7 +408,7 @@ export default function WorkersPage() {
           <div className="flex border-b border-ic-border">
             <button
               onClick={() => setView('workers')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition ${
                 view === 'workers'
                   ? 'text-blue-600 border-b-2 border-blue-500'
                   : 'text-ic-text-secondary hover:text-ic-text-primary'
@@ -262,14 +419,25 @@ export default function WorkersPage() {
             </button>
             <button
               onClick={() => setView('tasks')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition ${
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition ${
                 view === 'tasks'
                   ? 'text-blue-600 border-b-2 border-blue-500'
                   : 'text-ic-text-secondary hover:text-ic-text-primary'
               }`}
             >
               <ListTodo className="w-4 h-4" />
-              All Tasks
+              Tasks
+            </button>
+            <button
+              onClick={() => setView('task-types')}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-3 text-sm font-medium transition ${
+                view === 'task-types'
+                  ? 'text-blue-600 border-b-2 border-blue-500'
+                  : 'text-ic-text-secondary hover:text-ic-text-primary'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Types
             </button>
           </div>
 
@@ -282,6 +450,7 @@ export default function WorkersPage() {
                     setRightPanel('create-worker');
                     setSelectedWorker(null);
                     setSelectedTask(null);
+                    setSelectedTaskType(null);
                   }}
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition mb-4"
                 >
@@ -341,6 +510,7 @@ export default function WorkersPage() {
                     onClick={() => {
                       setRightPanel('create-task');
                       setSelectedTask(null);
+                      setSelectedTaskType(null);
                     }}
                     className="flex items-center gap-2 px-3 py-2 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
                   >
@@ -380,11 +550,67 @@ export default function WorkersPage() {
                           <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
                             {PRIORITY_LABELS[task.priority]}
                           </span>
+                          {task.task_type && (
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
+                              {task.task_type.label}
+                            </span>
+                          )}
                         </div>
                         <p className="text-sm font-medium truncate">{task.title}</p>
                         {task.assigned_to_name && (
                           <p className="text-xs text-ic-text-secondary mt-0.5">{task.assigned_to_name}</p>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Task Types View */}
+            {view === 'task-types' && (
+              <>
+                <button
+                  onClick={() => {
+                    setRightPanel('create-task-type');
+                    setSelectedTaskType(null);
+                    setSelectedTask(null);
+                    setSelectedWorker(null);
+                  }}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition mb-4"
+                >
+                  <Plus className="w-4 h-4" />
+                  New Task Type
+                </button>
+
+                {taskTypes.length === 0 ? (
+                  <p className="text-sm text-ic-text-secondary text-center py-8">No task types defined yet.</p>
+                ) : (
+                  <div className="space-y-1">
+                    {taskTypes.map((tt) => (
+                      <div
+                        key={tt.id}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer group transition ${
+                          selectedTaskType?.id === tt.id
+                            ? 'bg-purple-50 text-purple-700'
+                            : 'hover:bg-ic-bg-secondary text-ic-text-primary'
+                        }`}
+                        onClick={() => selectTaskType(tt)}
+                      >
+                        <FileText className="w-4 h-4 flex-shrink-0 text-purple-400" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{tt.label}</p>
+                          <p className="text-xs text-ic-text-secondary truncate font-mono">{tt.name}</p>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteTaskType(tt.id);
+                          }}
+                          className="p-0.5 opacity-0 group-hover:opacity-100 text-ic-text-secondary hover:text-red-600 transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
                     ))}
                   </div>
@@ -401,8 +627,8 @@ export default function WorkersPage() {
             <div className="flex items-center justify-center h-full text-ic-text-secondary">
               <div className="text-center">
                 <Bot className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                <p className="text-lg">Select a worker or task</p>
-                <p className="text-sm mt-1">Or register a new worker to get started</p>
+                <p className="text-lg">Select a worker, task, or task type</p>
+                <p className="text-sm mt-1">Or create something new to get started</p>
               </div>
             </div>
           )}
@@ -472,6 +698,21 @@ export default function WorkersPage() {
                 Create New Task
               </h2>
               <div className="space-y-4">
+                {/* Task Type */}
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Task Type</label>
+                  <select
+                    value={newTaskTypeId}
+                    onChange={(e) => handleTaskTypeChange(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
+                  >
+                    <option value="">No type (custom task)</option>
+                    {taskTypes.map((tt) => (
+                      <option key={tt.id} value={tt.id}>{tt.label}</option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-ic-text-secondary mb-1">Title</label>
                   <input
@@ -486,11 +727,39 @@ export default function WorkersPage() {
                   <textarea
                     value={newTaskDesc}
                     onChange={(e) => setNewTaskDesc(e.target.value)}
-                    rows={4}
+                    rows={3}
                     placeholder="Task description..."
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
                   />
                 </div>
+
+                {/* Dynamic params from task type schema */}
+                {getSelectedTaskTypeSchema() && (
+                  <div className="border border-ic-border rounded-lg p-4 bg-ic-bg-secondary">
+                    <p className="text-sm font-medium text-ic-text-secondary mb-3 flex items-center gap-1.5">
+                      <Braces className="w-4 h-4" />
+                      Parameters
+                    </p>
+                    <div className="space-y-3">
+                      {Object.entries(getSelectedTaskTypeSchema()!).map(([key, type]) => (
+                        <div key={key}>
+                          <label className="block text-xs font-medium text-ic-text-secondary mb-1">
+                            {key} <span className="text-ic-text-secondary font-normal">({type})</span>
+                          </label>
+                          <input
+                            value={newTaskParams[key] || ''}
+                            onChange={(e) =>
+                              setNewTaskParams((prev) => ({ ...prev, [key]: e.target.value }))
+                            }
+                            placeholder={type === 'string[]' ? '["value1", "value2"]' : type === 'number' ? '0' : ''}
+                            className="w-full px-3 py-1.5 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-ic-text-secondary mb-1">Assign To</label>
                   <select
@@ -500,7 +769,10 @@ export default function WorkersPage() {
                   >
                     <option value="">Unassigned</option>
                     {workers.map((w) => (
-                      <option key={w.id} value={w.id}>{w.full_name} ({w.email})</option>
+                      <option key={w.id} value={w.id}>
+                        {w.full_name} ({w.email})
+                        {w.is_online ? ' - Online' : ''}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -532,6 +804,119 @@ export default function WorkersPage() {
                     Cancel
                   </button>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Create Task Type Form */}
+          {rightPanel === 'create-task-type' && (
+            <div className="p-8 max-w-2xl">
+              <h2 className="text-lg font-semibold text-ic-text-primary mb-6 flex items-center gap-2">
+                <FileText className="w-5 h-5 text-purple-500" />
+                Create New Task Type
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Name (slug)</label>
+                    <input
+                      value={newTTName}
+                      onChange={(e) => setNewTTName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                      placeholder="reddit_crawl"
+                      className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Label</label>
+                    <input
+                      value={newTTLabel}
+                      onChange={(e) => setNewTTLabel(e.target.value)}
+                      placeholder="Reddit Crawl"
+                      className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">SOP (Markdown)</label>
+                  <textarea
+                    value={newTTSop}
+                    onChange={(e) => setNewTTSop(e.target.value)}
+                    rows={12}
+                    placeholder="## Standard Operating Procedure&#10;&#10;### What You're Doing&#10;...&#10;&#10;### How To Do It&#10;..."
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCreateTaskType}
+                    disabled={creating || !newTTName || !newTTLabel}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+                  >
+                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    Create Task Type
+                  </button>
+                  <button
+                    onClick={() => setRightPanel('none')}
+                    className="px-4 py-2 text-ic-text-secondary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Task Type Detail */}
+          {rightPanel === 'task-type' && selectedTaskType && (
+            <div className="p-8 max-w-3xl">
+              <div className="mb-6">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-ic-text-primary flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-purple-500" />
+                      {selectedTaskType.label}
+                    </h2>
+                    <p className="text-sm text-ic-text-secondary font-mono mt-1">{selectedTaskType.name}</p>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteTaskType(selectedTaskType.id)}
+                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    Delete
+                  </button>
+                </div>
+              </div>
+
+              {/* Param Schema */}
+              {selectedTaskType.param_schema && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-medium text-ic-text-secondary mb-2 flex items-center gap-1.5">
+                    <Braces className="w-4 h-4" />
+                    Parameter Schema
+                  </h3>
+                  <div className="bg-ic-bg-secondary rounded-lg p-4">
+                    <pre className="text-sm text-ic-text-primary font-mono whitespace-pre-wrap">
+                      {JSON.stringify(selectedTaskType.param_schema, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              {/* SOP */}
+              {selectedTaskType.sop && (
+                <div>
+                  <h3 className="text-sm font-medium text-ic-text-secondary mb-2">Standard Operating Procedure</h3>
+                  <div className="bg-ic-bg-secondary rounded-lg p-4 max-h-[60vh] overflow-y-auto">
+                    <pre className="text-sm text-ic-text-primary whitespace-pre-wrap font-mono leading-relaxed">
+                      {selectedTaskType.sop}
+                    </pre>
+                  </div>
+                </div>
+              )}
+
+              <div className="mt-4 text-xs text-ic-text-secondary">
+                Created: {formatTime(selectedTaskType.created_at)} | Updated: {formatTime(selectedTaskType.updated_at)}
               </div>
             </div>
           )}
@@ -607,6 +992,11 @@ export default function WorkersPage() {
                             <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
                               {PRIORITY_LABELS[task.priority]}
                             </span>
+                            {task.task_type && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
+                                {task.task_type.label}
+                              </span>
+                            )}
                           </div>
                           <p className="text-sm font-medium text-ic-text-primary truncate">{task.title}</p>
                         </div>
@@ -634,7 +1024,7 @@ export default function WorkersPage() {
               </button>
 
               {/* Task header */}
-              <div className="mb-6">
+              <div className="mb-4">
                 <h2 className="text-xl font-semibold text-ic-text-primary mb-2">{selectedTask.title}</h2>
                 {selectedTask.description && (
                   <p className="text-sm text-ic-text-secondary whitespace-pre-wrap">{selectedTask.description}</p>
@@ -642,7 +1032,7 @@ export default function WorkersPage() {
               </div>
 
               {/* Task meta */}
-              <div className="flex flex-wrap gap-3 mb-6">
+              <div className="flex flex-wrap gap-3 mb-4">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-ic-text-secondary">Status:</span>
                   <select
@@ -658,17 +1048,106 @@ export default function WorkersPage() {
                 <span className={`text-xs px-2 py-1 rounded ${PRIORITY_COLORS[selectedTask.priority]}`}>
                   {PRIORITY_LABELS[selectedTask.priority]}
                 </span>
+                {selectedTask.task_type && (
+                  <span className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-700 flex items-center gap-1">
+                    <FileText className="w-3 h-3" />
+                    {selectedTask.task_type.label}
+                  </span>
+                )}
                 {selectedTask.assigned_to_name && (
                   <span className="text-xs text-ic-text-secondary flex items-center gap-1">
                     <Bot className="w-3 h-3" />
                     {selectedTask.assigned_to_name}
                   </span>
                 )}
-                <span className="text-xs text-ic-text-secondary flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  {new Date(selectedTask.created_at).toLocaleString()}
-                </span>
               </div>
+
+              {/* Timestamps */}
+              <div className="flex flex-wrap gap-4 mb-4 text-xs text-ic-text-secondary">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  Created: {formatTime(selectedTask.created_at)}
+                </span>
+                {selectedTask.started_at && (
+                  <span className="flex items-center gap-1">
+                    <PlayCircle className="w-3 h-3 text-blue-500" />
+                    Started: {formatTime(selectedTask.started_at)}
+                  </span>
+                )}
+                {selectedTask.completed_at && (
+                  <span className="flex items-center gap-1">
+                    {selectedTask.status === 'completed' ? (
+                      <CheckCircle2 className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <XCircle className="w-3 h-3 text-red-500" />
+                    )}
+                    {selectedTask.status === 'completed' ? 'Completed' : 'Failed'}: {formatTime(selectedTask.completed_at)}
+                  </span>
+                )}
+              </div>
+
+              {/* Params */}
+              {selectedTask.params && Object.keys(selectedTask.params).length > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowParams(!showParams)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showParams ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <Braces className="w-4 h-4" />
+                    Parameters
+                  </button>
+                  {showParams && (
+                    <div className="bg-ic-bg-secondary rounded-lg p-3">
+                      <pre className="text-sm text-ic-text-primary font-mono whitespace-pre-wrap">
+                        {JSON.stringify(selectedTask.params, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Result */}
+              {selectedTask.result && Object.keys(selectedTask.result).length > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowResult(!showResult)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showResult ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <CheckCircle2 className="w-4 h-4" />
+                    Result
+                  </button>
+                  {showResult && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <pre className="text-sm text-ic-text-primary font-mono whitespace-pre-wrap">
+                        {JSON.stringify(selectedTask.result, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SOP (from task type) */}
+              {selectedTask.task_type?.sop && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowSop(!showSop)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showSop ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <FileText className="w-4 h-4" />
+                    SOP ({selectedTask.task_type.label})
+                  </button>
+                  {showSop && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 max-h-64 overflow-y-auto">
+                      <pre className="text-sm text-ic-text-primary font-mono whitespace-pre-wrap leading-relaxed">
+                        {selectedTask.task_type.sop}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Delete task */}
               <button
@@ -687,7 +1166,7 @@ export default function WorkersPage() {
                 </h3>
 
                 {taskUpdates.length > 0 && (
-                  <div className="space-y-3 mb-6">
+                  <div className="space-y-3 mb-4">
                     {taskUpdates.map((update) => (
                       <div key={update.id} className="bg-ic-bg-secondary rounded-lg p-3">
                         <div className="flex items-center justify-between mb-1">
@@ -705,8 +1184,32 @@ export default function WorkersPage() {
                 )}
 
                 {taskUpdates.length === 0 && (
-                  <p className="text-sm text-ic-text-secondary text-center py-4">No updates yet. Workers will post updates here.</p>
+                  <p className="text-sm text-ic-text-secondary text-center py-4 mb-4">No updates yet.</p>
                 )}
+
+                {/* Post update form */}
+                <div className="flex gap-2">
+                  <input
+                    value={newUpdateContent}
+                    onChange={(e) => setNewUpdateContent(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendUpdate();
+                      }
+                    }}
+                    placeholder="Post an update..."
+                    className="flex-1 px-3 py-2 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                  <button
+                    onClick={handleSendUpdate}
+                    disabled={sendingUpdate || !newUpdateContent.trim()}
+                    className="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {sendingUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    Send
+                  </button>
+                </div>
               </div>
             </div>
           )}
