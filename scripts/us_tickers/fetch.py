@@ -79,7 +79,7 @@ def _download_file(
     try:
         response = session.get(url)
         response.raise_for_status()
-        content = response.text
+        content: str = response.text
         msg = f"Successfully downloaded {url} ({len(content)} characters)"
         logger.info(msg)
         return content
@@ -95,7 +95,7 @@ def _clean_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     # Clean and normalize string columns
     for col in df.columns:
-        if df[col].dtype == "object":
+        if pd.api.types.is_string_dtype(df[col]):
             df[col] = df[col].str.strip().str.upper().fillna("")
 
     return df
@@ -121,7 +121,7 @@ def _parse_nasdaq_listed(content: str) -> pd.DataFrame:
     data = []
     for i, line in enumerate(lines):
         if "|" in line:
-            fields = line.split("|")
+            fields = [f.strip() for f in line.split("|")]
             if len(fields) >= len(NASDAQ_COLUMNS):
                 # Skip header row (first line)
                 if i > 0:
@@ -165,7 +165,7 @@ def _parse_other_listed(content: str) -> pd.DataFrame:
     data = []
     for i, line in enumerate(lines):
         if "|" in line:
-            fields = line.split("|")
+            fields = [f.strip() for f in line.split("|")]
             # Check if we have enough fields (should be exactly 8 for NYSE
             # data)
             if len(fields) == 8:

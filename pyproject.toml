@@ -81,6 +81,11 @@ disallow_untyped_defs = true
 module = [
     "psycopg2.*",
     "dotenv.*",
+    "pydantic.*",
+    "urllib3.*",
+    "pytest.*",
+    "pandas.*",
+    "requests.*",
 ]
 ignore_missing_imports = true
 
