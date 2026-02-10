@@ -323,8 +323,28 @@ func WorkerPostResult(c *gin.Context) {
 		return
 	}
 
-	var t WorkerTask
+	// Verify task exists, is assigned to this worker, and is in_progress
+	var currentStatus string
 	err := database.DB.QueryRow(
+		"SELECT status FROM worker_tasks WHERE id = $1 AND assigned_to = $2",
+		taskID, userID,
+	).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
+			return
+		}
+		log.Printf("Error checking task status: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check task status"})
+		return
+	}
+	if currentStatus != "in_progress" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Can only post results to tasks with status 'in_progress'"})
+		return
+	}
+
+	var t WorkerTask
+	err = database.DB.QueryRow(
 		`UPDATE worker_tasks SET result = $1
 		 WHERE id = $2 AND assigned_to = $3
 		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`,
@@ -333,10 +353,6 @@ func WorkerPostResult(c *gin.Context) {
 		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 		&t.StartedAt, &t.CompletedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
-			return
-		}
 		log.Printf("Error posting task result: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save result"})
 		return

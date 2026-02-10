@@ -5,11 +5,14 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"investorcenter-api/database"
 )
+
+var validTaskTypeName = regexp.MustCompile(`^[a-z0-9_]{1,100}$`)
 
 // TaskType represents a task type definition with SOP
 type TaskType struct {
@@ -79,6 +82,11 @@ func CreateTaskType(c *gin.Context) {
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if !validTaskTypeName.MatchString(req.Name) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Name must be lowercase alphanumeric with underscores only (1-100 chars)"})
 		return
 	}
 

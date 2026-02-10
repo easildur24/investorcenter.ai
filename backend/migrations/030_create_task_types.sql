@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS task_types (
     id           SERIAL PRIMARY KEY,
     name         VARCHAR(100) NOT NULL UNIQUE,
     label        VARCHAR(200) NOT NULL,
-    sop          TEXT NOT NULL,
+    sop          TEXT NOT NULL DEFAULT '',
     param_schema JSONB,
     is_active    BOOLEAN NOT NULL DEFAULT TRUE,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),

@@ -251,16 +251,24 @@ export default function WorkersPage() {
     setCreating(true);
     try {
       const params: Record<string, unknown> = {};
-      // Convert param values — attempt number conversion
+      const schema = getSelectedTaskTypeSchema();
       for (const [key, val] of Object.entries(newTaskParams)) {
         if (val === '') continue;
-        // Try to parse as JSON for arrays/objects
-        try {
-          params[key] = JSON.parse(val);
-        } catch {
-          // If it looks like a number, convert it
+        const typeHint = schema?.[key];
+        if (typeHint === 'number') {
           const num = Number(val);
-          params[key] = !isNaN(num) && val.trim() !== '' ? num : val;
+          params[key] = !isNaN(num) ? num : val;
+        } else if (typeHint?.endsWith('[]')) {
+          // Array types — parse as JSON array
+          try {
+            params[key] = JSON.parse(val);
+          } catch {
+            // Fallback: split by comma
+            params[key] = val.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+        } else {
+          // String and unknown types — keep as string
+          params[key] = val;
         }
       }
 
@@ -734,14 +742,17 @@ export default function WorkersPage() {
                 </div>
 
                 {/* Dynamic params from task type schema */}
-                {getSelectedTaskTypeSchema() && (
+                {(() => {
+                  const schema = getSelectedTaskTypeSchema();
+                  if (!schema) return null;
+                  return (
                   <div className="border border-ic-border rounded-lg p-4 bg-ic-bg-secondary">
                     <p className="text-sm font-medium text-ic-text-secondary mb-3 flex items-center gap-1.5">
                       <Braces className="w-4 h-4" />
                       Parameters
                     </p>
                     <div className="space-y-3">
-                      {Object.entries(getSelectedTaskTypeSchema()!).map(([key, type]) => (
+                      {Object.entries(schema).map(([key, type]) => (
                         <div key={key}>
                           <label className="block text-xs font-medium text-ic-text-secondary mb-1">
                             {key} <span className="text-ic-text-secondary font-normal">({type})</span>
@@ -758,7 +769,8 @@ export default function WorkersPage() {
                       ))}
                     </div>
                   </div>
-                )}
+                  );
+                })()}
 
                 <div>
                   <label className="block text-sm font-medium text-ic-text-secondary mb-1">Assign To</label>
