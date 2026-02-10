@@ -192,8 +192,7 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 	}
 
 	var t WorkerTask
-	err := database.DB.QueryRow(query, req.Status, taskID, userID,
-	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
+	err := database.DB.QueryRow(query, req.Status, taskID, userID).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
 		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 		&t.StartedAt, &t.CompletedAt)
 	if err != nil {

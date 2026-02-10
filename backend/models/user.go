@@ -28,13 +28,13 @@ type User struct {
 
 // UserPublic is the public-facing user data (safe to expose in API)
 type UserPublic struct {
-	ID            string     `json:"id"`
-	Email         string     `json:"email"`
-	FullName      string     `json:"full_name"`
-	Timezone      string     `json:"timezone"`
-	CreatedAt     time.Time  `json:"created_at"`
-	EmailVerified bool       `json:"email_verified"`
-	IsPremium     bool       `json:"is_premium"`
+	ID             string     `json:"id"`
+	Email          string     `json:"email"`
+	FullName       string     `json:"full_name"`
+	Timezone       string     `json:"timezone"`
+	CreatedAt      time.Time  `json:"created_at"`
+	EmailVerified  bool       `json:"email_verified"`
+	IsPremium      bool       `json:"is_premium"`
 	IsAdmin        bool       `json:"is_admin"`
 	IsWorker       bool       `json:"is_worker"`
 	LastLoginAt    *time.Time `json:"last_login_at"`
@@ -44,13 +44,13 @@ type UserPublic struct {
 // ToPublic converts User to UserPublic (safe for API responses)
 func (u *User) ToPublic() UserPublic {
 	return UserPublic{
-		ID:            u.ID,
-		Email:         u.Email,
-		FullName:      u.FullName,
-		Timezone:      u.Timezone,
-		CreatedAt:     u.CreatedAt,
-		EmailVerified: u.EmailVerified,
-		IsPremium:     u.IsPremium,
+		ID:             u.ID,
+		Email:          u.Email,
+		FullName:       u.FullName,
+		Timezone:       u.Timezone,
+		CreatedAt:      u.CreatedAt,
+		EmailVerified:  u.EmailVerified,
+		IsPremium:      u.IsPremium,
 		IsAdmin:        u.IsAdmin,
 		IsWorker:       u.IsWorker,
 		LastLoginAt:    u.LastLoginAt,
