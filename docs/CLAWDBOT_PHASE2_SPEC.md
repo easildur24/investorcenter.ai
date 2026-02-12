@@ -1,9 +1,9 @@
-# ClawdBot Phase 2: Task Manager Agent
+# ClawdBot Phase 2: Pull-Based Task Queue
 
-> **Version**: 1.0
+> **Version**: 3.0
 > **Date**: February 2026
 > **Status**: Design
-> **Depends on**: Phase 1 (task_types, SOPs, worker API, admin UI)
+> **Depends on**: Phase 1 (task-service, task_types, SOPs, worker API, admin UI)
 
 ---
 
@@ -14,14 +14,13 @@
 3. [Phase 2 Design](#3-phase-2-design)
 4. [Database Changes](#4-database-changes)
 5. [API Changes](#5-api-changes)
-6. [Task Manager Design](#6-task-manager-design)
-7. [Assignment Algorithm](#7-assignment-algorithm)
+6. [Atomic Task Claiming](#6-atomic-task-claiming)
+7. [Background Goroutines](#7-background-goroutines)
 8. [Retry System](#8-retry-system)
 9. [Telegram Notifications](#9-telegram-notifications)
-10. [Stuck Task Detection](#10-stuck-task-detection)
-11. [UI Changes](#11-ui-changes)
-12. [Implementation Plan](#12-implementation-plan)
-13. [Future (Phase 3)](#13-future-phase-3)
+10. [UI Changes](#10-ui-changes)
+11. [Implementation Plan](#11-implementation-plan)
+12. [Future (Phase 3)](#12-future-phase-3)
 
 ---
 
@@ -29,22 +28,24 @@
 
 ### What is Phase 2?
 
-Phase 1 built a task queue where **humans create and assign tasks** to ClawdBot workers via the admin UI. Phase 2 adds a **Task Manager** — itself a ClawdBot — that automates the middle step: assigning tasks to available workers, retrying failures, detecting stuck tasks, and sending Telegram notifications.
+Phase 1 built a task queue where **humans create and assign tasks** to specific ClawdBot workers via the admin UI. Phase 2 removes the manual assignment step — ClawdBots **pull tasks from a shared queue** and PostgreSQL handles concurrency. No Task Manager, no orchestrator, no extra process.
 
 ### Phase 2 Scope
 
-- **Task Manager = a ClawdBot** — a Claude Code session with its own CLAUDE.md, not backend code
-- **Auto-assignment** — unassigned tasks get routed to available, online workers
-- **Retry on failure** — failed tasks are retried up to N times (configurable per task type, default 3)
-- **Stuck task detection** — tasks stuck `in_progress` with an offline worker get reassigned
-- **Telegram notifications** — one-way notifications to a Telegram chat for completions, failures, retries
+- **Pull-based queue** — ClawdBots claim unassigned tasks atomically via `POST /worker/tasks/claim` (PostgreSQL `FOR UPDATE SKIP LOCKED`)
+- **Retry on failure** — background goroutine in task-service creates retry tasks, with optional Claude API call for intelligent retry descriptions
+- **Stuck task detection** — background goroutine marks tasks failed when the assigned worker goes offline
+- **Telegram notifications** — background goroutine sends notifications for completions, failures, retries
 - **Humans still create tasks** — task creation stays manual (Phase 3 adds autonomous scheduling)
 
-### What the Task Manager Does NOT Do (Yet)
+### Key Insight: PostgreSQL Is the Queue
 
-- Does NOT create tasks (Phase 3)
+No external message broker, no orchestrator process, no Task Manager. PostgreSQL's `SELECT ... FOR UPDATE SKIP LOCKED` provides atomic claiming — if two ClawdBots try to claim simultaneously, each gets a different task. Workers naturally self-balance: a busy bot won't claim more work, an idle one will.
+
+### What Phase 2 Does NOT Do (Yet)
+
+- Does NOT create tasks autonomously (Phase 3)
 - Does NOT accept Telegram commands (Phase 3)
-- Does NOT optimize or rewrite prompts — SOPs are sufficient for now
 - Does NOT auto-scale workers
 
 ---
@@ -55,124 +56,136 @@ Quick recap of the foundation Phase 2 builds on:
 
 | Component | What |
 |-----------|------|
+| **task-service** | Standalone Go microservice (port 8001), extracted from main backend. Main backend proxies `/api/v1/admin/workers/*` and `/api/v1/worker/*` to it. |
 | `task_types` table | Categories of work with SOPs and param_schema |
-| `worker_tasks` table | Tasks with task_type_id, params, result, started_at, completed_at |
+| `worker_tasks` table | Tasks with task_type_id, params, result, retry_count, started_at, completed_at |
+| `worker_task_updates` table | Comment/log thread per task |
 | Admin UI | Create task types, create tasks (pick type + params + assignee), view results |
 | Worker API | ClawdBots fetch tasks (with SOP joined), update status, post results |
+| Worker Data (S3) | Workers upload collected data to S3 (`claw-treasure` bucket) at `worker-data/{task_id}/{data_type}/` |
 | Heartbeat | Workers POST /worker/heartbeat every 2 min; online = active within 5 min |
 | Auth | Workers are users with `is_worker=true`, JWT auth, same as regular users |
 
-### Current Flow (Phase 1)
+### Phase 1 Flow (push-based)
 
 ```
-Human creates task in UI → Human assigns to a worker → Worker polls → Worker executes → Worker reports
+Human creates task → Human assigns to specific worker → Worker polls for assigned tasks → Executes → Reports
 ```
 
-### Phase 2 Flow
+### Phase 2 Flow (pull-based)
 
 ```
-Human creates task in UI → Task Manager assigns → Worker polls → Worker executes → Worker reports
-                                    ↓                                       ↓
-                           (if stuck/failed)                      Task Manager notifies
-                           Task Manager retries                   via Telegram
+Human creates task (no assignee) → Task sits in queue
+                                         ↑
+ClawdBot claims next task ───────────────┘ (atomic via PostgreSQL)
+ClawdBot executes task
+ClawdBot reports result ──────────────────→ task-service goroutine sends Telegram notification
+
+If task fails ────────────────────────────→ task-service goroutine creates retry → back in queue
+If worker goes offline ───────────────────→ task-service goroutine marks failed → back in queue
 ```
 
 ---
 
 ## 3. Phase 2 Design
 
-### The Task Manager Is a ClawdBot
-
-The Task Manager is a Claude Code session running on a persistent machine (a cloud VM or always-on Mac). It is registered as a worker user with **both `is_worker=true` and `is_admin=true`**, giving it access to:
-
-- **Admin endpoints** — to list all workers, list all tasks, assign tasks, create retry tasks
-- **Worker endpoints** — for heartbeat (so it shows as online in the admin UI)
-
-It does NOT execute data tasks (reddit crawls, sentiment analysis, etc.). Its only job is orchestration.
-
-### Why a ClawdBot, Not Backend Code?
-
-| Aspect | ClawdBot Task Manager | Backend Service |
-|--------|----------------------|-----------------|
-| Deploy | Drop a CLAUDE.md, run Claude Code | Write Go code, deploy to K8s |
-| Change behavior | Edit the CLAUDE.md or SOP | Write code, PR, deploy |
-| Retry intelligence | Claude analyzes failure reason, adjusts instructions | Dumb retry (same params) |
-| Flexibility | Handles edge cases naturally (Claude is smart) | Must code every case |
-| Observability | Posts updates to task threads like any worker | Need separate logging |
-| Cost | LLM API calls for orchestration loops | Compute only |
-| Failure mode | If it crashes, tasks pile up unassigned; recovers on restart | Same, but more ops overhead |
-
-The key advantage: **retry intelligence**. When a task fails, the Task Manager reads the failure reason and creates a retry with adjusted instructions. A backend service would just blindly retry with the same params. Claude can say "last attempt failed because Arctic Shift API returned 429 — waiting 5 minutes and using smaller batch sizes."
-
 ### Architecture
 
 ```
-+------------------+         +------------------+         +------------------+
-|   Admin UI       |         |   Go Backend     |         | Task Manager     |
-|  (Next.js)       |         |   (Gin API)      |         | (Claude Code)    |
-+--------+---------+         +--------+---------+         +--------+---------+
-         |                            |                            |
-  1. Create task    +------------>    |                            |
-     (no assignee)                    |                            |
-                                      |    2. Poll unassigned      |
-                                      |       tasks         <------+
-                                      |                            |
-                                      |    3. Poll online          |
-                                      |       workers       <------+
-                                      |                            |
-                                      |                   4. Pick best worker,
-                                      |                      assign task
-                                      |    5. PUT assign   <------+
-                                      |                            |
-                                      |                            |
-+------------------+                  |                            |
-|   ClawdBot       |                  |                            |
-|  Worker          |                  |                            |
-+--------+---------+                  |                            |
-         |                            |                            |
-  6. Poll pending   +------------>    |                            |
-  7. Execute task                     |                            |
-  8. Post result    +------------>    |                            |
-                                      |   9. TM sees completion    |
-                                      |      or failure     <------+
-                                      |                            |
-                                      |                  10. Send Telegram
-                                      |                      notification
-                                      |                            +------> Telegram
+                           task-service (Go/Gin, :8001)
+                          ┌──────────────────────────────┐
+                          │                               │
+Human ─── create task ──► │  worker_tasks table (PG)      │
+  (admin UI)              │  ┌─────────────────────────┐  │
+                          │  │ pending, unassigned      │  │  ◄── tasks wait here
+                          │  │ pending, unassigned      │  │
+                          │  │ pending, unassigned      │  │
+                          │  └─────────────────────────┘  │
+                          │                               │
+                          │  POST /worker/tasks/claim      │  ◄── atomic, race-free
+                          │  (FOR UPDATE SKIP LOCKED)      │
+                          │                               │
+                          │  Background goroutines:       │
+                          │   • stuck detector (60s)      │
+                          │   • retry creator             │
+                          │   • telegram notifier         │
+                          └──────┬──────────┬─────────────┘
+                                 │          │
+                   ┌─────────────┘          └──────────────┐
+                   ▼                                       ▼
+             ClawdBot A                              ClawdBot B
+             ┌───────────┐                           ┌───────────┐
+             │ 1. claim   │                           │ 1. claim   │
+             │ 2. execute │                           │ 2. execute │
+             │ 3. report  │                           │ 3. report  │
+             │ 4. repeat  │                           │ 4. repeat  │
+             └───────────┘                           └───────────┘
 ```
+
+> **Note**: The main Go backend (port 8080) reverse-proxies all `/api/v1/admin/workers/*` and `/api/v1/worker/*` routes to the task-service via `backend/services/task_service_proxy.go`. This proxy is transparent — all clients use `/api/v1/...` URLs.
+
+### Why No Task Manager?
+
+The original spec proposed a Claude Code session as an orchestrator. This was eliminated because:
+
+| Concern | Pull-based queue | Task Manager |
+|---------|-----------------|--------------|
+| Assignment | Workers self-assign (claim). Natural load balancing. | Central process must track capacity, pick workers. |
+| Concurrency | PostgreSQL `FOR UPDATE SKIP LOCKED` — battle-tested. | LLM deciding who gets what — slow and expensive. |
+| Reliability | Goroutines in task-service (already deployed on K8s). | Extra process on a persistent VM to babysit. |
+| Cost | Zero LLM cost for orchestration. Claude API only for retry intelligence. | LLM tokens every 30 seconds, 24/7. |
+| Complexity | One new endpoint + 3 goroutines. | Entire CLAUDE.md, env vars, separate machine. |
+
+The only value the Task Manager provided was **retry intelligence** (reading failure reasons and adapting). Phase 2 preserves this with a targeted Claude API call in the retry goroutine — LLM intelligence where it matters, deterministic code everywhere else.
+
+### ClawdBot Work Loop
+
+Each ClawdBot runs this loop (defined in its SOP or bootstrap CLAUDE.md):
+
+```
+1. Authenticate (POST /auth/login)
+2. Send heartbeat (POST /worker/heartbeat)
+3. Claim next task (POST /worker/tasks/claim)
+4. If no task available → wait 30s → go to 2
+5. Read task's SOP + params
+6. Execute the task
+7. Post updates along the way (POST /worker/tasks/:id/updates)
+8. Post result (POST /worker/tasks/:id/result)
+9. Upload collected data to S3 (POST /worker/tasks/:id/data)
+10. Mark task completed (PUT /worker/tasks/:id/status)
+11. Go to 2
+```
+
+If the ClawdBot crashes mid-task, the stuck detector goroutine will eventually mark the task as failed and return it to the queue.
 
 ---
 
 ## 4. Database Changes
 
-### Migration 031: Retry support and Task Manager config
+The task-service owns its schema. These changes are applied as ALTER statements against the shared `investorcenter_db` database.
+
+> **Note**: `retry_count` already exists on `worker_tasks` from Phase 1.
+
+### Schema Changes
 
 ```sql
--- Add retry fields to task_types
+-- Add max_retries to task_types
 ALTER TABLE task_types
     ADD COLUMN IF NOT EXISTS max_retries INTEGER NOT NULL DEFAULT 3;
 
--- Add retry and lineage fields to worker_tasks
+-- Add retry lineage to worker_tasks (retry_count already exists)
 ALTER TABLE worker_tasks
-    ADD COLUMN IF NOT EXISTS retry_count    INTEGER NOT NULL DEFAULT 0,
     ADD COLUMN IF NOT EXISTS parent_task_id UUID REFERENCES worker_tasks(id) ON DELETE SET NULL;
 
 CREATE INDEX IF NOT EXISTS idx_worker_tasks_parent ON worker_tasks(parent_task_id);
 
--- Assignment log: who assigned a task, when, and why
-CREATE TABLE IF NOT EXISTS task_assignments (
-    id          SERIAL PRIMARY KEY,
-    task_id     UUID NOT NULL REFERENCES worker_tasks(id) ON DELETE CASCADE,
-    assigned_to UUID NOT NULL REFERENCES users(id),
-    assigned_by UUID REFERENCES users(id),    -- NULL = system/auto, UUID = human or Task Manager
-    reason      TEXT,                          -- "auto: least loaded online worker" or "retry: previous attempt failed"
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_task_assignments_task ON task_assignments(task_id);
+-- Index for claim query performance (unassigned pending tasks)
+CREATE INDEX IF NOT EXISTS idx_worker_tasks_claim
+    ON worker_tasks(status, assigned_to)
+    WHERE status = 'pending' AND assigned_to IS NULL;
 ```
 
-### Schema After Migration
+### Schema After Changes
 
 **task_types** (extended):
 | Column | Type | Notes |
@@ -183,31 +196,60 @@ CREATE INDEX IF NOT EXISTS idx_task_assignments_task ON task_assignments(task_id
 **worker_tasks** (extended):
 | Column | Type | Notes |
 |--------|------|-------|
-| ... | ... | (all Phase 1 columns) |
-| **retry_count** | **INTEGER** | **NEW** — how many times this task has been retried (0 = original) |
+| ... | ... | (all Phase 1 columns, including retry_count) |
+| retry_count | INTEGER | Already exists from Phase 1 (0 = original) |
 | **parent_task_id** | **UUID FK** | **NEW** — if this is a retry, points to the failed task |
 
-**task_assignments** (new):
-| Column | Type | Notes |
-|--------|------|-------|
-| id | SERIAL | PK |
-| task_id | UUID FK | Which task |
-| assigned_to | UUID FK | Which worker it was assigned to |
-| assigned_by | UUID FK | Who assigned it (NULL = auto) |
-| reason | TEXT | Why this assignment was made |
-| created_at | TIMESTAMPTZ | When |
+### What's NOT Needed
 
-### Why task_assignments?
-
-This table provides an audit trail. When a task gets reassigned (worker went offline, manual override), you can see the full history. It also lets the Task Manager explain its reasoning ("assigned to Genesis because it was the least loaded online worker").
+- **No `task_assignments` table** — workers claim directly, assignment is implicit in `assigned_to`
+- **No worker capacity endpoint** — workers self-balance by pulling when ready
+- **No assignment log** — the `worker_task_updates` table already provides an audit trail
 
 ---
 
 ## 5. API Changes
 
-### New Fields on Existing Endpoints
+All endpoints live in the **task-service** (port 8001). The main Go backend proxies them under `/api/v1/...`. Implementation goes in `task-service/handlers/`.
 
-#### Create Task (Admin) — new optional fields
+### New Endpoints
+
+#### Claim Next Task (Worker)
+
+```
+POST /api/v1/worker/tasks/claim
+(task-service route: POST /worker/tasks/claim)
+Authorization: Bearer <jwt> (worker)
+
+Response 200 (task claimed):
+{
+  "success": true,
+  "data": {
+    "id": "abc-123",
+    "title": "Reddit Crawl for NVDA",
+    "status": "in_progress",
+    "assigned_to": "worker-uuid",
+    "started_at": "2026-02-10T14:30:00Z",
+    "task_type": { "id": 1, "name": "reddit_crawl", "label": "Reddit Crawl", "sop": "...", "max_retries": 3 },
+    "params": { "ticker": "NVDA", "subreddits": ["wsb"], "days": 30 },
+    "retry_count": 0,
+    "parent_task_id": null,
+    ...
+  }
+}
+
+Response 200 (no tasks available):
+{
+  "success": true,
+  "data": null
+}
+```
+
+This is the core new endpoint. See [Section 6](#6-atomic-task-claiming) for implementation details.
+
+### Modified Endpoints
+
+#### Create Task (Admin) — assigned_to now optional
 
 ```
 POST /api/v1/admin/workers/tasks
@@ -217,11 +259,10 @@ POST /api/v1/admin/workers/tasks
   "task_type_id": 1,
   "params": { "ticker": "NVDA", "subreddits": ["wsb"], "days": 30 },
   "priority": "high"
-  // NOTE: assigned_to is now OPTIONAL — leave empty for auto-assignment
+  // assigned_to is OPTIONAL — omit for queue-based claiming
+  // If provided, task is pre-assigned to a specific worker (Phase 1 behavior)
 }
 ```
-
-When `assigned_to` is omitted, the task stays `pending` with `assigned_to = NULL`. The Task Manager picks it up and assigns it.
 
 #### Task Response — new fields
 
@@ -236,279 +277,250 @@ When `assigned_to` is omitted, the task stays `pending` with `assigned_to = NULL
 }
 ```
 
-### New Endpoints
-
-#### List Unassigned Tasks
-
-The existing `GET /admin/workers/tasks` already supports `?assigned_to=<id>`. Add a special value:
+#### List Tasks (Admin) — new filter
 
 ```
 GET /api/v1/admin/workers/tasks?unassigned=true
 ```
 
-Returns tasks where `assigned_to IS NULL` and `status = 'pending'`.
-
-#### Get Worker Capacity
-
-```
-GET /api/v1/admin/workers/capacity
-
-Response 200:
-{
-  "success": true,
-  "data": [
-    {
-      "id": "worker-uuid-1",
-      "full_name": "Genesis",
-      "is_online": true,
-      "in_progress_count": 2,
-      "pending_count": 1,
-      "completed_today": 5,
-      "last_activity_at": "2026-02-10T14:30:00Z"
-    },
-    {
-      "id": "worker-uuid-2",
-      "full_name": "Nexus",
-      "is_online": true,
-      "in_progress_count": 0,
-      "pending_count": 0,
-      "completed_today": 3,
-      "last_activity_at": "2026-02-10T14:28:00Z"
-    }
-  ]
-}
-```
-
-This gives the Task Manager everything it needs to make assignment decisions in one call.
-
-#### Get Task Assignment History
-
-```
-GET /api/v1/admin/workers/tasks/:id/assignments
-
-Response 200:
-{
-  "success": true,
-  "data": [
-    {
-      "id": 1,
-      "task_id": "abc-123",
-      "assigned_to": "worker-uuid-1",
-      "assigned_to_name": "Genesis",
-      "assigned_by": "task-manager-uuid",
-      "assigned_by_name": "Task Manager",
-      "reason": "auto: least loaded online worker (0 in_progress tasks)",
-      "created_at": "2026-02-10T14:30:00Z"
-    }
-  ]
-}
-```
-
-#### Log Assignment (used by Task Manager)
-
-```
-POST /api/v1/admin/workers/tasks/:id/assign
-Authorization: Bearer <jwt> (admin)
-
-{
-  "assigned_to": "worker-uuid-1",
-  "reason": "auto: least loaded online worker (0 in_progress tasks)"
-}
-
-Response 200:
-{ "success": true, "data": { "task": {...}, "assignment": {...} } }
-```
-
-This endpoint sets `assigned_to` on the task AND creates a `task_assignments` record. It replaces using the generic `PUT /tasks/:id` for assignments, providing atomicity and audit logging.
+Returns tasks where `assigned_to IS NULL` and `status = 'pending'` (queue depth).
 
 ---
 
-## 6. Task Manager Design
+## 6. Atomic Task Claiming
 
-### How It Runs
+### The Claim Query
 
-The Task Manager is a Claude Code session with a project directory containing a `CLAUDE.md`. It runs on a persistent machine (cloud VM, always-on Mac, etc.):
-
-```bash
-# On the Task Manager's machine
-cd /path/to/task-manager-project
-claude  # starts Claude Code, reads CLAUDE.md, begins orchestration loop
+```sql
+UPDATE worker_tasks
+SET assigned_to = $1,           -- worker_id
+    status = 'in_progress',
+    started_at = NOW()
+WHERE id = (
+    SELECT id FROM worker_tasks
+    WHERE assigned_to IS NULL
+      AND status = 'pending'
+    ORDER BY
+        CASE priority
+            WHEN 'urgent' THEN 0
+            WHEN 'high'   THEN 1
+            WHEN 'medium' THEN 2
+            WHEN 'low'    THEN 3
+        END,
+        created_at ASC
+    LIMIT 1
+    FOR UPDATE SKIP LOCKED
+)
+RETURNING *;
 ```
 
-### Task Manager CLAUDE.md
+### How It Works
 
-```markdown
-# Task Manager — InvestorCenter.ai
+1. `FOR UPDATE` — locks the selected row so no other transaction can claim it
+2. `SKIP LOCKED` — if a row is already locked by another concurrent claim, skip it and take the next one
+3. The `UPDATE ... WHERE id = (SELECT ...)` is atomic — claim and status change happen in one statement
+4. Priority ordering ensures urgent/high tasks are claimed first
+5. `created_at ASC` ensures FIFO within the same priority level
 
-You are the Task Manager for InvestorCenter's ClawdBot task queue. Your job
-is to assign tasks to workers, retry failures, detect stuck tasks, and send
-Telegram notifications. You do NOT execute data tasks yourself.
+### Why This Is Sufficient
 
-## Authentication
+| Concern | Answer |
+|---------|--------|
+| Two bots claim at once? | Each gets a different task (`SKIP LOCKED`) |
+| 10 bots, 1 task? | First one gets it, other 9 get `null` (no rows returned) |
+| Task priority? | ORDER BY priority, then FIFO within priority |
+| Load balancing? | Natural — idle bots claim, busy bots don't |
+| Bot crashes mid-task? | Stuck detector goroutine reclaims it (see Section 7) |
 
-- API Base: https://api.investorcenter.ai/api/v1
-- Login: POST /auth/login with email/password from env vars
-  - TASK_MANAGER_EMAIL
-  - TASK_MANAGER_PASSWORD
-- Store the JWT token for subsequent requests
-- You have both admin and worker access
+### Handler Implementation
 
-## Main Loop
+```go
+// In task-service/handlers/worker_api.go
+func WorkerClaimTask(c *gin.Context) {
+    workerID := auth.GetUserIDFromContext(c)
 
-Run this loop continuously with a 30-second pause between iterations:
+    var task WorkerTask
+    err := db.QueryRowx(`
+        UPDATE worker_tasks
+        SET assigned_to = $1, status = 'in_progress', started_at = NOW()
+        WHERE id = (
+            SELECT id FROM worker_tasks
+            WHERE assigned_to IS NULL AND status = 'pending'
+            ORDER BY
+                CASE priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END,
+                created_at ASC
+            LIMIT 1
+            FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *;
+    `, workerID).StructScan(&task)
 
-### 1. Heartbeat
-POST /worker/heartbeat
-(keeps you showing as online in the admin UI)
+    if err == sql.ErrNoRows {
+        c.JSON(200, gin.H{"success": true, "data": nil})
+        return
+    }
+    if err != nil {
+        c.JSON(500, gin.H{"success": false, "error": err.Error()})
+        return
+    }
 
-### 2. Check for Unassigned Tasks
-GET /admin/workers/tasks?unassigned=true
+    // Join task_type details for the response
+    // ... (same pattern as existing WorkerGetTask)
 
-If there are unassigned tasks, run the assignment algorithm (see below).
+    c.JSON(200, gin.H{"success": true, "data": task})
+}
+```
 
-### 3. Check for Failed Tasks (retry candidates)
-GET /admin/workers/tasks?status=failed
+---
 
-For each failed task:
-- Skip if retry_count >= task_type.max_retries
-- Skip if a retry already exists (check parent_task_id references)
-- Read the task's updates to understand WHY it failed
-- Create a retry task (see Retry section below)
+## 7. Background Goroutines
 
-### 4. Check for Stuck Tasks
-GET /admin/workers/tasks?status=in_progress
+Three goroutines run inside the task-service process. They start in `main.go` alongside the HTTP server.
 
-For each in_progress task:
-- Check if the assigned worker is online (GET /admin/workers/capacity)
-- If the worker has been offline for >10 minutes AND the task has been
-  in_progress for >15 minutes, mark it as failed with reason
-  "Worker went offline during execution"
-- This will trigger a retry on the next loop iteration
+### 7a. Stuck Task Detector
 
-### 5. Send Notifications
-After processing, send Telegram notifications for any events:
-- Task completed: "{task_title} completed by {worker_name}. Result: {summary}"
-- Task failed: "{task_title} failed. Reason: {failure_reason}. Retrying: {yes/no}"
-- Task stuck: "{task_title} stuck — {worker_name} went offline. Reassigning."
-- All retries exhausted: "{task_title} failed after {N} attempts. Needs human attention."
+**Runs every**: 60 seconds
 
-## Assignment Algorithm
+**Purpose**: Detect tasks stuck `in_progress` with an offline worker and return them to the queue.
 
-When assigning an unassigned task:
+```
+A task is STUCK if ALL of these are true:
+  1. status = 'in_progress'
+  2. assigned worker is OFFLINE (last_activity_at > 10 minutes ago)
+  3. task has been in_progress for > 15 minutes (started_at > 15 min ago)
+```
 
-1. GET /admin/workers/capacity to see all workers and their load
-2. Filter to ONLINE workers only (exclude yourself — you're not a data worker)
-3. Filter out workers that already have >= 3 in_progress tasks
-4. Sort by in_progress_count ASC (least loaded first)
-5. Assign to the first worker in the sorted list
-6. POST /admin/workers/tasks/{id}/assign with reason explaining the choice
+**Resolution**:
 
-If no workers are available:
-- Post an update on the task: "No available workers. Will retry assignment on next cycle."
-- Send Telegram notification: "Task {title} waiting for available worker"
-- Skip to next task
+```sql
+-- Find stuck tasks (worker offline + task stale)
+UPDATE worker_tasks wt
+SET status = 'failed',
+    completed_at = NOW()
+FROM users u
+WHERE wt.assigned_to = u.id
+  AND wt.status = 'in_progress'
+  AND wt.started_at < NOW() - INTERVAL '15 minutes'
+  AND u.last_activity_at < NOW() - INTERVAL '10 minutes';
+```
 
-## Retry Logic
+The stuck detector also inserts a `worker_task_updates` entry: "Worker {name} went offline. Task marked as failed for retry."
 
-When creating a retry for a failed task:
+Failed tasks are picked up by the retry creator (below).
 
-1. Read the failed task's updates to understand the failure
-2. POST /admin/workers/tasks to create a new task:
+### 7b. Retry Creator
+
+**Runs every**: 30 seconds
+
+**Purpose**: Create retry tasks for failed tasks that haven't exhausted their retry limit.
+
+**Logic**:
+
+```sql
+-- Find failed tasks eligible for retry
+SELECT wt.*, tt.max_retries
+FROM worker_tasks wt
+JOIN task_types tt ON wt.task_type_id = tt.id
+WHERE wt.status = 'failed'
+  AND wt.retry_count < tt.max_retries
+  AND NOT EXISTS (
+      SELECT 1 FROM worker_tasks child
+      WHERE child.parent_task_id = wt.id
+  );
+```
+
+For each eligible task:
+1. **(Optional) Call Claude API** to analyze the failure and generate adjusted instructions
+2. Create a new task:
    - Same title with " (retry N)" appended
    - Same task_type_id and params
-   - Description = original description + "\n\n---\n\nPREVIOUS ATTEMPT FAILED:\n{failure reason}\n\nPlease adjust your approach to avoid this issue."
-   - parent_task_id = the failed task's ID
-   - retry_count = failed task's retry_count + 1
-   - priority = same as original (or bump to "high" if it was "medium")
-   - Leave assigned_to empty — you'll assign it on the next loop iteration
-3. Post an update on the original failed task: "Retry #{N} created: {new_task_id}"
-4. Send Telegram notification about the retry
+   - `parent_task_id` = the failed task's ID
+   - `retry_count` = failed task's retry_count + 1
+   - `assigned_to = NULL` — goes back into the claim queue
+   - Description = original + failure context from Claude API (or templated fallback)
+3. Insert a `worker_task_updates` entry on the original: "Retry #{N} created"
+4. Queue a Telegram notification
 
-## Telegram Notifications
+### Retry Intelligence (Optional Claude API Call)
 
-Use the Telegram Bot API directly:
-- Bot token: from env var TELEGRAM_BOT_TOKEN
-- Chat ID: from env var TELEGRAM_CHAT_ID
-- Send messages with: curl POST https://api.telegram.org/bot{token}/sendMessage
+For simple failures (worker offline, timeout), a templated retry description is sufficient:
 
-Format messages in Markdown:
-- *Bold* for task titles
-- Status emoji: completed, failed, stuck, retrying
-- Include task ID for reference
-- Keep messages concise (under 200 chars when possible)
-
-## Rules
-
-- Never assign tasks to yourself
-- Never execute data tasks — you are an orchestrator only
-- Always explain your reasoning in assignment/retry reasons
-- If something unexpected happens, post a Telegram notification and continue
-- Send heartbeat every iteration to stay online
-- Be conservative with retries — if the failure looks permanent (e.g., "API
-  endpoint does not exist"), don't retry
-- Log all decisions as task updates so humans can audit
+```
+PREVIOUS ATTEMPT FAILED: Worker went offline during execution.
+This is retry 1 of 3. Please complete the task.
 ```
 
-### Environment Variables
+For complex failures (rate limits, data issues), the retry creator can make a **single Claude API call**:
 
-The Task Manager machine needs:
+```go
+prompt := fmt.Sprintf(
+    "A task failed with this error:\n%s\n\nGenerate a 1-2 sentence instruction "+
+    "for the retry, explaining what to do differently. If the error looks permanent "+
+    "(invalid data, missing API), respond with SKIP.",
+    failureReason,
+)
+// Call Claude API, get response
+// If "SKIP" → don't create retry, send Telegram alert instead
+// Otherwise → use response as retry description
+```
+
+This is the only place LLM is used — a single API call per failure, not a continuous orchestration loop.
+
+### 7c. Telegram Notifier
+
+**Runs**: event-driven (triggered by stuck detector and retry creator), with 5-second batching
+
+**Purpose**: Send notifications to a Telegram chat for key events.
+
+**Notification Types**:
+
+| Event | Message Format |
+|-------|---------------|
+| Task completed | `*{title}* completed by {worker}. {result_summary}` |
+| Task failed | `*{title}* failed. Reason: {reason}. Retry: {yes/no}` |
+| All retries exhausted | `*{title}* failed after {N} attempts. Needs human attention.` |
+| Task stuck | `*{title}* stuck — {worker} offline. Returning to queue.` |
+
+**Implementation**: Uses Telegram Bot API via HTTP POST from Go (no external dependency).
+
+```go
+func sendTelegram(botToken, chatID, message string) error {
+    url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", botToken)
+    body := map[string]string{
+        "chat_id":    chatID,
+        "text":       message,
+        "parse_mode": "Markdown",
+    }
+    // ... standard HTTP POST
+}
+```
+
+**Config** (env vars on task-service):
 
 ```bash
-TASK_MANAGER_EMAIL=taskmanager@investorcenter.ai
-TASK_MANAGER_PASSWORD=<secure-password>
-TELEGRAM_BOT_TOKEN=<telegram-bot-token>
-TELEGRAM_CHAT_ID=<telegram-chat-id>
-API_BASE=https://api.investorcenter.ai
+TELEGRAM_BOT_TOKEN=<bot-token>
+TELEGRAM_CHAT_ID=<chat-id>
+TELEGRAM_ENABLED=true    # easy kill switch
 ```
 
----
+### Goroutine Lifecycle
 
-## 7. Assignment Algorithm
+```go
+// In task-service/main.go
+func main() {
+    db := database.Connect()
+    router := setupRoutes(db)
 
-### Decision Flow
+    // Start background goroutines
+    go orchestrator.RunStuckDetector(db, 60*time.Second)
+    go orchestrator.RunRetryCreator(db, 30*time.Second)
+    go orchestrator.RunTelegramNotifier(db)
 
-```
-Unassigned task arrives
-        |
-        v
-GET /admin/workers/capacity
-        |
-        v
-Filter: online workers only
-        |
-        v
-Filter: exclude Task Manager (self)
-        |
-        v
-Filter: in_progress_count < 3
-        |
-        v
-Sort: by in_progress_count ASC (least loaded)
-        |
-        v
-Tie-break: by completed_today ASC (spread work evenly)
-        |
-        v
-Assign to top candidate
-        |
-        v
-POST /admin/workers/tasks/{id}/assign
-  reason: "auto: least loaded online worker ({name}, {N} in_progress)"
+    router.Run(":8001")
+}
 ```
 
-### Edge Cases
-
-| Scenario | Behavior |
-|----------|----------|
-| No workers online | Skip, retry next cycle. Post update on task + Telegram notification. |
-| All workers at capacity (>=3 in_progress) | Skip, retry next cycle. Telegram: "All workers at capacity." |
-| Only 1 worker online | Assign to them (unless at capacity). |
-| Task has been waiting >30 min | Bump Telegram notification to include "waiting {N} min for assignment." |
-| Human manually assigns before Task Manager | Task Manager sees it's already assigned, skips it. |
-
-### Capacity Limits
-
-The default concurrency limit is **3 in_progress tasks per worker**. This is a constant in the Task Manager's CLAUDE.md, not a database field. If we need per-worker limits later, we can add a `max_concurrent_tasks` column to the users table.
+All goroutines are gracefully shut down on SIGTERM (K8s pod termination).
 
 ---
 
@@ -519,9 +531,9 @@ The default concurrency limit is **3 in_progress tasks per worker**. This is a c
 ```
 Original Task (retry_count=0)
     |
-    | fails
+    | fails (worker crash, error, stuck detection)
     v
-Task Manager reads failure reason from task updates
+Retry creator goroutine picks it up
     |
     v
 Creates new task:
@@ -529,37 +541,22 @@ Creates new task:
   - parent_task_id: original task ID
   - retry_count: 1
   - description: original + failure context
-  - assigned_to: NULL (assigned on next loop)
+  - assigned_to: NULL → goes back in queue
     |
-    | if retry 1 also fails
+    | ClawdBot claims and executes
+    | if retry 1 also fails...
     v
 Creates retry 2 (retry_count=2, parent=retry 1)
     |
-    | if retry 2 also fails
+    | if retry 2 also fails...
     v
 Creates retry 3 (retry_count=3, parent=retry 2)
     |
     | if retry 3 fails
     v
-max_retries (3) reached — sends Telegram alert, no more retries
+max_retries (3) reached — Telegram alert, no more retries
 "Reddit Crawl for NVDA failed after 3 attempts. Needs human attention."
 ```
-
-### Retry Intelligence
-
-The key advantage of having Claude as the Task Manager: it reads the failure reason and adapts.
-
-**Example 1: Rate limit failure**
-- Failure: "Arctic Shift API returned 429 Too Many Requests after 50 calls"
-- Retry description appended: "PREVIOUS ATTEMPT FAILED: Rate limited after 50 API calls. Please use longer delays between requests (3-5 seconds) and smaller batch sizes."
-
-**Example 2: Auth failure**
-- Failure: "Got 401 Unauthorized when posting results to /api/v1/reddit/posts"
-- Task Manager recognizes this is likely a permanent issue (JWT expired?), sends Telegram notification: "Auth failure on task X — may need fresh credentials" but still creates the retry (worker will re-auth).
-
-**Example 3: Data issue**
-- Failure: "No posts found for ticker XYZZ in any subreddit"
-- Task Manager recognizes this might be a bad ticker, sends Telegram: "No data found for XYZZ — is this a valid ticker?" and flags it as `failed` without retry (permanent failure detected).
 
 ### Retry Fields
 
@@ -569,14 +566,21 @@ The key advantage of having Claude as the Task Manager: it reads the failure rea
 | `retry_count` | `worker_tasks` | Which retry attempt this is (0 = original) |
 | `parent_task_id` | `worker_tasks` | Link to the task this retries (NULL for originals) |
 
-### The Task Manager Decides Whether to Retry
+### Retry Intelligence Examples
 
-The Task Manager uses judgment (it's Claude) to decide:
-- **Retry**: transient errors (rate limits, timeouts, worker crash)
-- **Don't retry**: permanent errors (invalid ticker, API doesn't exist, auth misconfigured)
-- **Retry with changes**: fixable errors (add delay, reduce batch size, try different subreddit)
+**Rate limit failure**:
+- Failure: "Arctic Shift API returned 429 after 50 calls"
+- Claude API response: "Use longer delays (3-5s) between requests and smaller batch sizes."
+- Retry description: "PREVIOUS ATTEMPT FAILED: Rate limited. Please use longer delays between requests (3-5 seconds) and smaller batch sizes."
 
-This is expressed in the retry task's description, not in code.
+**Permanent failure (no retry)**:
+- Failure: "No posts found for ticker XYZZ in any subreddit"
+- Claude API response: "SKIP"
+- Action: No retry created. Telegram: "No data found for XYZZ — is this a valid ticker?"
+
+**Worker crash (templated, no Claude API needed)**:
+- Failure: "Worker went offline during execution"
+- Retry description: "PREVIOUS ATTEMPT FAILED: Worker went offline. This is retry 1 of 3."
 
 ---
 
@@ -589,74 +593,24 @@ This is expressed in the retry task's description, not in code.
 3. Create a Telegram group/channel for notifications
 4. Add the bot to the group
 5. Get the chat ID
-6. Set env vars on the Task Manager machine
+6. Set env vars on task-service deployment
 
-### Notification Types
-
-| Event | Message Format | Priority |
-|-------|---------------|----------|
-| Task completed | `*{title}* completed by {worker}. {result_summary}` | Normal |
-| Task failed | `*{title}* failed. Reason: {reason}. Retry: {yes/no}` | High |
-| All retries exhausted | `*{title}* failed after {N} attempts. Needs human attention.` | Urgent |
-| Task stuck | `*{title}* stuck — {worker} offline for {N} min. Reassigning.` | High |
-| No workers available | `*{title}* waiting for available worker ({N} min)` | Normal |
-| Worker went offline | `Worker {name} went offline with {N} in_progress tasks` | Normal |
-
-### Implementation
-
-The Task Manager sends notifications directly using `curl`:
+### Configuration
 
 ```bash
-curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "chat_id": "'${TELEGRAM_CHAT_ID}'",
-    "text": "*Reddit Crawl for NVDA* completed by Genesis.\n847 posts collected.",
-    "parse_mode": "Markdown"
-  }'
+# In task-service K8s deployment or .env
+TELEGRAM_BOT_TOKEN=<telegram-bot-token>
+TELEGRAM_CHAT_ID=<telegram-chat-id>
+TELEGRAM_ENABLED=true
 ```
-
-No backend notification service needed. The Task Manager is a Claude Code session — it can run curl/python directly.
 
 ### Rate Limiting
 
-The Task Manager should batch notifications when possible. If 5 tasks complete within one loop iteration, send a single summary message instead of 5 individual messages.
+The notifier goroutine batches messages — if 5 tasks complete within one check cycle, it sends a single summary message instead of 5 individual messages.
 
 ---
 
-## 10. Stuck Task Detection
-
-### What is a "Stuck" Task?
-
-A task that's been `in_progress` for too long with an offline worker. This usually means the ClawdBot session crashed or lost network.
-
-### Detection Rules
-
-```
-A task is STUCK if ALL of these are true:
-  1. status = "in_progress"
-  2. assigned worker is OFFLINE (last_activity_at > 10 minutes ago)
-  3. task has been in_progress for > 15 minutes (started_at > 15 min ago)
-```
-
-### Resolution
-
-1. Task Manager posts an update: "Worker {name} appears offline. Marking task as failed for reassignment."
-2. Task Manager marks task as `failed` via admin API
-3. This triggers the retry logic on the next loop iteration
-4. Telegram notification sent
-
-### Why Not Reassign Directly?
-
-We mark as `failed` and let the retry system handle it, rather than directly reassigning. This ensures:
-- The failure is logged
-- retry_count is incremented
-- The retry gets failure context in its description
-- Assignment history is clean (the original assignment "failed", the retry is a new assignment)
-
----
-
-## 11. UI Changes
+## 10. UI Changes
 
 ### Task Detail — Retry Chain
 
@@ -674,110 +628,101 @@ Display:
 - Link to parent task
 - Link to child retries (if any)
 
-### Task Detail — Assignment History
-
-Show the assignment log below the task metadata:
-
-```
-Assignment History:
-  Feb 10, 14:30 — Assigned to Genesis by Task Manager
-    Reason: auto: least loaded online worker (0 in_progress tasks)
-  Feb 10, 14:45 — Assigned to Nexus by Task Manager
-    Reason: retry: Genesis went offline during execution
-```
-
 ### Task List — New Filters
 
 Add filters:
-- `unassigned` — show only unassigned tasks
+- `unassigned` — show only tasks in the queue (pending + no assignee)
 - `retries` — show only retry tasks (retry_count > 0)
-- `stuck` — show tasks in_progress with offline worker (client-side filter)
 
-### Workers Tab — Capacity View
+### Task List — Queue Depth Indicator
 
-Show per-worker capacity info:
-- In-progress count: "2/3"
-- Pending count
+Show the number of unassigned pending tasks: "Queue: 3 tasks waiting"
+
+### Workers Tab — Activity View
+
+Show per-worker info:
+- Online/offline status
+- Current task (if any)
 - Completed today count
-
-### Admin Dashboard — Task Manager Status
-
-Show whether the Task Manager is online (via heartbeat), and a summary:
-- "Task Manager: Online (last heartbeat: 30s ago)"
-- "Unassigned tasks: 0"
-- "Failed awaiting retry: 2"
-- "Stuck tasks: 0"
 
 ---
 
-## 12. Implementation Plan
+## 11. Implementation Plan
 
-### Phase 2a: Database + Backend (Week 1)
+### Phase 2a: Task Service Changes (Week 1)
 
-| Task | Effort | Description |
-|------|--------|-------------|
-| Migration 031 | S | Add retry fields, create task_assignments table |
-| Worker capacity endpoint | M | GET /admin/workers/capacity with task counts |
-| Assignment endpoint | S | POST /admin/workers/tasks/:id/assign (atomic assign + log) |
-| Assignment history endpoint | S | GET /admin/workers/tasks/:id/assignments |
-| Unassigned filter | S | Add `?unassigned=true` to ListTasks |
-| Extend task response | S | Include retry_count, parent_task_id, max_retries in responses |
-| Extend CreateTask | S | Accept parent_task_id, retry_count in create |
-
-### Phase 2b: Task Manager (Week 2)
+All work happens in `task-service/`. The main Go backend requires no changes (proxy already forwards all routes).
 
 | Task | Effort | Description |
 |------|--------|-------------|
-| Register Task Manager user | S | Create user with is_admin + is_worker |
-| Write CLAUDE.md | M | Task Manager system prompt (the SOP above) |
-| Set up Telegram bot | S | Create bot, get token, set up notification channel |
-| Test assignment loop | M | Verify: create unassigned task → TM assigns → worker picks up |
-| Test retry loop | M | Verify: task fails → TM creates retry → retry succeeds |
-| Test stuck detection | M | Verify: worker goes offline → TM detects → marks failed → retries |
-| Test Telegram notifications | S | Verify all notification types send correctly |
+| Schema changes | S | Add `max_retries` to task_types, `parent_task_id` to worker_tasks, add claim index |
+| `POST /worker/tasks/claim` | S | Atomic claim endpoint with `FOR UPDATE SKIP LOCKED` in `task-service/handlers/worker_api.go` |
+| Unassigned filter | S | Add `?unassigned=true` filter to `ListTasks` |
+| Extend task response | S | Include `parent_task_id`, `max_retries` in task JSON responses |
+| Extend CreateTask | S | Accept `parent_task_id` in create request body, make `assigned_to` optional |
+| Register routes | S | Add new route in `task-service/main.go` |
+| Tests for claim | M | Unit tests for claim handler, concurrent claim tests |
 
-### Phase 2c: Frontend (Week 2-3)
+### Phase 2b: Background Goroutines (Week 1-2)
+
+| Task | Effort | Description |
+|------|--------|-------------|
+| Stuck detector | M | Goroutine in `task-service/orchestrator/stuck.go` — 60s loop, marks stuck tasks failed |
+| Retry creator | M | Goroutine in `task-service/orchestrator/retry.go` — creates retry tasks, optional Claude API call |
+| Telegram notifier | S | Goroutine in `task-service/orchestrator/telegram.go` — sends notifications |
+| Goroutine lifecycle | S | Graceful startup/shutdown in `main.go` |
+| Tests | M | Unit tests for stuck detection logic, retry creation, notification formatting |
+
+### Phase 2c: Frontend (Week 2)
 
 | Task | Effort | Description |
 |------|--------|-------------|
 | Retry chain in task detail | M | Show parent/child links, retry badge |
-| Assignment history in task detail | S | Show assignment log |
-| Worker capacity view | S | Show in_progress/pending/completed counts |
-| Task Manager status indicator | S | Online badge, unassigned/failed/stuck counts |
+| Queue depth indicator | S | Show unassigned pending count |
 | New task list filters | S | Unassigned, retries filters |
-| Frontend API client updates | S | Add new types, endpoints |
+| Worker activity view | S | Current task, completed today |
+| Frontend API client updates | S | Add new types/endpoints to `lib/api.ts` |
 
 **S** = Small (< 1 day), **M** = Medium (1-3 days)
 
-**Total estimate: ~3 weeks**
+**Total estimate: ~2 weeks** (down from ~3 weeks — no Task Manager to build/test)
 
 ---
 
-## 13. Future (Phase 3)
+## 12. Future (Phase 3)
 
-Phase 3 adds **autonomous task creation** and **Telegram commands**:
+Phase 3 adds **autonomous task creation**:
 
-- Task Manager scans for tickers with stale data → creates crawl tasks automatically
-- Task Manager receives Telegram commands: `/status`, `/add reddit NVDA`, `/pause`
+- Background goroutine or K8s CronJob scans for tickers with stale data → creates crawl tasks automatically
 - Priority scoring based on watchlist popularity, data staleness, trending tickers
+- Telegram commands (`/status`, `/add reddit NVDA`, `/pause`) via a webhook endpoint in task-service
 - Daily digest via Telegram
 - Budget/rate limit awareness (track LLM token usage per task)
 
 ---
 
-## Appendix A: Task Manager vs Workers Comparison
+## Appendix A: Service Architecture Summary
 
-| Aspect | Task Manager | Data Worker (ClawdBot) |
-|--------|-------------|----------------------|
-| Role | Orchestrator | Executor |
-| Auth | is_admin + is_worker | is_worker only |
-| Executes data tasks? | No | Yes |
-| Reads SOPs? | No (uses its own CLAUDE.md) | Yes (SOP tells it what to do) |
-| Assigns tasks? | Yes | No |
-| Creates tasks? | Only retries | No |
-| Sends notifications? | Yes (Telegram) | No (just task updates) |
-| Loop interval | 30 seconds | Task-dependent |
-| Runs on | Persistent VM | Any machine |
+### Services Involved
+
+| Service | Port | Role in Phase 2 |
+|---------|------|-----------------|
+| **Frontend** (Next.js) | 3000 | Admin UI for task management |
+| **Backend** (Go/Gin) | 8080 | Reverse-proxies `/api/v1/admin/workers/*` and `/api/v1/worker/*` to task-service |
+| **Task Service** (Go/Gin) | 8001 | Queue, claim endpoint, CRUD, background goroutines (stuck/retry/notify) |
+| **ClawdBot Workers** (Claude Code) | N/A | Pull tasks from queue, execute, report results |
+
+### How ClawdBots Interact with the Queue
+
+| Step | Endpoint | Description |
+|------|----------|-------------|
+| Auth | `POST /auth/login` | Get JWT token |
+| Heartbeat | `POST /worker/heartbeat` | Stay online (every 2 min) |
+| Claim | `POST /worker/tasks/claim` | Atomic claim of next available task |
+| Updates | `POST /worker/tasks/:id/updates` | Post progress logs |
+| Result | `POST /worker/tasks/:id/result` | Post structured result |
+| Data | `POST /worker/tasks/:id/data` | Upload collected data to S3 |
+| Complete | `PUT /worker/tasks/:id/status` | Mark task completed/failed |
 
 ## Appendix B: Example Scenario
 
@@ -785,33 +730,40 @@ Phase 3 adds **autonomous task creation** and **Telegram commands**:
 Time    Event
 -----   -----
 10:00   Human creates "Reddit Crawl for NVDA" in admin UI (no assignee)
-10:00   Task status: pending, assigned_to: NULL
+10:00   Task status: pending, assigned_to: NULL (in queue)
 
-10:00   Task Manager loop runs
-10:00   TM sees unassigned task
-10:00   TM fetches worker capacity: Genesis (0 in_progress), Nexus (2 in_progress)
-10:00   TM assigns to Genesis: "auto: least loaded (0 in_progress)"
-10:00   → Telegram: "Assigned *Reddit Crawl for NVDA* to Genesis"
-
-10:02   Genesis polls, picks up task, marks in_progress (started_at = now)
+10:01   ClawdBot "Genesis" calls POST /worker/tasks/claim
+10:01   PostgreSQL atomically assigns task to Genesis, sets status=in_progress
+10:01   Genesis receives task with SOP + params in response
 
 10:05   Genesis posts update: "Collected 300 posts from r/wsb..."
 
 10:08   Genesis's machine loses network. Heartbeat stops.
 
-10:18   Task Manager loop detects: Genesis offline for 10 min, task in_progress for 16 min
-10:18   TM marks task as failed: "Worker Genesis went offline during execution"
-10:18   → Telegram: "*Reddit Crawl for NVDA* stuck — Genesis offline. Retrying."
+10:18   Stuck detector goroutine runs: Genesis offline 10 min, task in_progress 17 min
+10:18   Marks task as failed, inserts update: "Worker Genesis went offline"
+10:18   → Telegram: "*Reddit Crawl for NVDA* stuck — Genesis offline. Returning to queue."
 
-10:18   Task Manager sees failed task, retry_count=0, max_retries=3
-10:18   TM reads failure: "Worker went offline"
-10:18   TM creates retry task: "Reddit Crawl for NVDA (retry 1)"
-         retry_count=1, parent_task_id=original
-         description includes: "Previous attempt: worker went offline mid-execution"
+10:18   Retry creator goroutine runs: task failed, retry_count=0, max_retries=3
+10:18   Creates retry: "Reddit Crawl for NVDA (retry 1)", retry_count=1, assigned_to=NULL
+10:18   → Telegram: "Retry 1/3: *Reddit Crawl for NVDA* back in queue."
 
-10:19   TM assigns retry to Nexus: "auto: only available online worker"
-10:19   → Telegram: "Retry 1/3: *Reddit Crawl for NVDA* assigned to Nexus"
+10:19   ClawdBot "Nexus" calls POST /worker/tasks/claim
+10:19   Gets the retry task (it's next in queue)
+10:19   Nexus reads description: "Previous attempt: worker went offline mid-execution"
 
-10:20   Nexus picks up, executes, completes successfully
+10:25   Nexus completes successfully, posts result
 10:25   → Telegram: "*Reddit Crawl for NVDA (retry 1)* completed by Nexus. 847 posts."
 ```
+
+## Appendix C: Why Not a Task Manager?
+
+The original Phase 2 spec proposed a Task Manager (Claude Code session) as a central orchestrator. This was replaced with the pull-based model because:
+
+1. **95% of orchestration is deterministic** — assignment, stuck detection, notifications don't need an LLM
+2. **PostgreSQL provides atomic claiming for free** — no coordinator needed for work distribution
+3. **Workers self-balance naturally** — idle bots claim, busy bots don't
+4. **LLM intelligence is preserved** — targeted Claude API call for retry decisions only
+5. **Operational simplicity** — no extra process to run, monitor, and restart
+6. **Cost** — LLM calls only on failures (rare) vs. every 30 seconds (continuous)
+7. **Reliability** — Go goroutines don't crash from context overflow or hallucinate API paths

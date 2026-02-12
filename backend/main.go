@@ -10,7 +10,6 @@ import (
 	"investorcenter-api/database"
 	"investorcenter-api/handlers"
 	"investorcenter-api/services"
-	"investorcenter-api/storage"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -30,12 +29,6 @@ func main() {
 	} else {
 		log.Println("Database connected successfully")
 		defer database.Close()
-	}
-
-	// Initialize S3 storage
-	if err := storage.Initialize(); err != nil {
-		log.Printf("S3 storage initialization failed: %v", err)
-		log.Println("Worker data storage features disabled")
 	}
 
 	// Set Gin mode
@@ -387,45 +380,13 @@ func main() {
 			notes.DELETE("/notes/:id", handlers.DeleteFeatureNote)               // DELETE /api/v1/admin/notes/notes/:id
 		}
 
-		// Worker management endpoints
-		workers := adminRoutes.Group("/workers")
-		{
-			workers.GET("", handlers.ListWorkers)         // GET /api/v1/admin/workers
-			workers.POST("", handlers.RegisterWorker)     // POST /api/v1/admin/workers
-			workers.DELETE("/:id", handlers.DeleteWorker) // DELETE /api/v1/admin/workers/:id
-			// Task type management
-			workers.GET("/task-types", handlers.ListTaskTypes)         // GET /api/v1/admin/workers/task-types
-			workers.POST("/task-types", handlers.CreateTaskType)       // POST /api/v1/admin/workers/task-types
-			workers.PUT("/task-types/:id", handlers.UpdateTaskType)    // PUT /api/v1/admin/workers/task-types/:id
-			workers.DELETE("/task-types/:id", handlers.DeleteTaskType) // DELETE /api/v1/admin/workers/task-types/:id
-			// Task management
-			workers.GET("/tasks", handlers.ListTasks)                          // GET /api/v1/admin/workers/tasks
-			workers.POST("/tasks", handlers.CreateTask)                        // POST /api/v1/admin/workers/tasks
-			workers.GET("/tasks/:id", handlers.GetTask)                        // GET /api/v1/admin/workers/tasks/:id
-			workers.PUT("/tasks/:id", handlers.UpdateTask)                     // PUT /api/v1/admin/workers/tasks/:id
-			workers.DELETE("/tasks/:id", handlers.DeleteTask)                  // DELETE /api/v1/admin/workers/tasks/:id
-			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)        // GET /api/v1/admin/workers/tasks/:id/updates
-			workers.POST("/tasks/:id/updates", handlers.CreateTaskUpdate)      // POST /api/v1/admin/workers/tasks/:id/updates
-			workers.GET("/tasks/:id/data", handlers.AdminGetTaskData)          // GET /api/v1/admin/workers/tasks/:id/data
-			workers.GET("/tasks/:id/data/file", handlers.AdminGetTaskDataFile) // GET /api/v1/admin/workers/tasks/:id/data/file?key=...
-		}
 	}
 
-	// Worker API routes (authenticated workers only)
-	workerRoutes := v1.Group("/worker")
-	workerRoutes.Use(auth.AuthMiddleware())
-	{
-		workerRoutes.GET("/task-types", handlers.ListTaskTypes)                // GET /api/v1/worker/task-types
-		workerRoutes.GET("/task-types/:id", handlers.WorkerGetTaskType)        // GET /api/v1/worker/task-types/:id
-		workerRoutes.GET("/tasks", handlers.WorkerGetMyTasks)                  // GET /api/v1/worker/tasks
-		workerRoutes.GET("/tasks/:id", handlers.WorkerGetTask)                 // GET /api/v1/worker/tasks/:id
-		workerRoutes.PUT("/tasks/:id/status", handlers.WorkerUpdateTaskStatus) // PUT /api/v1/worker/tasks/:id/status
-		workerRoutes.POST("/tasks/:id/result", handlers.WorkerPostResult)      // POST /api/v1/worker/tasks/:id/result
-		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)  // GET /api/v1/worker/tasks/:id/updates
-		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)     // POST /api/v1/worker/tasks/:id/updates
-		workerRoutes.POST("/tasks/:id/data", handlers.WorkerPostTaskData)      // POST /api/v1/worker/tasks/:id/data
-		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)              // POST /api/v1/worker/heartbeat
-	}
+	// Worker/task management routes — proxied to task-service
+	taskProxy := services.TaskServiceProxy()
+	v1.Any("/admin/workers", taskProxy)
+	v1.Any("/admin/workers/*path", taskProxy)
+	v1.Any("/worker/*path", taskProxy)
 
 	// Start server
 	port := os.Getenv("PORT")

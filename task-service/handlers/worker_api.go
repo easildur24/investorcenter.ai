@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"investorcenter-api/auth"
-	"investorcenter-api/database"
-	"investorcenter-api/storage"
+	"task-service/auth"
+	"task-service/database"
+	"task-service/storage"
 )
 
 // verifyWorker checks if the authenticated user is a worker and returns their ID
@@ -376,23 +376,17 @@ func WorkerPostResult(c *gin.Context) {
 }
 
 // WorkerPostTaskData handles POST /worker/tasks/:id/data
-// Uploads a batch of data items to S3 under worker-data/{task_id}/{data_type}/
 func WorkerPostTaskData(c *gin.Context) {
 	userID, ok := verifyWorker(c)
 	if !ok {
 		return
 	}
 
-	if !storage.IsInitialized() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
-		return
-	}
-
 	taskID := c.Param("id")
 
 	var req struct {
-		DataType string                 `json:"data_type" binding:"required"`
-		Items    []storage.TaskDataItem `json:"items" binding:"required"`
+		DataType string                  `json:"data_type" binding:"required"`
+		Items    []database.TaskDataItem `json:"items" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -428,18 +422,19 @@ func WorkerPostTaskData(c *gin.Context) {
 		return
 	}
 
-	key, count, err := storage.UploadTaskData(taskID, req.DataType, userID, req.Items)
+	inserted, skipped, err := database.BulkInsertTaskData(taskID, req.DataType, req.Items)
 	if err != nil {
-		log.Printf("Error uploading task data to S3: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store data"})
+		log.Printf("Error inserting task data: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert data"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data": gin.H{
-			"key":   key,
-			"items": count,
+			"inserted": inserted,
+			"skipped":  skipped,
+			"total":    len(req.Items),
 		},
 	})
 }
@@ -454,5 +449,69 @@ func WorkerHeartbeat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Heartbeat received",
+	})
+}
+
+// WorkerRegisterTaskFile handles POST /worker/tasks/:id/files
+// Workers upload files directly to S3, then call this to register the metadata.
+func WorkerRegisterTaskFile(c *gin.Context) {
+	userID, ok := verifyWorker(c)
+	if !ok {
+		return
+	}
+
+	taskID := c.Param("id")
+
+	var req struct {
+		Filename    string `json:"filename" binding:"required"`
+		S3Key       string `json:"s3_key" binding:"required"`
+		ContentType string `json:"content_type"`
+		SizeBytes   int64  `json:"size_bytes"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ContentType == "" {
+		req.ContentType = "application/octet-stream"
+	}
+
+	// Validate S3 key starts with worker-results/{task_id}/
+	if err := storage.ValidateS3Key(req.S3Key, taskID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify task exists, is assigned to this worker, and is in_progress
+	var currentStatus string
+	err := database.DB.QueryRow(
+		"SELECT status FROM worker_tasks WHERE id = $1 AND assigned_to = $2",
+		taskID, userID,
+	).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
+			return
+		}
+		log.Printf("Error checking task status: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check task status"})
+		return
+	}
+	if currentStatus != "in_progress" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Can only register files for tasks with status 'in_progress'"})
+		return
+	}
+
+	file, err := database.InsertTaskFile(taskID, req.Filename, req.S3Key, req.ContentType, req.SizeBytes, userID)
+	if err != nil {
+		log.Printf("Error registering task file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register file"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    file,
 	})
 }

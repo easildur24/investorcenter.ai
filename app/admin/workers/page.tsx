@@ -16,13 +16,14 @@ import {
   updateTaskType,
   deleteTaskType,
   getTaskData,
-  getTaskDataFile,
+  getTaskFiles,
+  getTaskFileDownloadUrl,
   Worker,
   WorkerTask,
   TaskUpdate,
   TaskType,
-  TaskDataFile,
-  TaskDataBatch,
+  TaskDataRow,
+  TaskFile,
   TaskStatus,
   TaskPriority,
   TASK_STATUSES,
@@ -120,10 +121,11 @@ export default function WorkersPage() {
   const [showResult, setShowResult] = useState(false);
   const [showParams, setShowParams] = useState(true);
   const [showData, setShowData] = useState(false);
-  const [taskDataFiles, setTaskDataFiles] = useState<TaskDataFile[]>([]);
+  const [showFiles, setShowFiles] = useState(false);
+  const [taskDataRows, setTaskDataRows] = useState<TaskDataRow[]>([]);
   const [taskDataTotal, setTaskDataTotal] = useState(0);
-  const [expandedFile, setExpandedFile] = useState<string | null>(null);
-  const [expandedBatch, setExpandedBatch] = useState<TaskDataBatch | null>(null);
+  const [taskFiles, setTaskFiles] = useState<TaskFile[]>([]);
+  const [taskFilesTotal, setTaskFilesTotal] = useState(0);
 
   // Fetch data
   const fetchWorkers = useCallback(async () => {
@@ -185,32 +187,27 @@ export default function WorkersPage() {
     }
   };
 
-  // Fetch collected data files for a task
+  // Fetch collected data rows for a task (from worker_task_data)
   const fetchTaskData = async (taskId: string) => {
     try {
       const res = await getTaskData(taskId, { limit: 50 });
-      setTaskDataFiles(res.files || []);
+      setTaskDataRows(res.items || []);
       setTaskDataTotal(res.total || 0);
     } catch {
-      setTaskDataFiles([]);
+      setTaskDataRows([]);
       setTaskDataTotal(0);
     }
   };
 
-  // Fetch and expand a specific data file
-  const toggleDataFile = async (taskId: string, key: string) => {
-    if (expandedFile === key) {
-      setExpandedFile(null);
-      setExpandedBatch(null);
-      return;
-    }
+  // Fetch result files for a task (from worker_task_files)
+  const fetchTaskFiles = async (taskId: string) => {
     try {
-      const batch = await getTaskDataFile(taskId, key);
-      setExpandedFile(key);
-      setExpandedBatch(batch);
+      const res = await getTaskFiles(taskId, { limit: 50 });
+      setTaskFiles(res.files || []);
+      setTaskFilesTotal(res.total || 0);
     } catch {
-      setExpandedFile(null);
-      setExpandedBatch(null);
+      setTaskFiles([]);
+      setTaskFilesTotal(0);
     }
   };
 
@@ -232,10 +229,10 @@ export default function WorkersPage() {
     setShowResult(false);
     setShowParams(true);
     setShowData(false);
-    setExpandedFile(null);
-    setExpandedBatch(null);
+    setShowFiles(false);
     fetchTaskUpdates(task.id);
     fetchTaskData(task.id);
+    fetchTaskFiles(task.id);
   };
 
   // Select task type
@@ -1633,7 +1630,7 @@ export default function WorkersPage() {
                 </div>
               )}
 
-              {/* Collected Data (S3 files) */}
+              {/* Collected Data (PostgreSQL worker_task_data rows) */}
               {taskDataTotal > 0 && (
                 <div className="mb-4">
                   <button
@@ -1642,63 +1639,79 @@ export default function WorkersPage() {
                   >
                     {showData ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     <Braces className="w-4 h-4" />
-                    Collected Data ({taskDataTotal} {taskDataTotal === 1 ? 'file' : 'files'})
+                    Collected Data ({taskDataTotal} {taskDataTotal === 1 ? 'row' : 'rows'})
                   </button>
                   {showData && (
                     <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                      {taskDataFiles.map((file) => (
-                        <div key={file.key} className="bg-ic-bg-secondary rounded-lg p-3">
-                          <div
-                            className="flex items-center gap-2 cursor-pointer"
-                            onClick={() => toggleDataFile(selectedTask.id, file.key)}
-                          >
-                            {expandedFile === file.key ? <ChevronDown className="w-3.5 h-3.5 text-ic-text-secondary" /> : <ChevronRight className="w-3.5 h-3.5 text-ic-text-secondary" />}
+                      {taskDataRows.map((row) => (
+                        <div key={row.id} className="bg-ic-bg-secondary rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
-                              {file.data_type}
+                              {row.data_type}
                             </span>
-                            <span className="text-xs text-ic-text-secondary">
-                              {(file.size / 1024).toFixed(1)} KB
-                            </span>
+                            {row.ticker && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
+                                {row.ticker}
+                              </span>
+                            )}
+                            {row.external_id && (
+                              <span className="text-xs text-ic-text-secondary font-mono">
+                                {row.external_id}
+                              </span>
+                            )}
                             <span className="text-xs text-ic-text-secondary ml-auto">
-                              {new Date(file.uploaded_at).toLocaleString()}
+                              {new Date(row.collected_at).toLocaleString()}
                             </span>
                           </div>
-                          {expandedFile === file.key && expandedBatch && (
-                            <div className="mt-2 space-y-1.5 border-t border-ic-border pt-2">
-                              <p className="text-xs text-ic-text-secondary">
-                                {expandedBatch.item_count} items
-                              </p>
-                              {expandedBatch.items.slice(0, 20).map((item, idx) => (
-                                <div key={idx} className="bg-ic-surface rounded p-2">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    {item.ticker && (
-                                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
-                                        {item.ticker}
-                                      </span>
-                                    )}
-                                    {item.external_id && (
-                                      <span className="text-xs text-ic-text-secondary font-mono">
-                                        {item.external_id}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
-                                    {JSON.stringify(item.data, null, 2)}
-                                  </pre>
-                                </div>
-                              ))}
-                              {expandedBatch.items.length > 20 && (
-                                <p className="text-xs text-ic-text-secondary text-center py-1">
-                                  Showing 20 of {expandedBatch.items.length} items
-                                </p>
-                              )}
-                            </div>
-                          )}
+                          <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                            {JSON.stringify(row.data, null, 2)}
+                          </pre>
                         </div>
                       ))}
-                      {taskDataTotal > taskDataFiles.length && (
+                      {taskDataTotal > taskDataRows.length && (
                         <p className="text-xs text-ic-text-secondary text-center py-2">
-                          Showing {taskDataFiles.length} of {taskDataTotal} files
+                          Showing {taskDataRows.length} of {taskDataTotal} rows
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Result Files (S3-backed, metadata from worker_task_files) */}
+              {taskFilesTotal > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowFiles(!showFiles)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showFiles ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <FileText className="w-4 h-4" />
+                    Result Files ({taskFilesTotal})
+                  </button>
+                  {showFiles && (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {taskFiles.map((file) => (
+                        <div key={file.id} className="bg-ic-bg-secondary rounded-lg p-3 flex items-center gap-3">
+                          <FileText className="w-4 h-4 text-ic-text-secondary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-ic-text-primary truncate">{file.filename}</p>
+                            <p className="text-xs text-ic-text-secondary">
+                              {file.content_type} &middot; {(file.size_bytes / 1024).toFixed(1)} KB &middot; {new Date(file.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <a
+                            href={getTaskFileDownloadUrl(file.task_id, file.id)}
+                            className="text-xs text-blue-500 hover:text-blue-700 transition flex-shrink-0"
+                            download
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ))}
+                      {taskFilesTotal > taskFiles.length && (
+                        <p className="text-xs text-ic-text-secondary text-center py-2">
+                          Showing {taskFiles.length} of {taskFilesTotal} files
                         </p>
                       )}
                     </div>

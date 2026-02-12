@@ -195,52 +195,70 @@ export async function createTaskUpdate(taskId: string, content: string): Promise
   return res.data;
 }
 
-// Task Data (S3-backed)
-export interface TaskDataFile {
-  key: string;
+// Task Data (PostgreSQL worker_task_data)
+export interface TaskDataRow {
+  id: number;
+  task_id: string;
   data_type: string;
-  item_count: number;
-  size: number;
-  uploaded_at: string;
-  uploaded_by?: string;
+  ticker: string | null;
+  external_id: string | null;
+  data: Record<string, unknown>;
+  collected_at: string;
+  created_at: string;
 }
 
-export interface TaskDataFilesResponse {
-  files: TaskDataFile[];
+export interface TaskDataResponse {
+  items: TaskDataRow[];
   total: number;
   limit: number;
   offset: number;
 }
 
-export interface TaskDataBatch {
-  task_id: string;
-  data_type: string;
-  uploaded_by: string;
-  uploaded_at: string;
-  item_count: number;
-  items: Array<{
-    ticker: string | null;
-    external_id: string | null;
-    collected_at: string | null;
-    data: Record<string, unknown>;
-  }>;
-}
-
 export async function getTaskData(
   taskId: string,
-  params?: { data_type?: string; limit?: number; offset?: number }
-): Promise<TaskDataFilesResponse> {
+  params?: { data_type?: string; ticker?: string; limit?: number; offset?: number }
+): Promise<TaskDataResponse> {
   const query = new URLSearchParams();
   if (params?.data_type) query.set('data_type', params.data_type);
+  if (params?.ticker) query.set('ticker', params.ticker);
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString();
-  const res = await apiClient.get<ApiResponse<TaskDataFilesResponse>>(`${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`);
+  const res = await apiClient.get<ApiResponse<TaskDataResponse>>(`${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`);
   return res.data;
 }
 
-export async function getTaskDataFile(taskId: string, key: string): Promise<TaskDataBatch> {
-  const query = new URLSearchParams({ key });
-  const res = await apiClient.get<ApiResponse<TaskDataBatch>>(`${BASE}/tasks/${taskId}/data/file?${query.toString()}`);
+// Task Files (S3-backed result files, metadata in worker_task_files)
+export interface TaskFile {
+  id: number;
+  task_id: string;
+  filename: string;
+  s3_key: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface TaskFilesResponse {
+  files: TaskFile[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getTaskFiles(
+  taskId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<TaskFilesResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  const res = await apiClient.get<ApiResponse<TaskFilesResponse>>(`${BASE}/tasks/${taskId}/files${qs ? '?' + qs : ''}`);
   return res.data;
+}
+
+export function getTaskFileDownloadUrl(taskId: string, fileId: number): string {
+  return `/api/v1${BASE}/tasks/${taskId}/files/${fileId}/download`;
 }

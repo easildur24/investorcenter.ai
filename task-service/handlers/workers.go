@@ -5,14 +5,16 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"investorcenter-api/auth"
-	"investorcenter-api/database"
-	"investorcenter-api/storage"
+	"task-service/auth"
+	"task-service/database"
+	"task-service/storage"
 )
 
 // JSONB handles nullable JSON columns from PostgreSQL.
@@ -590,15 +592,10 @@ func CreateTaskUpdate(c *gin.Context) {
 }
 
 // AdminGetTaskData handles GET /admin/workers/tasks/:id/data
-// Lists data files stored in S3 for a task, optionally filtered by data_type.
 func AdminGetTaskData(c *gin.Context) {
-	if !storage.IsInitialized() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
-		return
-	}
-
 	taskID := c.Param("id")
 	dataType := c.Query("data_type")
+	ticker := c.Query("ticker")
 
 	limit := 100
 	offset := 0
@@ -609,10 +606,43 @@ func AdminGetTaskData(c *gin.Context) {
 		fmt.Sscanf(v, "%d", &offset)
 	}
 
-	files, total, err := storage.ListTaskData(taskID, dataType, limit, offset)
+	items, total, err := database.GetTaskData(taskID, dataType, ticker, limit, offset)
 	if err != nil {
-		log.Printf("Error listing task data from S3: %v", err)
+		log.Printf("Error fetching task data: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"items":  items,
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}
+
+// ==================== Task Files ====================
+
+// AdminListTaskFiles handles GET /admin/workers/tasks/:id/files
+func AdminListTaskFiles(c *gin.Context) {
+	taskID := c.Param("id")
+
+	limit := 100
+	offset := 0
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	if v := c.Query("offset"); v != "" {
+		fmt.Sscanf(v, "%d", &offset)
+	}
+
+	files, total, err := database.ListTaskFiles(taskID, limit, offset)
+	if err != nil {
+		log.Printf("Error fetching task files: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task files"})
 		return
 	}
 
@@ -627,29 +657,44 @@ func AdminGetTaskData(c *gin.Context) {
 	})
 }
 
-// AdminGetTaskDataFile handles GET /admin/workers/tasks/:id/data/file?key=...
-// Downloads and returns the contents of a specific data file from S3.
-func AdminGetTaskDataFile(c *gin.Context) {
-	if !storage.IsInitialized() {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
-		return
-	}
+// AdminDownloadTaskFile handles GET /admin/workers/tasks/:id/files/:fileId/download
+func AdminDownloadTaskFile(c *gin.Context) {
+	taskID := c.Param("id")
+	fileIDStr := c.Param("fileId")
 
-	key := c.Query("key")
-	if key == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "key query parameter is required"})
-		return
-	}
-
-	batch, err := storage.GetTaskDataFile(key)
+	fileID, err := strconv.ParseInt(fileIDStr, 10, 64)
 	if err != nil {
-		log.Printf("Error fetching task data file from S3: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data file"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid file ID"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    batch,
-	})
+	file, err := database.GetTaskFile(taskID, fileID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "File not found"})
+		return
+	}
+
+	// Validate S3 key prefix before downloading
+	if err := storage.ValidateS3Key(file.S3Key, taskID); err != nil {
+		log.Printf("Security: invalid S3 key %q for task %s", file.S3Key, taskID)
+		c.JSON(http.StatusForbidden, gin.H{"error": "Invalid file reference"})
+		return
+	}
+
+	body, contentType, size, err := storage.DownloadFile(file.S3Key)
+	if err != nil {
+		log.Printf("Error downloading file from S3: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to download file"})
+		return
+	}
+	defer body.Close()
+
+	c.Header("Content-Type", contentType)
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%q", file.Filename))
+	if size > 0 {
+		c.Header("Content-Length", strconv.FormatInt(size, 10))
+	}
+
+	c.Status(http.StatusOK)
+	io.Copy(c.Writer, body)
 }

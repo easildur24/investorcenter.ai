@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"investorcenter-api/database"
+	"task-service/database"
 )
 
 var validTaskTypeName = regexp.MustCompile(`^[a-z0-9_]{1,100}$`)
