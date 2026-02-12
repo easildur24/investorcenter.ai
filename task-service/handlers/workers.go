@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"investorcenter-api/auth"
-	"investorcenter-api/database"
+	"task-service/auth"
+	"task-service/database"
 )
 
 // JSONB handles nullable JSON columns from PostgreSQL.

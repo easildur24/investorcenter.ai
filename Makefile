@@ -1,6 +1,6 @@
 # InvestorCenter.ai Makefile
 
-.PHONY: help setup install build dev test check clean
+.PHONY: help setup install build dev test check clean dev-task-service build-task-service test-task-service
 
 # Configuration
 VENV_PATH = path/to/venv
@@ -82,6 +82,7 @@ dev:
 build:
 	@echo "Building application..."
 	cd backend && go build -o investorcenter-api .
+	cd task-service && go build -o task-service .
 	npm run build
 
 # Complete testing and validation
@@ -157,12 +158,27 @@ db-import-prod:
 	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
 	@pkill -f "kubectl port-forward.*postgres-service" || true
 
+# Task service
+dev-task-service:
+	@echo "Starting task service on port 8001..."
+	cd task-service && go run .
+
+build-task-service:
+	@echo "Building task service..."
+	cd task-service && go build -o task-service .
+
+test-task-service:
+	@echo "Running task service tests..."
+	cd task-service && go test ./...
+
 # Cleanup
 clean:
 	@echo "Cleaning build artifacts..."
 	rm -f backend/investorcenter-api
+	rm -f task-service/task-service
 	rm -rf .next/
 	cd backend && go clean
+	cd task-service && go clean
 
 # Verification
 verify:

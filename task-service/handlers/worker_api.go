@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"investorcenter-api/auth"
-	"investorcenter-api/database"
+	"task-service/auth"
+	"task-service/database"
 )
 
 // verifyWorker checks if the authenticated user is a worker and returns their ID

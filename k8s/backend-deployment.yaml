@@ -96,6 +96,8 @@ spec:
           value: "InvestorCenter.ai"
         - name: FRONTEND_URL
           value: "https://investorcenter.ai"
+        - name: TASK_SERVICE_URL
+          value: "http://task-service:8001"
         resources:
           requests:
             memory: "128Mi"
