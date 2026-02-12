@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"investorcenter-api/auth"
 	"investorcenter-api/database"
+	"investorcenter-api/storage"
 )
 
 // JSONB handles nullable JSON columns from PostgreSQL.
@@ -589,10 +590,15 @@ func CreateTaskUpdate(c *gin.Context) {
 }
 
 // AdminGetTaskData handles GET /admin/workers/tasks/:id/data
+// Lists data files stored in S3 for a task, optionally filtered by data_type.
 func AdminGetTaskData(c *gin.Context) {
+	if !storage.IsInitialized() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
+		return
+	}
+
 	taskID := c.Param("id")
 	dataType := c.Query("data_type")
-	ticker := c.Query("ticker")
 
 	limit := 100
 	offset := 0
@@ -603,9 +609,9 @@ func AdminGetTaskData(c *gin.Context) {
 		fmt.Sscanf(v, "%d", &offset)
 	}
 
-	items, total, err := database.GetTaskData(taskID, dataType, ticker, limit, offset)
+	files, total, err := storage.ListTaskData(taskID, dataType, limit, offset)
 	if err != nil {
-		log.Printf("Error fetching task data: %v", err)
+		log.Printf("Error listing task data from S3: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task data"})
 		return
 	}
@@ -613,10 +619,37 @@ func AdminGetTaskData(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"data": gin.H{
-			"items":  items,
+			"files":  files,
 			"total":  total,
 			"limit":  limit,
 			"offset": offset,
 		},
+	})
+}
+
+// AdminGetTaskDataFile handles GET /admin/workers/tasks/:id/data/file?key=...
+// Downloads and returns the contents of a specific data file from S3.
+func AdminGetTaskDataFile(c *gin.Context) {
+	if !storage.IsInitialized() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
+		return
+	}
+
+	key := c.Query("key")
+	if key == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "key query parameter is required"})
+		return
+	}
+
+	batch, err := storage.GetTaskDataFile(key)
+	if err != nil {
+		log.Printf("Error fetching task data file from S3: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch data file"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    batch,
 	})
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"investorcenter-api/auth"
 	"investorcenter-api/database"
+	"investorcenter-api/storage"
 )
 
 // verifyWorker checks if the authenticated user is a worker and returns their ID
@@ -375,17 +376,23 @@ func WorkerPostResult(c *gin.Context) {
 }
 
 // WorkerPostTaskData handles POST /worker/tasks/:id/data
+// Uploads a batch of data items to S3 under worker-data/{task_id}/{data_type}/
 func WorkerPostTaskData(c *gin.Context) {
 	userID, ok := verifyWorker(c)
 	if !ok {
 		return
 	}
 
+	if !storage.IsInitialized() {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Storage not available"})
+		return
+	}
+
 	taskID := c.Param("id")
 
 	var req struct {
-		DataType string                  `json:"data_type" binding:"required"`
-		Items    []database.TaskDataItem `json:"items" binding:"required"`
+		DataType string                 `json:"data_type" binding:"required"`
+		Items    []storage.TaskDataItem `json:"items" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -421,19 +428,18 @@ func WorkerPostTaskData(c *gin.Context) {
 		return
 	}
 
-	inserted, skipped, err := database.BulkInsertTaskData(taskID, req.DataType, req.Items)
+	key, count, err := storage.UploadTaskData(taskID, req.DataType, userID, req.Items)
 	if err != nil {
-		log.Printf("Error inserting task data: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert data"})
+		log.Printf("Error uploading task data to S3: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store data"})
 		return
 	}
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
 		"data": gin.H{
-			"inserted": inserted,
-			"skipped":  skipped,
-			"total":    len(req.Items),
+			"key":   key,
+			"items": count,
 		},
 	})
 }

@@ -16,11 +16,13 @@ import {
   updateTaskType,
   deleteTaskType,
   getTaskData,
+  getTaskDataFile,
   Worker,
   WorkerTask,
   TaskUpdate,
   TaskType,
-  TaskDataRow,
+  TaskDataFile,
+  TaskDataBatch,
   TaskStatus,
   TaskPriority,
   TASK_STATUSES,
@@ -118,8 +120,10 @@ export default function WorkersPage() {
   const [showResult, setShowResult] = useState(false);
   const [showParams, setShowParams] = useState(true);
   const [showData, setShowData] = useState(false);
-  const [taskData, setTaskData] = useState<TaskDataRow[]>([]);
+  const [taskDataFiles, setTaskDataFiles] = useState<TaskDataFile[]>([]);
   const [taskDataTotal, setTaskDataTotal] = useState(0);
+  const [expandedFile, setExpandedFile] = useState<string | null>(null);
+  const [expandedBatch, setExpandedBatch] = useState<TaskDataBatch | null>(null);
 
   // Fetch data
   const fetchWorkers = useCallback(async () => {
@@ -181,15 +185,32 @@ export default function WorkersPage() {
     }
   };
 
-  // Fetch collected data for a task
+  // Fetch collected data files for a task
   const fetchTaskData = async (taskId: string) => {
     try {
-      const res = await getTaskData(taskId, { limit: 20 });
-      setTaskData(res.items || []);
+      const res = await getTaskData(taskId, { limit: 50 });
+      setTaskDataFiles(res.files || []);
       setTaskDataTotal(res.total || 0);
     } catch {
-      setTaskData([]);
+      setTaskDataFiles([]);
       setTaskDataTotal(0);
+    }
+  };
+
+  // Fetch and expand a specific data file
+  const toggleDataFile = async (taskId: string, key: string) => {
+    if (expandedFile === key) {
+      setExpandedFile(null);
+      setExpandedBatch(null);
+      return;
+    }
+    try {
+      const batch = await getTaskDataFile(taskId, key);
+      setExpandedFile(key);
+      setExpandedBatch(batch);
+    } catch {
+      setExpandedFile(null);
+      setExpandedBatch(null);
     }
   };
 
@@ -211,6 +232,8 @@ export default function WorkersPage() {
     setShowResult(false);
     setShowParams(true);
     setShowData(false);
+    setExpandedFile(null);
+    setExpandedBatch(null);
     fetchTaskUpdates(task.id);
     fetchTaskData(task.id);
   };
@@ -1610,7 +1633,7 @@ export default function WorkersPage() {
                 </div>
               )}
 
-              {/* Collected Data */}
+              {/* Collected Data (S3 files) */}
               {taskDataTotal > 0 && (
                 <div className="mb-4">
                   <button
@@ -1619,38 +1642,63 @@ export default function WorkersPage() {
                   >
                     {showData ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     <Braces className="w-4 h-4" />
-                    Collected Data ({taskDataTotal} items)
+                    Collected Data ({taskDataTotal} {taskDataTotal === 1 ? 'file' : 'files'})
                   </button>
                   {showData && (
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {taskData.map((item) => (
-                        <div key={item.id} className="bg-ic-bg-secondary rounded-lg p-3">
-                          <div className="flex items-center gap-2 mb-1">
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {taskDataFiles.map((file) => (
+                        <div key={file.key} className="bg-ic-bg-secondary rounded-lg p-3">
+                          <div
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => toggleDataFile(selectedTask.id, file.key)}
+                          >
+                            {expandedFile === file.key ? <ChevronDown className="w-3.5 h-3.5 text-ic-text-secondary" /> : <ChevronRight className="w-3.5 h-3.5 text-ic-text-secondary" />}
                             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
-                              {item.data_type}
+                              {file.data_type}
                             </span>
-                            {item.ticker && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
-                                {item.ticker}
-                              </span>
-                            )}
-                            {item.external_id && (
-                              <span className="text-xs text-ic-text-secondary font-mono">
-                                {item.external_id}
-                              </span>
-                            )}
+                            <span className="text-xs text-ic-text-secondary">
+                              {(file.size / 1024).toFixed(1)} KB
+                            </span>
                             <span className="text-xs text-ic-text-secondary ml-auto">
-                              {new Date(item.collected_at).toLocaleDateString()}
+                              {new Date(file.uploaded_at).toLocaleString()}
                             </span>
                           </div>
-                          <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
-                            {JSON.stringify(item.data, null, 2)}
-                          </pre>
+                          {expandedFile === file.key && expandedBatch && (
+                            <div className="mt-2 space-y-1.5 border-t border-ic-border pt-2">
+                              <p className="text-xs text-ic-text-secondary">
+                                {expandedBatch.item_count} items
+                              </p>
+                              {expandedBatch.items.slice(0, 20).map((item, idx) => (
+                                <div key={idx} className="bg-ic-surface rounded p-2">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    {item.ticker && (
+                                      <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
+                                        {item.ticker}
+                                      </span>
+                                    )}
+                                    {item.external_id && (
+                                      <span className="text-xs text-ic-text-secondary font-mono">
+                                        {item.external_id}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                                    {JSON.stringify(item.data, null, 2)}
+                                  </pre>
+                                </div>
+                              ))}
+                              {expandedBatch.items.length > 20 && (
+                                <p className="text-xs text-ic-text-secondary text-center py-1">
+                                  Showing 20 of {expandedBatch.items.length} items
+                                </p>
+                              )}
+                            </div>
+                          )}
                         </div>
                       ))}
-                      {taskDataTotal > taskData.length && (
+                      {taskDataTotal > taskDataFiles.length && (
                         <p className="text-xs text-ic-text-secondary text-center py-2">
-                          Showing {taskData.length} of {taskDataTotal} items
+                          Showing {taskDataFiles.length} of {taskDataTotal} files
                         </p>
                       )}
                     </div>

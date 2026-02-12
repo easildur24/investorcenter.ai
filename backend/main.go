@@ -10,6 +10,7 @@ import (
 	"investorcenter-api/database"
 	"investorcenter-api/handlers"
 	"investorcenter-api/services"
+	"investorcenter-api/storage"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -29,6 +30,12 @@ func main() {
 	} else {
 		log.Println("Database connected successfully")
 		defer database.Close()
+	}
+
+	// Initialize S3 storage
+	if err := storage.Initialize(); err != nil {
+		log.Printf("S3 storage initialization failed: %v", err)
+		log.Println("Worker data storage features disabled")
 	}
 
 	// Set Gin mode
@@ -392,14 +399,15 @@ func main() {
 			workers.PUT("/task-types/:id", handlers.UpdateTaskType)    // PUT /api/v1/admin/workers/task-types/:id
 			workers.DELETE("/task-types/:id", handlers.DeleteTaskType) // DELETE /api/v1/admin/workers/task-types/:id
 			// Task management
-			workers.GET("/tasks", handlers.ListTasks)                     // GET /api/v1/admin/workers/tasks
-			workers.POST("/tasks", handlers.CreateTask)                   // POST /api/v1/admin/workers/tasks
-			workers.GET("/tasks/:id", handlers.GetTask)                   // GET /api/v1/admin/workers/tasks/:id
-			workers.PUT("/tasks/:id", handlers.UpdateTask)                // PUT /api/v1/admin/workers/tasks/:id
-			workers.DELETE("/tasks/:id", handlers.DeleteTask)             // DELETE /api/v1/admin/workers/tasks/:id
-			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)   // GET /api/v1/admin/workers/tasks/:id/updates
-			workers.POST("/tasks/:id/updates", handlers.CreateTaskUpdate) // POST /api/v1/admin/workers/tasks/:id/updates
-			workers.GET("/tasks/:id/data", handlers.AdminGetTaskData)     // GET /api/v1/admin/workers/tasks/:id/data
+			workers.GET("/tasks", handlers.ListTasks)                          // GET /api/v1/admin/workers/tasks
+			workers.POST("/tasks", handlers.CreateTask)                        // POST /api/v1/admin/workers/tasks
+			workers.GET("/tasks/:id", handlers.GetTask)                        // GET /api/v1/admin/workers/tasks/:id
+			workers.PUT("/tasks/:id", handlers.UpdateTask)                     // PUT /api/v1/admin/workers/tasks/:id
+			workers.DELETE("/tasks/:id", handlers.DeleteTask)                  // DELETE /api/v1/admin/workers/tasks/:id
+			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)        // GET /api/v1/admin/workers/tasks/:id/updates
+			workers.POST("/tasks/:id/updates", handlers.CreateTaskUpdate)      // POST /api/v1/admin/workers/tasks/:id/updates
+			workers.GET("/tasks/:id/data", handlers.AdminGetTaskData)          // GET /api/v1/admin/workers/tasks/:id/data
+			workers.GET("/tasks/:id/data/file", handlers.AdminGetTaskDataFile) // GET /api/v1/admin/workers/tasks/:id/data/file?key=...
 		}
 	}
 
