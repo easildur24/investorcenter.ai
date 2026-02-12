@@ -13,6 +13,7 @@ import {
   createTaskUpdate,
   listTaskTypes,
   createTaskType,
+  updateTaskType,
   deleteTaskType,
   Worker,
   WorkerTask,
@@ -46,10 +47,13 @@ import {
   CheckCircle2,
   XCircle,
   PlayCircle,
+  Pencil,
+  Save,
+  RefreshCw,
 } from 'lucide-react';
 
 type View = 'workers' | 'tasks' | 'task-types';
-type RightPanel = 'none' | 'worker' | 'task' | 'create-worker' | 'create-task' | 'task-type' | 'create-task-type';
+type RightPanel = 'none' | 'worker' | 'task' | 'create-worker' | 'create-task' | 'task-type' | 'create-task-type' | 'edit-task' | 'edit-task-type' | 'assign-task';
 
 export default function WorkersPage() {
   const [view, setView] = useState<View>('workers');
@@ -85,6 +89,20 @@ export default function WorkersPage() {
   const [newTTName, setNewTTName] = useState('');
   const [newTTLabel, setNewTTLabel] = useState('');
   const [newTTSop, setNewTTSop] = useState('');
+  const [newTTParamSchema, setNewTTParamSchema] = useState('');
+
+  // Edit task type form
+  const [editTTLabel, setEditTTLabel] = useState('');
+  const [editTTSop, setEditTTSop] = useState('');
+  const [editTTParamSchema, setEditTTParamSchema] = useState('');
+
+  // Edit task form
+  const [editTaskTitle, setEditTaskTitle] = useState('');
+  const [editTaskDesc, setEditTaskDesc] = useState('');
+  const [editTaskAssignee, setEditTaskAssignee] = useState('');
+  const [editTaskPriority, setEditTaskPriority] = useState<TaskPriority>('medium');
+  const [editTaskTypeId, setEditTaskTypeId] = useState<number | ''>('');
+  const [editTaskParams, setEditTaskParams] = useState<Record<string, string>>({});
 
   // Task update form
   const [newUpdateContent, setNewUpdateContent] = useState('');
@@ -301,14 +319,26 @@ export default function WorkersPage() {
     if (!newTTName || !newTTLabel) return;
     setCreating(true);
     try {
+      let paramSchema: Record<string, string> | undefined;
+      if (newTTParamSchema.trim()) {
+        try {
+          paramSchema = JSON.parse(newTTParamSchema.trim());
+        } catch {
+          alert('Invalid JSON for parameter schema');
+          setCreating(false);
+          return;
+        }
+      }
       await createTaskType({
         name: newTTName,
         label: newTTLabel,
         sop: newTTSop || undefined,
+        param_schema: paramSchema || undefined,
       });
       setNewTTName('');
       setNewTTLabel('');
       setNewTTSop('');
+      setNewTTParamSchema('');
       setRightPanel('none');
       fetchTaskTypes();
     } catch (err: any) {
@@ -330,6 +360,126 @@ export default function WorkersPage() {
       fetchTaskTypes();
     } catch (err: any) {
       alert('Failed to delete task type: ' + err.message);
+    }
+  };
+
+  // Start editing task type
+  const startEditTaskType = (tt: TaskType) => {
+    setEditTTLabel(tt.label);
+    setEditTTSop(tt.sop || '');
+    setEditTTParamSchema(tt.param_schema ? JSON.stringify(tt.param_schema, null, 2) : '');
+    setRightPanel('edit-task-type');
+  };
+
+  // Save task type edit
+  const handleSaveTaskType = async () => {
+    if (!selectedTaskType || !editTTLabel) return;
+    setCreating(true);
+    try {
+      let paramSchema: Record<string, string> | null = null;
+      if (editTTParamSchema.trim()) {
+        try {
+          paramSchema = JSON.parse(editTTParamSchema.trim());
+        } catch {
+          alert('Invalid JSON for parameter schema');
+          setCreating(false);
+          return;
+        }
+      }
+      const updated = await updateTaskType(selectedTaskType.id, {
+        label: editTTLabel,
+        sop: editTTSop || undefined,
+        param_schema: paramSchema,
+      });
+      setSelectedTaskType(updated);
+      setRightPanel('task-type');
+      fetchTaskTypes();
+    } catch (err: any) {
+      alert('Failed to update task type: ' + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Start editing task
+  const startEditTask = (task: WorkerTask) => {
+    setEditTaskTitle(task.title);
+    setEditTaskDesc(task.description || '');
+    setEditTaskAssignee(task.assigned_to || '');
+    setEditTaskPriority(task.priority);
+    setEditTaskTypeId(task.task_type_id || '');
+    if (task.params) {
+      const stringified: Record<string, string> = {};
+      for (const [key, val] of Object.entries(task.params)) {
+        stringified[key] = typeof val === 'string' ? val : JSON.stringify(val);
+      }
+      setEditTaskParams(stringified);
+    } else {
+      setEditTaskParams({});
+    }
+    setRightPanel('edit-task');
+  };
+
+  // Save task edit
+  const handleSaveTask = async () => {
+    if (!selectedTask || !editTaskTitle) return;
+    setCreating(true);
+    try {
+      const params: Record<string, unknown> = {};
+      const tt = editTaskTypeId ? taskTypes.find((t) => t.id === editTaskTypeId) : null;
+      const schema = tt?.param_schema || null;
+      for (const [key, val] of Object.entries(editTaskParams)) {
+        if (val === '') continue;
+        const typeHint = schema?.[key];
+        if (typeHint === 'number') {
+          const num = Number(val);
+          params[key] = !isNaN(num) ? num : val;
+        } else if (typeHint?.endsWith('[]')) {
+          try {
+            params[key] = JSON.parse(val);
+          } catch {
+            params[key] = val.split(',').map((s) => s.trim()).filter(Boolean);
+          }
+        } else {
+          params[key] = val;
+        }
+      }
+
+      const updated = await updateTask(selectedTask.id, {
+        title: editTaskTitle,
+        description: editTaskDesc,
+        assigned_to: editTaskAssignee || undefined,
+        priority: editTaskPriority,
+        task_type_id: editTaskTypeId || undefined,
+        params: Object.keys(params).length > 0 ? params : undefined,
+      });
+      setSelectedTask(updated);
+      setRightPanel('task');
+      fetchTasks();
+      if (selectedWorker) fetchWorkerTasks(selectedWorker.id);
+    } catch (err: any) {
+      alert('Failed to update task: ' + err.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  // Handle task type change in edit task form
+  const handleEditTaskTypeChange = (id: number | '') => {
+    setEditTaskTypeId(id);
+    if (id) {
+      const tt = taskTypes.find((t) => t.id === id);
+      if (tt?.param_schema) {
+        const defaults: Record<string, string> = {};
+        for (const key of Object.keys(tt.param_schema)) {
+          defaults[key] = editTaskParams[key] || '';
+        }
+        setEditTaskParams(defaults);
+      } else {
+        setEditTaskParams({});
+      }
+    } else {
+      setEditTaskParams({});
     }
   };
 
@@ -858,6 +1008,20 @@ export default function WorkersPage() {
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
                   />
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Parameter Schema (JSON)
+                    <span className="font-normal text-ic-text-secondary ml-1">— optional</span>
+                  </label>
+                  <textarea
+                    value={newTTParamSchema}
+                    onChange={(e) => setNewTTParamSchema(e.target.value)}
+                    rows={3}
+                    placeholder='{"ticker": "string", "days": "number", "subreddits": "string[]"}'
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                  <p className="text-xs text-ic-text-secondary mt-1">Defines the parameter fields shown when creating tasks of this type.</p>
+                </div>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCreateTaskType}
@@ -869,6 +1033,67 @@ export default function WorkersPage() {
                   </button>
                   <button
                     onClick={() => setRightPanel('none')}
+                    className="px-4 py-2 text-ic-text-secondary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Edit Task Type Form */}
+          {rightPanel === 'edit-task-type' && selectedTaskType && (
+            <div className="p-8 max-w-2xl">
+              <h2 className="text-lg font-semibold text-ic-text-primary mb-6 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-purple-500" />
+                Edit Task Type
+                <span className="text-sm font-mono text-ic-text-secondary font-normal">({selectedTaskType.name})</span>
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Label</label>
+                  <input
+                    value={editTTLabel}
+                    onChange={(e) => setEditTTLabel(e.target.value)}
+                    placeholder="Task Type Label"
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">SOP (Markdown)</label>
+                  <textarea
+                    value={editTTSop}
+                    onChange={(e) => setEditTTSop(e.target.value)}
+                    rows={12}
+                    placeholder="## Standard Operating Procedure&#10;..."
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Parameter Schema (JSON)
+                    <span className="font-normal text-ic-text-secondary ml-1">— optional</span>
+                  </label>
+                  <textarea
+                    value={editTTParamSchema}
+                    onChange={(e) => setEditTTParamSchema(e.target.value)}
+                    rows={3}
+                    placeholder='{"ticker": "string", "days": "number"}'
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveTaskType}
+                    disabled={creating || !editTTLabel}
+                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
+                  >
+                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setRightPanel('task-type')}
                     className="px-4 py-2 text-ic-text-secondary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
                   >
                     Cancel
@@ -890,13 +1115,22 @@ export default function WorkersPage() {
                     </h2>
                     <p className="text-sm text-ic-text-secondary font-mono mt-1">{selectedTaskType.name}</p>
                   </div>
-                  <button
-                    onClick={() => handleDeleteTaskType(selectedTaskType.id)}
-                    className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    Delete
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => startEditTaskType(selectedTaskType)}
+                      className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDeleteTaskType(selectedTaskType.id)}
+                      className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -974,16 +1208,25 @@ export default function WorkersPage() {
               <div className="max-w-3xl">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium text-ic-text-secondary">Assigned Tasks</h3>
-                  <button
-                    onClick={() => {
-                      setNewTaskAssignee(selectedWorker.id);
-                      setRightPanel('create-task');
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Assign Task
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setRightPanel('assign-task')}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Assign Task
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNewTaskAssignee(selectedWorker.id);
+                        setRightPanel('create-task');
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 text-sm text-ic-text-secondary border border-ic-border hover:bg-ic-bg-secondary rounded-lg transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      New Task
+                    </button>
+                  </div>
                 </div>
 
                 {workerTasks.length === 0 ? (
@@ -1017,6 +1260,202 @@ export default function WorkersPage() {
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Assign Existing Task */}
+          {rightPanel === 'assign-task' && selectedWorker && (
+            <div className="p-8 max-w-lg">
+              <h2 className="text-lg font-semibold text-ic-text-primary mb-2 flex items-center gap-2">
+                <Plus className="w-5 h-5 text-blue-500" />
+                Assign Task to {selectedWorker.full_name}
+              </h2>
+              <p className="text-sm text-ic-text-secondary mb-6">Pick an unassigned task to assign to this worker.</p>
+              {(() => {
+                const unassigned = tasks.filter((t) => !t.assigned_to && (t.status === 'pending' || t.status === 'in_progress'));
+                if (unassigned.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-sm text-ic-text-secondary mb-4">No unassigned tasks available.</p>
+                      <button
+                        onClick={() => {
+                          setNewTaskAssignee(selectedWorker.id);
+                          setRightPanel('create-task');
+                        }}
+                        className="flex items-center gap-1 px-4 py-2 mx-auto text-sm text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                        Create New Task
+                      </button>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-2">
+                    {unassigned.map((task) => (
+                      <div
+                        key={task.id}
+                        className="flex items-center gap-3 px-4 py-3 bg-ic-surface border border-ic-border rounded-lg cursor-pointer hover:border-blue-300 transition group"
+                        onClick={async () => {
+                          try {
+                            await updateTask(task.id, { assigned_to: selectedWorker.id });
+                            fetchTasks();
+                            fetchWorkerTasks(selectedWorker.id);
+                            setRightPanel('worker');
+                          } catch (err: any) {
+                            alert('Failed to assign task: ' + err.message);
+                          }
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}>
+                              {STATUS_LABELS[task.status]}
+                            </span>
+                            <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                              {PRIORITY_LABELS[task.priority]}
+                            </span>
+                            {task.task_type && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-purple-50 text-purple-700">
+                                {task.task_type.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm font-medium text-ic-text-primary truncate">{task.title}</p>
+                        </div>
+                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition">Assign</span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+              <button
+                onClick={() => setRightPanel('worker')}
+                className="mt-4 px-4 py-2 text-sm text-ic-text-secondary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* Edit Task Form */}
+          {rightPanel === 'edit-task' && selectedTask && (
+            <div className="p-8 max-w-lg">
+              <h2 className="text-lg font-semibold text-ic-text-primary mb-6 flex items-center gap-2">
+                <Pencil className="w-5 h-5 text-blue-500" />
+                Edit Task
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Task Type</label>
+                  <select
+                    value={editTaskTypeId}
+                    onChange={(e) => handleEditTaskTypeChange(e.target.value ? Number(e.target.value) : '')}
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
+                  >
+                    <option value="">No type (custom task)</option>
+                    {taskTypes.map((tt) => (
+                      <option key={tt.id} value={tt.id}>{tt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Title</label>
+                  <input
+                    value={editTaskTitle}
+                    onChange={(e) => setEditTaskTitle(e.target.value)}
+                    placeholder="Task title"
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Description</label>
+                  <textarea
+                    value={editTaskDesc}
+                    onChange={(e) => setEditTaskDesc(e.target.value)}
+                    rows={3}
+                    placeholder="Task description..."
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-y"
+                  />
+                </div>
+
+                {/* Dynamic params from task type schema */}
+                {(() => {
+                  const tt = editTaskTypeId ? taskTypes.find((t) => t.id === editTaskTypeId) : null;
+                  const schema = tt?.param_schema || null;
+                  if (!schema) return null;
+                  return (
+                    <div className="border border-ic-border rounded-lg p-4 bg-ic-bg-secondary">
+                      <p className="text-sm font-medium text-ic-text-secondary mb-3 flex items-center gap-1.5">
+                        <Braces className="w-4 h-4" />
+                        Parameters
+                      </p>
+                      <div className="space-y-3">
+                        {Object.entries(schema).map(([key, type]) => (
+                          <div key={key}>
+                            <label className="block text-xs font-medium text-ic-text-secondary mb-1">
+                              {key} <span className="text-ic-text-secondary font-normal">({type})</span>
+                            </label>
+                            <input
+                              value={editTaskParams[key] || ''}
+                              onChange={(e) =>
+                                setEditTaskParams((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              placeholder={type === 'string[]' ? '["value1", "value2"]' : type === 'number' ? '0' : ''}
+                              className="w-full px-3 py-1.5 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Assign To</label>
+                  <select
+                    value={editTaskAssignee}
+                    onChange={(e) => setEditTaskAssignee(e.target.value)}
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
+                  >
+                    <option value="">Unassigned</option>
+                    {workers.map((w) => (
+                      <option key={w.id} value={w.id}>
+                        {w.full_name} ({w.email})
+                        {w.is_online ? ' - Online' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Priority</label>
+                  <select
+                    value={editTaskPriority}
+                    onChange={(e) => setEditTaskPriority(e.target.value as TaskPriority)}
+                    className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
+                  >
+                    {TASK_PRIORITIES.map((p) => (
+                      <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveTask}
+                    disabled={creating || !editTaskTitle}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                  >
+                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Save Changes
+                  </button>
+                  <button
+                    onClick={() => setRightPanel('task')}
+                    className="px-4 py-2 text-ic-text-secondary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -1098,6 +1537,18 @@ export default function WorkersPage() {
                 )}
               </div>
 
+              {/* Retry count badge */}
+              {selectedTask.retry_count > 0 && (
+                <div className="mb-4">
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                    selectedTask.retry_count >= 2 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    <RefreshCw className="w-3 h-3" />
+                    {selectedTask.retry_count >= 2 ? `Failed after ${selectedTask.retry_count} retries` : `Retry ${selectedTask.retry_count}/2`}
+                  </span>
+                </div>
+              )}
+
               {/* Params */}
               {selectedTask.params && Object.keys(selectedTask.params).length > 0 && (
                 <div className="mb-4">
@@ -1161,14 +1612,23 @@ export default function WorkersPage() {
                 </div>
               )}
 
-              {/* Delete task */}
-              <button
-                onClick={() => handleDeleteTask(selectedTask.id)}
-                className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 mb-6 transition"
-              >
-                <Trash2 className="w-3 h-3" />
-                Delete task
-              </button>
+              {/* Edit / Delete task */}
+              <div className="flex items-center gap-4 mb-6">
+                <button
+                  onClick={() => startEditTask(selectedTask)}
+                  className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 transition"
+                >
+                  <Pencil className="w-3 h-3" />
+                  Edit task
+                </button>
+                <button
+                  onClick={() => handleDeleteTask(selectedTask.id)}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 transition"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Delete task
+                </button>
+              </div>
 
               {/* Updates timeline */}
               <div className="border-t border-ic-border pt-6">

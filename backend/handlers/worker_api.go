@@ -3,6 +3,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -49,7 +50,7 @@ func WorkerGetMyTasks(c *gin.Context) {
 
 	query := `
 		SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
-		       t.task_type_id, t.params, t.result,
+		       t.task_type_id, t.params, t.result, t.retry_count,
 		       t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
 		       tt.id, tt.name, tt.label, tt.sop
 		FROM worker_tasks t
@@ -79,7 +80,7 @@ func WorkerGetMyTasks(c *gin.Context) {
 		var ttID *int
 		var ttName, ttLabel, ttSOP *string
 		err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-			&t.TaskTypeID, &t.Params, &t.Result,
+			&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
 			&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
 			&ttID, &ttName, &ttLabel, &ttSOP)
 		if err != nil {
@@ -116,7 +117,7 @@ func WorkerGetTask(c *gin.Context) {
 	var ttName, ttLabel, ttSOP *string
 	err := database.DB.QueryRow(
 		`SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
-		        t.task_type_id, t.params, t.result,
+		        t.task_type_id, t.params, t.result, t.retry_count,
 		        t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
 		        tt.id, tt.name, tt.label, tt.sop
 		 FROM worker_tasks t
@@ -124,7 +125,7 @@ func WorkerGetTask(c *gin.Context) {
 		 WHERE t.id = $1 AND t.assigned_to = $2`,
 		taskID, userID,
 	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.TaskTypeID, &t.Params, &t.Result,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
 		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
 		&ttID, &ttName, &ttLabel, &ttSOP)
 	if err != nil {
@@ -160,7 +161,8 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 	taskID := c.Param("id")
 
 	var req struct {
-		Status string `json:"status" binding:"required"`
+		Status    string `json:"status" binding:"required"`
+		IncrRetry bool   `json:"increment_retry"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -168,32 +170,40 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 	}
 
 	// Validate status
-	validStatuses := map[string]bool{"in_progress": true, "completed": true, "failed": true}
+	validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "failed": true}
 	if !validStatuses[req.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be one of: in_progress, completed, failed"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be one of: pending, in_progress, completed, failed"})
 		return
 	}
 
 	// Build query with timestamp updates based on status
+	retryIncr := "retry_count"
+	if req.IncrRetry {
+		retryIncr = "retry_count + 1"
+	}
 	var query string
 	switch req.Status {
+	case "pending":
+		query = fmt.Sprintf(`UPDATE worker_tasks SET status = $1, retry_count = %s, started_at = NULL, completed_at = NULL
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`, retryIncr)
 	case "in_progress":
 		query = `UPDATE worker_tasks SET status = $1, started_at = NOW()
 			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
 	case "completed", "failed":
-		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW()
+		query = fmt.Sprintf(`UPDATE worker_tasks SET status = $1, completed_at = NOW(), retry_count = %s
 			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`, retryIncr)
 	default:
 		query = `UPDATE worker_tasks SET status = $1
 			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
 	}
 
 	var t WorkerTask
 	err := database.DB.QueryRow(query, req.Status, taskID, userID).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 		&t.StartedAt, &t.CompletedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -347,10 +357,10 @@ func WorkerPostResult(c *gin.Context) {
 	err = database.DB.QueryRow(
 		`UPDATE worker_tasks SET result = $1
 		 WHERE id = $2 AND assigned_to = $3
-		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`,
+		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`,
 		req.Result, taskID, userID,
 	).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.TaskTypeID, &t.Params, &t.Result, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 		&t.StartedAt, &t.CompletedAt)
 	if err != nil {
 		log.Printf("Error posting task result: %v", err)

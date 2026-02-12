@@ -69,6 +69,7 @@ export interface WorkerTask {
   task_type?: { id: number; name: string; label: string; sop?: string } | null;
   params: Record<string, unknown> | null;
   result: Record<string, unknown> | null;
+  retry_count: number;
   created_by: string | null;
   created_by_name?: string | null;
   created_at: string;

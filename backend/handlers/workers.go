@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,25 +14,93 @@ import (
 	"investorcenter-api/database"
 )
 
+// JSONB handles nullable JSON columns from PostgreSQL.
+// It properly scans NULL values and serializes to/from JSON.
+type JSONB json.RawMessage
+
+func (j *JSONB) Scan(value interface{}) error {
+	if value == nil {
+		*j = nil
+		return nil
+	}
+	var bytes []byte
+	switch v := value.(type) {
+	case []byte:
+		bytes = v
+	case string:
+		bytes = []byte(v)
+	default:
+		return fmt.Errorf("JSONB.Scan: expected []byte or string, got %T", value)
+	}
+	if len(bytes) == 0 {
+		*j = nil
+		return nil
+	}
+	// PostgreSQL JSONB binary format may have a leading version byte (0x01)
+	// or null byte (0x00). Strip any leading non-JSON bytes.
+	for len(bytes) > 0 && bytes[0] != '{' && bytes[0] != '[' && bytes[0] != '"' && bytes[0] != 't' && bytes[0] != 'f' && bytes[0] != 'n' && !(bytes[0] >= '0' && bytes[0] <= '9') && bytes[0] != '-' {
+		bytes = bytes[1:]
+	}
+	if len(bytes) == 0 {
+		*j = nil
+		return nil
+	}
+	// Validate it's actually valid JSON before storing
+	if !json.Valid(bytes) {
+		*j = nil
+		return nil
+	}
+	*j = JSONB(bytes)
+	return nil
+}
+
+func (j JSONB) Value() (driver.Value, error) {
+	if j == nil {
+		return nil, nil
+	}
+	return []byte(j), nil
+}
+
+func (j JSONB) MarshalJSON() ([]byte, error) {
+	if j == nil || len(j) == 0 {
+		return []byte("null"), nil
+	}
+	// Validate before returning to prevent broken JSON responses
+	if !json.Valid([]byte(j)) {
+		return []byte("null"), nil
+	}
+	return []byte(j), nil
+}
+
+func (j *JSONB) UnmarshalJSON(data []byte) error {
+	if data == nil || string(data) == "null" {
+		*j = nil
+		return nil
+	}
+	*j = JSONB(data)
+	return nil
+}
+
 // WorkerTask represents a task assigned to a worker
 type WorkerTask struct {
-	ID             string          `json:"id" db:"id"`
-	Title          string          `json:"title" db:"title"`
-	Description    string          `json:"description" db:"description"`
-	AssignedTo     *string         `json:"assigned_to" db:"assigned_to"`
-	AssignedToName *string         `json:"assigned_to_name,omitempty" db:"assigned_to_name"`
-	Status         string          `json:"status" db:"status"`
-	Priority       string          `json:"priority" db:"priority"`
-	TaskTypeID     *int            `json:"task_type_id" db:"task_type_id"`
-	TaskType       *TaskType       `json:"task_type,omitempty"`
-	Params         json.RawMessage `json:"params" db:"params"`
-	Result         json.RawMessage `json:"result" db:"result"`
-	CreatedBy      *string         `json:"created_by" db:"created_by"`
-	CreatedByName  *string         `json:"created_by_name,omitempty" db:"created_by_name"`
-	CreatedAt      time.Time       `json:"created_at" db:"created_at"`
-	UpdatedAt      time.Time       `json:"updated_at" db:"updated_at"`
-	StartedAt      *time.Time      `json:"started_at" db:"started_at"`
-	CompletedAt    *time.Time      `json:"completed_at" db:"completed_at"`
+	ID             string     `json:"id" db:"id"`
+	Title          string     `json:"title" db:"title"`
+	Description    string     `json:"description" db:"description"`
+	AssignedTo     *string    `json:"assigned_to" db:"assigned_to"`
+	AssignedToName *string    `json:"assigned_to_name,omitempty" db:"assigned_to_name"`
+	Status         string     `json:"status" db:"status"`
+	Priority       string     `json:"priority" db:"priority"`
+	TaskTypeID     *int       `json:"task_type_id" db:"task_type_id"`
+	TaskType       *TaskType  `json:"task_type,omitempty"`
+	Params         JSONB      `json:"params" db:"params"`
+	Result         JSONB      `json:"result" db:"result"`
+	CreatedBy      *string    `json:"created_by" db:"created_by"`
+	CreatedByName  *string    `json:"created_by_name,omitempty" db:"created_by_name"`
+	CreatedAt      time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at" db:"updated_at"`
+	StartedAt      *time.Time `json:"started_at" db:"started_at"`
+	CompletedAt    *time.Time `json:"completed_at" db:"completed_at"`
+	RetryCount     int        `json:"retry_count" db:"retry_count"`
 }
 
 // WorkerTaskUpdate represents an update/log entry on a task
@@ -192,7 +261,7 @@ func ListTasks(c *gin.Context) {
 
 	query := `
 		SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
-		       t.task_type_id, t.params, t.result,
+		       t.task_type_id, t.params, t.result, t.retry_count,
 		       t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
 		       a.full_name as assigned_to_name, cr.full_name as created_by_name,
 		       tt.id, tt.name, tt.label
@@ -237,7 +306,7 @@ func ListTasks(c *gin.Context) {
 		var ttID *int
 		var ttName, ttLabel *string
 		err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-			&t.TaskTypeID, &t.Params, &t.Result,
+			&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
 			&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
 			&t.AssignedToName, &t.CreatedByName,
 			&ttID, &ttName, &ttLabel)
@@ -268,7 +337,7 @@ func GetTask(c *gin.Context) {
 
 	query := `
 		SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
-		       t.task_type_id, t.params, t.result,
+		       t.task_type_id, t.params, t.result, t.retry_count,
 		       t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
 		       a.full_name as assigned_to_name, cr.full_name as created_by_name,
 		       tt.id, tt.name, tt.label
@@ -283,7 +352,7 @@ func GetTask(c *gin.Context) {
 	var ttID *int
 	var ttName, ttLabel *string
 	err := database.DB.QueryRow(query, id).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-		&t.TaskTypeID, &t.Params, &t.Result,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
 		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
 		&t.AssignedToName, &t.CreatedByName,
 		&ttID, &ttName, &ttLabel)
@@ -337,10 +406,10 @@ func CreateTask(c *gin.Context) {
 	err := database.DB.QueryRow(
 		`INSERT INTO worker_tasks (title, description, assigned_to, priority, created_by, task_type_id, params)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7)
-		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`,
+		 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`,
 		req.Title, req.Description, req.AssignedTo, priority, userID, req.TaskTypeID, req.Params,
 	).Scan(&task.ID, &task.Title, &task.Description, &task.AssignedTo, &task.Status, &task.Priority,
-		&task.TaskTypeID, &task.Params, &task.Result, &task.CreatedBy, &task.CreatedAt, &task.UpdatedAt,
+		&task.TaskTypeID, &task.Params, &task.Result, &task.RetryCount, &task.CreatedBy, &task.CreatedAt, &task.UpdatedAt,
 		&task.StartedAt, &task.CompletedAt)
 	if err != nil {
 		log.Printf("Error creating task: %v", err)
@@ -388,10 +457,10 @@ func UpdateTask(c *gin.Context) {
 			task_type_id = COALESCE($7, task_type_id),
 			params = COALESCE($8, params)
 		WHERE id = $1
-		RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, created_by, created_at, updated_at, started_at, completed_at`,
+		RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`,
 		id, req.Title, req.Description, req.AssignedTo, req.Status, req.Priority, req.TaskTypeID, req.Params,
 	).Scan(&task.ID, &task.Title, &task.Description, &task.AssignedTo, &task.Status, &task.Priority,
-		&task.TaskTypeID, &task.Params, &task.Result, &task.CreatedBy, &task.CreatedAt, &task.UpdatedAt,
+		&task.TaskTypeID, &task.Params, &task.Result, &task.RetryCount, &task.CreatedBy, &task.CreatedAt, &task.UpdatedAt,
 		&task.StartedAt, &task.CompletedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {

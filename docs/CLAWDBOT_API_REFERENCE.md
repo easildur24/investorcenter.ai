@@ -1,6 +1,6 @@
 # ClawdBot Worker API Reference
 
-> **Base URL**: `https://api.investorcenter.ai/api/v1`
+> **Base URL**: `https://investorcenter.ai/api/v1`
 > **Auth**: All endpoints require `Authorization: Bearer <jwt>` header
 > **Worker requirement**: All `/worker/*` endpoints require the user to have `is_worker = true`
 
@@ -32,7 +32,7 @@ Create a `.env` file with your credentials:
 ```bash
 CLAWDBOT_EMAIL=genesis@investorcenter.ai
 CLAWDBOT_PASSWORD=your-password
-API_BASE=https://api.investorcenter.ai/api/v1
+API_BASE=https://investorcenter.ai/api/v1
 ```
 
 ### Step 3: Add a CLAUDE.md
@@ -47,7 +47,7 @@ by the InvestorCenter task queue.
 
 ## Authentication
 
-- API Base: https://api.investorcenter.ai/api/v1
+- API Base: https://investorcenter.ai/api/v1
 - Login: POST /auth/login with email/password from env vars
   - CLAWDBOT_EMAIL
   - CLAWDBOT_PASSWORD
@@ -90,7 +90,7 @@ by the InvestorCenter task queue.
 Test that your credentials work by logging in:
 
 ```bash
-curl -s -X POST https://api.investorcenter.ai/api/v1/auth/login \
+curl -s -X POST https://investorcenter.ai/api/v1/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email": "genesis@investorcenter.ai", "password": "your-password"}' \
   | jq .access_token
@@ -101,7 +101,7 @@ You should get back a JWT token. Then verify you can access the worker API:
 ```bash
 TOKEN="<paste your token>"
 
-curl -s https://api.investorcenter.ai/api/v1/worker/tasks \
+curl -s https://investorcenter.ai/api/v1/worker/tasks \
   -H "Authorization: Bearer $TOKEN" \
   | jq .
 ```
@@ -307,6 +307,7 @@ Get all tasks assigned to the authenticated worker. Results are ordered by prior
         "days": 30
       },
       "result": null,
+      "retry_count": 0,
       "created_by": "admin-user-uuid",
       "created_at": "2026-02-09T10:00:00Z",
       "updated_at": "2026-02-09T10:00:00Z",
@@ -365,7 +366,40 @@ Update the status of a task. Automatically sets timestamps:
 }
 ```
 
-**Valid statuses:** `in_progress`, `completed`, `failed`
+**Valid statuses:** `pending`, `in_progress`, `completed`, `failed`
+
+**Optional fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `increment_retry` | bool | If `true`, increments `retry_count` by 1. Use when resetting a stale task to `pending` or marking as `failed` after timeout. |
+
+**Status behavior:**
+
+| Status | Side effects |
+|--------|-------------|
+| `pending` | Clears `started_at` and `completed_at`. Use with `increment_retry: true` to retry a stale task. |
+| `in_progress` | Sets `started_at = NOW()` |
+| `completed` | Sets `completed_at = NOW()` |
+| `failed` | Sets `completed_at = NOW()` |
+
+**Example — retry a stale task:**
+
+```json
+{
+  "status": "pending",
+  "increment_retry": true
+}
+```
+
+**Example — permanently fail after max retries:**
+
+```json
+{
+  "status": "failed",
+  "increment_retry": true
+}
+```
 
 **Response `200`:**
 
@@ -375,6 +409,7 @@ Update the status of a task. Automatically sets timestamps:
   "data": {
     "id": "a1b2c3d4-...",
     "status": "in_progress",
+    "retry_count": 0,
     "started_at": "2026-02-09T10:02:00Z",
     ...
   }
@@ -563,14 +598,20 @@ Send a heartbeat to indicate the worker is online. Updates `last_activity_at` on
 ## Typical Workflow
 
 ```
-1. Login
+1. Login + Heartbeat (ALWAYS first)
    POST /auth/login  →  get access_token
+   POST /worker/heartbeat  →  stay online
 
-2. Check for work
+2. Clean up stale tasks
+   GET /worker/tasks?status=in_progress
+   For each task with updated_at > 15 minutes ago:
+     If retry_count < 2:  PUT /worker/tasks/:id/status {"status":"pending","increment_retry":true}
+     If retry_count >= 2:  PUT /worker/tasks/:id/status {"status":"failed","increment_retry":true}
+
+3. Check for work
    GET /worker/tasks?status=pending  →  pick up assigned tasks
-   GET /worker/tasks?status=in_progress  →  resume interrupted tasks
 
-3. For each task:
+4. For each task:
    a. Read task_type.sop + params from the response
    b. PUT /worker/tasks/:id/status  {"status": "in_progress"}
    c. Execute the work described by SOP + params
@@ -579,11 +620,10 @@ Send a heartbeat to indicate the worker is online. Updates `last_activity_at` on
    f. PUT /worker/tasks/:id/status  {"status": "completed"}
       (or "failed" if something went wrong)
 
-4. Heartbeat every 2 minutes during idle:
-   POST /worker/heartbeat
-
-5. Repeat from step 2
+5. Repeat from step 1
 ```
+
+**Note:** The heartbeat is sent BEFORE any task work. This ensures the worker stays "online" even if a long-running task times out. Tasks that time out will be retried up to 2 times automatically.
 
 ---
 
