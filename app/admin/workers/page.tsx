@@ -15,10 +15,12 @@ import {
   createTaskType,
   updateTaskType,
   deleteTaskType,
+  getTaskData,
   Worker,
   WorkerTask,
   TaskUpdate,
   TaskType,
+  TaskDataRow,
   TaskStatus,
   TaskPriority,
   TASK_STATUSES,
@@ -115,6 +117,9 @@ export default function WorkersPage() {
   const [showSop, setShowSop] = useState(false);
   const [showResult, setShowResult] = useState(false);
   const [showParams, setShowParams] = useState(true);
+  const [showData, setShowData] = useState(false);
+  const [taskData, setTaskData] = useState<TaskDataRow[]>([]);
+  const [taskDataTotal, setTaskDataTotal] = useState(0);
 
   // Fetch data
   const fetchWorkers = useCallback(async () => {
@@ -176,6 +181,18 @@ export default function WorkersPage() {
     }
   };
 
+  // Fetch collected data for a task
+  const fetchTaskData = async (taskId: string) => {
+    try {
+      const res = await getTaskData(taskId, { limit: 20 });
+      setTaskData(res.items || []);
+      setTaskDataTotal(res.total || 0);
+    } catch {
+      setTaskData([]);
+      setTaskDataTotal(0);
+    }
+  };
+
   // Select worker
   const selectWorker = (worker: Worker) => {
     setSelectedWorker(worker);
@@ -193,7 +210,9 @@ export default function WorkersPage() {
     setShowSop(false);
     setShowResult(false);
     setShowParams(true);
+    setShowData(false);
     fetchTaskUpdates(task.id);
+    fetchTaskData(task.id);
   };
 
   // Select task type
@@ -1586,6 +1605,54 @@ export default function WorkersPage() {
                       <pre className="text-sm text-ic-text-primary font-mono whitespace-pre-wrap">
                         {JSON.stringify(selectedTask.result, null, 2)}
                       </pre>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Collected Data */}
+              {taskDataTotal > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowData(!showData)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showData ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <Braces className="w-4 h-4" />
+                    Collected Data ({taskDataTotal} items)
+                  </button>
+                  {showData && (
+                    <div className="space-y-2 max-h-80 overflow-y-auto">
+                      {taskData.map((item) => (
+                        <div key={item.id} className="bg-ic-bg-secondary rounded-lg p-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
+                              {item.data_type}
+                            </span>
+                            {item.ticker && (
+                              <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
+                                {item.ticker}
+                              </span>
+                            )}
+                            {item.external_id && (
+                              <span className="text-xs text-ic-text-secondary font-mono">
+                                {item.external_id}
+                              </span>
+                            )}
+                            <span className="text-xs text-ic-text-secondary ml-auto">
+                              {new Date(item.collected_at).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
+                            {JSON.stringify(item.data, null, 2)}
+                          </pre>
+                        </div>
+                      ))}
+                      {taskDataTotal > taskData.length && (
+                        <p className="text-xs text-ic-text-secondary text-center py-2">
+                          Showing {taskData.length} of {taskDataTotal} items
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

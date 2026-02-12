@@ -587,3 +587,36 @@ func CreateTaskUpdate(c *gin.Context) {
 		"data":    update,
 	})
 }
+
+// AdminGetTaskData handles GET /admin/workers/tasks/:id/data
+func AdminGetTaskData(c *gin.Context) {
+	taskID := c.Param("id")
+	dataType := c.Query("data_type")
+	ticker := c.Query("ticker")
+
+	limit := 100
+	offset := 0
+	if v := c.Query("limit"); v != "" {
+		fmt.Sscanf(v, "%d", &limit)
+	}
+	if v := c.Query("offset"); v != "" {
+		fmt.Sscanf(v, "%d", &offset)
+	}
+
+	items, total, err := database.GetTaskData(taskID, dataType, ticker, limit, offset)
+	if err != nil {
+		log.Printf("Error fetching task data: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task data"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data": gin.H{
+			"items":  items,
+			"total":  total,
+			"limit":  limit,
+			"offset": offset,
+		},
+	})
+}

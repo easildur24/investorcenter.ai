@@ -374,6 +374,70 @@ func WorkerPostResult(c *gin.Context) {
 	})
 }
 
+// WorkerPostTaskData handles POST /worker/tasks/:id/data
+func WorkerPostTaskData(c *gin.Context) {
+	userID, ok := verifyWorker(c)
+	if !ok {
+		return
+	}
+
+	taskID := c.Param("id")
+
+	var req struct {
+		DataType string                  `json:"data_type" binding:"required"`
+		Items    []database.TaskDataItem `json:"items" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if len(req.Items) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "items must be non-empty"})
+		return
+	}
+	if len(req.Items) > 500 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "items exceeds maximum batch size of 500"})
+		return
+	}
+
+	// Verify task exists, is assigned to this worker, and is in_progress
+	var currentStatus string
+	err := database.DB.QueryRow(
+		"SELECT status FROM worker_tasks WHERE id = $1 AND assigned_to = $2",
+		taskID, userID,
+	).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
+			return
+		}
+		log.Printf("Error checking task status: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check task status"})
+		return
+	}
+	if currentStatus != "in_progress" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Can only post data to tasks with status 'in_progress'"})
+		return
+	}
+
+	inserted, skipped, err := database.BulkInsertTaskData(taskID, req.DataType, req.Items)
+	if err != nil {
+		log.Printf("Error inserting task data: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to insert data"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data": gin.H{
+			"inserted": inserted,
+			"skipped":  skipped,
+			"total":    len(req.Items),
+		},
+	})
+}
+
 // WorkerHeartbeat handles POST /worker/heartbeat
 func WorkerHeartbeat(c *gin.Context) {
 	_, ok := verifyWorker(c)

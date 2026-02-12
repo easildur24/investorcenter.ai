@@ -194,3 +194,36 @@ export async function createTaskUpdate(taskId: string, content: string): Promise
   const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, { content });
   return res.data;
 }
+
+// Task Data
+export interface TaskDataRow {
+  id: number;
+  task_id: string;
+  data_type: string;
+  ticker: string | null;
+  external_id: string | null;
+  data: Record<string, unknown>;
+  collected_at: string;
+  created_at: string;
+}
+
+export interface TaskDataResponse {
+  items: TaskDataRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getTaskData(
+  taskId: string,
+  params?: { data_type?: string; ticker?: string; limit?: number; offset?: number }
+): Promise<TaskDataResponse> {
+  const query = new URLSearchParams();
+  if (params?.data_type) query.set('data_type', params.data_type);
+  if (params?.ticker) query.set('ticker', params.ticker);
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  const res = await apiClient.get<ApiResponse<TaskDataResponse>>(`${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`);
+  return res.data;
+}

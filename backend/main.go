@@ -399,6 +399,7 @@ func main() {
 			workers.DELETE("/tasks/:id", handlers.DeleteTask)             // DELETE /api/v1/admin/workers/tasks/:id
 			workers.GET("/tasks/:id/updates", handlers.ListTaskUpdates)   // GET /api/v1/admin/workers/tasks/:id/updates
 			workers.POST("/tasks/:id/updates", handlers.CreateTaskUpdate) // POST /api/v1/admin/workers/tasks/:id/updates
+			workers.GET("/tasks/:id/data", handlers.AdminGetTaskData)     // GET /api/v1/admin/workers/tasks/:id/data
 		}
 	}
 
@@ -414,6 +415,7 @@ func main() {
 		workerRoutes.POST("/tasks/:id/result", handlers.WorkerPostResult)      // POST /api/v1/worker/tasks/:id/result
 		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)  // GET /api/v1/worker/tasks/:id/updates
 		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)     // POST /api/v1/worker/tasks/:id/updates
+		workerRoutes.POST("/tasks/:id/data", handlers.WorkerPostTaskData)      // POST /api/v1/worker/tasks/:id/data
 		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)              // POST /api/v1/worker/heartbeat
 	}
 

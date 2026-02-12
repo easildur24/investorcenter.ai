@@ -475,6 +475,80 @@ The `result` field accepts any valid JSON object. Structure it meaningfully for 
 
 ---
 
+## Task Data
+
+Store collected data items in a generic table. Data is stored per-item (one row per collected post, filing, etc.) and linked to the task that produced it.
+
+### Post Task Data
+
+```
+POST /worker/tasks/:id/data
+```
+
+Submit a batch of collected data items. The task must be in `in_progress` status. Duplicates (by `data_type` + `external_id`) are silently skipped, making retries safe.
+
+**Path params:**
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `id` | UUID | Task ID |
+
+**Request body:**
+
+```json
+{
+  "data_type": "reddit_post",
+  "items": [
+    {
+      "ticker": "WMT",
+      "external_id": "abc123",
+      "collected_at": "2026-01-15T14:30:00Z",
+      "data": {
+        "subreddit": "wallstreetbets",
+        "title": "WMT earnings beat",
+        "body": "Walmart crushed it this quarter...",
+        "score": 142,
+        "num_comments": 28,
+        "url": "https://reddit.com/r/wallstreetbets/..."
+      }
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `data_type` | string | Yes | Category of data: `reddit_post`, `sec_filing`, `news_article`, etc. |
+| `items` | array | Yes | Array of data items (max 500 per request) |
+| `items[].ticker` | string | No | Ticker symbol (promoted for indexing) |
+| `items[].external_id` | string | No | External platform ID for deduplication |
+| `items[].collected_at` | ISO 8601 | No | When the source data was created (defaults to now) |
+| `items[].data` | object | Yes | The actual data payload (any valid JSON) |
+
+**Response `201`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "inserted": 42,
+    "skipped": 3,
+    "total": 45
+  }
+}
+```
+
+**Errors:**
+
+| Status | Error | When |
+|--------|-------|------|
+| `400` | `"items must be non-empty"` | Empty items array |
+| `400` | `"items exceeds maximum batch size of 500"` | Too many items |
+| `400` | `"Can only post data to tasks with status 'in_progress'"` | Task not in progress |
+| `404` | `"Task not found or not assigned to you"` | Task doesn't exist or wrong worker |
+
+---
+
 ## Task Updates
 
 Progress log / comment thread on a task.
@@ -615,9 +689,10 @@ Send a heartbeat to indicate the worker is online. Updates `last_activity_at` on
    a. Read task_type.sop + params from the response
    b. PUT /worker/tasks/:id/status  {"status": "in_progress"}
    c. Execute the work described by SOP + params
-   d. POST /worker/tasks/:id/updates  {"content": "progress..."}  (repeat as needed)
-   e. POST /worker/tasks/:id/result  {"result": {...}}
-   f. PUT /worker/tasks/:id/status  {"status": "completed"}
+   d. POST /worker/tasks/:id/data  {"data_type": "...", "items": [...]}  (batch collected data)
+   e. POST /worker/tasks/:id/updates  {"content": "progress..."}  (repeat d+e as needed)
+   f. POST /worker/tasks/:id/result  {"result": {...}}  (summary)
+   g. PUT /worker/tasks/:id/status  {"status": "completed"}
       (or "failed" if something went wrong)
 
 5. Repeat from step 1
