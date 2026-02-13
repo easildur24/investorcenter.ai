@@ -3,7 +3,6 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -178,24 +177,30 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 	}
 
 	// Build query with timestamp updates based on status
-	retryIncr := "retry_count"
-	if req.IncrRetry {
-		retryIncr = "retry_count + 1"
-	}
+	// Note: retry_count increment uses static SQL expressions (no user input),
+	// avoiding fmt.Sprintf to prevent any future injection risk.
 	var query string
-	switch req.Status {
-	case "pending":
-		query = fmt.Sprintf(`UPDATE worker_tasks SET status = $1, retry_count = %s, started_at = NULL, completed_at = NULL
+	switch {
+	case req.Status == "pending" && req.IncrRetry:
+		query = `UPDATE worker_tasks SET status = $1, retry_count = retry_count + 1, started_at = NULL, completed_at = NULL
 			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`, retryIncr)
-	case "in_progress":
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
+	case req.Status == "pending":
+		query = `UPDATE worker_tasks SET status = $1, retry_count = retry_count, started_at = NULL, completed_at = NULL
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
+	case req.Status == "in_progress":
 		query = `UPDATE worker_tasks SET status = $1, started_at = NOW()
 			 WHERE id = $2 AND assigned_to = $3
 			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	case "completed", "failed":
-		query = fmt.Sprintf(`UPDATE worker_tasks SET status = $1, completed_at = NOW(), retry_count = %s
+	case (req.Status == "completed" || req.Status == "failed") && req.IncrRetry:
+		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW(), retry_count = retry_count + 1
 			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`, retryIncr)
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
+	case req.Status == "completed" || req.Status == "failed":
+		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW()
+			 WHERE id = $2 AND assigned_to = $3
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
 	default:
 		query = `UPDATE worker_tasks SET status = $1
 			 WHERE id = $2 AND assigned_to = $3
