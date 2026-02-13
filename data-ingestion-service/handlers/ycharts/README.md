@@ -82,12 +82,16 @@ ycharts/key_stats/{TICKER}/{YYYY-MM-DD}/{timestamp}.json
 
 Example: `ycharts/key_stats/NVDA/2026-02-12/20260212T203000Z.json`
 
-**Database Table:** `ycharts_key_stats`
+**Index Table:** `ingestion_log`
 
-- Primary key: `id`
-- Unique constraint: `(ticker, collected_at)`
-- Commonly queried fields stored as columns
-- Full payload stored in `data_json` JSONB column
+The API only writes an index record to track what was uploaded:
+- `source`: "ycharts"
+- `ticker`: Stock symbol
+- `data_type`: "key_stats"
+- `s3_key`: Full S3 path
+- `collected_at`: When data was scraped
+
+**Processing:** A separate ETL cronjob reads from S3 and inserts into `ycharts_key_stats` table.
 
 ## Testing
 
@@ -124,7 +128,8 @@ The scraper (Nikola/ClawdBot) will:
 2. Extract metrics using the scraping skill
 3. Parse values using `parse_helpers.py`
 4. POST structured JSON to this endpoint
-5. Endpoint validates, uploads to S3, and stores in database
+5. Endpoint validates and uploads to S3
+6. Separate ETL job processes S3 files → database
 
 ## Adding New Endpoints
 
