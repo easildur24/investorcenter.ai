@@ -6,6 +6,8 @@
 VENV_PATH = path/to/venv
 DB_NAME = investorcenter_db
 DB_USER = investorcenter
+DB_PASSWORD ?= $(error DB_PASSWORD is not set. Export it or pass via make DB_PASSWORD=...)
+PROD_DB_PASSWORD ?= $(error PROD_DB_PASSWORD is not set. Export it or pass via make PROD_DB_PASSWORD=...)
 
 help:
 	@echo "InvestorCenter.ai Development Commands"
@@ -63,7 +65,7 @@ db-setup:
 	brew services start postgresql@15 || true && \
 	sleep 2 && \
 	createdb $(DB_NAME) || true && \
-	psql $(DB_NAME) -c "CREATE USER $(DB_USER) WITH PASSWORD 'investorcenter123';" || true && \
+	psql $(DB_NAME) -c "CREATE USER $(DB_USER) WITH PASSWORD '$(DB_PASSWORD)';" || true && \
 	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON DATABASE $(DB_NAME) TO $(DB_USER);" && \
 	psql $(DB_NAME) -f backend/migrations/001_create_stock_tables.sql && \
 	psql $(DB_NAME) -c "GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO $(DB_USER);"
@@ -75,7 +77,7 @@ dev:
 	@echo "Starting development environment..."
 	@echo "Backend: http://localhost:8080"
 	@echo "Frontend: http://localhost:3000"
-	@cd backend && DB_HOST=localhost DB_PORT=5432 DB_USER=$(DB_USER) DB_PASSWORD=investorcenter123 DB_NAME=$(DB_NAME) DB_SSLMODE=disable ./investorcenter-api &
+	@cd backend && DB_HOST=localhost DB_PORT=5432 DB_USER=$(DB_USER) DB_PASSWORD=$(DB_PASSWORD) DB_NAME=$(DB_NAME) DB_SSLMODE=disable ./investorcenter-api &
 	@npm run dev
 
 # Build everything
@@ -127,7 +129,7 @@ prod-k8s-setup:
 	@echo "Current context: $$(kubectl config current-context)"
 	@read -p "Continue with production deployment? (y/N): " confirm && [ "$$confirm" = "y" ]
 	kubectl apply -f k8s/namespace.yaml
-	kubectl create secret generic postgres-secret --from-literal=username=$(DB_USER) --from-literal=password=prod_investorcenter_456 -n investorcenter || true
+	kubectl create secret generic postgres-secret --from-literal=username=$(DB_USER) --from-literal=password=$(PROD_DB_PASSWORD) -n investorcenter || true
 	kubectl apply -f k8s/postgres-deployment.yaml
 
 prod-deploy-cron:
@@ -154,7 +156,7 @@ db-import-prod:
 	@echo "Setting up production database access..."
 	@kubectl port-forward -n investorcenter svc/postgres-service 5433:5432 &
 	@sleep 3
-	@export DB_HOST=localhost DB_PORT=5433 DB_USER=$(DB_USER) DB_PASSWORD="prod_investorcenter_456" DB_NAME=$(DB_NAME) DB_SSLMODE=disable && \
+	@export DB_HOST=localhost DB_PORT=5433 DB_USER=$(DB_USER) DB_PASSWORD="$(PROD_DB_PASSWORD)" DB_NAME=$(DB_NAME) DB_SSLMODE=disable && \
 	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
 	@pkill -f "kubectl port-forward.*postgres-service" || true
 

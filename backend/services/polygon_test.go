@@ -9,8 +9,15 @@ import (
 	"time"
 )
 
-// Test API key - can be used for testing
-const testAPIKey = "zapuIgaTVLJoanfEuimZYQ2xRlZmoU1m"
+// testAPIKey reads from POLYGON_TEST_API_KEY env var, falls back to "demo"
+var testAPIKey = getTestAPIKey()
+
+func getTestAPIKey() string {
+	if key := os.Getenv("POLYGON_TEST_API_KEY"); key != "" {
+		return key
+	}
+	return "demo"
+}
 
 func TestNewPolygonClient(t *testing.T) {
 	// Test with environment variable
@@ -163,9 +170,12 @@ func TestGetAllTickers_MockServer(t *testing.T) {
 }
 
 func TestGetAllTickers_RealAPI(t *testing.T) {
-	// Skip this test in CI/automated environments
+	// Skip this test unless a real API key is available
 	if os.Getenv("CI") == "true" || os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
 		t.Skip("Skipping real API test in CI environment")
+	}
+	if os.Getenv("POLYGON_TEST_API_KEY") == "" {
+		t.Skip("Skipping real API test: POLYGON_TEST_API_KEY not set")
 	}
 
 	// Use real API key
@@ -223,9 +233,12 @@ func TestGetAllTickers_RealAPI(t *testing.T) {
 }
 
 func TestGetTickerDetails_RealAPI(t *testing.T) {
-	// Skip this test in CI/automated environments
+	// Skip this test unless a real API key is available
 	if os.Getenv("CI") == "true" || os.Getenv("SKIP_INTEGRATION_TESTS") == "true" {
 		t.Skip("Skipping real API test in CI environment")
+	}
+	if os.Getenv("POLYGON_TEST_API_KEY") == "" {
+		t.Skip("Skipping real API test: POLYGON_TEST_API_KEY not set")
 	}
 
 	os.Setenv("POLYGON_API_KEY", testAPIKey)
