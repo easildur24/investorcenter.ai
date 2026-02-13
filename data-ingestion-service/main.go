@@ -23,6 +23,9 @@ func main() {
 	// Load .env for local dev (ignore error in production)
 	godotenv.Load()
 
+	// Validate JWT secret before starting — fail fast if missing or too short
+	auth.ValidateJWTSecret()
+
 	// Initialize database
 	if err := database.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)

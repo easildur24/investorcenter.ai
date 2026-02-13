@@ -8,7 +8,24 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
+const minJWTSecretLength = 32
+
 var jwtSecret = []byte(os.Getenv("JWT_SECRET"))
+
+// ValidateJWTSecret checks that JWT_SECRET is set and meets minimum length requirements.
+// Must be called from main() after loading environment variables.
+// Panics if the secret is missing or too short to prevent the service from running insecurely.
+func ValidateJWTSecret() {
+	secret := os.Getenv("JWT_SECRET")
+	if secret == "" {
+		panic("FATAL: JWT_SECRET environment variable is not set. The service cannot start without a signing key.")
+	}
+	if len(secret) < minJWTSecretLength {
+		panic(fmt.Sprintf("FATAL: JWT_SECRET is too short (%d chars). Minimum %d characters required for security.", len(secret), minJWTSecretLength))
+	}
+	// Refresh the package-level variable in case env was loaded after package init
+	jwtSecret = []byte(secret)
+}
 
 // Custom claims for JWT
 type Claims struct {
