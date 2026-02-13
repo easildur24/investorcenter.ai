@@ -1,0 +1,529 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/key_stats.json",
+  "title": "YCharts Key Stats",
+  "description": "Financial metrics from YCharts Key Stats page",
+  "type": "object",
+  "required": ["collected_at", "source_url"],
+  "properties": {
+    "collected_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the data was scraped (ISO 8601)"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "price": {
+      "type": ["object", "null"],
+      "properties": {
+        "current": {
+          "type": "number",
+          "description": "Current stock price"
+        },
+        "currency": {
+          "type": "string",
+          "maxLength": 3,
+          "description": "Currency code (e.g. USD)"
+        },
+        "exchange": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Exchange name (e.g. NASDAQ)"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Price timestamp"
+        }
+      }
+    },
+    "income_statement": {
+      "type": ["object", "null"],
+      "properties": {
+        "revenue_ttm": {
+          "type": ["integer", "null"],
+          "description": "Revenue (trailing twelve months)"
+        },
+        "revenue_quarterly": {
+          "type": ["integer", "null"],
+          "description": "Revenue (most recent quarter)"
+        },
+        "net_income_ttm": {
+          "type": ["integer", "null"],
+          "description": "Net income (TTM)"
+        },
+        "net_income_quarterly": {
+          "type": ["integer", "null"],
+          "description": "Net income (quarterly)"
+        },
+        "ebit_ttm": {
+          "type": ["integer", "null"],
+          "description": "EBIT (TTM)"
+        },
+        "ebit_quarterly": {
+          "type": ["integer", "null"],
+          "description": "EBIT (quarterly)"
+        },
+        "ebitda_ttm": {
+          "type": ["integer", "null"],
+          "description": "EBITDA (TTM)"
+        },
+        "ebitda_quarterly": {
+          "type": ["integer", "null"],
+          "description": "EBITDA (quarterly)"
+        },
+        "revenue_growth_yoy": {
+          "type": ["number", "null"],
+          "description": "Revenue year-over-year growth rate (decimal, e.g. 0.6249 = 62.49%)"
+        },
+        "eps_growth_yoy": {
+          "type": ["number", "null"],
+          "description": "EPS year-over-year growth rate"
+        },
+        "ebitda_growth_yoy": {
+          "type": ["number", "null"],
+          "description": "EBITDA year-over-year growth rate"
+        },
+        "eps_diluted_ttm": {
+          "type": ["number", "null"],
+          "description": "Diluted EPS (TTM)"
+        },
+        "eps_basic_ttm": {
+          "type": ["number", "null"],
+          "description": "Basic EPS (TTM)"
+        },
+        "shares_outstanding": {
+          "type": ["integer", "null"],
+          "description": "Shares outstanding"
+        }
+      }
+    },
+    "balance_sheet": {
+      "type": ["object", "null"],
+      "properties": {
+        "total_assets": {
+          "type": ["integer", "null"],
+          "description": "Total assets (quarterly)"
+        },
+        "total_liabilities": {
+          "type": ["integer", "null"],
+          "description": "Total liabilities (quarterly)"
+        },
+        "shareholders_equity": {
+          "type": ["integer", "null"],
+          "description": "Shareholders equity (quarterly)"
+        },
+        "cash_and_short_term_investments": {
+          "type": ["integer", "null"],
+          "description": "Cash and short-term investments (quarterly)"
+        },
+        "total_long_term_assets": {
+          "type": ["integer", "null"],
+          "description": "Total long-term assets (quarterly)"
+        },
+        "total_long_term_debt": {
+          "type": ["integer", "null"],
+          "description": "Total long-term debt (quarterly)"
+        },
+        "book_value": {
+          "type": ["integer", "null"],
+          "description": "Book value (quarterly)"
+        }
+      }
+    },
+    "cash_flow": {
+      "type": ["object", "null"],
+      "properties": {
+        "cash_from_operations_ttm": {
+          "type": ["integer", "null"],
+          "description": "Cash from operations (TTM)"
+        },
+        "cash_from_investing_ttm": {
+          "type": ["integer", "null"],
+          "description": "Cash from investing (TTM)"
+        },
+        "cash_from_financing_ttm": {
+          "type": ["integer", "null"],
+          "description": "Cash from financing (TTM)"
+        },
+        "change_in_receivables_ttm": {
+          "type": ["integer", "null"],
+          "description": "Change in receivables (TTM)"
+        },
+        "changes_in_working_capital_ttm": {
+          "type": ["integer", "null"],
+          "description": "Changes in working capital (TTM)"
+        },
+        "capital_expenditures_ttm": {
+          "type": ["integer", "null"],
+          "description": "Capital expenditures (TTM)"
+        },
+        "ending_cash_quarterly": {
+          "type": ["integer", "null"],
+          "description": "Ending cash (quarterly)"
+        },
+        "free_cash_flow_ttm": {
+          "type": ["integer", "null"],
+          "description": "Free cash flow (TTM)"
+        },
+        "free_cash_flow_quarterly": {
+          "type": ["integer", "null"],
+          "description": "Free cash flow (quarterly)"
+        }
+      }
+    },
+    "profitability": {
+      "type": ["object", "null"],
+      "properties": {
+        "operating_margin_ttm": {
+          "type": ["number", "null"],
+          "description": "Operating margin (TTM, decimal)"
+        },
+        "gross_profit_margin_ttm": {
+          "type": ["number", "null"],
+          "description": "Gross profit margin (TTM, decimal)"
+        },
+        "return_on_assets": {
+          "type": ["number", "null"],
+          "description": "Return on assets (decimal)"
+        },
+        "return_on_equity": {
+          "type": ["number", "null"],
+          "description": "Return on equity (decimal)"
+        },
+        "return_on_invested_capital": {
+          "type": ["number", "null"],
+          "description": "Return on invested capital (decimal)"
+        }
+      }
+    },
+    "performance": {
+      "type": ["object", "null"],
+      "properties": {
+        "return_1m": {
+          "type": ["number", "null"],
+          "description": "1 month total return (decimal)"
+        },
+        "return_3m": {
+          "type": ["number", "null"],
+          "description": "3 month total return (decimal)"
+        },
+        "return_6m": {
+          "type": ["number", "null"],
+          "description": "6 month total return (decimal)"
+        },
+        "return_ytd": {
+          "type": ["number", "null"],
+          "description": "Year-to-date total return (decimal)"
+        },
+        "return_1y": {
+          "type": ["number", "null"],
+          "description": "1 year total return (decimal)"
+        },
+        "return_3y_annualized": {
+          "type": ["number", "null"],
+          "description": "3 year annualized total return (decimal)"
+        },
+        "return_5y_annualized": {
+          "type": ["number", "null"],
+          "description": "5 year annualized total return (decimal)"
+        },
+        "return_10y_annualized": {
+          "type": ["number", "null"],
+          "description": "10 year annualized total return (decimal)"
+        },
+        "return_15y_annualized": {
+          "type": ["number", "null"],
+          "description": "15 year annualized total return (decimal)"
+        },
+        "return_since_inception_annualized": {
+          "type": ["number", "null"],
+          "description": "Annualized return since inception (decimal)"
+        },
+        "high_52w": {
+          "type": ["number", "null"],
+          "description": "52-week high price"
+        },
+        "low_52w": {
+          "type": ["number", "null"],
+          "description": "52-week low price"
+        },
+        "high_52w_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "Date of 52-week high (YYYY-MM-DD)"
+        },
+        "low_52w_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "Date of 52-week low (YYYY-MM-DD)"
+        }
+      }
+    },
+    "valuation": {
+      "type": ["object", "null"],
+      "properties": {
+        "market_cap": {
+          "type": ["integer", "null"],
+          "description": "Market capitalization"
+        },
+        "enterprise_value": {
+          "type": ["integer", "null"],
+          "description": "Enterprise value"
+        },
+        "pe_ratio": {
+          "type": ["number", "null"],
+          "description": "Price-to-earnings ratio"
+        },
+        "pe_ratio_forward": {
+          "type": ["number", "null"],
+          "description": "Forward P/E ratio"
+        },
+        "pe_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/E ratio"
+        },
+        "ps_ratio": {
+          "type": ["number", "null"],
+          "description": "Price-to-sales ratio"
+        },
+        "ps_ratio_forward": {
+          "type": ["number", "null"],
+          "description": "Forward P/S ratio"
+        },
+        "ps_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/S ratio"
+        },
+        "price_to_book": {
+          "type": ["number", "null"],
+          "description": "Price-to-book ratio"
+        },
+        "price_to_free_cash_flow": {
+          "type": ["number", "null"],
+          "description": "Price-to-free-cash-flow ratio"
+        },
+        "peg_ratio": {
+          "type": ["number", "null"],
+          "description": "Price/earnings-to-growth ratio"
+        },
+        "ev_to_ebitda": {
+          "type": ["number", "null"],
+          "description": "EV-to-EBITDA ratio"
+        },
+        "ev_to_ebitda_forward": {
+          "type": ["number", "null"],
+          "description": "Forward EV-to-EBITDA ratio"
+        },
+        "ev_to_ebit": {
+          "type": ["number", "null"],
+          "description": "EV-to-EBIT ratio"
+        },
+        "ebit_margin_ttm": {
+          "type": ["number", "null"],
+          "description": "EBIT margin (TTM, decimal)"
+        }
+      }
+    },
+    "estimates": {
+      "type": ["object", "null"],
+      "properties": {
+        "revenue_current_quarter": {
+          "type": ["integer", "null"],
+          "description": "Revenue estimate for current quarter"
+        },
+        "revenue_next_quarter": {
+          "type": ["integer", "null"],
+          "description": "Revenue estimate for next quarter"
+        },
+        "revenue_current_fiscal_year": {
+          "type": ["integer", "null"],
+          "description": "Revenue estimate for current fiscal year"
+        },
+        "revenue_next_fiscal_year": {
+          "type": ["integer", "null"],
+          "description": "Revenue estimate for next fiscal year"
+        },
+        "eps_current_quarter": {
+          "type": ["number", "null"],
+          "description": "EPS estimate for current quarter"
+        },
+        "eps_next_quarter": {
+          "type": ["number", "null"],
+          "description": "EPS estimate for next quarter"
+        },
+        "eps_current_fiscal_year": {
+          "type": ["number", "null"],
+          "description": "EPS estimate for current fiscal year"
+        },
+        "eps_next_fiscal_year": {
+          "type": ["number", "null"],
+          "description": "EPS estimate for next fiscal year"
+        }
+      }
+    },
+    "dividends": {
+      "type": ["object", "null"],
+      "properties": {
+        "dividend_yield": {
+          "type": ["number", "null"],
+          "description": "Dividend yield (decimal)"
+        },
+        "dividend_yield_forward": {
+          "type": ["number", "null"],
+          "description": "Forward dividend yield (decimal)"
+        },
+        "payout_ratio_ttm": {
+          "type": ["number", "null"],
+          "description": "Payout ratio (TTM, decimal)"
+        },
+        "cash_dividend_payout_ratio": {
+          "type": ["number", "null"],
+          "description": "Cash dividend payout ratio (decimal)"
+        },
+        "last_dividend_amount": {
+          "type": ["number", "null"],
+          "description": "Last dividend amount"
+        },
+        "last_ex_dividend_date": {
+          "type": ["string", "null"],
+          "format": "date",
+          "description": "Last ex-dividend date (YYYY-MM-DD)"
+        }
+      }
+    },
+    "risk_metrics": {
+      "type": ["object", "null"],
+      "properties": {
+        "alpha_5y": {
+          "type": ["number", "null"],
+          "description": "5-year alpha"
+        },
+        "beta_5y": {
+          "type": ["number", "null"],
+          "description": "5-year beta"
+        },
+        "standard_deviation_monthly_5y": {
+          "type": ["number", "null"],
+          "description": "5-year annualized standard deviation of monthly returns (decimal)"
+        },
+        "sharpe_ratio_5y": {
+          "type": ["number", "null"],
+          "description": "5-year Sharpe ratio"
+        },
+        "sortino_ratio_5y": {
+          "type": ["number", "null"],
+          "description": "5-year Sortino ratio"
+        },
+        "max_drawdown_5y": {
+          "type": ["number", "null"],
+          "description": "5-year maximum drawdown (decimal)"
+        },
+        "var_monthly_5pct_5y": {
+          "type": ["number", "null"],
+          "description": "5-year monthly value at risk (5%, decimal)"
+        }
+      }
+    },
+    "management_effectiveness": {
+      "type": ["object", "null"],
+      "properties": {
+        "asset_utilization_ttm": {
+          "type": ["number", "null"],
+          "description": "Asset utilization (TTM)"
+        },
+        "days_sales_outstanding": {
+          "type": ["number", "null"],
+          "description": "Days sales outstanding (quarterly)"
+        },
+        "days_inventory_outstanding": {
+          "type": ["number", "null"],
+          "description": "Days inventory outstanding (quarterly)"
+        },
+        "days_payable_outstanding": {
+          "type": ["number", "null"],
+          "description": "Days payable outstanding (quarterly)"
+        },
+        "total_receivables": {
+          "type": ["integer", "null"],
+          "description": "Total receivables (quarterly)"
+        }
+      }
+    },
+    "advanced_metrics": {
+      "type": ["object", "null"],
+      "properties": {
+        "piotroski_f_score_ttm": {
+          "type": ["number", "null"],
+          "description": "Piotroski F-Score (TTM)"
+        },
+        "sustainable_growth_rate_ttm": {
+          "type": ["number", "null"],
+          "description": "Sustainable growth rate (TTM, decimal)"
+        },
+        "tobin_q_quarterly": {
+          "type": ["number", "null"],
+          "description": "Tobin's Q (quarterly)"
+        },
+        "momentum_score": {
+          "type": ["number", "null"],
+          "description": "Momentum score"
+        },
+        "market_cap_score": {
+          "type": ["number", "null"],
+          "description": "Market cap score"
+        },
+        "quality_ratio_score": {
+          "type": ["number", "null"],
+          "description": "Quality ratio score"
+        }
+      }
+    },
+    "liquidity_solvency": {
+      "type": ["object", "null"],
+      "properties": {
+        "debt_to_equity_ratio": {
+          "type": ["number", "null"],
+          "description": "Debt-to-equity ratio"
+        },
+        "current_ratio": {
+          "type": ["number", "null"],
+          "description": "Current ratio"
+        },
+        "quick_ratio": {
+          "type": ["number", "null"],
+          "description": "Quick ratio (quarterly)"
+        },
+        "altman_z_score_ttm": {
+          "type": ["number", "null"],
+          "description": "Altman Z-Score (TTM)"
+        },
+        "times_interest_earned_ttm": {
+          "type": ["number", "null"],
+          "description": "Times interest earned (TTM)"
+        }
+      }
+    },
+    "employees": {
+      "type": ["object", "null"],
+      "properties": {
+        "total_employees_annual": {
+          "type": ["integer", "null"],
+          "description": "Total employees (annual)"
+        },
+        "revenue_per_employee_annual": {
+          "type": ["integer", "null"],
+          "description": "Revenue per employee (annual)"
+        },
+        "net_income_per_employee_annual": {
+          "type": ["integer", "null"],
+          "description": "Net income per employee (annual)"
+        }
+      }
+    }
+  }
+}
