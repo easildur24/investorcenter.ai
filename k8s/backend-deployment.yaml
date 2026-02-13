@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: investorcenter-backend
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend:v20260125161704
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend:data-ingest
         ports:
         - containerPort: 8080
         env:
@@ -98,6 +98,8 @@ spec:
           value: "https://investorcenter.ai"
         - name: TASK_SERVICE_URL
           value: "http://task-service:8001"
+        - name: DATA_INGESTION_SERVICE_URL
+          value: "http://data-ingestion-service:8002"
         resources:
           requests:
             memory: "128Mi"

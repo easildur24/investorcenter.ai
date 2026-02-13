@@ -82,6 +82,7 @@ dev:
 build:
 	@echo "Building application..."
 	cd backend && go build -o investorcenter-api .
+	cd task-service && go build -o task-service .
 	npm run build
 
 # Complete testing and validation

@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: data-ingestion-service
+  namespace: investorcenter
+  labels:
+    app: data-ingestion-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: data-ingestion-service
+  template:
+    metadata:
+      labels:
+        app: data-ingestion-service
+    spec:
+      serviceAccountName: data-ingestion-sa
+      containers:
+      - name: data-ingestion-service
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/data-ingestion-service:latest
+        ports:
+        - containerPort: 8002
+        env:
+        - name: PORT
+          value: "8002"
+        - name: GIN_MODE
+          value: "release"
+        - name: DB_HOST
+          value: "postgres-simple-service"
+        - name: DB_PORT
+          value: "5432"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: username
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-secret
+              key: password
+        - name: DB_NAME
+          value: "investorcenter_db"
+        - name: DB_SSLMODE
+          value: "disable"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: jwt-secret
+        - name: S3_BUCKET
+          value: "investorcenter-raw-data"
+        - name: AWS_REGION
+          value: "us-east-1"
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "100m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 5
+          periodSeconds: 5
