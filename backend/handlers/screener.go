@@ -142,9 +142,18 @@ func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 		params.ICScoreMax = &val
 	}
 
-	// Asset type
+	// Asset type (validated against allowlist)
 	if assetType := c.Query("asset_type"); assetType != "" {
-		params.AssetType = assetType
+		validAssetTypes := map[string]bool{
+			"CS": true, "ETF": true, "ADRC": true, "ADRW": true,
+			"WARRANT": true, "RIGHT": true, "UNIT": true,
+			"PFD": true, "FUND": true, "SP": true, "OS": true,
+			"crypto": true,
+		}
+		if validAssetTypes[assetType] {
+			params.AssetType = assetType
+		}
+		// Invalid values silently fall back to default "CS"
 	}
 
 	return params

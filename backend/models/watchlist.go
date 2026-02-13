@@ -77,43 +77,43 @@ type WatchListSummary struct {
 // CreateWatchListRequest for creating a new watch list
 type CreateWatchListRequest struct {
 	Name        string  `json:"name" binding:"required,min=1,max=255"`
-	Description *string `json:"description"`
+	Description *string `json:"description" binding:"omitempty,max=5000"`
 }
 
 // UpdateWatchListRequest for updating watch list metadata
 type UpdateWatchListRequest struct {
 	Name        string  `json:"name" binding:"min=1,max=255"`
-	Description *string `json:"description"`
+	Description *string `json:"description" binding:"omitempty,max=5000"`
 }
 
 // AddTickerRequest for adding a ticker to watch list
 type AddTickerRequest struct {
-	Symbol          string   `json:"symbol" binding:"required"`
-	Notes           *string  `json:"notes"`
-	Tags            []string `json:"tags"`
-	TargetBuyPrice  *float64 `json:"target_buy_price"`
-	TargetSellPrice *float64 `json:"target_sell_price"`
+	Symbol          string   `json:"symbol" binding:"required,min=1,max=20"`
+	Notes           *string  `json:"notes" binding:"omitempty,max=10000"`
+	Tags            []string `json:"tags" binding:"max=50,dive,max=100"`
+	TargetBuyPrice  *float64 `json:"target_buy_price" binding:"omitempty,gte=0"`
+	TargetSellPrice *float64 `json:"target_sell_price" binding:"omitempty,gte=0"`
 }
 
 // UpdateTickerRequest for updating ticker metadata
 type UpdateTickerRequest struct {
-	Notes           *string  `json:"notes"`
-	Tags            []string `json:"tags"`
-	TargetBuyPrice  *float64 `json:"target_buy_price"`
-	TargetSellPrice *float64 `json:"target_sell_price"`
+	Notes           *string  `json:"notes" binding:"omitempty,max=10000"`
+	Tags            []string `json:"tags" binding:"max=50,dive,max=100"`
+	TargetBuyPrice  *float64 `json:"target_buy_price" binding:"omitempty,gte=0"`
+	TargetSellPrice *float64 `json:"target_sell_price" binding:"omitempty,gte=0"`
 }
 
 // BulkAddTickersRequest for CSV import
 type BulkAddTickersRequest struct {
-	Symbols []string `json:"symbols" binding:"required,min=1"`
+	Symbols []string `json:"symbols" binding:"required,min=1,max=500,dive,min=1,max=20"`
 }
 
 // ReorderItemsRequest for updating display order
 type ReorderItemsRequest struct {
-	ItemOrders []ItemOrder `json:"item_orders" binding:"required"`
+	ItemOrders []ItemOrder `json:"item_orders" binding:"required,min=1,max=500"`
 }
 
 type ItemOrder struct {
-	ItemID       string `json:"item_id" binding:"required"`
-	DisplayOrder int    `json:"display_order" binding:"required"`
+	ItemID       string `json:"item_id" binding:"required,max=100"`
+	DisplayOrder int    `json:"display_order" binding:"min=0,max=10000"`
 }

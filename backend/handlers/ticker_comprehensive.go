@@ -189,6 +189,16 @@ func GetTickerChart(c *gin.Context) {
 	symbol := strings.ToUpper(c.Param("symbol"))
 	period := c.DefaultQuery("period", "1Y")
 
+	// Validate period against allowed values
+	validPeriods := map[string]bool{
+		"1D": true, "5D": true, "1W": true, "1M": true,
+		"3M": true, "6M": true, "YTD": true, "1Y": true,
+		"3Y": true, "5Y": true, "MAX": true,
+	}
+	if !validPeriods[period] {
+		period = "1Y"
+	}
+
 	log.Printf("GetTickerChart called for symbol: %s, period: %s", symbol, period)
 
 	// Check if this is a crypto asset

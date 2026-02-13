@@ -230,6 +230,7 @@ func TestSubmitBacktestJob(t *testing.T) {
 			EndDate:            "2024-01-01",
 			RebalanceFrequency: "monthly",
 			Universe:           "sp500",
+			Benchmark:          "SPY",
 		}
 
 		body, _ := json.Marshal(config)

@@ -39,25 +39,25 @@ type NotificationPreferences struct {
 // UpdateNotificationPreferencesRequest is the API request
 type UpdateNotificationPreferencesRequest struct {
 	EmailEnabled                  *bool   `json:"email_enabled,omitempty"`
-	EmailAddress                  *string `json:"email_address,omitempty"`
+	EmailAddress                  *string `json:"email_address,omitempty" binding:"omitempty,email,max=254"`
 	PriceAlertsEnabled            *bool   `json:"price_alerts_enabled,omitempty"`
 	VolumeAlertsEnabled           *bool   `json:"volume_alerts_enabled,omitempty"`
 	NewsAlertsEnabled             *bool   `json:"news_alerts_enabled,omitempty"`
 	EarningsAlertsEnabled         *bool   `json:"earnings_alerts_enabled,omitempty"`
 	SECFilingAlertsEnabled        *bool   `json:"sec_filing_alerts_enabled,omitempty"`
 	DailyDigestEnabled            *bool   `json:"daily_digest_enabled,omitempty"`
-	DailyDigestTime               *string `json:"daily_digest_time,omitempty"`
+	DailyDigestTime               *string `json:"daily_digest_time,omitempty" binding:"omitempty,max=10"`
 	WeeklyDigestEnabled           *bool   `json:"weekly_digest_enabled,omitempty"`
-	WeeklyDigestDay               *int    `json:"weekly_digest_day,omitempty"`
-	WeeklyDigestTime              *string `json:"weekly_digest_time,omitempty"`
+	WeeklyDigestDay               *int    `json:"weekly_digest_day,omitempty" binding:"omitempty,min=0,max=6"`
+	WeeklyDigestTime              *string `json:"weekly_digest_time,omitempty" binding:"omitempty,max=10"`
 	DigestIncludePortfolioSummary *bool   `json:"digest_include_portfolio_summary,omitempty"`
 	DigestIncludeTopMovers        *bool   `json:"digest_include_top_movers,omitempty"`
 	DigestIncludeRecentAlerts     *bool   `json:"digest_include_recent_alerts,omitempty"`
 	DigestIncludeNewsHighlights   *bool   `json:"digest_include_news_highlights,omitempty"`
 	QuietHoursEnabled             *bool   `json:"quiet_hours_enabled,omitempty"`
-	QuietHoursStart               *string `json:"quiet_hours_start,omitempty"`
-	QuietHoursEnd                 *string `json:"quiet_hours_end,omitempty"`
-	QuietHoursTimezone            *string `json:"quiet_hours_timezone,omitempty"`
+	QuietHoursStart               *string `json:"quiet_hours_start,omitempty" binding:"omitempty,max=10"`
+	QuietHoursEnd                 *string `json:"quiet_hours_end,omitempty" binding:"omitempty,max=10"`
+	QuietHoursTimezone            *string `json:"quiet_hours_timezone,omitempty" binding:"omitempty,max=100"`
 }
 
 // InAppNotification represents in-app notification
