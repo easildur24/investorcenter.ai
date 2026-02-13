@@ -22,6 +22,9 @@ func main() {
 	// Load .env for local dev (ignore error in production)
 	godotenv.Load()
 
+	// Validate JWT secret before starting — fail fast if missing or too short
+	auth.ValidateJWTSecret()
+
 	// Initialize database
 	database.Initialize()
 	defer database.Close()

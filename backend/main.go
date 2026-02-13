@@ -22,6 +22,9 @@ func main() {
 		log.Println("No .env file found")
 	}
 
+	// Validate JWT secret before starting — fail fast if missing or too short
+	auth.ValidateJWTSecret()
+
 	// Initialize database connection
 	if err := database.Initialize(); err != nil {
 		log.Printf("Database connection failed: %v", err)
