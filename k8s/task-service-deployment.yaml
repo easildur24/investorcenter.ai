@@ -15,6 +15,7 @@ spec:
       labels:
         app: task-service
     spec:
+      serviceAccountName: task-service-sa
       containers:
       - name: task-service
         image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/task-service:latest
@@ -50,6 +51,10 @@ spec:
               key: jwt-secret
         - name: BCRYPT_COST
           value: "12"
+        - name: S3_BUCKET
+          value: "claw-treasure"
+        - name: AWS_REGION
+          value: "us-east-1"
         resources:
           requests:
             memory: "64Mi"
