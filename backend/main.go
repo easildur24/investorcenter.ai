@@ -388,6 +388,11 @@ func main() {
 	v1.Any("/admin/workers/*path", taskProxy)
 	v1.Any("/worker/*path", taskProxy)
 
+	// Data ingestion routes — proxied to data-ingestion-service
+	ingestProxy := services.DataIngestionProxy()
+	v1.Any("/ingest", ingestProxy)
+	v1.Any("/ingest/*path", ingestProxy)
+
 	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {

@@ -702,6 +702,67 @@ Send a heartbeat to indicate the worker is online. Updates `last_activity_at` on
 
 ---
 
+## Data Ingestion
+
+Upload raw scraped data to S3 for later processing. This is **separate from the task API** — use this whenever you scrape data from external sources (ycharts, seekingalpha, etc.).
+
+> **Full skill documentation:** See `skills/data-ingestion/SKILL.md` for complete examples and conventions.
+
+### Upload Raw Data
+
+```
+POST /ingest
+```
+
+Upload raw scraped content to S3. The service stores the data in S3 and writes an index record to Postgres.
+
+**Request body:**
+
+```json
+{
+  "source": "ycharts",
+  "ticker": "NVDA",
+  "data_type": "financials",
+  "source_url": "https://ycharts.com/companies/NVDA/financials",
+  "raw_data": "<raw HTML or JSON content>",
+  "collected_at": "2026-02-12T15:30:00Z"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `source` | string | Yes | Data provider: `ycharts`, `seekingalpha`, `sec_edgar` |
+| `data_type` | string | Yes | Content category: `financials`, `valuation`, `ratings`, etc. |
+| `ticker` | string | No | Stock ticker symbol |
+| `source_url` | string | No | Original URL that was scraped |
+| `raw_data` | string | Yes | Raw scraped content (max 10MB) |
+| `collected_at` | ISO 8601 | No | When data was scraped (defaults to now) |
+
+**Response `201`:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": 123,
+    "s3_key": "raw/ycharts/NVDA/financials/2026-02-12/20260212T153000Z.json"
+  }
+}
+```
+
+**S3 key format:** `raw/{source}/{ticker}/{data_type}/{YYYY-MM-DD}/{timestamp}.json`
+
+**Errors:**
+
+| Status | Error | When |
+|--------|-------|------|
+| `400` | `"Invalid request: ..."` | Missing required fields or invalid format |
+| `400` | `"raw_data exceeds maximum size..."` | Payload over 10MB |
+| `401` | `"Invalid or expired token"` | Bad JWT |
+| `500` | `"Failed to upload data to storage"` | S3 upload failed |
+
+---
+
 ## Error Responses
 
 All errors follow this shape:

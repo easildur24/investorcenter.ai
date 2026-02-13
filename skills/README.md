@@ -7,6 +7,7 @@ Private skills for InvestorCenter.ai automation tasks.
 - **scrape-seekingalpha** — Extract ticker data, metrics, sentiment, and articles from SeekingAlpha
 - **scrape-ycharts** — Pull financial data, charts, and comparisons from YCharts
 - **reddit-summarizer** — Aggregate and summarize Reddit posts for market sentiment
+- **data-ingestion** — Upload raw scraped data to S3 via the data ingestion API
 
 ## Usage
 
