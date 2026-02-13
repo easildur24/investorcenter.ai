@@ -565,40 +565,6 @@ func GetTickerNews(c *gin.Context) {
 	})
 }
 
-// GetTickerEarnings returns earnings data for a ticker
-func GetTickerEarnings(c *gin.Context) {
-	symbol := strings.ToUpper(c.Param("symbol"))
-	log.Printf("GetTickerEarnings called for symbol: %s", symbol)
-
-	// TODO: Implement real earnings data from database or API
-	c.JSON(http.StatusOK, gin.H{
-		"data": []interface{}{},
-		"meta": gin.H{
-			"symbol":    symbol,
-			"count":     0,
-			"timestamp": time.Now().UTC(),
-			"source":    "none",
-		},
-	})
-}
-
-// GetTickerAnalysts returns analyst ratings for a ticker
-func GetTickerAnalysts(c *gin.Context) {
-	symbol := strings.ToUpper(c.Param("symbol"))
-	log.Printf("GetTickerAnalysts called for symbol: %s", symbol)
-
-	// TODO: Implement real analyst data from database or API
-	c.JSON(http.StatusOK, gin.H{
-		"data": []interface{}{},
-		"meta": gin.H{
-			"symbol":    symbol,
-			"count":     0,
-			"timestamp": time.Now().UTC(),
-			"source":    "none",
-		},
-	})
-}
-
 // calculateMarketCap estimates market cap for a crypto symbol
 func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
 	cleanSymbol := strings.Replace(symbol, "X:", "", 1)

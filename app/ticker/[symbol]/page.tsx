@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import TickerTabs, { TabSkeleton } from '@/components/ticker/TickerTabs';
 import TickerFundamentals from '@/components/ticker/TickerFundamentals';
-import TickerAnalysts from '@/components/ticker/TickerAnalysts';
+
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
@@ -186,10 +186,8 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
                 <TickerFundamentals symbol={symbol} />
               </div>
 
-              {/* Analyst Ratings */}
-              <div className="bg-ic-surface rounded-lg shadow">
-                <TickerAnalysts symbol={symbol} />
-              </div>
+
+
             </div>
           </div>
         )}

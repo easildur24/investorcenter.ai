@@ -120,12 +120,6 @@ func main() {
 
 			// Additional ticker endpoints
 			tickers.GET("/:symbol/news", handlers.GetTickerNews)
-			tickers.GET("/:symbol/earnings", handlers.GetTickerEarnings)
-			tickers.GET("/:symbol/analysts", handlers.GetTickerAnalysts)
-			// tickers.GET("/:symbol/fundamentals", handlers.GetTickerFundamentals)
-			// tickers.GET("/:symbol/dividends", handlers.GetTickerDividends)
-			// tickers.GET("/:symbol/insiders", handlers.GetTickerInsiders)
-			// tickers.GET("/:symbol/peers", handlers.GetTickerPeers)
 
 			// Key stats endpoints (user-ingested data)
 			tickers.GET("/:symbol/keystats", handlers.GetKeyStats)       // Get key stats data
