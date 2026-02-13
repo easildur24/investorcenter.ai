@@ -4,6 +4,8 @@
  * Handles all API requests related to InvestorCenter's proprietary IC Score system.
  */
 
+import { apiClient } from './client';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**
@@ -139,7 +141,7 @@ export async function getICScoreHistory(
 }
 
 /**
- * Fetch all IC Scores with pagination
+ * Fetch all IC Scores with pagination (admin-only, requires authentication)
  *
  * @param params Query parameters for filtering and pagination
  * @returns Paginated list of IC Scores
@@ -168,30 +170,17 @@ export async function getICScores(params?: {
     if (params?.sort) queryParams.set('sort', params.sort);
     if (params?.order) queryParams.set('order', params.order);
 
-    const url = `${API_BASE_URL}/ic-scores${queryParams.toString() ? '?' + queryParams.toString() : ''}`;
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!response.ok) {
-      console.error(`Failed to fetch IC Scores: ${response.status}`);
-      return {
-        data: [],
-        meta: {
-          total: 0,
-          limit: params?.limit || 20,
-          offset: params?.offset || 0,
-          total_stocks: 0,
-          coverage_percent: 0,
-        },
+    const query = queryParams.toString();
+    return await apiClient.get<{
+      data: ICScoreListItem[];
+      meta: {
+        total: number;
+        limit: number;
+        offset: number;
+        total_stocks: number;
+        coverage_percent: number;
       };
-    }
-
-    return await response.json();
+    }>(`/admin/ic-scores${query ? '?' + query : ''}`);
   } catch (error) {
     console.error('Error fetching IC Scores:', error);
     return {

@@ -332,6 +332,7 @@ func main() {
 		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
 		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
 		adminRoutes.GET("/risk-metrics", adminDataHandler.GetRiskMetrics)                     // GET /api/v1/admin/risk-metrics
+		adminRoutes.GET("/ic-scores", handlers.GetICScores)                                   // GET /api/v1/admin/ic-scores
 
 		// Notes/brainstorming endpoints
 		notes := adminRoutes.Group("/notes")

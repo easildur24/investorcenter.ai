@@ -91,6 +91,132 @@ func GetICScore(c *gin.Context) {
 	})
 }
 
+// GetICScores retrieves all IC Scores with pagination and filtering
+// GET /api/v1/admin/ic-scores?limit=20&offset=0&search=AAPL&sort=overall_score&order=desc
+func GetICScores(c *gin.Context) {
+	// Check database connection
+	if database.DB == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error":   "Database not available",
+			"message": "IC Score service is temporarily unavailable",
+		})
+		return
+	}
+
+	// Parse query parameters
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "20"))
+	offset, _ := strconv.Atoi(c.DefaultQuery("offset", "0"))
+	search := strings.ToUpper(c.DefaultQuery("search", ""))
+	sort := c.DefaultQuery("sort", "overall_score")
+	order := c.DefaultQuery("order", "desc")
+
+	// Validate limit
+	if limit > 100 {
+		limit = 100
+	}
+	if limit < 1 {
+		limit = 20
+	}
+
+	// Validate sort column
+	validSortColumns := map[string]bool{
+		"ticker":            true,
+		"overall_score":     true,
+		"rating":            true,
+		"data_completeness": true,
+		"created_at":        true,
+	}
+	if !validSortColumns[sort] {
+		sort = "overall_score"
+	}
+
+	// Validate order
+	if order != "asc" && order != "desc" {
+		order = "desc"
+	}
+
+	// Build query for latest scores per ticker
+	whereClause := ""
+	args := []interface{}{}
+	if search != "" {
+		whereClause = "WHERE ticker LIKE $1"
+		args = append(args, search+"%")
+	}
+
+	// Query to get the latest IC Score for each ticker
+	query := fmt.Sprintf(`
+		WITH latest_scores AS (
+			SELECT DISTINCT ON (ticker)
+				ticker,
+				overall_score,
+				rating,
+				data_completeness,
+				created_at
+			FROM ic_scores
+			%s
+			ORDER BY ticker, date DESC, created_at DESC
+		)
+		SELECT ticker, overall_score, rating, data_completeness, created_at
+		FROM latest_scores
+		ORDER BY %s %s
+		LIMIT $%d OFFSET $%d
+	`, whereClause, sort, order, len(args)+1, len(args)+2)
+
+	args = append(args, limit, offset)
+
+	// Initialize with empty slice to ensure JSON returns [] not null
+	scores := make([]models.ICScoreListItem, 0)
+	err := database.DB.Select(&scores, query, args...)
+	if err != nil {
+		log.Printf("Error fetching IC Scores: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch IC Scores",
+			"message": "An error occurred while retrieving IC Scores",
+		})
+		return
+	}
+
+	// Ensure scores is never nil (sqlx may set it to nil if no rows found)
+	if scores == nil {
+		scores = make([]models.ICScoreListItem, 0)
+	}
+
+	// Get total count
+	countQuery := "SELECT COUNT(DISTINCT ticker) FROM ic_scores"
+	if search != "" {
+		countQuery += " WHERE ticker LIKE $1"
+	}
+
+	var totalCount int
+	var countArgs []interface{}
+	if search != "" {
+		countArgs = []interface{}{search + "%"}
+	}
+	err = database.DB.Get(&totalCount, countQuery, countArgs...)
+	if err != nil {
+		log.Printf("Error counting IC Scores: %v", err)
+		totalCount = 0
+	}
+
+	// Get total tickers count for context
+	var totalStocks int
+	database.DB.Get(&totalStocks, "SELECT COUNT(*) FROM tickers")
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": scores,
+		"meta": gin.H{
+			"total":            totalCount,
+			"limit":            limit,
+			"offset":           offset,
+			"total_stocks":     totalStocks,
+			"coverage_percent": float64(totalCount) / float64(totalStocks) * 100,
+			"search":           search,
+			"sort":             sort,
+			"order":            order,
+		},
+	})
+}
+
 // GetFinancialMetrics retrieves financial metrics for a ticker
 // Uses FMP API as primary source with database as fallback
 // GET /api/v1/stocks/:ticker/financials
