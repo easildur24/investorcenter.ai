@@ -113,13 +113,20 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 		whereClause = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	// Determine sort column
+	// Determine sort column (allowlist-validated, safe for interpolation)
 	sortColumn, ok := ValidScreenerSortColumns[params.Sort]
 	if !ok {
 		sortColumn = "market_cap"
 	}
+	// Defense-in-depth: reject any sort column not matching [a-z_]+
+	for _, ch := range sortColumn {
+		if !((ch >= 'a' && ch <= 'z') || ch == '_') {
+			sortColumn = "market_cap"
+			break
+		}
+	}
 
-	// Validate order
+	// Validate order (only ASC or DESC, safe for interpolation)
 	order := "DESC"
 	if strings.ToUpper(params.Order) == "ASC" {
 		order = "ASC"
@@ -138,6 +145,9 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 	offset := (params.Page - 1) * params.Limit
 
 	// Data query - simple single table scan with pagination
+	// Note: ORDER BY column and direction cannot be parameterized in PostgreSQL.
+	// Both values are validated above via allowlist (sortColumn) and strict
+	// string comparison (order), making this safe from SQL injection.
 	dataQuery := fmt.Sprintf(`
 		SELECT
 			symbol,
@@ -157,7 +167,7 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 			0.0 as ic_score
 		FROM screener_data
 		%s
-		ORDER BY %s %s NULLS LAST
+		ORDER BY "%s" %s NULLS LAST
 		LIMIT $%d OFFSET $%d
 	`, whereClause, sortColumn, order, argIndex, argIndex+1)
 
