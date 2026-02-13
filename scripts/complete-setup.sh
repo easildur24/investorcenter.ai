@@ -173,9 +173,43 @@ else
     print_warning "Certificate ARN not found. You may need to update the ingress manually."
 fi
 
+# Verify required secrets exist (secrets are managed via kubectl create secret, not YAML files)
+echo -e "${BLUE}🔐 Verifying Kubernetes secrets...${NC}"
+if ! kubectl get secret app-secrets -n ${NAMESPACE} &> /dev/null; then
+    print_error "app-secrets not found. Create it first:"
+    echo "  kubectl create secret generic app-secrets \\"
+    echo "    --from-literal=jwt-secret=\"\$(openssl rand -base64 32)\" \\"
+    echo "    --from-literal=polygon-api-key=\"YOUR_POLYGON_API_KEY\" \\"
+    echo "    --from-literal=smtp-host=\"smtp.sendgrid.net\" \\"
+    echo "    --from-literal=smtp-port=\"587\" \\"
+    echo "    --from-literal=smtp-username=\"apikey\" \\"
+    echo "    --from-literal=smtp-password=\"YOUR_SENDGRID_API_KEY\" \\"
+    echo "    -n ${NAMESPACE}"
+    exit 1
+fi
+if ! kubectl get secret postgres-secret -n ${NAMESPACE} &> /dev/null; then
+    print_error "postgres-secret not found. Create it first:"
+    echo "  kubectl create secret generic postgres-secret \\"
+    echo "    --from-literal=username=\"investorcenter\" \\"
+    echo "    --from-literal=password=\"YOUR_SECURE_PASSWORD\" \\"
+    echo "    -n ${NAMESPACE}"
+    exit 1
+fi
+print_status "Required secrets exist"
+
 # Deploy application
 echo -e "${BLUE}🚀 Deploying application to Kubernetes...${NC}"
-./scripts/deploy.sh
+kubectl apply -f k8s/postgres-deployment.yaml
+kubectl apply -f k8s/redis-deployment.yaml
+echo -e "${BLUE}⏳ Waiting for databases...${NC}"
+kubectl rollout status deployment/postgres -n ${NAMESPACE}
+kubectl rollout status deployment/redis -n ${NAMESPACE}
+kubectl apply -f k8s/backend-deployment.yaml
+kubectl apply -f k8s/backend-service.yaml
+kubectl rollout status deployment/investorcenter-backend -n ${NAMESPACE}
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/ingress.yaml
 print_status "Application deployed"
 
 # Wait for pods to be ready

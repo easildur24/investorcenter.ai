@@ -71,7 +71,7 @@ class DailyPriceUpdate:
             host=os.getenv('DB_HOST', 'localhost'),
             port=int(os.getenv('DB_PORT', 5432)),
             user=os.getenv('DB_USER', 'investorcenter'),
-            password=os.getenv('DB_PASSWORD', 'investorcenter'),
+            password=os.environ['DB_PASSWORD'],
             database=os.getenv('DB_NAME', 'investorcenter_db'),
             min_size=2,
             max_size=10

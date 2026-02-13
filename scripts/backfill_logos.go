@@ -34,7 +34,10 @@ func main() {
 	dbHost := getEnv("DB_HOST", "localhost")
 	dbPort := getEnv("DB_PORT", "5432")
 	dbUser := getEnv("DB_USER", "investorcenter")
-	dbPassword := getEnv("DB_PASSWORD", "password123")
+	dbPassword := os.Getenv("DB_PASSWORD")
+	if dbPassword == "" {
+		log.Fatal("DB_PASSWORD environment variable is required")
+	}
 	dbName := getEnv("DB_NAME", "investorcenter_db")
 	polygonAPIKey := os.Getenv("POLYGON_API_KEY")
 

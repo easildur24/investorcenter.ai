@@ -13,7 +13,10 @@ spec:
         imagePullPolicy: Always
         env:
         - name: POLYGON_API_KEY
-          value: "Q9LhuSPrdj8Fqv9ejYqwXF6AKv7YAsWa"  # Paid tier API key with 100 req/sec
+          valueFrom:
+            secretKeyRef:
+              name: polygon-api-secret
+              key: api-key
         - name: DB_HOST
           value: "postgres-service.investorcenter.svc.cluster.local"
         - name: DB_PORT
