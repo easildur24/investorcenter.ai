@@ -170,8 +170,8 @@ func CreateFeatureGroup(c *gin.Context) {
 	}
 
 	var req struct {
-		Name  string `json:"name" binding:"required"`
-		Notes string `json:"notes"`
+		Name  string `json:"name" binding:"required,max=255"`
+		Notes string `json:"notes" binding:"max=10000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -205,9 +205,9 @@ func UpdateFeatureGroup(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Name      *string `json:"name"`
-		Notes     *string `json:"notes"`
-		SortOrder *int    `json:"sort_order"`
+		Name      *string `json:"name" binding:"omitempty,max=255"`
+		Notes     *string `json:"notes" binding:"omitempty,max=10000"`
+		SortOrder *int    `json:"sort_order" binding:"omitempty,min=0,max=10000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -305,8 +305,8 @@ func CreateFeature(c *gin.Context) {
 	groupID := c.Param("groupId")
 
 	var req struct {
-		Name  string `json:"name" binding:"required"`
-		Notes string `json:"notes"`
+		Name  string `json:"name" binding:"required,max=255"`
+		Notes string `json:"notes" binding:"max=10000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -340,9 +340,9 @@ func UpdateFeature(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Name      *string `json:"name"`
-		Notes     *string `json:"notes"`
-		SortOrder *int    `json:"sort_order"`
+		Name      *string `json:"name" binding:"omitempty,max=255"`
+		Notes     *string `json:"notes" binding:"omitempty,max=10000"`
+		SortOrder *int    `json:"sort_order" binding:"omitempty,min=0,max=10000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -451,9 +451,9 @@ func CreateFeatureNote(c *gin.Context) {
 	featureID := c.Param("featureId")
 
 	var req struct {
-		Section string `json:"section" binding:"required"`
-		Title   string `json:"title"`
-		Content string `json:"content"`
+		Section string `json:"section" binding:"required,max=50"`
+		Title   string `json:"title" binding:"max=500"`
+		Content string `json:"content" binding:"max=50000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -499,9 +499,9 @@ func UpdateFeatureNote(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Title     *string `json:"title"`
-		Content   *string `json:"content"`
-		SortOrder *int    `json:"sort_order"`
+		Title     *string `json:"title" binding:"omitempty,max=500"`
+		Content   *string `json:"content" binding:"omitempty,max=50000"`
+		SortOrder *int    `json:"sort_order" binding:"omitempty,min=0,max=10000"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})

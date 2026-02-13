@@ -74,24 +74,24 @@ type NewsCondition struct {
 
 // CreateAlertRuleRequest is the API request for creating alerts
 type CreateAlertRuleRequest struct {
-	WatchListID string          `json:"watch_list_id" binding:"required"`
-	Symbol      string          `json:"symbol" binding:"required"`
-	AlertType   string          `json:"alert_type" binding:"required"`
+	WatchListID string          `json:"watch_list_id" binding:"required,max=100"`
+	Symbol      string          `json:"symbol" binding:"required,min=1,max=20"`
+	AlertType   string          `json:"alert_type" binding:"required,oneof=price_above price_below price_change volume_above volume_spike news earnings sec_filing"`
 	Conditions  json.RawMessage `json:"conditions" binding:"required"`
-	Name        string          `json:"name" binding:"required"`
-	Description *string         `json:"description,omitempty"`
-	Frequency   string          `json:"frequency" binding:"required"`
+	Name        string          `json:"name" binding:"required,min=1,max=255"`
+	Description *string         `json:"description,omitempty" binding:"omitempty,max=5000"`
+	Frequency   string          `json:"frequency" binding:"required,oneof=once always daily weekly"`
 	NotifyEmail bool            `json:"notify_email"`
 	NotifyInApp bool            `json:"notify_in_app"`
 }
 
 // UpdateAlertRuleRequest is the API request for updating alerts
 type UpdateAlertRuleRequest struct {
-	Name        *string         `json:"name,omitempty"`
-	Description *string         `json:"description,omitempty"`
+	Name        *string         `json:"name,omitempty" binding:"omitempty,min=1,max=255"`
+	Description *string         `json:"description,omitempty" binding:"omitempty,max=5000"`
 	Conditions  json.RawMessage `json:"conditions,omitempty"`
 	IsActive    *bool           `json:"is_active,omitempty"`
-	Frequency   *string         `json:"frequency,omitempty"`
+	Frequency   *string         `json:"frequency,omitempty" binding:"omitempty,oneof=once always daily weekly"`
 	NotifyEmail *bool           `json:"notify_email,omitempty"`
 	NotifyInApp *bool           `json:"notify_in_app,omitempty"`
 }

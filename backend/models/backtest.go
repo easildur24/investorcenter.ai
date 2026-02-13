@@ -6,19 +6,19 @@ import (
 
 // BacktestConfig represents configuration for a backtest run
 type BacktestConfig struct {
-	StartDate          string   `json:"start_date"`
-	EndDate            string   `json:"end_date"`
-	RebalanceFrequency string   `json:"rebalance_frequency"` // daily, weekly, monthly, quarterly
-	Universe           string   `json:"universe"`            // sp500, sp1500, all
-	MinMarketCap       *float64 `json:"min_market_cap,omitempty"`
-	MaxMarketCap       *float64 `json:"max_market_cap,omitempty"`
-	Sectors            []string `json:"sectors,omitempty"`
+	StartDate          string   `json:"start_date" binding:"required,datetime=2006-01-02"`
+	EndDate            string   `json:"end_date" binding:"required,datetime=2006-01-02"`
+	RebalanceFrequency string   `json:"rebalance_frequency" binding:"required,oneof=daily weekly monthly quarterly"`
+	Universe           string   `json:"universe" binding:"required,oneof=sp500 sp1500 all"`
+	MinMarketCap       *float64 `json:"min_market_cap,omitempty" binding:"omitempty,gte=0"`
+	MaxMarketCap       *float64 `json:"max_market_cap,omitempty" binding:"omitempty,gte=0"`
+	Sectors            []string `json:"sectors,omitempty" binding:"max=50,dive,max=100"`
 	ExcludeFinancials  bool     `json:"exclude_financials"`
 	ExcludeUtilities   bool     `json:"exclude_utilities"`
-	TransactionCostBps float64  `json:"transaction_cost_bps"`
-	SlippageBps        float64  `json:"slippage_bps"`
+	TransactionCostBps float64  `json:"transaction_cost_bps" binding:"gte=0,lte=1000"`
+	SlippageBps        float64  `json:"slippage_bps" binding:"gte=0,lte=1000"`
 	UseSmoothedScores  bool     `json:"use_smoothed_scores"`
-	Benchmark          string   `json:"benchmark"`
+	Benchmark          string   `json:"benchmark" binding:"required,max=50"`
 }
 
 // DecilePerformance represents performance metrics for a single decile

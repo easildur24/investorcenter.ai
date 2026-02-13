@@ -74,16 +74,16 @@ type UserSubscriptionWithPlan struct {
 
 // CreateSubscriptionRequest for initiating a subscription
 type CreateSubscriptionRequest struct {
-	PlanID        string `json:"plan_id" binding:"required"`
-	BillingPeriod string `json:"billing_period" binding:"required"`
-	PaymentMethod string `json:"payment_method"`
+	PlanID        string `json:"plan_id" binding:"required,max=100"`
+	BillingPeriod string `json:"billing_period" binding:"required,oneof=monthly yearly"`
+	PaymentMethod string `json:"payment_method" binding:"max=100"`
 }
 
 // UpdateSubscriptionRequest for modifying subscription
 type UpdateSubscriptionRequest struct {
-	PlanID        *string `json:"plan_id,omitempty"`
-	BillingPeriod *string `json:"billing_period,omitempty"`
-	PaymentMethod *string `json:"payment_method,omitempty"`
+	PlanID        *string `json:"plan_id,omitempty" binding:"omitempty,max=100"`
+	BillingPeriod *string `json:"billing_period,omitempty" binding:"omitempty,oneof=monthly yearly"`
+	PaymentMethod *string `json:"payment_method,omitempty" binding:"omitempty,max=100"`
 }
 
 // SubscriptionLimits represents the limits for a user's plan
