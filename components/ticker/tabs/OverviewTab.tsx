@@ -2,7 +2,6 @@
 
 import HybridChart from '@/components/ticker/HybridChart';
 import NewsSentiment from '@/components/ticker/NewsSentiment';
-import EarningsHistory from '@/components/ticker/EarningsHistory';
 
 interface OverviewTabProps {
   symbol: string;
@@ -24,9 +23,6 @@ export default function OverviewTab({ symbol, chartData, currentPrice }: Overvie
 
       {/* News & Sentiment - Full Width */}
       <NewsSentiment symbol={symbol} />
-
-      {/* Earnings History - Full Width */}
-      <EarningsHistory symbol={symbol} />
     </div>
   );
 }
