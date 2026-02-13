@@ -185,9 +185,6 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               <div className="bg-ic-surface rounded-lg shadow">
                 <TickerFundamentals symbol={symbol} />
               </div>
-
-
-
             </div>
           </div>
         )}
