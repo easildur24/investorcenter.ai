@@ -6,8 +6,8 @@ import (
 
 // BacktestConfig represents configuration for a backtest run
 type BacktestConfig struct {
-	StartDate          string   `json:"start_date" binding:"required,max=10"`
-	EndDate            string   `json:"end_date" binding:"required,max=10"`
+	StartDate          string   `json:"start_date" binding:"required,datetime=2006-01-02"`
+	EndDate            string   `json:"end_date" binding:"required,datetime=2006-01-02"`
 	RebalanceFrequency string   `json:"rebalance_frequency" binding:"required,oneof=daily weekly monthly quarterly"`
 	Universe           string   `json:"universe" binding:"required,oneof=sp500 sp1500 all"`
 	MinMarketCap       *float64 `json:"min_market_cap,omitempty" binding:"omitempty,gte=0"`

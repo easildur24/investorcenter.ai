@@ -25,7 +25,7 @@ func NewBacktestHandler(service *services.BacktestService) *BacktestHandler {
 func (h *BacktestHandler) RunBacktest(c *gin.Context) {
 	var config models.BacktestConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
@@ -50,7 +50,7 @@ func (h *BacktestHandler) RunBacktest(c *gin.Context) {
 func (h *BacktestHandler) SubmitBacktestJob(c *gin.Context) {
 	var config models.BacktestConfig
 	if err := c.ShouldBindJSON(&config); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
