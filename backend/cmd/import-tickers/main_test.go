@@ -10,7 +10,13 @@ import (
 	"investorcenter-api/services"
 )
 
-const testAPIKey = "zapuIgaTVLJoanfEuimZYQ2xRlZmoU1m"
+// testAPIKey reads from POLYGON_TEST_API_KEY env var, falls back to "demo"
+var testAPIKey = func() string {
+	if key := os.Getenv("POLYGON_TEST_API_KEY"); key != "" {
+		return key
+	}
+	return "demo"
+}()
 
 // Test database connection for integration tests
 func setupTestDB(t *testing.T) (*sql.DB, func()) {

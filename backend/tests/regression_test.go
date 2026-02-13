@@ -12,7 +12,13 @@ import (
 	"investorcenter-api/services"
 )
 
-const testAPIKey = "zapuIgaTVLJoanfEuimZYQ2xRlZmoU1m"
+// testAPIKey reads from POLYGON_TEST_API_KEY env var, falls back to "demo"
+var testAPIKey = func() string {
+	if key := os.Getenv("POLYGON_TEST_API_KEY"); key != "" {
+		return key
+	}
+	return "demo"
+}()
 
 // TestExistingFunctionality ensures all existing Polygon functions still work
 func TestExistingFunctionality(t *testing.T) {

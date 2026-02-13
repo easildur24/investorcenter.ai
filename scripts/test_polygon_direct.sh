@@ -2,7 +2,12 @@
 # Direct test of Polygon.io API to isolate the real issue
 # Tests the exact same endpoint our Go backend is using
 
-API_KEY="Q9LhuSPrdj8Fqv9ejYqwXF6AKv7YAsWa"
+API_KEY="${POLYGON_API_KEY:-}"
+if [ -z "$API_KEY" ]; then
+    echo "❌ ERROR: POLYGON_API_KEY environment variable is not set"
+    echo "   Export it before running: export POLYGON_API_KEY='your-api-key'"
+    exit 1
+fi
 BASE_URL="https://api.polygon.io"
 SYMBOL="X:ETHUSD"
 

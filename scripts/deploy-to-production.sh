@@ -100,9 +100,14 @@ if ! kubectl get secret polygon-api-secret -n investorcenter &> /dev/null; then
 fi
 
 # Check for PostgreSQL secret
+if [ -z "$PROD_DB_PASSWORD" ]; then
+    echo "❌ ERROR: PROD_DB_PASSWORD environment variable is not set!"
+    echo "   Export it before running: export PROD_DB_PASSWORD='your-secure-password'"
+    exit 1
+fi
 kubectl create secret generic postgres-secret \
     --from-literal=username=investorcenter \
-    --from-literal=password=prod_investorcenter_456 \
+    --from-literal=password="$PROD_DB_PASSWORD" \
     -n investorcenter || echo "PostgreSQL secret already exists"
 
 # Deploy the Polygon CronJob
