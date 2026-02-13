@@ -107,9 +107,6 @@ func main() {
 		// Ticker page endpoints
 		tickers := v1.Group("/tickers")
 		{
-			tickers.GET("/", handlers.GetStocks)                           // List all stocks with pagination
-			tickers.POST("/", handlers.CreateStock)                        // Create new stock
-			tickers.POST("/import", handlers.ImportTickersFromCSV)         // Import from CSV
 			tickers.GET("/:symbol", handlers.GetTicker)                    // Comprehensive ticker data with real-time prices
 			tickers.GET("/:symbol/chart", handlers.GetTickerChart)         // Chart data for stocks and crypto
 			tickers.GET("/:symbol/price", handlers.GetTickerRealTimePrice) // Real-time price updates only
@@ -153,9 +150,6 @@ func main() {
 			stocks.POST("/:ticker/financials/refresh", financialsHandler.RefreshFinancials)     // Refresh financial data
 		}
 
-		// IC Scores admin endpoints (list all scores)
-		v1.GET("/ic-scores", handlers.GetICScores) // List all IC Scores with pagination
-
 		// IC Score Backtest endpoints
 		backtestService := services.NewBacktestService()
 		backtestHandler := handlers.NewBacktestHandler(backtestService)
@@ -176,25 +170,6 @@ func main() {
 		crypto := v1.Group("/crypto")
 		{
 			crypto.GET("/", handlers.GetAllCryptos) // All crypto prices with pagination
-		}
-
-		// Fundamental metrics endpoints
-		fundamentals := v1.Group("/fundamentals")
-		{
-			fundamentals.GET("/", handlers.ListFundamentals)                        // List all symbols with metrics
-			fundamentals.GET("/:symbol", handlers.GetFundamentalsSimple)            // Get stored metrics for symbol (simple JSON)
-			fundamentals.POST("/:symbol/calculate", handlers.CalculateFundamentals) // Calculate and store metrics
-			fundamentals.POST("/:symbol/refresh", handlers.RefreshFundamentals)     // Refresh metrics
-		}
-
-		// Simple fundamentals endpoint (for testing)
-		v1.GET("/fundamentals-simple/:symbol", handlers.GetFundamentalsSimple)
-
-		// Volume endpoints for bulk operations
-		volume := v1.Group("/volume")
-		{
-			volume.POST("/bulk", handlers.GetBulkVolume) // Get volume for multiple symbols
-			volume.GET("/top", handlers.GetTopVolume)    // Get top stocks by volume
 		}
 
 		// Reddit popularity endpoints
@@ -322,17 +297,16 @@ func main() {
 		subscriptionRoutes.GET("/payments", subscriptionHandler.GetPaymentHistory)    // GET /api/v1/subscriptions/payments
 	}
 
-	// Admin cronjob monitoring routes (protected, require authentication)
-	// TODO: Add admin role check middleware
+	// Admin cronjob monitoring routes (protected, require authentication + admin role)
 	cronjobRoutes := v1.Group("/admin/cronjobs")
 	cronjobRoutes.Use(auth.AuthMiddleware())
+	cronjobRoutes.Use(auth.AdminMiddleware())
 	{
 		cronjobRoutes.GET("/overview", cronjobHandler.GetOverview)               // GET /api/v1/admin/cronjobs/overview
 		cronjobRoutes.GET("/schedules", cronjobHandler.GetAllSchedules)          // GET /api/v1/admin/cronjobs/schedules
 		cronjobRoutes.GET("/metrics", cronjobHandler.GetMetrics)                 // GET /api/v1/admin/cronjobs/metrics
 		cronjobRoutes.GET("/:jobName/history", cronjobHandler.GetJobHistory)     // GET /api/v1/admin/cronjobs/:jobName/history
 		cronjobRoutes.GET("/details/:executionId", cronjobHandler.GetJobDetails) // GET /api/v1/admin/cronjobs/details/:executionId
-		cronjobRoutes.POST("/log", cronjobHandler.LogExecution)                  // POST /api/v1/admin/cronjobs/log (for cronjobs to call)
 	}
 
 	// Admin data query routes (protected, require authentication + admin role)
@@ -358,6 +332,7 @@ func main() {
 		adminRoutes.GET("/technical-indicators", adminDataHandler.GetTechnicalIndicators)     // GET /api/v1/admin/technical-indicators
 		adminRoutes.GET("/companies", adminDataHandler.GetCompanies)                          // GET /api/v1/admin/companies
 		adminRoutes.GET("/risk-metrics", adminDataHandler.GetRiskMetrics)                     // GET /api/v1/admin/risk-metrics
+		adminRoutes.GET("/ic-scores", handlers.GetICScores)                                   // GET /api/v1/admin/ic-scores
 
 		// Notes/brainstorming endpoints
 		notes := adminRoutes.Group("/notes")
@@ -382,16 +357,26 @@ func main() {
 
 	}
 
-	// Worker/task management routes — proxied to task-service
+	// Worker/task management routes — proxied to task-service (protected, require authentication + admin role)
 	taskProxy := services.TaskServiceProxy()
-	v1.Any("/admin/workers", taskProxy)
-	v1.Any("/admin/workers/*path", taskProxy)
-	v1.Any("/worker/*path", taskProxy)
+	workerRoutes := v1.Group("")
+	workerRoutes.Use(auth.AuthMiddleware())
+	workerRoutes.Use(auth.AdminMiddleware())
+	{
+		workerRoutes.Any("/admin/workers", taskProxy)
+		workerRoutes.Any("/admin/workers/*path", taskProxy)
+		workerRoutes.Any("/worker/*path", taskProxy)
+	}
 
-	// Data ingestion routes — proxied to data-ingestion-service
+	// Data ingestion routes — proxied to data-ingestion-service (protected, require authentication + admin role)
 	ingestProxy := services.DataIngestionProxy()
-	v1.Any("/ingest", ingestProxy)
-	v1.Any("/ingest/*path", ingestProxy)
+	ingestRoutes := v1.Group("")
+	ingestRoutes.Use(auth.AuthMiddleware())
+	ingestRoutes.Use(auth.AdminMiddleware())
+	{
+		ingestRoutes.Any("/ingest", ingestProxy)
+		ingestRoutes.Any("/ingest/*path", ingestProxy)
+	}
 
 	// Start server
 	port := os.Getenv("PORT")

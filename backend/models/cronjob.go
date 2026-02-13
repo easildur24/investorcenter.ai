@@ -70,23 +70,6 @@ type CronjobStatistics struct {
 
 // Request/Response models
 
-// LogExecutionRequest is the request body for logging a cronjob execution
-type LogExecutionRequest struct {
-	JobName          string     `json:"job_name" binding:"required"`
-	ExecutionID      string     `json:"execution_id" binding:"required"`
-	Status           string     `json:"status" binding:"required,oneof=running success failed timeout"`
-	StartedAt        *time.Time `json:"started_at"`
-	CompletedAt      *time.Time `json:"completed_at"`
-	RecordsProcessed int        `json:"records_processed"`
-	RecordsUpdated   int        `json:"records_updated"`
-	RecordsFailed    int        `json:"records_failed"`
-	ErrorMessage     *string    `json:"error_message"`
-	ErrorStackTrace  *string    `json:"error_stack_trace"`
-	K8sPodName       *string    `json:"k8s_pod_name"`
-	K8sNamespace     *string    `json:"k8s_namespace"`
-	ExitCode         *int       `json:"exit_code"`
-}
-
 // CronjobOverviewResponse represents the overview of all cronjobs
 type CronjobOverviewResponse struct {
 	Summary CronjobSummary          `json:"summary"`

@@ -92,7 +92,7 @@ func GetICScore(c *gin.Context) {
 }
 
 // GetICScores retrieves all IC Scores with pagination and filtering
-// GET /api/v1/ic-scores?limit=20&offset=0&search=AAPL&sort=overall_score&order=desc
+// GET /api/v1/admin/ic-scores?limit=20&offset=0&search=AAPL&sort=overall_score&order=desc
 func GetICScores(c *gin.Context) {
 	// Check database connection
 	if database.DB == nil {

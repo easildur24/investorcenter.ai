@@ -214,53 +214,6 @@ class ApiClient {
     }>(`/tickers/${symbol}/volume/aggregates?days=${days}`);
   }
 
-  async getBulkVolume(symbols: string[]) {
-    return this.request<{
-      data: Array<{
-        symbol: string;
-        volume: number;
-        avgVolume30d: number;
-        avgVolume90d: number;
-        vwap: number;
-        currentPrice: number;
-        dayOpen: number;
-        dayHigh: number;
-        dayLow: number;
-        previousClose: number;
-        week52High: number;
-        week52Low: number;
-        lastUpdated: string;
-      }>;
-      source: 'database';
-      count: number;
-    }>('/volume/bulk', {
-      method: 'POST',
-      body: JSON.stringify({ symbols }),
-    });
-  }
-
-  async getTopVolumeStocks(limit: number = 20, assetType: string = 'all') {
-    return this.request<{
-      data: Array<{
-        symbol: string;
-        volume: number;
-        avgVolume30d: number;
-        avgVolume90d: number;
-        vwap: number;
-        currentPrice: number;
-        dayOpen: number;
-        dayHigh: number;
-        dayLow: number;
-        previousClose: number;
-        week52High: number;
-        week52Low: number;
-        lastUpdated: string;
-      }>;
-      source: 'database';
-      count: number;
-    }>(`/volume/top?limit=${limit}&type=${assetType}`);
-  }
-
 }
 
 // Export singleton instance
