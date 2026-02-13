@@ -158,7 +158,7 @@ db-import-prod:
 	. $(VENV_PATH)/bin/activate && python scripts/ticker_import_to_db.py
 	@pkill -f "kubectl port-forward.*postgres-service" || true
 
-# Task service
+# Task service targets
 dev-task-service:
 	@echo "Starting task service on port 8001..."
 	cd task-service && go run .

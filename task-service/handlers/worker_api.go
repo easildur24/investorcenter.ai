@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"task-service/auth"
 	"task-service/database"
+	"task-service/storage"
 )
 
 // verifyWorker checks if the authenticated user is a worker and returns their ID
@@ -448,5 +449,69 @@ func WorkerHeartbeat(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Heartbeat received",
+	})
+}
+
+// WorkerRegisterTaskFile handles POST /worker/tasks/:id/files
+// Workers upload files directly to S3, then call this to register the metadata.
+func WorkerRegisterTaskFile(c *gin.Context) {
+	userID, ok := verifyWorker(c)
+	if !ok {
+		return
+	}
+
+	taskID := c.Param("id")
+
+	var req struct {
+		Filename    string `json:"filename" binding:"required"`
+		S3Key       string `json:"s3_key" binding:"required"`
+		ContentType string `json:"content_type"`
+		SizeBytes   int64  `json:"size_bytes"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	if req.ContentType == "" {
+		req.ContentType = "application/octet-stream"
+	}
+
+	// Validate S3 key starts with worker-results/{task_id}/
+	if err := storage.ValidateS3Key(req.S3Key, taskID); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Verify task exists, is assigned to this worker, and is in_progress
+	var currentStatus string
+	err := database.DB.QueryRow(
+		"SELECT status FROM worker_tasks WHERE id = $1 AND assigned_to = $2",
+		taskID, userID,
+	).Scan(&currentStatus)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Task not found or not assigned to you"})
+			return
+		}
+		log.Printf("Error checking task status: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check task status"})
+		return
+	}
+	if currentStatus != "in_progress" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Can only register files for tasks with status 'in_progress'"})
+		return
+	}
+
+	file, err := database.InsertTaskFile(taskID, req.Filename, req.S3Key, req.ContentType, req.SizeBytes, userID)
+	if err != nil {
+		log.Printf("Error registering task file: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register file"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"data":    file,
 	})
 }

@@ -16,11 +16,14 @@ import {
   updateTaskType,
   deleteTaskType,
   getTaskData,
+  getTaskFiles,
+  getTaskFileDownloadUrl,
   Worker,
   WorkerTask,
   TaskUpdate,
   TaskType,
   TaskDataRow,
+  TaskFile,
   TaskStatus,
   TaskPriority,
   TASK_STATUSES,
@@ -118,8 +121,11 @@ export default function WorkersPage() {
   const [showResult, setShowResult] = useState(false);
   const [showParams, setShowParams] = useState(true);
   const [showData, setShowData] = useState(false);
-  const [taskData, setTaskData] = useState<TaskDataRow[]>([]);
+  const [showFiles, setShowFiles] = useState(false);
+  const [taskDataRows, setTaskDataRows] = useState<TaskDataRow[]>([]);
   const [taskDataTotal, setTaskDataTotal] = useState(0);
+  const [taskFiles, setTaskFiles] = useState<TaskFile[]>([]);
+  const [taskFilesTotal, setTaskFilesTotal] = useState(0);
 
   // Fetch data
   const fetchWorkers = useCallback(async () => {
@@ -181,15 +187,27 @@ export default function WorkersPage() {
     }
   };
 
-  // Fetch collected data for a task
+  // Fetch collected data rows for a task (from worker_task_data)
   const fetchTaskData = async (taskId: string) => {
     try {
-      const res = await getTaskData(taskId, { limit: 20 });
-      setTaskData(res.items || []);
+      const res = await getTaskData(taskId, { limit: 50 });
+      setTaskDataRows(res.items || []);
       setTaskDataTotal(res.total || 0);
     } catch {
-      setTaskData([]);
+      setTaskDataRows([]);
       setTaskDataTotal(0);
+    }
+  };
+
+  // Fetch result files for a task (from worker_task_files)
+  const fetchTaskFiles = async (taskId: string) => {
+    try {
+      const res = await getTaskFiles(taskId, { limit: 50 });
+      setTaskFiles(res.files || []);
+      setTaskFilesTotal(res.total || 0);
+    } catch {
+      setTaskFiles([]);
+      setTaskFilesTotal(0);
     }
   };
 
@@ -211,8 +229,10 @@ export default function WorkersPage() {
     setShowResult(false);
     setShowParams(true);
     setShowData(false);
+    setShowFiles(false);
     fetchTaskUpdates(task.id);
     fetchTaskData(task.id);
+    fetchTaskFiles(task.id);
   };
 
   // Select task type
@@ -1610,7 +1630,7 @@ export default function WorkersPage() {
                 </div>
               )}
 
-              {/* Collected Data */}
+              {/* Collected Data (PostgreSQL worker_task_data rows) */}
               {taskDataTotal > 0 && (
                 <div className="mb-4">
                   <button
@@ -1619,38 +1639,79 @@ export default function WorkersPage() {
                   >
                     {showData ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     <Braces className="w-4 h-4" />
-                    Collected Data ({taskDataTotal} items)
+                    Collected Data ({taskDataTotal} {taskDataTotal === 1 ? 'row' : 'rows'})
                   </button>
                   {showData && (
-                    <div className="space-y-2 max-h-80 overflow-y-auto">
-                      {taskData.map((item) => (
-                        <div key={item.id} className="bg-ic-bg-secondary rounded-lg p-3">
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {taskDataRows.map((row) => (
+                        <div key={row.id} className="bg-ic-bg-secondary rounded-lg p-3">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-xs px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 font-medium">
-                              {item.data_type}
+                              {row.data_type}
                             </span>
-                            {item.ticker && (
+                            {row.ticker && (
                               <span className="text-xs px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 font-medium">
-                                {item.ticker}
+                                {row.ticker}
                               </span>
                             )}
-                            {item.external_id && (
+                            {row.external_id && (
                               <span className="text-xs text-ic-text-secondary font-mono">
-                                {item.external_id}
+                                {row.external_id}
                               </span>
                             )}
                             <span className="text-xs text-ic-text-secondary ml-auto">
-                              {new Date(item.collected_at).toLocaleDateString()}
+                              {new Date(row.collected_at).toLocaleString()}
                             </span>
                           </div>
                           <pre className="text-xs text-ic-text-primary font-mono whitespace-pre-wrap max-h-24 overflow-y-auto">
-                            {JSON.stringify(item.data, null, 2)}
+                            {JSON.stringify(row.data, null, 2)}
                           </pre>
                         </div>
                       ))}
-                      {taskDataTotal > taskData.length && (
+                      {taskDataTotal > taskDataRows.length && (
                         <p className="text-xs text-ic-text-secondary text-center py-2">
-                          Showing {taskData.length} of {taskDataTotal} items
+                          Showing {taskDataRows.length} of {taskDataTotal} rows
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Result Files (S3-backed, metadata from worker_task_files) */}
+              {taskFilesTotal > 0 && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowFiles(!showFiles)}
+                    className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
+                  >
+                    {showFiles ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    <FileText className="w-4 h-4" />
+                    Result Files ({taskFilesTotal})
+                  </button>
+                  {showFiles && (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {taskFiles.map((file) => (
+                        <div key={file.id} className="bg-ic-bg-secondary rounded-lg p-3 flex items-center gap-3">
+                          <FileText className="w-4 h-4 text-ic-text-secondary flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-ic-text-primary truncate">{file.filename}</p>
+                            <p className="text-xs text-ic-text-secondary">
+                              {file.content_type} &middot; {(file.size_bytes / 1024).toFixed(1)} KB &middot; {new Date(file.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <a
+                            href={getTaskFileDownloadUrl(file.task_id, file.id)}
+                            className="text-xs text-blue-500 hover:text-blue-700 transition flex-shrink-0"
+                            download
+                          >
+                            Download
+                          </a>
+                        </div>
+                      ))}
+                      {taskFilesTotal > taskFiles.length && (
+                        <p className="text-xs text-ic-text-secondary text-center py-2">
+                          Showing {taskFiles.length} of {taskFilesTotal} files
                         </p>
                       )}
                     </div>

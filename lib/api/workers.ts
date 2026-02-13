@@ -195,7 +195,7 @@ export async function createTaskUpdate(taskId: string, content: string): Promise
   return res.data;
 }
 
-// Task Data
+// Task Data (PostgreSQL worker_task_data)
 export interface TaskDataRow {
   id: number;
   task_id: string;
@@ -226,4 +226,39 @@ export async function getTaskData(
   const qs = query.toString();
   const res = await apiClient.get<ApiResponse<TaskDataResponse>>(`${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`);
   return res.data;
+}
+
+// Task Files (S3-backed result files, metadata in worker_task_files)
+export interface TaskFile {
+  id: number;
+  task_id: string;
+  filename: string;
+  s3_key: string;
+  content_type: string;
+  size_bytes: number;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
+export interface TaskFilesResponse {
+  files: TaskFile[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export async function getTaskFiles(
+  taskId: string,
+  params?: { limit?: number; offset?: number }
+): Promise<TaskFilesResponse> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set('limit', String(params.limit));
+  if (params?.offset) query.set('offset', String(params.offset));
+  const qs = query.toString();
+  const res = await apiClient.get<ApiResponse<TaskFilesResponse>>(`${BASE}/tasks/${taskId}/files${qs ? '?' + qs : ''}`);
+  return res.data;
+}
+
+export function getTaskFileDownloadUrl(taskId: string, fileId: number): string {
+  return `/api/v1${BASE}/tasks/${taskId}/files/${fileId}/download`;
 }

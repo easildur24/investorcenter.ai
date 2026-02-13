@@ -15,6 +15,7 @@ import (
 	"task-service/auth"
 	"task-service/database"
 	"task-service/handlers"
+	"task-service/storage"
 )
 
 func main() {
@@ -24,6 +25,12 @@ func main() {
 	// Initialize database
 	database.Initialize()
 	defer database.Close()
+
+	// Initialize S3 storage (for admin file downloads)
+	if err := storage.Initialize(); err != nil {
+		log.Printf("S3 storage initialization failed: %v", err)
+		log.Println("File download features disabled")
+	}
 
 	r := gin.Default()
 
@@ -70,6 +77,8 @@ func main() {
 		adminRoutes.GET("/tasks/:id/updates", handlers.ListTaskUpdates)
 		adminRoutes.POST("/tasks/:id/updates", handlers.CreateTaskUpdate)
 		adminRoutes.GET("/tasks/:id/data", handlers.AdminGetTaskData)
+		adminRoutes.GET("/tasks/:id/files", handlers.AdminListTaskFiles)
+		adminRoutes.GET("/tasks/:id/files/:fileId/download", handlers.AdminDownloadTaskFile)
 	}
 
 	// Worker API routes
@@ -85,6 +94,7 @@ func main() {
 		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)
 		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)
 		workerRoutes.POST("/tasks/:id/data", handlers.WorkerPostTaskData)
+		workerRoutes.POST("/tasks/:id/files", handlers.WorkerRegisterTaskFile)
 		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)
 	}
 
