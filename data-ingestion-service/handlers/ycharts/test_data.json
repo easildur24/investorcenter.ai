@@ -1,0 +1,140 @@
+{
+  "collected_at": "2026-02-12T20:30:00Z",
+  "source_url": "https://ycharts.com/companies/NVDA/key_stats/stats",
+  "price": {
+    "current": 186.96,
+    "currency": "USD",
+    "exchange": "NASDAQ",
+    "timestamp": "2026-02-12T16:00:00Z"
+  },
+  "income_statement": {
+    "revenue_ttm": 187140000000,
+    "revenue_quarterly": 57010000000,
+    "net_income_ttm": 99200000000,
+    "net_income_quarterly": 31910000000,
+    "ebit_ttm": 110120000000,
+    "ebit_quarterly": 36010000000,
+    "ebitda_ttm": 112700000000,
+    "ebitda_quarterly": 36760000000,
+    "revenue_growth_yoy": 0.6249,
+    "eps_growth_yoy": 0.6723,
+    "ebitda_growth_yoy": 0.6450,
+    "eps_diluted_ttm": 4.038,
+    "eps_basic_ttm": 4.066,
+    "shares_outstanding": 24300000000
+  },
+  "balance_sheet": {
+    "total_assets": 161150000000,
+    "total_liabilities": 42250000000,
+    "shareholders_equity": 118900000000,
+    "cash_and_short_term_investments": 60610000000,
+    "total_long_term_assets": 36470000000,
+    "total_long_term_debt": 9482000000,
+    "book_value": 118900000000
+  },
+  "cash_flow": {
+    "cash_from_operations_ttm": 83160000000,
+    "cash_from_investing_ttm": -28560000000,
+    "cash_from_financing_ttm": -52220000000,
+    "change_in_receivables_ttm": -15690000000,
+    "changes_in_working_capital_ttm": -17490000000,
+    "capital_expenditures_ttm": 5835000000,
+    "ending_cash_quarterly": 11330000000,
+    "free_cash_flow_ttm": 77320000000,
+    "free_cash_flow_quarterly": 22120000000
+  },
+  "profitability": {
+    "operating_margin_ttm": 0.5884,
+    "gross_profit_margin_ttm": 0.7005,
+    "return_on_assets": 0.7814,
+    "return_on_equity": 1.107,
+    "return_on_invested_capital": 0.9914
+  },
+  "performance": {
+    "return_1m": 0.0281,
+    "return_3m": -0.0160,
+    "return_6m": 0.0440,
+    "return_ytd": 0.0190,
+    "return_1y": 0.4315,
+    "return_3y_annualized": 1.076,
+    "return_5y_annualized": 0.6571,
+    "return_10y_annualized": 0.7736,
+    "return_15y_annualized": 0.4787,
+    "return_since_inception_annualized": 0.3702,
+    "high_52w": 212.19,
+    "low_52w": 86.62,
+    "high_52w_date": "2025-10-29",
+    "low_52w_date": "2025-04-07"
+  },
+  "valuation": {
+    "market_cap": 4544000000000,
+    "enterprise_value": 4569000000000,
+    "pe_ratio": 46.31,
+    "pe_ratio_forward": 24.21,
+    "pe_ratio_forward_1y": 18.84,
+    "ps_ratio": 24.56,
+    "ps_ratio_forward": 13.94,
+    "ps_ratio_forward_1y": 10.90,
+    "price_to_book": 38.22,
+    "price_to_free_cash_flow": 59.44,
+    "peg_ratio": 0.7843,
+    "ev_to_ebitda": 40.55,
+    "ev_to_ebitda_forward": 20.49,
+    "ev_to_ebit": 41.49,
+    "ebit_margin_ttm": 0.5884
+  },
+  "estimates": {
+    "revenue_current_quarter": 70790000000,
+    "revenue_next_quarter": 77300000000,
+    "revenue_current_fiscal_year": 326010000000,
+    "revenue_next_fiscal_year": 416750000000,
+    "eps_current_quarter": 1.653,
+    "eps_next_quarter": 1.813,
+    "eps_current_fiscal_year": 7.721,
+    "eps_next_fiscal_year": 9.922
+  },
+  "dividends": {
+    "dividend_yield": 0.0002,
+    "dividend_yield_forward": 0.0002,
+    "payout_ratio_ttm": 0.0099,
+    "cash_dividend_payout_ratio": 0.0126,
+    "last_dividend_amount": 0.01,
+    "last_ex_dividend_date": "2025-12-04"
+  },
+  "risk_metrics": {
+    "alpha_5y": 40.96,
+    "beta_5y": 2.313,
+    "standard_deviation_monthly_5y": 0.5400,
+    "sharpe_ratio_5y": 1.260,
+    "sortino_ratio_5y": 2.594,
+    "max_drawdown_5y": 0.6634,
+    "var_monthly_5pct_5y": 0.1869
+  },
+  "management_effectiveness": {
+    "asset_utilization_ttm": 1.474,
+    "days_sales_outstanding": 48.98,
+    "days_inventory_outstanding": 104.59,
+    "days_payable_outstanding": 40.39,
+    "total_receivables": 33390000000
+  },
+  "advanced_metrics": {
+    "piotroski_f_score_ttm": 7.00,
+    "sustainable_growth_rate_ttm": 109.6,
+    "tobin_q_quarterly": 30.04,
+    "momentum_score": 8.000,
+    "market_cap_score": 1.000,
+    "quality_ratio_score": 10.00
+  },
+  "liquidity_solvency": {
+    "debt_to_equity_ratio": 0.091,
+    "current_ratio": 4.468,
+    "quick_ratio": 3.605,
+    "altman_z_score_ttm": 74.92,
+    "times_interest_earned_ttm": 445.84
+  },
+  "employees": {
+    "total_employees_annual": 36000,
+    "revenue_per_employee_annual": 3979000,
+    "net_income_per_employee_annual": 2222000
+  }
+}

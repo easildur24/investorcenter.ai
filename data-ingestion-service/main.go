@@ -15,6 +15,7 @@ import (
 	"data-ingestion-service/auth"
 	"data-ingestion-service/database"
 	"data-ingestion-service/handlers"
+	"data-ingestion-service/handlers/ycharts"
 	"data-ingestion-service/storage"
 )
 
@@ -75,6 +76,9 @@ func main() {
 	ingestRoutes.Use(auth.AuthMiddleware())
 	{
 		ingestRoutes.POST("", handlers.PostIngest)
+		
+		// YCharts endpoints
+		ingestRoutes.POST("/ycharts/key_stats/:ticker", ycharts.PostKeyStats)
 	}
 
 	// Admin routes — list and view ingestion records
