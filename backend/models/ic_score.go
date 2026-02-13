@@ -99,15 +99,6 @@ type ICScoreResponse struct {
 	IncomeMode     bool     `json:"income_mode"`
 }
 
-// ICScoreListItem represents a summary for the admin list view
-type ICScoreListItem struct {
-	Ticker           string    `json:"ticker" db:"ticker"`
-	OverallScore     float64   `json:"overall_score" db:"overall_score"`
-	Rating           string    `json:"rating" db:"rating"`
-	DataCompleteness float64   `json:"data_completeness" db:"data_completeness"`
-	CalculatedAt     time.Time `json:"calculated_at" db:"created_at"`
-}
-
 // ToResponse converts ICScore model to API response format
 func (ic *ICScore) ToResponse() ICScoreResponse {
 	response := ICScoreResponse{

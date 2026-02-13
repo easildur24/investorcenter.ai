@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"investorcenter-api/models"
 	"investorcenter-api/services"
 	"net/http"
 	"strconv"
@@ -100,30 +99,6 @@ func (h *CronjobHandler) GetMetrics(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, metrics)
-}
-
-// LogExecution godoc
-// @Summary Log cronjob execution
-// @Description Log a cronjob execution (for cronjobs to call)
-// @Tags cronjobs
-// @Accept json
-// @Produce json
-// @Param execution body models.LogExecutionRequest true "Execution log"
-// @Success 200 {object} map[string]bool
-// @Router /api/v1/admin/cronjobs/log [post]
-func (h *CronjobHandler) LogExecution(c *gin.Context) {
-	var req models.LogExecutionRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-		return
-	}
-
-	if err := h.cronjobService.LogExecution(&req); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log execution", "details": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"success": true})
 }
 
 // GetAllSchedules godoc
