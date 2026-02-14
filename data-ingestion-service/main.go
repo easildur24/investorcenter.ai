@@ -9,14 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-contrib/cors"
-	"github.com/gin-gonic/gin"
-	"github.com/joho/godotenv"
 	"data-ingestion-service/auth"
 	"data-ingestion-service/database"
 	"data-ingestion-service/handlers"
 	"data-ingestion-service/handlers/ycharts"
 	"data-ingestion-service/storage"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
@@ -79,7 +79,7 @@ func main() {
 	ingestRoutes.Use(auth.AuthMiddleware())
 	{
 		ingestRoutes.POST("", handlers.PostIngest)
-		
+
 		// YCharts endpoints
 		ingestRoutes.POST("/ycharts/key_stats/:ticker", ycharts.PostKeyStats)
 	}

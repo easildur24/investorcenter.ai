@@ -90,7 +90,7 @@ func PostKeyStats(c *gin.Context) {
 			errors = append(errors, desc.String())
 		}
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":            "Request validation failed",
+			"error":             "Request validation failed",
 			"validation_errors": errors,
 		})
 		return
@@ -150,8 +150,8 @@ func PostKeyStats(c *gin.Context) {
 		c.JSON(http.StatusCreated, gin.H{
 			"success": true,
 			"data": gin.H{
-				"ticker": ticker,
-				"s3_key": s3Key,
+				"ticker":  ticker,
+				"s3_key":  s3Key,
 				"warning": "Data uploaded to S3 but index record failed — contact admin",
 			},
 		})

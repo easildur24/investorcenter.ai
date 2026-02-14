@@ -7,16 +7,16 @@ import (
 
 // IngestionLog represents a record in the ingestion_log table
 type IngestionLog struct {
-	ID          int64      `json:"id" db:"id"`
-	Source      string     `json:"source" db:"source"`
-	Ticker      *string    `json:"ticker" db:"ticker"`
-	DataType    string     `json:"data_type" db:"data_type"`
-	SourceURL   *string    `json:"source_url" db:"source_url"`
-	S3Key       string     `json:"s3_key" db:"s3_key"`
-	S3Bucket    string     `json:"s3_bucket" db:"s3_bucket"`
-	FileSize    int64      `json:"file_size" db:"file_size"`
-	CollectedAt time.Time  `json:"collected_at" db:"collected_at"`
-	CreatedAt   time.Time  `json:"created_at" db:"created_at"`
+	ID          int64     `json:"id" db:"id"`
+	Source      string    `json:"source" db:"source"`
+	Ticker      *string   `json:"ticker" db:"ticker"`
+	DataType    string    `json:"data_type" db:"data_type"`
+	SourceURL   *string   `json:"source_url" db:"source_url"`
+	S3Key       string    `json:"s3_key" db:"s3_key"`
+	S3Bucket    string    `json:"s3_bucket" db:"s3_bucket"`
+	FileSize    int64     `json:"file_size" db:"file_size"`
+	CollectedAt time.Time `json:"collected_at" db:"collected_at"`
+	CreatedAt   time.Time `json:"created_at" db:"created_at"`
 }
 
 // InsertIngestionLog inserts a new record and returns the ID
