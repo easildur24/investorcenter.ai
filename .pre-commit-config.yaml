@@ -54,9 +54,15 @@ repos:
         language: system
         files: \.go$
         pass_filenames: false
-      - id: go-test
-        name: Run Go tests
+      - id: go-test-backend
+        name: Run Go tests (backend)
         entry: bash -c 'if command -v go &> /dev/null; then cd backend && go test ./...; else echo "⏭️  Skipping go test (go not installed locally, will run in CI)"; fi'
         language: system
-        files: \.go$
+        files: ^backend/.*\.go$
+        pass_filenames: false
+      - id: go-test-data-ingestion
+        name: Run Go tests (data-ingestion-service)
+        entry: bash -c 'if command -v go &> /dev/null; then cd data-ingestion-service && go test ./...; else echo "⏭️  Skipping go test (go not installed locally, will run in CI)"; fi'
+        language: system
+        files: ^data-ingestion-service/.*\.go$
         pass_filenames: false

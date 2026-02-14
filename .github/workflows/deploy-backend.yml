@@ -44,7 +44,10 @@ jobs:
         run: cd backend && go mod download
 
       - name: Run tests
-        run: cd backend && go test ./... -v -short
+        run: cd backend && go test ./... -v
+
+      - name: Run linting
+        run: cd backend && go vet ./...
 
       - name: Build Linux binary
         run: |
