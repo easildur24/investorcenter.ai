@@ -13,15 +13,15 @@ var ValidScreenerSortColumns = map[string]string{
 	"symbol":         "symbol",
 	"name":           "name",
 	"market_cap":     "market_cap",
-	"price":          "current_price",
+	"price":          "price",
 	"pe_ratio":       "pe_ratio",
-	"pb_ratio":       "price_to_book",
-	"ps_ratio":       "price_to_sales",
+	"pb_ratio":       "pb_ratio",
+	"ps_ratio":       "ps_ratio",
 	"roe":            "roe",
 	"revenue_growth": "revenue_growth",
 	"dividend_yield": "dividend_yield",
-	"beta":           "roe",        // placeholder - beta not in view
-	"ic_score":       "market_cap", // placeholder - ic_score not in view
+	"beta":           "beta",
+	"ic_score":       "ic_score",
 }
 
 // GetScreenerStocks retrieves stocks for the screener with filtering and pagination
@@ -155,16 +155,16 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 			sector,
 			industry,
 			market_cap,
-			current_price as price,
-			change_percent,
+			price,
+			NULL::float8 as change_percent,
 			pe_ratio,
-			price_to_book as pb_ratio,
-			price_to_sales as ps_ratio,
+			pb_ratio,
+			ps_ratio,
 			roe,
 			revenue_growth,
 			dividend_yield,
-			0.0 as beta,
-			0.0 as ic_score
+			beta,
+			ic_score
 		FROM screener_data
 		%s
 		ORDER BY "%s" %s NULLS LAST
