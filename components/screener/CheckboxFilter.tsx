@@ -1,5 +1,7 @@
 'use client';
 
+import { memo } from 'react';
+
 interface CheckboxFilterProps {
   label: string;
   options: { value: string; label: string }[];
@@ -8,7 +10,7 @@ interface CheckboxFilterProps {
 }
 
 /** Checkbox list for categorical filters (sector, industry). */
-export function CheckboxFilter({ label, options, selected, onChange }: CheckboxFilterProps) {
+export const CheckboxFilter = memo(function CheckboxFilter({ label, options, selected, onChange }: CheckboxFilterProps) {
   return (
     <div>
       <label className="block text-sm font-medium text-ic-text-secondary mb-1.5">
@@ -38,4 +40,4 @@ export function CheckboxFilter({ label, options, selected, onChange }: CheckboxF
       </div>
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, memo } from 'react';
 
 interface RangeFilterProps {
   label: string;
@@ -13,7 +13,7 @@ interface RangeFilterProps {
 }
 
 /** Min/max number input pair. Commits on blur or Enter to avoid per-keystroke API calls. */
-export function RangeFilter({
+export const RangeFilter = memo(function RangeFilter({
   label,
   minValue,
   maxValue,
@@ -87,4 +87,4 @@ export function RangeFilter({
       </div>
     </div>
   );
-}
+});

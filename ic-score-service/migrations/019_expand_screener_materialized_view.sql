@@ -15,6 +15,8 @@
 -- selecting more columns from the same subqueries. Refresh time should
 -- remain under 2 minutes.
 
+BEGIN;
+
 -- Drop existing view and indexes
 DROP MATERIALIZED VIEW IF EXISTS screener_data;
 
@@ -236,3 +238,5 @@ BEGIN
     RAISE NOTICE 'New columns: roa, gross_margin, operating_margin, net_margin, debt_to_equity, current_ratio, eps_growth_yoy, payout_ratio, consecutive_dividend_years, dcf_upside_percent, ic_rating, 10 IC sub-factor scores, lifecycle_stage';
     RAISE NOTICE 'Run: SELECT refresh_screener_data(); to refresh after data updates';
 END $$;
+
+COMMIT;

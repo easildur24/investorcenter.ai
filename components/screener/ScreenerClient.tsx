@@ -13,13 +13,21 @@ import { Pagination } from './Pagination';
 
 const ITEMS_PER_PAGE = 25;
 
+/** Shared defaults for URL state — used by urlStateConfig, clearFilters, and applyPreset. */
+const URL_DEFAULTS = {
+  page: 1,
+  limit: ITEMS_PER_PAGE,
+  sort: 'market_cap',
+  order: 'desc',
+} as const;
+
 // nuqs URL state configuration — one entry per filter/sort/pagination param
 const urlStateConfig = {
   // Pagination & sorting
-  page: parseAsInteger.withDefault(1),
-  limit: parseAsInteger.withDefault(ITEMS_PER_PAGE),
-  sort: parseAsString.withDefault('market_cap'),
-  order: parseAsString.withDefault('desc'),
+  page: parseAsInteger.withDefault(URL_DEFAULTS.page),
+  limit: parseAsInteger.withDefault(URL_DEFAULTS.limit),
+  sort: parseAsString.withDefault(URL_DEFAULTS.sort),
+  order: parseAsString.withDefault(URL_DEFAULTS.order),
 
   // Categorical filters
   sectors: parseAsString,
@@ -126,7 +134,7 @@ export function ScreenerClient() {
   }
 
   // Server-side data fetching via SWR
-  const { stocks, meta, isLoading, isValidating } = useScreener(apiParams);
+  const { stocks, meta, isLoading, isValidating, error } = useScreener(apiParams);
 
   // -------------------------------------------------------------------
   // Handlers
@@ -182,10 +190,7 @@ export function ScreenerClient() {
       }
       setUrlState({
         ...cleared,
-        page: 1,
-        sort: 'market_cap',
-        order: 'desc',
-        limit: ITEMS_PER_PAGE,
+        ...URL_DEFAULTS,
         ...preset.params,
       } as typeof urlState);
     },
@@ -197,10 +202,7 @@ export function ScreenerClient() {
     for (const key of Object.keys(urlStateConfig)) {
       cleared[key] = null;
     }
-    cleared.page = 1;
-    cleared.limit = ITEMS_PER_PAGE;
-    cleared.sort = 'market_cap';
-    cleared.order = 'desc';
+    Object.assign(cleared, URL_DEFAULTS);
     setUrlState(cleared as typeof urlState);
   }, [setUrlState]);
 
@@ -247,6 +249,13 @@ export function ScreenerClient() {
           {/* Results */}
           <div className="flex-1 min-w-0">
             <div className="bg-ic-surface rounded-lg border border-ic-border overflow-hidden">
+              {/* Error banner */}
+              {error && (
+                <div className="px-4 py-3 bg-ic-negative-bg border-b border-ic-border text-ic-negative text-sm">
+                  Failed to load stocks. Please try again later.
+                </div>
+              )}
+
               {/* Results Header */}
               <div className="px-4 py-3 border-b border-ic-border flex items-center justify-between">
                 <span className="text-sm text-ic-text-muted">

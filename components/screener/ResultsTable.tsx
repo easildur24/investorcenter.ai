@@ -67,7 +67,7 @@ export function ResultsTable({
                   return (
                     <td key={col.key} className="px-4 py-3">
                       <Link
-                        href={`/ticker/${stock.symbol}`}
+                        href={`/ticker/${encodeURIComponent(stock.symbol)}`}
                         className="font-medium text-ic-blue hover:text-ic-blue-hover transition-colors"
                       >
                         {stock.symbol}
