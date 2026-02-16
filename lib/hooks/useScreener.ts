@@ -1,7 +1,6 @@
 import useSWR from 'swr';
 import type { ScreenerApiParams, ScreenerResponse } from '@/lib/types/screener';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+import { API_BASE_URL } from '@/lib/api';
 
 /** Build a URL with query params, omitting undefined/null/empty values. */
 function buildScreenerUrl(params: ScreenerApiParams): string {

@@ -2,7 +2,7 @@
 
 import type { ScreenerApiParams, ScreenerResponse } from '@/lib/types/screener';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const IC_SCORE_API_BASE = process.env.NEXT_PUBLIC_IC_SCORE_API_URL || 'http://localhost:8001';
 
 interface ApiResponse<T> {

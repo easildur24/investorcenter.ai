@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { Suspense, useCallback, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useQueryStates, parseAsFloat, parseAsInteger, parseAsString } from 'nuqs';
 import { useScreener } from '@/lib/hooks/useScreener';
@@ -504,7 +504,30 @@ const urlStateConfig = {
 // Page Component
 // ============================================================================
 
+// Helper to safely read a numeric value from urlState by key
+function getUrlStateValue(
+  state: Record<string, unknown>,
+  key: string
+): number | null {
+  const val = state[key];
+  return typeof val === 'number' ? val : null;
+}
+
+// Wrap in Suspense because nuqs uses useSearchParams internally,
+// which requires a Suspense boundary in Next.js App Router.
 export default function ScreenerPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue"></div>
+      </div>
+    }>
+      <ScreenerContent />
+    </Suspense>
+  );
+}
+
+function ScreenerContent() {
   // URL state — all filters, sorting, and pagination live in the URL
   const [urlState, setUrlState] = useQueryStates(urlStateConfig, {
     history: 'push',
@@ -699,8 +722,8 @@ export default function ScreenerPage() {
                               <RangeFilter
                                 key={filter.id}
                                 label={filter.label}
-                                minValue={(urlState as unknown as Record<string, number | null>)[filter.minKey] ?? null}
-                                maxValue={(urlState as unknown as Record<string, number | null>)[filter.maxKey] ?? null}
+                                minValue={getUrlStateValue(urlState, filter.minKey)}
+                                maxValue={getUrlStateValue(urlState, filter.maxKey)}
                                 onChange={(min, max) =>
                                   handleRangeChange(filter.minKey!, filter.maxKey!, min, max)
                                 }
@@ -944,6 +967,40 @@ function RangeFilter({
   suffix?: string;
   placeholder?: { min: string; max: string };
 }) {
+  // Local state so we don't fire API calls on every keystroke.
+  // Changes are committed on blur or Enter.
+  const [localMin, setLocalMin] = useState<string>(minValue != null ? String(minValue) : '');
+  const [localMax, setLocalMax] = useState<string>(maxValue != null ? String(maxValue) : '');
+  const prevMinRef = useRef(minValue);
+  const prevMaxRef = useRef(maxValue);
+
+  // Sync local state when parent props change (e.g. preset applied, clear all)
+  useEffect(() => {
+    if (minValue !== prevMinRef.current) {
+      setLocalMin(minValue != null ? String(minValue) : '');
+      prevMinRef.current = minValue;
+    }
+    if (maxValue !== prevMaxRef.current) {
+      setLocalMax(maxValue != null ? String(maxValue) : '');
+      prevMaxRef.current = maxValue;
+    }
+  }, [minValue, maxValue]);
+
+  const commit = useCallback(() => {
+    const newMin = localMin !== '' ? Number(localMin) : null;
+    const newMax = localMax !== '' ? Number(localMax) : null;
+    // Only fire if values actually changed
+    if (newMin !== minValue || newMax !== maxValue) {
+      onChange(newMin, newMax);
+    }
+  }, [localMin, localMax, minValue, maxValue, onChange]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      commit();
+    }
+  }, [commit]);
+
   return (
     <div>
       <label className="block text-sm font-medium text-ic-text-secondary mb-1.5">
@@ -953,13 +1010,10 @@ function RangeFilter({
         <input
           type="number"
           placeholder={placeholder?.min ?? 'Min'}
-          value={minValue ?? ''}
-          onChange={(e) =>
-            onChange(
-              e.target.value !== '' ? Number(e.target.value) : null,
-              maxValue
-            )
-          }
+          value={localMin}
+          onChange={(e) => setLocalMin(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
           className="w-20 px-2 py-1 text-sm border border-ic-border rounded-md bg-ic-input-bg text-ic-text-primary placeholder:text-ic-text-dim"
           step={step}
         />
@@ -967,13 +1021,10 @@ function RangeFilter({
         <input
           type="number"
           placeholder={placeholder?.max ?? 'Max'}
-          value={maxValue ?? ''}
-          onChange={(e) =>
-            onChange(
-              minValue,
-              e.target.value !== '' ? Number(e.target.value) : null
-            )
-          }
+          value={localMax}
+          onChange={(e) => setLocalMax(e.target.value)}
+          onBlur={commit}
+          onKeyDown={handleKeyDown}
           className="w-20 px-2 py-1 text-sm border border-ic-border rounded-md bg-ic-input-bg text-ic-text-primary placeholder:text-ic-text-dim"
           step={step}
         />

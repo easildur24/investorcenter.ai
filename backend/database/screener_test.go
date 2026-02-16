@@ -464,3 +464,31 @@ func TestRangeFilterRegistryAccessors(t *testing.T) {
 		})
 	}
 }
+
+// TestBuildFilterConditionsMinMaxSwap verifies that when min > max,
+// the values are swapped so the query returns results instead of silently
+// returning zero rows.
+func TestBuildFilterConditionsMinMaxSwap(t *testing.T) {
+	minPE := 50.0
+	maxPE := 10.0 // intentionally inverted
+
+	params := &models.ScreenerParams{
+		PEMin: &minPE,
+		PEMax: &maxPE,
+	}
+	conditions, args, _ := BuildFilterConditions(params, 1)
+
+	if len(conditions) != 2 {
+		t.Fatalf("expected 2 conditions, got %d: %v", len(conditions), conditions)
+	}
+	if len(args) != 2 {
+		t.Fatalf("expected 2 args, got %d: %v", len(args), args)
+	}
+	// After swap: min should be 10, max should be 50
+	if args[0] != 10.0 {
+		t.Errorf("expected swapped min arg 10.0, got %v", args[0])
+	}
+	if args[1] != 50.0 {
+		t.Errorf("expected swapped max arg 50.0, got %v", args[1])
+	}
+}

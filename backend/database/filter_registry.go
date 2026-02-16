@@ -43,6 +43,8 @@ var RangeFilters = []RangeFilterDef{
 	// Dividends
 	{Column: "dividend_yield", GetMin: func(p *models.ScreenerParams) *float64 { return p.DividendYieldMin }, GetMax: func(p *models.ScreenerParams) *float64 { return p.DividendYieldMax }},
 	{Column: "payout_ratio", GetMin: func(p *models.ScreenerParams) *float64 { return p.PayoutRatioMin }, GetMax: func(p *models.ScreenerParams) *float64 { return p.PayoutRatioMax }},
+	// Min-only filter: "at least N years of consecutive dividends". No max because
+	// filtering out long dividend streaks is not a meaningful use case.
 	{Column: "consecutive_dividend_years", GetMin: func(p *models.ScreenerParams) *float64 { return p.ConsecutiveDivYearsMin }, GetMax: func(p *models.ScreenerParams) *float64 { return nil }},
 
 	// Risk
@@ -100,6 +102,11 @@ func BuildFilterConditions(params *models.ScreenerParams, startIndex int) ([]str
 	for _, f := range RangeFilters {
 		minVal := f.GetMin(params)
 		maxVal := f.GetMax(params)
+
+		// Swap if min > max to avoid returning 0 results silently
+		if minVal != nil && maxVal != nil && *minVal > *maxVal {
+			minVal, maxVal = maxVal, minVal
+		}
 
 		if minVal != nil {
 			conditions = append(conditions, fmt.Sprintf("%s >= $%d", f.Column, argIndex))
