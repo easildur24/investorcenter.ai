@@ -193,6 +193,8 @@ func main() {
 		screener := v1.Group("/screener")
 		{
 			screener.GET("/stocks", handlers.GetScreenerStocks)
+			screener.GET("/stocks/export", handlers.ExportScreenerCSV)
+			screener.GET("/industries", handlers.GetScreenerIndustries)
 		}
 
 		// Logo proxy endpoint (proxies logos from Polygon.io with API key)

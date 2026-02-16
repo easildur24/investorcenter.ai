@@ -47,12 +47,19 @@ describe('filter-config', () => {
       }
     });
 
-    it('multiselect filters have options', () => {
-      const multiselects = FILTER_DEFS.filter(f => f.type === 'multiselect');
-      for (const f of multiselects) {
-        expect(f.options).toBeDefined();
+    it('multiselect filters with static options have them populated', () => {
+      const withOptions = FILTER_DEFS.filter(f => f.type === 'multiselect' && f.options);
+      expect(withOptions.length).toBeGreaterThan(0);
+      for (const f of withOptions) {
         expect(f.options!.length).toBeGreaterThan(0);
       }
+    });
+
+    it('industry filter is multiselect without static options (loaded dynamically)', () => {
+      const industry = FILTER_DEFS.find(f => f.id === 'industry');
+      expect(industry).toBeDefined();
+      expect(industry!.type).toBe('multiselect');
+      expect(industry!.options).toBeUndefined();
     });
 
     it('has filters in IC Score Factors group', () => {

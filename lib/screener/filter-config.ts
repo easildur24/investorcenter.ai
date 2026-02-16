@@ -58,6 +58,13 @@ export const FILTER_DEFS: FilterDef[] = [
     options: SECTORS.map(s => ({ value: s, label: s })),
   },
   {
+    id: 'industry',
+    label: 'Industry',
+    type: 'multiselect',
+    group: 'general',
+    // Options loaded dynamically from API (no static options here)
+  },
+  {
     id: 'market_cap',
     label: 'Market Cap',
     type: 'range',
