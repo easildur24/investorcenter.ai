@@ -7,105 +7,76 @@ import (
 	"investorcenter-api/models"
 )
 
-// ValidScreenerSortColumns defines valid columns for sorting in the screener
-// Uses screener_data materialized view for fast queries
+// ValidScreenerSortColumns defines valid columns for sorting in the screener.
+// Uses screener_data materialized view for fast queries.
+// Every key must map to a real column in screener_data (see migration 019).
 var ValidScreenerSortColumns = map[string]string{
-	"symbol":         "symbol",
-	"name":           "name",
-	"market_cap":     "market_cap",
-	"price":          "price",
-	"pe_ratio":       "pe_ratio",
-	"pb_ratio":       "pb_ratio",
-	"ps_ratio":       "ps_ratio",
-	"roe":            "roe",
+	// Core identity
+	"symbol":   "symbol",
+	"name":     "name",
+	"sector":   "sector",
+	"industry": "industry",
+
+	// Market data
+	"market_cap": "market_cap",
+	"price":      "price",
+
+	// Valuation
+	"pe_ratio": "pe_ratio",
+	"pb_ratio": "pb_ratio",
+	"ps_ratio": "ps_ratio",
+
+	// Profitability
+	"roe":              "roe",
+	"roa":              "roa",
+	"gross_margin":     "gross_margin",
+	"operating_margin": "operating_margin",
+	"net_margin":       "net_margin",
+
+	// Financial health
+	"debt_to_equity": "debt_to_equity",
+	"current_ratio":  "current_ratio",
+
+	// Growth
 	"revenue_growth": "revenue_growth",
-	"dividend_yield": "dividend_yield",
-	"beta":           "beta",
-	"ic_score":       "ic_score",
+	"eps_growth_yoy": "eps_growth_yoy",
+
+	// Dividends
+	"dividend_yield":             "dividend_yield",
+	"payout_ratio":               "payout_ratio",
+	"consecutive_dividend_years": "consecutive_dividend_years",
+
+	// Risk
+	"beta": "beta",
+
+	// Fair value
+	"dcf_upside_percent": "dcf_upside_percent",
+
+	// IC Score
+	"ic_score": "ic_score",
+
+	// IC Score sub-factors
+	"value_score":             "value_score",
+	"growth_score":            "growth_score",
+	"profitability_score":     "profitability_score",
+	"financial_health_score":  "financial_health_score",
+	"momentum_score":          "momentum_score",
+	"analyst_consensus_score": "analyst_consensus_score",
+	"insider_activity_score":  "insider_activity_score",
+	"institutional_score":     "institutional_score",
+	"news_sentiment_score":    "news_sentiment_score",
+	"technical_score":         "technical_score",
 }
 
-// GetScreenerStocks retrieves stocks for the screener with filtering and pagination
-// Uses screener_data materialized view for fast queries (<100ms vs 2-3 minutes)
+// GetScreenerStocks retrieves stocks for the screener with filtering and pagination.
+// Uses screener_data materialized view for fast queries (<100ms vs 2-3 minutes).
 func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, int, error) {
 	if DB == nil {
 		return nil, 0, fmt.Errorf("database not connected")
 	}
 
-	// Build WHERE conditions using screener_data materialized view
-	conditions := []string{}
-	args := []interface{}{}
-	argIndex := 1
-
-	// Sector filter
-	if len(params.Sectors) > 0 {
-		placeholders := make([]string, len(params.Sectors))
-		for i, sector := range params.Sectors {
-			placeholders[i] = fmt.Sprintf("$%d", argIndex)
-			args = append(args, sector)
-			argIndex++
-		}
-		conditions = append(conditions, fmt.Sprintf("sector IN (%s)", strings.Join(placeholders, ", ")))
-	}
-
-	// Market cap filters
-	if params.MarketCapMin != nil {
-		conditions = append(conditions, fmt.Sprintf("market_cap >= $%d", argIndex))
-		args = append(args, *params.MarketCapMin)
-		argIndex++
-	}
-	if params.MarketCapMax != nil {
-		conditions = append(conditions, fmt.Sprintf("market_cap <= $%d", argIndex))
-		args = append(args, *params.MarketCapMax)
-		argIndex++
-	}
-
-	// P/E ratio filters
-	if params.PEMin != nil {
-		conditions = append(conditions, fmt.Sprintf("pe_ratio >= $%d", argIndex))
-		args = append(args, *params.PEMin)
-		argIndex++
-	}
-	if params.PEMax != nil {
-		conditions = append(conditions, fmt.Sprintf("pe_ratio <= $%d", argIndex))
-		args = append(args, *params.PEMax)
-		argIndex++
-	}
-
-	// Dividend yield filters
-	if params.DividendYieldMin != nil {
-		conditions = append(conditions, fmt.Sprintf("dividend_yield >= $%d", argIndex))
-		args = append(args, *params.DividendYieldMin)
-		argIndex++
-	}
-	if params.DividendYieldMax != nil {
-		conditions = append(conditions, fmt.Sprintf("dividend_yield <= $%d", argIndex))
-		args = append(args, *params.DividendYieldMax)
-		argIndex++
-	}
-
-	// Revenue growth filters
-	if params.RevenueGrowthMin != nil {
-		conditions = append(conditions, fmt.Sprintf("revenue_growth >= $%d", argIndex))
-		args = append(args, *params.RevenueGrowthMin)
-		argIndex++
-	}
-	if params.RevenueGrowthMax != nil {
-		conditions = append(conditions, fmt.Sprintf("revenue_growth <= $%d", argIndex))
-		args = append(args, *params.RevenueGrowthMax)
-		argIndex++
-	}
-
-	// IC Score filters
-	if params.ICScoreMin != nil {
-		conditions = append(conditions, fmt.Sprintf("ic_score >= $%d", argIndex))
-		args = append(args, *params.ICScoreMin)
-		argIndex++
-	}
-	if params.ICScoreMax != nil {
-		conditions = append(conditions, fmt.Sprintf("ic_score <= $%d", argIndex))
-		args = append(args, *params.ICScoreMax)
-		argIndex++
-	}
+	// Build WHERE conditions using the filter registry
+	conditions, args, argIndex := BuildFilterConditions(&params, 1)
 
 	// Build WHERE clause
 	whereClause := ""
@@ -144,7 +115,7 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 	// Calculate offset
 	offset := (params.Page - 1) * params.Limit
 
-	// Data query - simple single table scan with pagination
+	// Data query - reads all columns from the expanded materialized view.
 	// Note: ORDER BY column and direction cannot be parameterized in PostgreSQL.
 	// Both values are validated above via allowlist (sortColumn) and strict
 	// string comparison (order), making this safe from SQL injection.
@@ -156,15 +127,37 @@ func GetScreenerStocks(params models.ScreenerParams) ([]models.ScreenerStock, in
 			industry,
 			market_cap,
 			price,
-			NULL::float8 as change_percent,
 			pe_ratio,
 			pb_ratio,
 			ps_ratio,
 			roe,
+			roa,
+			gross_margin,
+			operating_margin,
+			net_margin,
+			debt_to_equity,
+			current_ratio,
 			revenue_growth,
+			eps_growth_yoy,
 			dividend_yield,
+			payout_ratio,
+			consecutive_dividend_years,
 			beta,
-			ic_score
+			dcf_upside_percent,
+			ic_score,
+			ic_rating,
+			value_score,
+			growth_score,
+			profitability_score,
+			financial_health_score,
+			momentum_score,
+			analyst_consensus_score,
+			insider_activity_score,
+			institutional_score,
+			news_sentiment_score,
+			technical_score,
+			ic_sector_percentile,
+			lifecycle_stage
 		FROM screener_data
 		%s
 		ORDER BY "%s" %s NULLS LAST

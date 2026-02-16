@@ -58,6 +58,94 @@ func GetScreenerStocks(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
+// floatParam is a declarative definition for parsing a float64 query parameter.
+type floatParam struct {
+	key    string                                           // URL query key
+	setter func(params *models.ScreenerParams, val float64) // Sets the value on ScreenerParams
+}
+
+// rangeParams defines all min/max float query parameters supported by the screener.
+// Adding a new range filter requires:
+//  1. Add fields to ScreenerParams (models/stock.go)
+//  2. Add entry to RangeFilters (database/filter_registry.go)
+//  3. Add entries here for URL param parsing
+var rangeParams = []floatParam{
+	// Market data
+	{key: "market_cap_min", setter: func(p *models.ScreenerParams, v float64) { p.MarketCapMin = &v }},
+	{key: "market_cap_max", setter: func(p *models.ScreenerParams, v float64) { p.MarketCapMax = &v }},
+
+	// Valuation
+	{key: "pe_min", setter: func(p *models.ScreenerParams, v float64) { p.PEMin = &v }},
+	{key: "pe_max", setter: func(p *models.ScreenerParams, v float64) { p.PEMax = &v }},
+	{key: "pb_min", setter: func(p *models.ScreenerParams, v float64) { p.PBMin = &v }},
+	{key: "pb_max", setter: func(p *models.ScreenerParams, v float64) { p.PBMax = &v }},
+	{key: "ps_min", setter: func(p *models.ScreenerParams, v float64) { p.PSMin = &v }},
+	{key: "ps_max", setter: func(p *models.ScreenerParams, v float64) { p.PSMax = &v }},
+
+	// Profitability
+	{key: "roe_min", setter: func(p *models.ScreenerParams, v float64) { p.ROEMin = &v }},
+	{key: "roe_max", setter: func(p *models.ScreenerParams, v float64) { p.ROEMax = &v }},
+	{key: "roa_min", setter: func(p *models.ScreenerParams, v float64) { p.ROAMin = &v }},
+	{key: "roa_max", setter: func(p *models.ScreenerParams, v float64) { p.ROAMax = &v }},
+	{key: "gross_margin_min", setter: func(p *models.ScreenerParams, v float64) { p.GrossMarginMin = &v }},
+	{key: "gross_margin_max", setter: func(p *models.ScreenerParams, v float64) { p.GrossMarginMax = &v }},
+	{key: "net_margin_min", setter: func(p *models.ScreenerParams, v float64) { p.NetMarginMin = &v }},
+	{key: "net_margin_max", setter: func(p *models.ScreenerParams, v float64) { p.NetMarginMax = &v }},
+
+	// Financial health
+	{key: "de_min", setter: func(p *models.ScreenerParams, v float64) { p.DebtToEquityMin = &v }},
+	{key: "de_max", setter: func(p *models.ScreenerParams, v float64) { p.DebtToEquityMax = &v }},
+	{key: "current_ratio_min", setter: func(p *models.ScreenerParams, v float64) { p.CurrentRatioMin = &v }},
+	{key: "current_ratio_max", setter: func(p *models.ScreenerParams, v float64) { p.CurrentRatioMax = &v }},
+
+	// Growth
+	{key: "revenue_growth_min", setter: func(p *models.ScreenerParams, v float64) { p.RevenueGrowthMin = &v }},
+	{key: "revenue_growth_max", setter: func(p *models.ScreenerParams, v float64) { p.RevenueGrowthMax = &v }},
+	{key: "eps_growth_min", setter: func(p *models.ScreenerParams, v float64) { p.EPSGrowthMin = &v }},
+	{key: "eps_growth_max", setter: func(p *models.ScreenerParams, v float64) { p.EPSGrowthMax = &v }},
+
+	// Dividends
+	{key: "dividend_yield_min", setter: func(p *models.ScreenerParams, v float64) { p.DividendYieldMin = &v }},
+	{key: "dividend_yield_max", setter: func(p *models.ScreenerParams, v float64) { p.DividendYieldMax = &v }},
+	{key: "payout_ratio_min", setter: func(p *models.ScreenerParams, v float64) { p.PayoutRatioMin = &v }},
+	{key: "payout_ratio_max", setter: func(p *models.ScreenerParams, v float64) { p.PayoutRatioMax = &v }},
+	{key: "consec_div_years_min", setter: func(p *models.ScreenerParams, v float64) { p.ConsecutiveDivYearsMin = &v }},
+
+	// Risk
+	{key: "beta_min", setter: func(p *models.ScreenerParams, v float64) { p.BetaMin = &v }},
+	{key: "beta_max", setter: func(p *models.ScreenerParams, v float64) { p.BetaMax = &v }},
+
+	// Fair value
+	{key: "dcf_upside_min", setter: func(p *models.ScreenerParams, v float64) { p.DCFUpsideMin = &v }},
+	{key: "dcf_upside_max", setter: func(p *models.ScreenerParams, v float64) { p.DCFUpsideMax = &v }},
+
+	// IC Score
+	{key: "ic_score_min", setter: func(p *models.ScreenerParams, v float64) { p.ICScoreMin = &v }},
+	{key: "ic_score_max", setter: func(p *models.ScreenerParams, v float64) { p.ICScoreMax = &v }},
+
+	// IC Score sub-factors
+	{key: "value_score_min", setter: func(p *models.ScreenerParams, v float64) { p.ValueScoreMin = &v }},
+	{key: "value_score_max", setter: func(p *models.ScreenerParams, v float64) { p.ValueScoreMax = &v }},
+	{key: "growth_score_min", setter: func(p *models.ScreenerParams, v float64) { p.GrowthScoreMin = &v }},
+	{key: "growth_score_max", setter: func(p *models.ScreenerParams, v float64) { p.GrowthScoreMax = &v }},
+	{key: "profitability_score_min", setter: func(p *models.ScreenerParams, v float64) { p.ProfitabilityScoreMin = &v }},
+	{key: "profitability_score_max", setter: func(p *models.ScreenerParams, v float64) { p.ProfitabilityScoreMax = &v }},
+	{key: "financial_health_score_min", setter: func(p *models.ScreenerParams, v float64) { p.FinancialHealthScoreMin = &v }},
+	{key: "financial_health_score_max", setter: func(p *models.ScreenerParams, v float64) { p.FinancialHealthScoreMax = &v }},
+	{key: "momentum_score_min", setter: func(p *models.ScreenerParams, v float64) { p.MomentumScoreMin = &v }},
+	{key: "momentum_score_max", setter: func(p *models.ScreenerParams, v float64) { p.MomentumScoreMax = &v }},
+	{key: "analyst_score_min", setter: func(p *models.ScreenerParams, v float64) { p.AnalystScoreMin = &v }},
+	{key: "analyst_score_max", setter: func(p *models.ScreenerParams, v float64) { p.AnalystScoreMax = &v }},
+	{key: "insider_score_min", setter: func(p *models.ScreenerParams, v float64) { p.InsiderScoreMin = &v }},
+	{key: "insider_score_max", setter: func(p *models.ScreenerParams, v float64) { p.InsiderScoreMax = &v }},
+	{key: "institutional_score_min", setter: func(p *models.ScreenerParams, v float64) { p.InstitutionalScoreMin = &v }},
+	{key: "institutional_score_max", setter: func(p *models.ScreenerParams, v float64) { p.InstitutionalScoreMax = &v }},
+	{key: "sentiment_score_min", setter: func(p *models.ScreenerParams, v float64) { p.SentimentScoreMin = &v }},
+	{key: "sentiment_score_max", setter: func(p *models.ScreenerParams, v float64) { p.SentimentScoreMax = &v }},
+	{key: "technical_score_min", setter: func(p *models.ScreenerParams, v float64) { p.TechnicalScoreMin = &v }},
+	{key: "technical_score_max", setter: func(p *models.ScreenerParams, v float64) { p.TechnicalScoreMax = &v }},
+}
+
 // parseScreenerParams extracts and validates query parameters
 func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 	params := models.ScreenerParams{
@@ -96,50 +184,26 @@ func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 	// Sectors (comma-separated)
 	if sectors := c.Query("sectors"); sectors != "" {
 		params.Sectors = strings.Split(sectors, ",")
-		// Trim whitespace from each sector
 		for i := range params.Sectors {
 			params.Sectors[i] = strings.TrimSpace(params.Sectors[i])
 		}
 	}
 
-	// Market cap filters
-	if val, err := strconv.ParseFloat(c.Query("market_cap_min"), 64); err == nil {
-		params.MarketCapMin = &val
-	}
-	if val, err := strconv.ParseFloat(c.Query("market_cap_max"), 64); err == nil {
-		params.MarketCapMax = &val
-	}
-
-	// P/E ratio filters
-	if val, err := strconv.ParseFloat(c.Query("pe_min"), 64); err == nil {
-		params.PEMin = &val
-	}
-	if val, err := strconv.ParseFloat(c.Query("pe_max"), 64); err == nil {
-		params.PEMax = &val
+	// Industries (comma-separated)
+	if industries := c.Query("industries"); industries != "" {
+		params.Industries = strings.Split(industries, ",")
+		for i := range params.Industries {
+			params.Industries[i] = strings.TrimSpace(params.Industries[i])
+		}
 	}
 
-	// Dividend yield filters
-	if val, err := strconv.ParseFloat(c.Query("dividend_yield_min"), 64); err == nil {
-		params.DividendYieldMin = &val
-	}
-	if val, err := strconv.ParseFloat(c.Query("dividend_yield_max"), 64); err == nil {
-		params.DividendYieldMax = &val
-	}
-
-	// Revenue growth filters
-	if val, err := strconv.ParseFloat(c.Query("revenue_growth_min"), 64); err == nil {
-		params.RevenueGrowthMin = &val
-	}
-	if val, err := strconv.ParseFloat(c.Query("revenue_growth_max"), 64); err == nil {
-		params.RevenueGrowthMax = &val
-	}
-
-	// IC Score filters
-	if val, err := strconv.ParseFloat(c.Query("ic_score_min"), 64); err == nil {
-		params.ICScoreMin = &val
-	}
-	if val, err := strconv.ParseFloat(c.Query("ic_score_max"), 64); err == nil {
-		params.ICScoreMax = &val
+	// Parse all range filters declaratively
+	for _, fp := range rangeParams {
+		if raw := c.Query(fp.key); raw != "" {
+			if val, err := strconv.ParseFloat(raw, 64); err == nil {
+				fp.setter(&params, val)
+			}
+		}
 	}
 
 	// Asset type (validated against allowlist)
