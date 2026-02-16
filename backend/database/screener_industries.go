@@ -23,10 +23,22 @@ func GetScreenerIndustries(sectors string) ([]string, error) {
 		return industries, err
 	}
 
-	// Filter by sectors
-	sectorList := strings.Split(sectors, ",")
-	for i := range sectorList {
-		sectorList[i] = strings.TrimSpace(sectorList[i])
+	// Filter by sectors (trim whitespace and drop empty segments)
+	raw := strings.Split(sectors, ",")
+	sectorList := make([]string, 0, len(raw))
+	for _, s := range raw {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			sectorList = append(sectorList, s)
+		}
+	}
+	if len(sectorList) == 0 {
+		// All segments were empty — fall back to unfiltered
+		err := DB.Select(&industries,
+			`SELECT DISTINCT industry FROM screener_data
+			 WHERE industry IS NOT NULL AND industry != ''
+			 ORDER BY industry`)
+		return industries, err
 	}
 
 	placeholders := make([]string, len(sectorList))

@@ -11,9 +11,11 @@ interface ExportButtonProps {
 /** CSV export button that downloads filtered screener data. */
 export function ExportButton({ params }: ExportButtonProps) {
   const [exporting, setExporting] = useState(false);
+  const [error, setError] = useState(false);
 
   const handleExport = useCallback(async () => {
     setExporting(true);
+    setError(false);
     try {
       // Build URL with same filters but no pagination
       const searchParams = new URLSearchParams();
@@ -33,13 +35,18 @@ export function ExportButton({ params }: ExportButtonProps) {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = res.headers.get('Content-Disposition')?.split('filename=')[1] ?? 'screener-export.csv';
+      // Parse filename, stripping any surrounding quotes
+      const disposition = res.headers.get('Content-Disposition') ?? '';
+      const filenamePart = disposition.split('filename=')[1];
+      a.download = filenamePart?.replace(/^"|"$/g, '') ?? 'screener-export.csv';
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
     } catch (err) {
       console.error('CSV export failed:', err);
+      setError(true);
+      setTimeout(() => setError(false), 3000);
     } finally {
       setExporting(false);
     }
@@ -56,7 +63,7 @@ export function ExportButton({ params }: ExportButtonProps) {
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
       </svg>
-      {exporting ? 'Exporting...' : 'Export CSV'}
+      {exporting ? 'Exporting...' : error ? 'Export failed' : 'Export CSV'}
     </button>
   );
 }
