@@ -259,41 +259,155 @@ type KeyMetrics struct {
 
 // ScreenerStock represents a stock with screening metrics
 type ScreenerStock struct {
-	Symbol        string   `json:"symbol" db:"symbol"`
-	Name          string   `json:"name" db:"name"`
-	Sector        *string  `json:"sector" db:"sector"`
-	Industry      *string  `json:"industry" db:"industry"`
-	MarketCap     *float64 `json:"market_cap" db:"market_cap"`
-	Price         *float64 `json:"price" db:"price"`
-	ChangePercent *float64 `json:"change_percent" db:"change_percent"`
-	PERatio       *float64 `json:"pe_ratio" db:"pe_ratio"`
-	PBRatio       *float64 `json:"pb_ratio" db:"pb_ratio"`
-	PSRatio       *float64 `json:"ps_ratio" db:"ps_ratio"`
-	ROE           *float64 `json:"roe" db:"roe"`
+	// Core identity
+	Symbol   string  `json:"symbol" db:"symbol"`
+	Name     string  `json:"name" db:"name"`
+	Sector   *string `json:"sector" db:"sector"`
+	Industry *string `json:"industry" db:"industry"`
+
+	// Market data
+	MarketCap *float64 `json:"market_cap" db:"market_cap"`
+	Price     *float64 `json:"price" db:"price"`
+
+	// Valuation
+	PERatio *float64 `json:"pe_ratio" db:"pe_ratio"`
+	PBRatio *float64 `json:"pb_ratio" db:"pb_ratio"`
+	PSRatio *float64 `json:"ps_ratio" db:"ps_ratio"`
+
+	// Profitability
+	ROE             *float64 `json:"roe" db:"roe"`
+	ROA             *float64 `json:"roa" db:"roa"`
+	GrossMargin     *float64 `json:"gross_margin" db:"gross_margin"`
+	OperatingMargin *float64 `json:"operating_margin" db:"operating_margin"`
+	NetMargin       *float64 `json:"net_margin" db:"net_margin"`
+
+	// Financial health
+	DebtToEquity *float64 `json:"debt_to_equity" db:"debt_to_equity"`
+	CurrentRatio *float64 `json:"current_ratio" db:"current_ratio"`
+
+	// Growth
 	RevenueGrowth *float64 `json:"revenue_growth" db:"revenue_growth"`
-	DividendYield *float64 `json:"dividend_yield" db:"dividend_yield"`
-	Beta          *float64 `json:"beta" db:"beta"`
-	ICScore       *float64 `json:"ic_score" db:"ic_score"`
+	EPSGrowthYoY  *float64 `json:"eps_growth_yoy" db:"eps_growth_yoy"`
+
+	// Dividends
+	DividendYield            *float64 `json:"dividend_yield" db:"dividend_yield"`
+	PayoutRatio              *float64 `json:"payout_ratio" db:"payout_ratio"`
+	ConsecutiveDividendYears *int     `json:"consecutive_dividend_years" db:"consecutive_dividend_years"`
+
+	// Risk
+	Beta *float64 `json:"beta" db:"beta"`
+
+	// Fair value
+	DCFUpsidePercent *float64 `json:"dcf_upside_percent" db:"dcf_upside_percent"`
+
+	// IC Score: overall
+	ICScore  *float64 `json:"ic_score" db:"ic_score"`
+	ICRating *string  `json:"ic_rating" db:"ic_rating"`
+
+	// IC Score: sub-factor scores (0-100)
+	ValueScore            *float64 `json:"value_score" db:"value_score"`
+	GrowthScore           *float64 `json:"growth_score" db:"growth_score"`
+	ProfitabilityScore    *float64 `json:"profitability_score" db:"profitability_score"`
+	FinancialHealthScore  *float64 `json:"financial_health_score" db:"financial_health_score"`
+	MomentumScore         *float64 `json:"momentum_score" db:"momentum_score"`
+	AnalystConsensusScore *float64 `json:"analyst_consensus_score" db:"analyst_consensus_score"`
+	InsiderActivityScore  *float64 `json:"insider_activity_score" db:"insider_activity_score"`
+	InstitutionalScore    *float64 `json:"institutional_score" db:"institutional_score"`
+	NewsSentimentScore    *float64 `json:"news_sentiment_score" db:"news_sentiment_score"`
+	TechnicalScore        *float64 `json:"technical_score" db:"technical_score"`
+
+	// IC Score: metadata
+	ICSectorPercentile *float64 `json:"ic_sector_percentile" db:"ic_sector_percentile"`
+	LifecycleStage     *string  `json:"lifecycle_stage" db:"lifecycle_stage"`
 }
 
 // ScreenerParams represents query parameters for the screener endpoint
 type ScreenerParams struct {
-	Page             int      `json:"page"`
-	Limit            int      `json:"limit"`
-	Sort             string   `json:"sort"`
-	Order            string   `json:"order"`
-	Sectors          []string `json:"sectors"`
-	MarketCapMin     *float64 `json:"market_cap_min"`
-	MarketCapMax     *float64 `json:"market_cap_max"`
-	PEMin            *float64 `json:"pe_min"`
-	PEMax            *float64 `json:"pe_max"`
-	DividendYieldMin *float64 `json:"dividend_yield_min"`
-	DividendYieldMax *float64 `json:"dividend_yield_max"`
+	// Pagination & sorting
+	Page  int    `json:"page"`
+	Limit int    `json:"limit"`
+	Sort  string `json:"sort"`
+	Order string `json:"order"`
+
+	// Categorical filters
+	Sectors    []string `json:"sectors"`
+	Industries []string `json:"industries"`
+	AssetType  string   `json:"asset_type"`
+
+	// Market data
+	MarketCapMin *float64 `json:"market_cap_min"`
+	MarketCapMax *float64 `json:"market_cap_max"`
+
+	// Valuation
+	PEMin *float64 `json:"pe_min"`
+	PEMax *float64 `json:"pe_max"`
+	PBMin *float64 `json:"pb_min"`
+	PBMax *float64 `json:"pb_max"`
+	PSMin *float64 `json:"ps_min"`
+	PSMax *float64 `json:"ps_max"`
+
+	// Profitability
+	ROEMin         *float64 `json:"roe_min"`
+	ROEMax         *float64 `json:"roe_max"`
+	ROAMin         *float64 `json:"roa_min"`
+	ROAMax         *float64 `json:"roa_max"`
+	GrossMarginMin *float64 `json:"gross_margin_min"`
+	GrossMarginMax *float64 `json:"gross_margin_max"`
+	NetMarginMin   *float64 `json:"net_margin_min"`
+	NetMarginMax   *float64 `json:"net_margin_max"`
+
+	// Financial health
+	DebtToEquityMin *float64 `json:"de_min"`
+	DebtToEquityMax *float64 `json:"de_max"`
+	CurrentRatioMin *float64 `json:"current_ratio_min"`
+	CurrentRatioMax *float64 `json:"current_ratio_max"`
+
+	// Growth
 	RevenueGrowthMin *float64 `json:"revenue_growth_min"`
 	RevenueGrowthMax *float64 `json:"revenue_growth_max"`
-	ICScoreMin       *float64 `json:"ic_score_min"`
-	ICScoreMax       *float64 `json:"ic_score_max"`
-	AssetType        string   `json:"asset_type"`
+	EPSGrowthMin     *float64 `json:"eps_growth_min"`
+	EPSGrowthMax     *float64 `json:"eps_growth_max"`
+
+	// Dividends
+	DividendYieldMin       *float64 `json:"dividend_yield_min"`
+	DividendYieldMax       *float64 `json:"dividend_yield_max"`
+	PayoutRatioMin         *float64 `json:"payout_ratio_min"`
+	PayoutRatioMax         *float64 `json:"payout_ratio_max"`
+	ConsecutiveDivYearsMin *float64 `json:"consec_div_years_min"`
+
+	// Risk
+	BetaMin *float64 `json:"beta_min"`
+	BetaMax *float64 `json:"beta_max"`
+
+	// Fair value
+	DCFUpsideMin *float64 `json:"dcf_upside_min"`
+	DCFUpsideMax *float64 `json:"dcf_upside_max"`
+
+	// IC Score
+	ICScoreMin *float64 `json:"ic_score_min"`
+	ICScoreMax *float64 `json:"ic_score_max"`
+
+	// IC Score sub-factors
+	ValueScoreMin           *float64 `json:"value_score_min"`
+	ValueScoreMax           *float64 `json:"value_score_max"`
+	GrowthScoreMin          *float64 `json:"growth_score_min"`
+	GrowthScoreMax          *float64 `json:"growth_score_max"`
+	ProfitabilityScoreMin   *float64 `json:"profitability_score_min"`
+	ProfitabilityScoreMax   *float64 `json:"profitability_score_max"`
+	FinancialHealthScoreMin *float64 `json:"financial_health_score_min"`
+	FinancialHealthScoreMax *float64 `json:"financial_health_score_max"`
+	MomentumScoreMin        *float64 `json:"momentum_score_min"`
+	MomentumScoreMax        *float64 `json:"momentum_score_max"`
+	AnalystScoreMin         *float64 `json:"analyst_score_min"`
+	AnalystScoreMax         *float64 `json:"analyst_score_max"`
+	InsiderScoreMin         *float64 `json:"insider_score_min"`
+	InsiderScoreMax         *float64 `json:"insider_score_max"`
+	InstitutionalScoreMin   *float64 `json:"institutional_score_min"`
+	InstitutionalScoreMax   *float64 `json:"institutional_score_max"`
+	SentimentScoreMin       *float64 `json:"sentiment_score_min"`
+	SentimentScoreMax       *float64 `json:"sentiment_score_max"`
+	TechnicalScoreMin       *float64 `json:"technical_score_min"`
+	TechnicalScoreMax       *float64 `json:"technical_score_max"`
 }
 
 // ScreenerResponse represents the paginated response for the screener endpoint
