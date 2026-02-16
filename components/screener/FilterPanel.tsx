@@ -2,17 +2,19 @@
 
 import { useMemo } from 'react';
 import { FILTER_GROUPS, FILTER_DEFS } from '@/lib/screener/filter-config';
-import type { ScreenerApiParams } from '@/lib/types/screener';
 import { FilterSection } from './FilterSection';
 import { RangeFilter } from './RangeFilter';
 import { CheckboxFilter } from './CheckboxFilter';
+import { IndustryFilter } from './IndustryFilter';
 
 interface FilterPanelProps {
   urlState: Record<string, unknown>;
   activeFilterCount: number;
   selectedSectors: string[];
+  selectedIndustries: string[];
   onRangeChange: (minKey: string, maxKey: string, min: number | null, max: number | null) => void;
   onSectorsChange: (sectors: string[]) => void;
+  onIndustriesChange: (industries: string[]) => void;
   onClearFilters: () => void;
 }
 
@@ -26,8 +28,10 @@ export function FilterPanel({
   urlState,
   activeFilterCount,
   selectedSectors,
+  selectedIndustries,
   onRangeChange,
   onSectorsChange,
+  onIndustriesChange,
   onClearFilters,
 }: FilterPanelProps) {
   // Count active filters per group
@@ -39,6 +43,8 @@ export function FilterPanel({
       for (const filter of groupFilters) {
         if (filter.type === 'multiselect' && filter.id === 'sector') {
           count += selectedSectors.length > 0 ? 1 : 0;
+        } else if (filter.type === 'multiselect' && filter.id === 'industry') {
+          count += selectedIndustries.length > 0 ? 1 : 0;
         } else if (filter.type === 'range') {
           if (filter.minKey && getUrlStateValue(urlState, filter.minKey) != null) count++;
           if (filter.maxKey && getUrlStateValue(urlState, filter.maxKey) != null) count++;
@@ -47,7 +53,7 @@ export function FilterPanel({
       counts[group.id] = count;
     }
     return counts;
-  }, [urlState, selectedSectors]);
+  }, [urlState, selectedSectors, selectedIndustries]);
 
   return (
     <div className="w-64 flex-shrink-0">
@@ -92,6 +98,16 @@ export function FilterPanel({
                         options={filter.options!}
                         selected={selectedSectors}
                         onChange={onSectorsChange}
+                      />
+                    );
+                  }
+                  if (filter.type === 'multiselect' && filter.id === 'industry') {
+                    return (
+                      <IndustryFilter
+                        key={filter.id}
+                        selectedSectors={selectedSectors}
+                        selectedIndustries={selectedIndustries}
+                        onChange={onIndustriesChange}
                       />
                     );
                   }

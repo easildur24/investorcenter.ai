@@ -9,6 +9,7 @@ import { ScreenerToolbar } from './ScreenerToolbar';
 import { FilterPanel } from './FilterPanel';
 import { ResultsTable } from './ResultsTable';
 import { ColumnPicker } from './ColumnPicker';
+import { ExportButton } from './ExportButton';
 import { Pagination } from './Pagination';
 
 const ITEMS_PER_PAGE = 25;
@@ -31,6 +32,7 @@ const urlStateConfig = {
 
   // Categorical filters
   sectors: parseAsString,
+  industries: parseAsString,
 
   // Market data
   market_cap_min: parseAsFloat,
@@ -176,6 +178,18 @@ export function ScreenerClient() {
       setUrlState((prev) => ({
         ...prev,
         sectors: sectors.length > 0 ? sectors.join(',') : null,
+        industries: null, // Clear industries when sectors change
+        page: 1,
+      }));
+    },
+    [setUrlState]
+  );
+
+  const handleIndustriesChange = useCallback(
+    (industries: string[]) => {
+      setUrlState((prev) => ({
+        ...prev,
+        industries: industries.length > 0 ? industries.join(',') : null,
         page: 1,
       }));
     },
@@ -213,6 +227,7 @@ export function ScreenerClient() {
   }).length;
 
   const selectedSectors = urlState.sectors ? urlState.sectors.split(',') : [];
+  const selectedIndustries = urlState.industries ? urlState.industries.split(',') : [];
   const totalPages = meta?.total_pages ?? 0;
   const total = meta?.total ?? 0;
   const currentPage = urlState.page ?? 1;
@@ -241,8 +256,10 @@ export function ScreenerClient() {
             urlState={urlState as Record<string, unknown>}
             activeFilterCount={activeFilterCount}
             selectedSectors={selectedSectors}
+            selectedIndustries={selectedIndustries}
             onRangeChange={handleRangeChange}
             onSectorsChange={handleSectorsChange}
+            onIndustriesChange={handleIndustriesChange}
             onClearFilters={clearFilters}
           />
 
@@ -264,10 +281,13 @@ export function ScreenerClient() {
                     <span className="ml-2 text-ic-text-dim">(updating...)</span>
                   )}
                 </span>
-                <ColumnPicker
-                  visibleColumns={visibleColumns}
-                  onChange={setVisibleColumns}
-                />
+                <div className="flex items-center gap-2">
+                  <ExportButton params={apiParams} />
+                  <ColumnPicker
+                    visibleColumns={visibleColumns}
+                    onChange={setVisibleColumns}
+                  />
+                </div>
               </div>
 
               <ResultsTable
