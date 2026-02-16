@@ -14,6 +14,13 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+const (
+	// defaultScreenerLimit is the page size when no limit is specified.
+	defaultScreenerLimit = 100
+	// maxScreenerLimit caps the maximum rows a single request can return.
+	maxScreenerLimit = 20000
+)
+
 // GetScreenerStocks handles the stock screener endpoint
 // GET /api/v1/screener/stocks
 func GetScreenerStocks(c *gin.Context) {
@@ -149,10 +156,13 @@ var rangeParams = []floatParam{
 // parseScreenerParams extracts and validates query parameters
 func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 	params := models.ScreenerParams{
-		Page:      1,
-		Limit:     20000, // High default for client-side filtering
-		Sort:      "market_cap",
-		Order:     "desc",
+		Page:  1,
+		Limit: defaultScreenerLimit,
+		Sort:  "market_cap",
+		Order: "desc",
+		// AssetType is parsed below but not used in the query — the
+		// screener_data materialized view already filters to asset_type='CS'.
+		// Kept for future use if the screener expands to ETFs.
 		AssetType: "CS",
 	}
 
@@ -161,12 +171,14 @@ func parseScreenerParams(c *gin.Context) models.ScreenerParams {
 		params.Page = page
 	}
 
-	// Limit (max 20000 for client-side filtering screener)
-	if limit, err := strconv.Atoi(c.DefaultQuery("limit", "20000")); err == nil && limit > 0 {
-		if limit > 20000 {
-			limit = 20000
+	// Limit (capped at maxScreenerLimit)
+	if raw := c.Query("limit"); raw != "" {
+		if limit, err := strconv.Atoi(raw); err == nil && limit > 0 {
+			if limit > maxScreenerLimit {
+				limit = maxScreenerLimit
+			}
+			params.Limit = limit
 		}
-		params.Limit = limit
 	}
 
 	// Sort field

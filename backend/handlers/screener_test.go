@@ -31,8 +31,8 @@ func TestParseScreenerParamsDefaults(t *testing.T) {
 	if params.Page != 1 {
 		t.Errorf("expected default page=1, got %d", params.Page)
 	}
-	if params.Limit != 20000 {
-		t.Errorf("expected default limit=20000, got %d", params.Limit)
+	if params.Limit != defaultScreenerLimit {
+		t.Errorf("expected default limit=%d, got %d", defaultScreenerLimit, params.Limit)
 	}
 	if params.Sort != "market_cap" {
 		t.Errorf("expected default sort=market_cap, got %q", params.Sort)
@@ -80,10 +80,10 @@ func TestParseScreenerParamsLimit(t *testing.T) {
 	}{
 		{"limit=25", 25},
 		{"limit=100", 100},
-		{"limit=50000", 20000}, // capped at 20000
-		{"limit=0", 20000},     // invalid, falls back to default
-		{"limit=-5", 20000},    // invalid
-		{"limit=abc", 20000},   // non-numeric
+		{"limit=50000", maxScreenerLimit},   // capped at max
+		{"limit=0", defaultScreenerLimit},   // invalid, falls back to default
+		{"limit=-5", defaultScreenerLimit},  // invalid
+		{"limit=abc", defaultScreenerLimit}, // non-numeric
 	}
 	for _, tc := range tests {
 		t.Run(tc.query, func(t *testing.T) {
