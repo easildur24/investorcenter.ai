@@ -1,3 +1,17 @@
+// Package database — filter_registry.go
+//
+// Declarative filter registry for the stock screener. Instead of writing
+// individual if-blocks for each filter parameter, filters are defined as
+// data in the RangeFilters slice. BuildFilterConditions iterates the
+// registry and generates parameterized SQL WHERE clauses automatically.
+//
+// How it fits together (3 touch points to add a new filter):
+//  1. models/stock.go        — add Min/Max fields to ScreenerParams
+//  2. This file               — add a RangeFilterDef entry to RangeFilters
+//  3. handlers/screener.go   — add entries to rangeParams for URL parsing
+//
+// The Column value must match a real column in the screener_data
+// materialized view (see migration 019).
 package database
 
 import (
@@ -7,16 +21,23 @@ import (
 	"investorcenter-api/models"
 )
 
-// RangeFilterDef defines a min/max range filter that maps URL params to a SQL column.
+// RangeFilterDef maps a screener_data SQL column to accessor functions
+// that extract the user-supplied min/max bounds from ScreenerParams.
+// A nil return from GetMin/GetMax means "no bound" (filter not active).
 type RangeFilterDef struct {
 	Column string                                  // SQL column in screener_data
-	GetMin func(p *models.ScreenerParams) *float64 // Accessor for min value
-	GetMax func(p *models.ScreenerParams) *float64 // Accessor for max value
+	GetMin func(p *models.ScreenerParams) *float64 // Returns nil when no min bound is set
+	GetMax func(p *models.ScreenerParams) *float64 // Returns nil when no max bound is set
 }
 
 // RangeFilters is the registry of all supported range filters.
-// Adding a new range filter requires only adding an entry here and the
-// corresponding fields to ScreenerParams + the handler's param parser.
+//
+// To add a new filter, append a RangeFilterDef here with:
+//   - Column: the screener_data column name
+//   - GetMin/GetMax: accessors that read the corresponding ScreenerParams fields
+//
+// Then add the ScreenerParams fields (models/stock.go) and URL parser
+// entries (handlers/screener.go). That's it — no conditional SQL logic needed.
 var RangeFilters = []RangeFilterDef{
 	// Market data
 	{Column: "market_cap", GetMin: func(p *models.ScreenerParams) *float64 { return p.MarketCapMin }, GetMax: func(p *models.ScreenerParams) *float64 { return p.MarketCapMax }},
@@ -69,8 +90,16 @@ var RangeFilters = []RangeFilterDef{
 	{Column: "technical_score", GetMin: func(p *models.ScreenerParams) *float64 { return p.TechnicalScoreMin }, GetMax: func(p *models.ScreenerParams) *float64 { return p.TechnicalScoreMax }},
 }
 
-// BuildFilterConditions generates parameterized WHERE conditions from the
-// filter registry. Returns the conditions slice, args slice, and next arg index.
+// BuildFilterConditions converts ScreenerParams into parameterized SQL
+// WHERE conditions by walking the RangeFilters registry.
+//
+// It handles two kinds of filters:
+//   - Categorical (sectors, industries): generates IN ($1, $2, ...) clauses
+//   - Range (all entries in RangeFilters): generates column >= $N / column <= $N
+//
+// startIndex is the first PostgreSQL placeholder number (usually 1).
+// Returns (conditions, args, nextArgIndex) so the caller can append
+// additional clauses (e.g. pagination) using the returned nextArgIndex.
 func BuildFilterConditions(params *models.ScreenerParams, startIndex int) ([]string, []interface{}, int) {
 	conditions := []string{}
 	args := []interface{}{}
