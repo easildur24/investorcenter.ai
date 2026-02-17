@@ -135,6 +135,15 @@ class ApiClient {
     return this.request<ScreenerResponse>(`/screener/stocks${query}`);
   }
 
+  // NLP screener query — translates natural language into filter params via Gemini
+  async nlpScreenerQuery(query: string): Promise<{ params: Partial<ScreenerApiParams>; explanation: string }> {
+    const res = await this.request<{ params: Partial<ScreenerApiParams>; explanation: string }>('/screener/nlp', {
+      method: 'POST',
+      body: JSON.stringify({ query }),
+    });
+    return res.data;
+  }
+
   // Volume data methods (hybrid: database + real-time)
   async getTickerVolume(symbol: string, realtime: boolean = false) {
     return this.request<{

@@ -100,6 +100,12 @@ spec:
           value: "http://task-service:8001"
         - name: DATA_INGESTION_SERVICE_URL
           value: "http://data-ingestion-service:8002"
+        # Gemini API for NLP screener search
+        - name: GEMINI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: google-api-secret
+              key: api-key
         resources:
           requests:
             memory: "128Mi"

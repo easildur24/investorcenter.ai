@@ -195,6 +195,7 @@ func main() {
 			screener.GET("/stocks", handlers.GetScreenerStocks)
 			screener.GET("/stocks/export", handlers.ExportScreenerCSV)
 			screener.GET("/industries", handlers.GetScreenerIndustries)
+			screener.POST("/nlp", handlers.PostScreenerNLP)
 		}
 
 		// Logo proxy endpoint (proxies logos from Polygon.io with API key)
