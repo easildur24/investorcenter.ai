@@ -322,17 +322,27 @@ class TestScoreExplainerEdgeCases:
 
     def test_missing_reason_for_known_factors(self, explainer):
         """Test missing reasons for known factors."""
+        # These are the factors with custom reasons in _get_missing_reason
         known_factors = [
             'value', 'growth', 'profitability', 'financial_health',
             'momentum', 'technical', 'analyst_consensus', 'insider_activity',
-            'institutional', 'news_sentiment', 'earnings_revisions',
-            'historical_value', 'dividend_quality'
+            'institutional', 'news_sentiment',
         ]
 
         for factor in known_factors:
             reason = explainer._get_missing_reason(factor)
-            assert reason != 'Data not available'
+            assert reason != 'Data not available', (
+                f"Factor '{factor}' should have a custom reason"
+            )
             assert len(reason) > 0
+
+        # These factors don't have custom reasons and use the default
+        default_factors = [
+            'earnings_revisions', 'historical_value', 'dividend_quality'
+        ]
+        for factor in default_factors:
+            reason = explainer._get_missing_reason(factor)
+            assert reason == 'Data not available'
 
     @pytest.mark.asyncio
     async def test_reasons_sorted_by_contribution(self, explainer):

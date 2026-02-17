@@ -1,6 +1,6 @@
 # InvestorCenter.ai Makefile
 
-.PHONY: help setup install build dev test check clean dev-task-service build-task-service test-task-service
+.PHONY: help setup install build dev test check clean dev-task-service build-task-service test-task-service coverage coverage-frontend coverage-backend coverage-ic-score coverage-task-service coverage-data-ingestion
 
 # Configuration
 VENV_PATH = path/to/venv
@@ -38,6 +38,14 @@ help:
 	@echo "  make format          - Format all code"
 	@echo "  make lint            - Run linting checks"
 	@echo "  make clean           - Clean build artifacts"
+	@echo ""
+	@echo "Coverage:"
+	@echo "  make coverage              - Run all coverage reports"
+	@echo "  make coverage-frontend     - Frontend (Jest) coverage"
+	@echo "  make coverage-backend      - Backend (Go) coverage"
+	@echo "  make coverage-ic-score     - IC Score service (Python) coverage"
+	@echo "  make coverage-task-service - Task service (Go) coverage"
+	@echo "  make coverage-data-ingestion - Data ingestion service (Go) coverage"
 
 # Complete setup
 setup: install db-setup
@@ -172,6 +180,52 @@ build-task-service:
 test-task-service:
 	@echo "Running task service tests..."
 	cd task-service && go test ./...
+
+# Test coverage
+coverage: coverage-frontend coverage-backend coverage-ic-score
+	@echo ""
+	@echo "====================================="
+	@echo "Coverage reports generated:"
+	@echo "  Frontend:  coverage/ (open coverage/lcov-report/index.html)"
+	@echo "  Backend:   backend/coverage/ (open backend/coverage/coverage.html)"
+	@echo "  IC Score:  ic-score-service/htmlcov/ (open ic-score-service/htmlcov/index.html)"
+	@echo "====================================="
+
+coverage-frontend:
+	@echo "Running frontend (Jest) coverage..."
+	npx jest --coverage
+
+coverage-backend:
+	@echo "Running backend (Go) coverage..."
+	@mkdir -p backend/coverage
+	cd backend && go test ./... -coverprofile=coverage/coverage.out -covermode=atomic
+	cd backend && go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+	cd backend && go tool cover -func=coverage/coverage.out
+
+coverage-ic-score:
+	@echo "Running IC Score service (Python) coverage..."
+	cd ic-score-service && ./venv/bin/python -m pytest tests/ pipelines/tests/ \
+		--cov=api --cov=pipelines --cov=. \
+		--cov-report=term-missing \
+		--cov-report=html:htmlcov \
+		--cov-report=xml:coverage.xml \
+		--rootdir=. \
+		--ignore=tests/test_ttm_eps_calculation.py \
+		-v -o "addopts="
+
+coverage-task-service:
+	@echo "Running task service (Go) coverage..."
+	@mkdir -p task-service/coverage
+	cd task-service && go test ./... -coverprofile=coverage/coverage.out -covermode=atomic
+	cd task-service && go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+	cd task-service && go tool cover -func=coverage/coverage.out
+
+coverage-data-ingestion:
+	@echo "Running data ingestion service (Go) coverage..."
+	@mkdir -p data-ingestion-service/coverage
+	cd data-ingestion-service && go test ./... -coverprofile=coverage/coverage.out -covermode=atomic
+	cd data-ingestion-service && go tool cover -html=coverage/coverage.out -o coverage/coverage.html
+	cd data-ingestion-service && go tool cover -func=coverage/coverage.out
 
 # Cleanup
 clean:

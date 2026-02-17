@@ -4,13 +4,14 @@ This service provides REST API endpoints for accessing IC Scores and related dat
 """
 
 import logging
+import datetime as _dt
 from datetime import datetime, timedelta, date
 from typing import List, Optional, Dict, Any
 from enum import Enum
 
 from fastapi import FastAPI, HTTPException, Query, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import text, select, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -162,8 +163,10 @@ class RiskMetricsResponse(BaseModel):
 
 class TechnicalIndicatorsResponse(BaseModel):
     """Technical indicators response model for frontend display."""
+    model_config = ConfigDict(from_attributes=True)
+
     ticker: str
-    date: Optional[date] = None
+    date: Optional[_dt.date] = None
 
     # Moving Averages
     sma_20: Optional[float] = None
@@ -191,9 +194,6 @@ class TechnicalIndicatorsResponse(BaseModel):
 
     # Current price for context
     close_price: Optional[float] = None
-
-    class Config:
-        from_attributes = True
 
 
 # API Endpoints

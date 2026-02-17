@@ -22,4 +22,14 @@ module.exports = {
     '<rootDir>/task-service/',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  collectCoverageFrom: [
+    'lib/**/*.{ts,tsx}',
+    'components/**/*.{ts,tsx}',
+    'app/**/*.{ts,tsx}',
+    '!**/*.d.ts',
+    '!**/node_modules/**',
+    '!**/.next/**',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'text-summary', 'lcov', 'json-summary'],
 };

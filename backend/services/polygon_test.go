@@ -5,8 +5,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/shopspring/decimal"
 )
 
 // testAPIKey reads from POLYGON_TEST_API_KEY env var, falls back to "demo"
@@ -335,5 +338,562 @@ func BenchmarkMapAssetType(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		MapAssetType(types[i%len(types)])
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetDaysFromPeriod — pure function
+// ---------------------------------------------------------------------------
+
+func TestGetDaysFromPeriod(t *testing.T) {
+	tests := []struct {
+		period   string
+		expected int
+	}{
+		{"1D", 1},
+		{"5D", 5},
+		{"1M", 30},
+		{"3M", 90},
+		{"6M", 180},
+		{"1Y", 365},
+		{"5Y", 1825},
+		{"MAX", 7300},
+		// case insensitive
+		{"1d", 1},
+		{"5d", 5},
+		{"1m", 30},
+		{"1y", 365},
+		{"max", 7300},
+		// unknown defaults to 365
+		{"2Y", 365},
+		{"unknown", 365},
+		{"", 365},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.period, func(t *testing.T) {
+			result := GetDaysFromPeriod(tt.period)
+			if tt.period == "YTD" || tt.period == "ytd" {
+				// YTD is dynamic, just check it's positive
+				if result <= 0 {
+					t.Errorf("GetDaysFromPeriod(YTD) returned %d, expected positive", result)
+				}
+			} else if result != tt.expected {
+				t.Errorf("GetDaysFromPeriod(%s) = %d, expected %d", tt.period, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestGetDaysFromPeriod_YTD(t *testing.T) {
+	result := GetDaysFromPeriod("YTD")
+	// YTD should return days from Jan 1 to today + 1
+	now := time.Now()
+	startOfYear := time.Date(now.Year(), 1, 1, 0, 0, 0, 0, now.Location())
+	expectedDays := int(now.Sub(startOfYear).Hours()/24) + 1
+	if result != expectedDays {
+		t.Errorf("GetDaysFromPeriod(YTD) = %d, expected %d", result, expectedDays)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// decimalPtr — pure function
+// ---------------------------------------------------------------------------
+
+func TestDecimalPtr(t *testing.T) {
+	result := decimalPtr(42.5)
+	if result == nil {
+		t.Fatal("expected non-nil pointer")
+	}
+	if !result.Equal(decimal.NewFromFloat(42.5)) {
+		t.Errorf("expected 42.5, got %s", result.String())
+	}
+}
+
+func TestDecimalPtr_Zero(t *testing.T) {
+	result := decimalPtr(0)
+	if result == nil {
+		t.Fatal("expected non-nil pointer")
+	}
+	if !result.Equal(decimal.Zero) {
+		t.Errorf("expected 0, got %s", result.String())
+	}
+}
+
+func TestDecimalPtr_Negative(t *testing.T) {
+	result := decimalPtr(-123.456)
+	if result == nil {
+		t.Fatal("expected non-nil pointer")
+	}
+	if !result.Equal(decimal.NewFromFloat(-123.456)) {
+		t.Errorf("expected -123.456, got %s", result.String())
+	}
+}
+
+// ---------------------------------------------------------------------------
+// MapExchangeCode — additional coverage
+// ---------------------------------------------------------------------------
+
+func TestMapExchangeCode_AllMappings(t *testing.T) {
+	tests := []struct {
+		code     string
+		expected string
+	}{
+		{"XNAS", "NASDAQ"},
+		{"XNYS", "NYSE"},
+		{"ARCX", "NYSE ARCA"},
+		{"XASE", "NYSE MKT"},
+		{"BATS", "CBOE BZX"},
+		{"XOTC", "OTC"},
+		{"XCBO", "CBOE"},
+		{"XPHL", "PHLX"},
+		{"XISX", "ISE"},
+		// Unmapped returns as-is
+		{"XXXX", "XXXX"},
+		{"", ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.code, func(t *testing.T) {
+			result := MapExchangeCode(tt.code)
+			if result != tt.expected {
+				t.Errorf("MapExchangeCode(%s) = %s, expected %s", tt.code, result, tt.expected)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// MapAssetType — additional coverage
+// ---------------------------------------------------------------------------
+
+func TestMapAssetType_AllMappings(t *testing.T) {
+	tests := []struct {
+		typeCode string
+		expected string
+	}{
+		{"CS", "stock"},
+		{"ETF", "etf"},
+		{"ETN", "etn"},
+		{"FUND", "fund"},
+		{"PFD", "preferred"},
+		{"WARRANT", "warrant"},
+		{"RIGHT", "right"},
+		{"BOND", "bond"},
+		{"ADRC", "adr"},
+		{"ADRP", "adr"},
+		{"ADRW", "adr"},
+		{"ADRR", "adr"},
+		{"IX", "index"},
+		{"X:BTCUSD", "crypto"},
+		{"X:ETHUSD", "crypto"},
+		{"I:SPX", "index"},
+		{"I:DJI", "index"},
+		{"UNKNOWN", "other"},
+		{"", "other"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.typeCode, func(t *testing.T) {
+			result := MapAssetType(tt.typeCode)
+			if result != tt.expected {
+				t.Errorf("MapAssetType(%s) = %s, expected %s", tt.typeCode, result, tt.expected)
+			}
+		})
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetHistoricalData — mock server
+// ---------------------------------------------------------------------------
+
+func TestGetHistoricalData_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := AggregatesResponse{
+			Status:       "OK",
+			ResultsCount: 2,
+			Results: []struct {
+				Ticker       string  `json:"T"`
+				Volume       float64 `json:"v"`
+				VolumeWeight float64 `json:"vw"`
+				Open         float64 `json:"o"`
+				Close        float64 `json:"c"`
+				High         float64 `json:"h"`
+				Low          float64 `json:"l"`
+				Timestamp    int64   `json:"t"`
+				Transactions int     `json:"n"`
+			}{
+				{Ticker: "AAPL", Open: 150.0, Close: 155.0, High: 156.0, Low: 149.0, Volume: 1000000, Timestamp: 1700000000000},
+				{Ticker: "AAPL", Open: 155.0, Close: 157.0, High: 158.0, Low: 154.0, Volume: 900000, Timestamp: 1700086400000},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	dataPoints, err := client.GetHistoricalData("AAPL", "day", "2023-11-01", "2023-11-02")
+	if err != nil {
+		t.Fatalf("GetHistoricalData failed: %v", err)
+	}
+
+	if len(dataPoints) != 2 {
+		t.Errorf("Expected 2 data points, got %d", len(dataPoints))
+	}
+
+	if dataPoints[0].Close.InexactFloat64() != 155.0 {
+		t.Errorf("Expected close 155.0, got %v", dataPoints[0].Close)
+	}
+
+	if dataPoints[0].Volume != 1000000 {
+		t.Errorf("Expected volume 1000000, got %d", dataPoints[0].Volume)
+	}
+}
+
+func TestGetHistoricalData_APIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := AggregatesResponse{
+			Status: "ERROR",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	_, err := client.GetHistoricalData("AAPL", "day", "2023-11-01", "2023-11-02")
+	if err == nil {
+		t.Error("Expected error for API error status")
+	}
+}
+
+func TestGetHistoricalData_DelayedStatus(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := AggregatesResponse{
+			Status:       "DELAYED",
+			ResultsCount: 1,
+			Results: []struct {
+				Ticker       string  `json:"T"`
+				Volume       float64 `json:"v"`
+				VolumeWeight float64 `json:"vw"`
+				Open         float64 `json:"o"`
+				Close        float64 `json:"c"`
+				High         float64 `json:"h"`
+				Low          float64 `json:"l"`
+				Timestamp    int64   `json:"t"`
+				Transactions int     `json:"n"`
+			}{
+				{Ticker: "AAPL", Open: 150.0, Close: 155.0, High: 156.0, Low: 149.0, Volume: 1000000, Timestamp: 1700000000000},
+			},
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	dataPoints, err := client.GetHistoricalData("AAPL", "day", "2023-11-01", "2023-11-02")
+	if err != nil {
+		t.Fatalf("DELAYED status should not error: %v", err)
+	}
+
+	if len(dataPoints) != 1 {
+		t.Errorf("Expected 1 data point, got %d", len(dataPoints))
+	}
+}
+
+func TestGetHistoricalData_ConnectionError(t *testing.T) {
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = "http://localhost:99999"
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 1 * time.Second},
+	}
+
+	_, err := client.GetHistoricalData("AAPL", "day", "2023-11-01", "2023-11-02")
+	if err == nil {
+		t.Error("Expected connection error")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetTickerDetails — mock server
+// ---------------------------------------------------------------------------
+
+func TestGetTickerDetails_MockSuccess(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := TickerDetailsResponse{
+			Status: "OK",
+		}
+		response.Results.Ticker = "AAPL"
+		response.Results.Name = "Apple Inc."
+		response.Results.Type = "CS"
+		response.Results.PrimaryExch = "XNAS"
+		response.Results.Active = true
+		response.Results.CIK = "0000320193"
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	details, err := client.GetTickerDetails("AAPL")
+	if err != nil {
+		t.Fatalf("GetTickerDetails failed: %v", err)
+	}
+
+	if details.Results.Ticker != "AAPL" {
+		t.Errorf("Expected AAPL, got %s", details.Results.Ticker)
+	}
+	if details.Results.Name != "Apple Inc." {
+		t.Errorf("Expected Apple Inc., got %s", details.Results.Name)
+	}
+	if details.Results.CIK != "0000320193" {
+		t.Errorf("Expected CIK 0000320193, got %s", details.Results.CIK)
+	}
+}
+
+func TestGetTickerDetails_MockError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := TickerDetailsResponse{
+			Status: "NOT_FOUND",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	_, err := client.GetTickerDetails("INVALID")
+	if err == nil {
+		t.Error("Expected error for NOT_FOUND status")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetNews — mock server
+// ---------------------------------------------------------------------------
+
+func TestPolygonGetNews_Success(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		response := NewsResponse{
+			Status: "OK",
+			Count:  1,
+			Results: []struct {
+				ID        string `json:"id"`
+				Publisher struct {
+					Name        string `json:"name"`
+					HomepageURL string `json:"homepage_url"`
+					LogoURL     string `json:"logo_url"`
+					FaviconURL  string `json:"favicon_url"`
+				} `json:"publisher"`
+				Title        string   `json:"title"`
+				Author       string   `json:"author"`
+				PublishedUTC string   `json:"published_utc"`
+				ArticleURL   string   `json:"article_url"`
+				Tickers      []string `json:"tickers"`
+				ImageURL     string   `json:"image_url"`
+				Description  string   `json:"description"`
+				Keywords     []string `json:"keywords"`
+				Insights     []struct {
+					Ticker             string `json:"ticker"`
+					Sentiment          string `json:"sentiment"`
+					SentimentReasoning string `json:"sentiment_reasoning"`
+				} `json:"insights"`
+			}{
+				{
+					ID:           "1",
+					Title:        "Apple News",
+					Author:       "Test Author",
+					PublishedUTC: "2024-01-15T12:00:00Z",
+					ArticleURL:   "https://example.com/news",
+					Description:  "Test description",
+					Tickers:      []string{"AAPL"},
+				},
+			},
+		}
+		response.Results[0].Publisher.Name = "Test Publisher"
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	articles, err := client.GetNews("AAPL", 10)
+	if err != nil {
+		t.Fatalf("GetNews failed: %v", err)
+	}
+
+	if len(articles) != 1 {
+		t.Errorf("Expected 1 article, got %d", len(articles))
+	}
+
+	if articles[0].Title != "Apple News" {
+		t.Errorf("Expected title 'Apple News', got %s", articles[0].Title)
+	}
+
+	if articles[0].Source != "Test Publisher" {
+		t.Errorf("Expected source 'Test Publisher', got %s", articles[0].Source)
+	}
+}
+
+func TestPolygonGetNews_DefaultLimit(t *testing.T) {
+	var requestURL string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestURL = r.URL.String()
+		response := NewsResponse{
+			Status: "OK",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(response)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	// Passing 0 should use default 30
+	_, err := client.GetNews("AAPL", 0)
+	if err != nil {
+		t.Fatalf("GetNews failed: %v", err)
+	}
+
+	if !containsSubstring(requestURL, "limit=30") {
+		t.Errorf("Expected default limit=30 in URL, got %s", requestURL)
+	}
+}
+
+func TestPolygonGetNews_APIError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	originalURL := PolygonBaseURL
+	PolygonBaseURL = server.URL
+	defer func() { PolygonBaseURL = originalURL }()
+
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	_, err := client.GetNews("AAPL", 10)
+	if err == nil {
+		t.Error("Expected error for API failure")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// GetMultipleQuotes — empty symbols
+// ---------------------------------------------------------------------------
+
+func TestGetMultipleQuotes_EmptySymbols(t *testing.T) {
+	client := &PolygonClient{
+		APIKey: "test-key",
+		Client: &http.Client{Timeout: 5 * time.Second},
+	}
+
+	quotes, err := client.GetMultipleQuotes([]string{})
+	if err != nil {
+		t.Fatalf("Expected no error for empty symbols: %v", err)
+	}
+	if len(quotes) != 0 {
+		t.Errorf("Expected 0 quotes, got %d", len(quotes))
+	}
+}
+
+// helper
+func containsSubstring(s, substr string) bool {
+	return len(s) >= len(substr) && (s == substr || len(s) > 0 && strings.Contains(s, substr))
+}
+
+// ---------------------------------------------------------------------------
+// IsMarketOpen — basic validation
+// ---------------------------------------------------------------------------
+
+func TestIsMarketOpen_ReturnsBoolean(t *testing.T) {
+	client := NewPolygonClient()
+	// Just verify it doesn't panic and returns a bool
+	_ = client.IsMarketOpen()
+}
+
+// ---------------------------------------------------------------------------
+// Struct serialization
+// ---------------------------------------------------------------------------
+
+func TestQuoteData_Fields(t *testing.T) {
+	q := &QuoteData{
+		Symbol:    "AAPL",
+		Price:     150.25,
+		Volume:    1000000,
+		Timestamp: 1700000000,
+	}
+
+	if q.Symbol != "AAPL" {
+		t.Errorf("Expected AAPL, got %s", q.Symbol)
+	}
+	if q.Price != 150.25 {
+		t.Errorf("Expected 150.25, got %f", q.Price)
+	}
+	if q.Volume != 1000000 {
+		t.Errorf("Expected 1000000, got %d", q.Volume)
 	}
 }

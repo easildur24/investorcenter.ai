@@ -315,6 +315,227 @@ func BenchmarkEvaluateVolumeAbove(b *testing.B) {
 	}
 }
 
+// TestEvaluatePriceChangePct tests the not-yet-implemented price change pct
+func TestEvaluatePriceChangePct(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	condition := models.PriceChangeCondition{
+		PercentChange: 5.0,
+		Period:        "1d",
+		Direction:     "up",
+	}
+	conditionJSON, _ := json.Marshal(condition)
+
+	alert := &models.AlertRule{
+		AlertType:  "price_change_pct",
+		Symbol:     "AAPL",
+		Conditions: conditionJSON,
+	}
+
+	quote := &Quote{
+		Symbol: "AAPL",
+		Price:  150.00,
+	}
+
+	// This is explicitly not implemented yet, should return error
+	result, err := ap.evaluatePriceChangePct(alert, quote)
+	if err == nil {
+		t.Error("Expected error for unimplemented price_change_pct, got nil")
+	}
+	if result {
+		t.Error("Expected false result for unimplemented alert type")
+	}
+}
+
+func TestEvaluatePriceChangePct_InvalidJSON(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "price_change_pct",
+		Conditions: []byte(`{invalid}`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Price: 100.0}
+
+	_, err := ap.evaluatePriceChangePct(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON conditions")
+	}
+}
+
+// TestEvaluateVolumeSpike tests the not-yet-implemented volume spike
+func TestEvaluateVolumeSpike(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	condition := models.VolumeSpikeCondition{
+		VolumeMultiplier: 2.0,
+		Baseline:         "avg_30d",
+	}
+	conditionJSON, _ := json.Marshal(condition)
+
+	alert := &models.AlertRule{
+		AlertType:  "volume_spike",
+		Symbol:     "AAPL",
+		Conditions: conditionJSON,
+	}
+
+	quote := &Quote{
+		Symbol: "AAPL",
+		Volume: 50000000,
+	}
+
+	// This is explicitly not implemented yet, should return error
+	result, err := ap.evaluateVolumeSpike(alert, quote)
+	if err == nil {
+		t.Error("Expected error for unimplemented volume_spike, got nil")
+	}
+	if result {
+		t.Error("Expected false result for unimplemented alert type")
+	}
+}
+
+func TestEvaluateVolumeSpike_InvalidJSON(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "volume_spike",
+		Conditions: []byte(`{invalid}`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Volume: 1000000}
+
+	_, err := ap.evaluateVolumeSpike(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON conditions")
+	}
+}
+
+// TestEvaluateAlert_ViaSwitch tests evaluateAlert dispatches correctly
+func TestEvaluateAlert_PriceChangePctViaSwitch(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	condition := models.PriceChangeCondition{PercentChange: 5.0}
+	conditionJSON, _ := json.Marshal(condition)
+
+	alert := &models.AlertRule{
+		AlertType:  "price_change_pct",
+		Conditions: conditionJSON,
+	}
+
+	quote := &Quote{Symbol: "TEST", Price: 100.0}
+
+	_, err := ap.evaluateAlert(alert, quote)
+	if err == nil {
+		t.Error("Expected error from unimplemented price_change_pct via evaluateAlert")
+	}
+}
+
+func TestEvaluateAlert_VolumeSpikeViaSwitch(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	condition := models.VolumeSpikeCondition{VolumeMultiplier: 2.0}
+	conditionJSON, _ := json.Marshal(condition)
+
+	alert := &models.AlertRule{
+		AlertType:  "volume_spike",
+		Conditions: conditionJSON,
+	}
+
+	quote := &Quote{Symbol: "TEST", Volume: 5000000}
+
+	_, err := ap.evaluateAlert(alert, quote)
+	if err == nil {
+		t.Error("Expected error from unimplemented volume_spike via evaluateAlert")
+	}
+}
+
+// TestNewAlertProcessor tests the constructor
+func TestNewAlertProcessor(t *testing.T) {
+	ap := NewAlertProcessor(nil, nil, nil)
+	if ap == nil {
+		t.Error("Expected non-nil AlertProcessor")
+	}
+}
+
+func TestNewAlertProcessor_WithServices(t *testing.T) {
+	alertSvc := NewAlertService()
+	ap := NewAlertProcessor(alertSvc, nil, nil)
+	if ap == nil {
+		t.Error("Expected non-nil AlertProcessor")
+	}
+	if ap.alertService == nil {
+		t.Error("Expected non-nil alertService")
+	}
+}
+
+// TestEvaluatePriceAbove_InvalidConditions tests error path for invalid JSON
+func TestEvaluatePriceAbove_InvalidConditions(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "price_above",
+		Conditions: []byte(`not json at all`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Price: 100.0}
+
+	_, err := ap.evaluatePriceAbove(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON")
+	}
+}
+
+// TestEvaluatePriceBelow_InvalidConditions tests error path for invalid JSON
+func TestEvaluatePriceBelow_InvalidConditions(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "price_below",
+		Conditions: []byte(`not json at all`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Price: 100.0}
+
+	_, err := ap.evaluatePriceBelow(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON")
+	}
+}
+
+// TestEvaluateVolumeAbove_InvalidConditions tests error path for invalid JSON
+func TestEvaluateVolumeAbove_InvalidConditions(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "volume_above",
+		Conditions: []byte(`not json at all`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Volume: 1000000}
+
+	_, err := ap.evaluateVolumeAbove(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON")
+	}
+}
+
+// TestEvaluateVolumeBelow_InvalidConditions tests error path for invalid JSON
+func TestEvaluateVolumeBelow_InvalidConditions(t *testing.T) {
+	ap := &AlertProcessor{}
+
+	alert := &models.AlertRule{
+		AlertType:  "volume_below",
+		Conditions: []byte(`not json at all`),
+	}
+
+	quote := &Quote{Symbol: "TEST", Volume: 1000000}
+
+	_, err := ap.evaluateVolumeBelow(alert, quote)
+	if err == nil {
+		t.Error("Expected error for invalid JSON")
+	}
+}
+
 // Table-driven test for multiple alert types
 func TestEvaluateAlert_MultipleTypes(t *testing.T) {
 	ap := &AlertProcessor{}

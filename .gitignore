@@ -69,7 +69,7 @@ venv.bak/
 .venv/
 .python-version
 
-# Testing
+# Testing & Coverage
 .coverage
 .pytest_cache/
 .tox/
@@ -79,6 +79,12 @@ htmlcov/
 coverage.xml
 *.cover
 .hypothesis/
+coverage/
+backend/coverage/
+task-service/coverage/
+data-ingestion-service/coverage/
+ic-score-service/htmlcov/
+ic-score-service/coverage.xml
 
 # IDE and Editors
 .vscode/

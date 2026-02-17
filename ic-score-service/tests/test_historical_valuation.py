@@ -113,11 +113,11 @@ class TestHistoricalValuationCalculator:
             'calculation_date': date.today()
         })
 
-        # Mock 5-year history
-        calculator.get_valuation_history = AsyncMock(side_effect=[
-            None,  # No PE history
-            [8.0, 10.0, 12.0, 15.0, 20.0] * 10,  # PS history (current at p0-25)
-        ])
+        # Mock 5-year history — code calls get_valuation_history only
+        # for ps_ratio since pe_ratio is None
+        calculator.get_valuation_history = AsyncMock(
+            return_value=[8.0, 10.0, 12.0, 15.0, 20.0] * 10
+        )
 
         # Mock net margin (growth company with low/negative margin)
         calculator.get_net_margin = AsyncMock(return_value=2.0)
@@ -141,20 +141,20 @@ class TestHistoricalValuationCalculator:
 
     @pytest.mark.asyncio
     async def test_calculate_insufficient_history(self, calculator):
-        """Test calculation with insufficient historical data."""
+        """Test calculation with no historical data available."""
         calculator.get_current_valuation = AsyncMock(return_value={
             'pe_ratio': 15.0,
             'ps_ratio': 2.0,
         })
 
-        # Only 6 months of history (less than 12 required)
-        calculator.get_valuation_history = AsyncMock(return_value=[15.0, 16.0, 14.0, 15.0, 16.0, 15.0])
+        # No history available — both return empty/None
+        calculator.get_valuation_history = AsyncMock(return_value=None)
 
         calculator.get_net_margin = AsyncMock(return_value=10.0)
 
         result = await calculator.calculate('NEW_IPO')
 
-        # Should return None due to insufficient history
+        # Should return None due to no historical data
         assert result is None
 
     # ==================

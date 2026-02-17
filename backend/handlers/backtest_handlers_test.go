@@ -433,6 +433,140 @@ func TestBacktestSummaryStructure(t *testing.T) {
 	})
 }
 
+// ---------------------------------------------------------------------------
+// NewBacktestHandler — constructor
+// ---------------------------------------------------------------------------
+
+func TestNewBacktestHandler(t *testing.T) {
+	svc := &services.BacktestService{}
+	handler := NewBacktestHandler(svc)
+	assert.NotNil(t, handler)
+	assert.NotNil(t, handler.service)
+}
+
+func TestNewBacktestHandler_NilService(t *testing.T) {
+	handler := NewBacktestHandler(nil)
+	assert.NotNil(t, handler)
+	assert.Nil(t, handler.service)
+}
+
+// ---------------------------------------------------------------------------
+// BacktestHandler.RunBacktest — invalid JSON
+// ---------------------------------------------------------------------------
+
+func TestBacktestHandler_RunBacktest_InvalidJSON(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ic-scores/backtest", bytes.NewBufferString("not json"))
+	req.Header.Set("Content-Type", "application/json")
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	handler.RunBacktest(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestBacktestHandler_RunBacktest_EmptyBody(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ic-scores/backtest", bytes.NewBufferString("{}"))
+	req.Header.Set("Content-Type", "application/json")
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	handler.RunBacktest(c)
+
+	// Empty config with missing required fields should fail validation
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// ---------------------------------------------------------------------------
+// BacktestHandler.SubmitBacktestJob — invalid JSON
+// ---------------------------------------------------------------------------
+
+func TestBacktestHandler_SubmitBacktestJob_InvalidJSON(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/ic-scores/backtest/jobs", bytes.NewBufferString("bad"))
+	req.Header.Set("Content-Type", "application/json")
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+
+	handler.SubmitBacktestJob(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// ---------------------------------------------------------------------------
+// BacktestHandler.GetBacktestJobStatus — empty job ID
+// ---------------------------------------------------------------------------
+
+func TestBacktestHandler_GetBacktestJobStatus_EmptyJobID(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ic-scores/backtest/jobs/", nil)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Params = gin.Params{{Key: "jobId", Value: ""}}
+
+	handler.GetBacktestJobStatus(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, "Job ID is required", resp["error"])
+}
+
+// ---------------------------------------------------------------------------
+// BacktestHandler.GetBacktestJobResult — empty job ID
+// ---------------------------------------------------------------------------
+
+func TestBacktestHandler_GetBacktestJobResult_EmptyJobID(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ic-scores/backtest/jobs//result", nil)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	c.Params = gin.Params{{Key: "jobId", Value: ""}}
+
+	handler.GetBacktestJobResult(c)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, "Job ID is required", resp["error"])
+}
+
+// ---------------------------------------------------------------------------
+// BacktestHandler.GetUserBacktests — no auth
+// ---------------------------------------------------------------------------
+
+func TestBacktestHandler_GetUserBacktests_NoAuth(t *testing.T) {
+	handler := NewBacktestHandler(&services.BacktestService{})
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/ic-scores/backtest/history", nil)
+	c, _ := gin.CreateTestContext(w)
+	c.Request = req
+	// No user in context
+
+	handler.GetUserBacktests(c)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, "Authentication required", resp["error"])
+}
+
 func TestDecilePerformanceStructure(t *testing.T) {
 	perf := models.DecilePerformance{
 		Decile:           1,
