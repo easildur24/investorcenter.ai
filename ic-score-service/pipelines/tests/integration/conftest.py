@@ -68,50 +68,85 @@ _HYPERTABLES = [
 ]
 
 
+def _split_sql_statements(sql: str) -> list:
+    """Split a SQL file into individual statements.
+
+    Handles -- comments, multi-line statements, and GRANT filtering.
+    Returns a list of non-empty SQL statements.
+    """
+    statements = []
+    current = []
+
+    for line in sql.split("\n"):
+        stripped = line.strip()
+        # Skip pure comment lines and GRANT statements
+        if stripped.startswith("--") or not stripped:
+            continue
+        upper = stripped.upper()
+        if upper.startswith("GRANT "):
+            continue
+
+        current.append(line)
+
+        # Statement ends with semicolon
+        if stripped.endswith(";"):
+            stmt = "\n".join(current).strip()
+            if stmt and stmt != ";":
+                statements.append(stmt)
+            current = []
+
+    # Leftover without trailing semicolon
+    if current:
+        stmt = "\n".join(current).strip()
+        if stmt:
+            statements.append(stmt)
+
+    return statements
+
+
 async def _apply_migrations(engine):
-    """Apply SQL migration files and create TimescaleDB hypertables."""
-    async with engine.begin() as conn:
+    """Apply SQL migration files and create TimescaleDB hypertables.
+
+    Uses raw asyncpg connection to avoid the asyncpg limitation
+    that prepared statements cannot contain multiple commands.
+    """
+    async with engine.connect() as conn:
+        # Get the raw asyncpg connection for multi-statement
+        raw = await conn.get_raw_connection()
+        driver_conn = raw.dbapi_connection
+
         # Enable TimescaleDB extension
-        await conn.execute(
-            text(
-                "CREATE EXTENSION IF NOT EXISTS timescaledb"
-                " CASCADE"
-            )
+        await driver_conn.execute(
+            "CREATE EXTENSION IF NOT EXISTS timescaledb"
+            " CASCADE"
         )
 
-        # Apply each migration file
+        # Apply each migration file statement by statement
         for migration_file in _MIGRATION_FILES:
             sql = migration_file.read_text()
-            # Skip GRANT statements (test user owns all tables)
-            lines = []
-            for line in sql.split("\n"):
-                stripped = line.strip().upper()
-                if stripped.startswith("GRANT "):
-                    continue
-                lines.append(line)
-            cleaned_sql = "\n".join(lines)
-
-            try:
-                await conn.execute(text(cleaned_sql))
-            except Exception as e:
-                # Some migrations may fail if tables exist
-                # from create_all_tables() — that's OK
-                if "already exists" not in str(e):
+            stmts = _split_sql_statements(sql)
+            for stmt in stmts:
+                try:
+                    await driver_conn.execute(stmt)
+                except Exception as e:
+                    # Tables/indexes may already exist from
+                    # create_all_tables() — that's OK
+                    msg = str(e)
+                    if "already exists" in msg:
+                        continue
                     raise
 
-        # Create hypertables (idempotent — skip if already done)
+        # Create hypertables (idempotent)
         for table_name, time_col in _HYPERTABLES:
             try:
-                await conn.execute(
-                    text(
-                        f"SELECT create_hypertable('{table_name}',"
-                        f" '{time_col}',"
-                        " if_not_exists => TRUE,"
-                        " migrate_data => TRUE)"
-                    )
+                await driver_conn.execute(
+                    f"SELECT create_hypertable("
+                    f"'{table_name}', '{time_col}',"
+                    f" if_not_exists => TRUE,"
+                    f" migrate_data => TRUE)"
                 )
             except Exception:
-                pass  # Table may not exist or already be a hypertable
+                pass  # Table may not exist or already hypertable
 
 
 @pytest_asyncio.fixture(scope="session")
