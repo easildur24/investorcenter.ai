@@ -15,12 +15,9 @@ beforeEach(() => {
 describe('apiClient', () => {
   // Use dynamic import so we can reset modules between tests
   let apiClient: typeof import('../api')['apiClient'];
-  let icScoreApi: typeof import('../api')['icScoreApi'];
-
   beforeAll(async () => {
     const mod = await import('../api');
     apiClient = mod.apiClient;
-    icScoreApi = mod.icScoreApi;
   });
 
   describe('request method', () => {
@@ -138,43 +135,5 @@ describe('apiClient', () => {
       const headers = options.headers as Record<string, string>;
       expect(headers.Authorization).toBe('Bearer test-jwt-token');
     });
-  });
-});
-
-describe('icScoreApi', () => {
-  let icScoreApi: typeof import('../api')['icScoreApi'];
-
-  beforeAll(async () => {
-    const mod = await import('../api');
-    icScoreApi = mod.icScoreApi;
-  });
-
-  it('exports expected methods', () => {
-    expect(typeof icScoreApi.getScore).toBe('function');
-    expect(typeof icScoreApi.getHistory).toBe('function');
-    expect(typeof icScoreApi.getTopStocks).toBe('function');
-    expect(typeof icScoreApi.checkHealth).toBe('function');
-  });
-
-  it('checkHealth calls correct endpoint', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ status: 'ok', timestamp: '2026-01-01' }),
-    });
-
-    await icScoreApi.checkHealth();
-
-    expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [url] = mockFetch.mock.calls[0];
-    expect(url).toContain('/health');
-  });
-
-  it('checkHealth throws on unavailable service', async () => {
-    mockFetch.mockResolvedValueOnce({
-      ok: false,
-      status: 503,
-    });
-
-    await expect(icScoreApi.checkHealth()).rejects.toThrow('IC Score API is unavailable');
   });
 });
