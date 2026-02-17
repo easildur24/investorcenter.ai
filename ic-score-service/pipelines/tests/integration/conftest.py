@@ -171,6 +171,18 @@ async def _apply_migrations(engine):
             ),
             ("treasury_rates", "rate_5y", "NUMERIC(5,2)"),
             ("risk_metrics", "volatility", "NUMERIC(10,6)"),
+            ("risk_metrics", "var_95", "NUMERIC(10,6)"),
+            ("risk_metrics", "cvar_95", "NUMERIC(10,6)"),
+            (
+                "risk_metrics",
+                "tracking_error",
+                "NUMERIC(10,6)",
+            ),
+            (
+                "risk_metrics",
+                "information_ratio",
+                "NUMERIC(10,6)",
+            ),
         ]
         for tbl, col, dtype in _extra_columns:
             try:
