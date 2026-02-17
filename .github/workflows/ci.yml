@@ -297,7 +297,6 @@ jobs:
           --cov-report=term-missing \
           --cov-report=xml:coverage.xml \
           --rootdir=. \
-          --ignore=tests/test_ttm_eps_calculation.py \
           -v -o "addopts="
 
     - name: Check coverage threshold

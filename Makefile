@@ -210,7 +210,6 @@ coverage-ic-score:
 		--cov-report=html:htmlcov \
 		--cov-report=xml:coverage.xml \
 		--rootdir=. \
-		--ignore=tests/test_ttm_eps_calculation.py \
 		-v -o "addopts="
 
 coverage-task-service:
