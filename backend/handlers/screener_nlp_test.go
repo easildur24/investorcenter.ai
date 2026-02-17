@@ -46,7 +46,7 @@ func TestPostScreenerNLP_NoGeminiClient(t *testing.T) {
 
 func TestPostScreenerNLP_EmptyBody(t *testing.T) {
 	original := geminiClient
-	geminiClient = &services.GeminiClient{APIKey: "test-key"}
+	geminiClient = services.NewGeminiClientWithKey("test-key")
 	defer func() { geminiClient = original }()
 
 	gin.SetMode(gin.TestMode)
@@ -65,7 +65,7 @@ func TestPostScreenerNLP_EmptyBody(t *testing.T) {
 
 func TestPostScreenerNLP_EmptyQuery(t *testing.T) {
 	original := geminiClient
-	geminiClient = &services.GeminiClient{APIKey: "test-key"}
+	geminiClient = services.NewGeminiClientWithKey("test-key")
 	defer func() { geminiClient = original }()
 
 	gin.SetMode(gin.TestMode)
@@ -86,7 +86,7 @@ func TestPostScreenerNLP_EmptyQuery(t *testing.T) {
 
 func TestPostScreenerNLP_QueryTooLong(t *testing.T) {
 	original := geminiClient
-	geminiClient = &services.GeminiClient{APIKey: "test-key"}
+	geminiClient = services.NewGeminiClientWithKey("test-key")
 	defer func() { geminiClient = original }()
 
 	gin.SetMode(gin.TestMode)

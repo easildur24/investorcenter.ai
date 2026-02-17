@@ -7,7 +7,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"regexp"
 	"time"
 )
 
@@ -19,8 +18,8 @@ const (
 
 // GeminiClient handles Google Gemini API requests for NLP screener queries.
 type GeminiClient struct {
-	APIKey string
-	Client *http.Client
+	apiKey string
+	client *http.Client
 }
 
 // NewGeminiClient creates a new Gemini client. Returns nil if API key is not set.
@@ -30,8 +29,17 @@ func NewGeminiClient() *GeminiClient {
 		return nil
 	}
 	return &GeminiClient{
-		APIKey: apiKey,
-		Client: &http.Client{Timeout: 30 * time.Second},
+		apiKey: apiKey,
+		client: &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
+// NewGeminiClientWithKey creates a Gemini client with the provided API key.
+// Intended for testing.
+func NewGeminiClientWithKey(apiKey string) *GeminiClient {
+	return &GeminiClient{
+		apiKey: apiKey,
+		client: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -95,8 +103,9 @@ type geminiPart struct {
 }
 
 type geminiGenerationConfig struct {
-	Temperature     float64 `json:"temperature"`
-	MaxOutputTokens int     `json:"maxOutputTokens"`
+	Temperature      float64 `json:"temperature"`
+	MaxOutputTokens  int     `json:"maxOutputTokens"`
+	ResponseMimeType string  `json:"responseMimeType,omitempty"`
 }
 
 // geminiResponse is the REST API response from Gemini generateContent.
@@ -127,8 +136,9 @@ func (c *GeminiClient) ParseScreenerQuery(query string) (*NLPResult, error) {
 			},
 		},
 		GenerationConfig: &geminiGenerationConfig{
-			Temperature:     0.0,
-			MaxOutputTokens: maxOutputTokens,
+			Temperature:      0.0,
+			MaxOutputTokens:  maxOutputTokens,
+			ResponseMimeType: "application/json",
 		},
 	}
 
@@ -137,8 +147,8 @@ func (c *GeminiClient) ParseScreenerQuery(query string) (*NLPResult, error) {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
-	url := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, geminiModel, c.APIKey)
-	resp, err := c.Client.Post(url, "application/json", bytes.NewReader(bodyBytes))
+	url := fmt.Sprintf("%s/%s:generateContent?key=%s", geminiBaseURL, geminiModel, c.apiKey)
+	resp, err := c.client.Post(url, "application/json", bytes.NewReader(bodyBytes))
 	if err != nil {
 		return nil, fmt.Errorf("Gemini API request failed: %w", err)
 	}
@@ -173,28 +183,34 @@ func (c *GeminiClient) ParseScreenerQuery(query string) (*NLPResult, error) {
 // ExtractNLPResult parses a JSON object from text, handling cases where the LLM
 // wraps JSON in markdown code fences or adds explanation text.
 func ExtractNLPResult(text string) (*NLPResult, error) {
-	// Try direct parse first
+	// Try direct parse first (works reliably with responseMimeType)
 	var result NLPResult
 	if err := json.Unmarshal([]byte(text), &result); err == nil && result.Params != nil {
+		result.Explanation = truncate(result.Explanation, 200)
 		return &result, nil
 	}
 
-	// Regex fallback: find JSON object in response text
-	re := regexp.MustCompile(`\{[\s\S]*\}`)
-	match := re.FindString(text)
-	if match == "" {
-		return nil, fmt.Errorf("no JSON object found in Gemini response: %s", truncate(text, 200))
+	// Fallback: try parsing from each '{' position to find valid JSON.
+	// For each '{', attempt to parse the substring from that '{' to the
+	// last '}' in the text. This handles extra text, code fences, and
+	// avoids the greedy-regex pitfall of matching non-JSON braces.
+	for i := 0; i < len(text); i++ {
+		if text[i] != '{' {
+			continue
+		}
+		for j := len(text) - 1; j > i; j-- {
+			if text[j] == '}' {
+				var candidate NLPResult
+				if err := json.Unmarshal([]byte(text[i:j+1]), &candidate); err == nil && candidate.Params != nil {
+					candidate.Explanation = truncate(candidate.Explanation, 200)
+					return &candidate, nil
+				}
+				break
+			}
+		}
 	}
 
-	if err := json.Unmarshal([]byte(match), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse extracted JSON: %w", err)
-	}
-
-	if result.Params == nil {
-		return nil, fmt.Errorf("parsed JSON has no 'params' field")
-	}
-
-	return &result, nil
+	return nil, fmt.Errorf("no valid JSON object found in Gemini response: %s", truncate(text, 200))
 }
 
 func truncate(s string, maxLen int) string {

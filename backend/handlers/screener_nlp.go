@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"investorcenter-api/services"
@@ -59,6 +60,7 @@ func PostScreenerNLP(c *gin.Context) {
 	// Call Gemini
 	result, err := geminiClient.ParseScreenerQuery(req.Query)
 	if err != nil {
+		log.Printf("Gemini NLP query failed: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to process query",
 			"message": "AI could not interpret the query. Try rephrasing.",

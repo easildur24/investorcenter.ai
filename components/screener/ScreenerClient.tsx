@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import { useQueryStates, parseAsFloat, parseAsInteger, parseAsString } from 'nuqs';
 import { useScreener } from '@/lib/hooks/useScreener';
 import { loadVisibleColumns, saveVisibleColumns } from '@/lib/screener/column-config';
@@ -229,9 +229,18 @@ export function ScreenerClient() {
   const [nlpLoading, setNlpLoading] = useState(false);
   const [nlpExplanation, setNlpExplanation] = useState<string | null>(null);
   const [nlpError, setNlpError] = useState<string | null>(null);
+  const nlpQueryRef = useRef(nlpQuery);
+  nlpQueryRef.current = nlpQuery;
+  const nlpErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (nlpErrorTimerRef.current) clearTimeout(nlpErrorTimerRef.current);
+    };
+  }, []);
 
   const handleNlpSubmit = useCallback(async () => {
-    const trimmed = nlpQuery.trim();
+    const trimmed = nlpQueryRef.current.trim();
     if (!trimmed || nlpLoading) return;
 
     setNlpLoading(true);
@@ -255,11 +264,12 @@ export function ScreenerClient() {
       setNlpExplanation(result.explanation);
     } catch {
       setNlpError('Could not interpret query. Try rephrasing.');
-      setTimeout(() => setNlpError(null), 5000);
+      if (nlpErrorTimerRef.current) clearTimeout(nlpErrorTimerRef.current);
+      nlpErrorTimerRef.current = setTimeout(() => setNlpError(null), 5000);
     } finally {
       setNlpLoading(false);
     }
-  }, [nlpQuery, nlpLoading, setUrlState]);
+  }, [nlpLoading, setUrlState]);
 
   const clearNlpExplanation = useCallback(() => {
     setNlpExplanation(null);
@@ -308,7 +318,7 @@ export function ScreenerClient() {
                 value={nlpQuery}
                 onChange={(e) => setNlpQuery(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') handleNlpSubmit(); }}
-                placeholder="Ask AI: e.g. &quot;show me tech companies with more than 2T market cap&quot;"
+                placeholder='Ask AI: e.g. "show me tech companies with more than 2T market cap"'
                 className="w-full pl-10 pr-4 py-2.5 bg-ic-surface border border-ic-border rounded-lg text-sm text-ic-text-primary placeholder-ic-text-muted focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent"
                 disabled={nlpLoading}
               />
