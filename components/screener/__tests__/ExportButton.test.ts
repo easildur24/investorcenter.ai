@@ -5,6 +5,7 @@
  * we test the URL-building and error-handling logic directly rather than
  * rendering the component.
  */
+export {};
 
 const mockFetch = global.fetch as jest.Mock;
 

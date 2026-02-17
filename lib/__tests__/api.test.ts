@@ -4,6 +4,7 @@
  * We test the core request method, auth header injection,
  * Content-Type behavior, and error handling.
  */
+export {};
 
 const mockFetch = global.fetch as jest.Mock;
 

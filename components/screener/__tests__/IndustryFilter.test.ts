@@ -5,6 +5,7 @@
  * we test the data-fetching URL construction, search filtering, and toggle
  * logic directly rather than rendering the component.
  */
+export {};
 
 const mockFetch = global.fetch as jest.Mock;
 
