@@ -126,6 +126,8 @@ async def _apply_migrations(engine):
 
     Splits each migration file into individual statements because
     asyncpg cannot execute multiple commands in one prepared statement.
+    Uses SAVEPOINTs so a failing statement doesn't abort the whole
+    transaction (e.g. ALTER TYPE on a view-referenced column).
     """
     async with engine.begin() as conn:
         # Enable TimescaleDB extension
@@ -136,24 +138,35 @@ async def _apply_migrations(engine):
             )
         )
 
-        # Apply each migration file statement by statement
+        # Apply each migration file statement by statement.
         for migration_file in _MIGRATION_FILES:
             sql = migration_file.read_text()
             stmts = _split_sql_statements(sql)
             for stmt in stmts:
                 try:
+                    await conn.execute(
+                        text("SAVEPOINT migration_stmt")
+                    )
                     await conn.execute(text(stmt))
-                except Exception as e:
-                    # Tables/indexes may already exist from
-                    # create_all_tables() — that's OK
-                    msg = str(e)
-                    if "already exists" in msg:
-                        continue
-                    raise
+                    await conn.execute(
+                        text(
+                            "RELEASE SAVEPOINT migration_stmt"
+                        )
+                    )
+                except Exception:
+                    await conn.execute(
+                        text(
+                            "ROLLBACK TO SAVEPOINT"
+                            " migration_stmt"
+                        )
+                    )
 
         # Create hypertables (idempotent)
         for table_name, time_col in _HYPERTABLES:
             try:
+                await conn.execute(
+                    text("SAVEPOINT hypertable_stmt")
+                )
                 await conn.execute(
                     text(
                         f"SELECT create_hypertable("
@@ -162,8 +175,16 @@ async def _apply_migrations(engine):
                         f" migrate_data => TRUE)"
                     )
                 )
+                await conn.execute(
+                    text("RELEASE SAVEPOINT hypertable_stmt")
+                )
             except Exception:
-                pass  # Table may not exist or already hypertable
+                await conn.execute(
+                    text(
+                        "ROLLBACK TO SAVEPOINT"
+                        " hypertable_stmt"
+                    )
+                )
 
 
 @pytest_asyncio.fixture(scope="session")
