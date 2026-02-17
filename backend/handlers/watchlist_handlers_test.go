@@ -433,7 +433,7 @@ func TestFreeTierLimit(t *testing.T) {
 	}
 
 	// First remove AAPL if it was added, then add a unique ticker for the 11th attempt
-	database.DB.Exec("DELETE FROM watch_list_items WHERE watch_list_id = $1 AND symbol = $2", watchList.ID, "AAPL")
+	_, _ = database.DB.Exec("DELETE FROM watch_list_items WHERE watch_list_id = $1 AND symbol = $2", watchList.ID, "AAPL")
 
 	// Add AAPL back to ensure we have 10
 	item := &models.WatchListItem{

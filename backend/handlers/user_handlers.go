@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -121,8 +122,10 @@ func DeleteAccount(c *gin.Context) {
 		return
 	}
 
-	// Delete all sessions
-	database.DeleteUserSessions(userID)
+	// Delete all sessions (best-effort)
+	if err := database.DeleteUserSessions(userID); err != nil {
+		log.Printf("Failed to delete sessions for user %s after account deletion: %v", userID, err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
 }

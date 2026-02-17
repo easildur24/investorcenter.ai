@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"log"
 	"net/http"
 	"time"
 
@@ -67,7 +68,11 @@ func Signup(c *gin.Context) {
 	}
 
 	// Send verification email (non-blocking)
-	go emailService.SendVerificationEmail(user.Email, user.FullName, verificationToken)
+	go func() {
+		if err := emailService.SendVerificationEmail(user.Email, user.FullName, verificationToken); err != nil {
+			log.Printf("Failed to send verification email to %s: %v", user.Email, err)
+		}
+	}()
 
 	// Generate tokens
 	accessToken, err := auth.GenerateAccessToken(user)
@@ -125,8 +130,10 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Update last login
-	database.UpdateLastLogin(user.ID)
+	// Update last login (best-effort, non-critical)
+	if err := database.UpdateLastLogin(user.ID); err != nil {
+		log.Printf("Failed to update last login for user %s: %v", user.ID, err)
+	}
 
 	// Generate tokens
 	accessToken, err := auth.GenerateAccessToken(user)
@@ -195,8 +202,10 @@ func RefreshToken(c *gin.Context) {
 		return
 	}
 
-	// Update session last used
-	database.UpdateSessionLastUsed(session.ID)
+	// Update session last used (best-effort, non-critical)
+	if err := database.UpdateSessionLastUsed(session.ID); err != nil {
+		log.Printf("Failed to update session last used for session %s: %v", session.ID, err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"access_token": accessToken,
@@ -216,7 +225,9 @@ func Logout(c *gin.Context) {
 
 	session, err := database.GetSessionByRefreshTokenHash(tokenHash)
 	if err == nil {
-		database.DeleteSession(session.ID)
+		if delErr := database.DeleteSession(session.ID); delErr != nil {
+			log.Printf("Failed to delete session %s during logout: %v", session.ID, delErr)
+		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully"})
@@ -268,7 +279,11 @@ func ForgotPassword(c *gin.Context) {
 	}
 
 	// Send password reset email (non-blocking)
-	go emailService.SendPasswordResetEmail(user.Email, user.FullName, resetToken)
+	go func() {
+		if err := emailService.SendPasswordResetEmail(user.Email, user.FullName, resetToken); err != nil {
+			log.Printf("Failed to send password reset email to %s: %v", user.Email, err)
+		}
+	}()
 }
 
 // ResetPassword resets password with token
@@ -300,8 +315,10 @@ func ResetPassword(c *gin.Context) {
 		return
 	}
 
-	// Invalidate all sessions for security
-	database.DeleteUserSessions(user.ID)
+	// Invalidate all sessions for security (best-effort)
+	if err := database.DeleteUserSessions(user.ID); err != nil {
+		log.Printf("Failed to delete sessions for user %s after password reset: %v", user.ID, err)
+	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Password reset successfully"})
 }

@@ -51,7 +51,7 @@ func setupTestDB(t *testing.T) (*sql.DB, func()) {
 	// Return cleanup function
 	cleanup := func() {
 		// Clean up test data
-		db.Exec("DELETE FROM tickers WHERE symbol LIKE 'TEST%'")
+		_, _ = db.Exec("DELETE FROM tickers WHERE symbol LIKE 'TEST%'")
 		db.Close()
 	}
 

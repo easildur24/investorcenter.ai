@@ -104,10 +104,10 @@ func GetHeatmapConfigsByWatchListID(watchListID string, userID string) ([]models
 
 		// Parse JSON fields
 		if len(filtersJSON) > 0 {
-			json.Unmarshal(filtersJSON, &config.FiltersJSON)
+			_ = json.Unmarshal(filtersJSON, &config.FiltersJSON)
 		}
 		if len(gradientJSON) > 0 {
-			json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
+			_ = json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
 		}
 
 		configs = append(configs, config)
@@ -157,10 +157,10 @@ func GetHeatmapConfigByID(configID string, userID string) (*models.HeatmapConfig
 
 	// Parse JSON fields
 	if len(filtersJSON) > 0 {
-		json.Unmarshal(filtersJSON, &config.FiltersJSON)
+		_ = json.Unmarshal(filtersJSON, &config.FiltersJSON)
 	}
 	if len(gradientJSON) > 0 {
-		json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
+		_ = json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
 	}
 
 	return &config, nil
@@ -227,10 +227,10 @@ func GetDefaultHeatmapConfig(watchListID string, userID string) (*models.Heatmap
 
 	// Parse JSON fields
 	if len(filtersJSON) > 0 {
-		json.Unmarshal(filtersJSON, &config.FiltersJSON)
+		_ = json.Unmarshal(filtersJSON, &config.FiltersJSON)
 	}
 	if len(gradientJSON) > 0 {
-		json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
+		_ = json.Unmarshal(gradientJSON, &config.ColorGradientJSON)
 	}
 
 	return &config, nil

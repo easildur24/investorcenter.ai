@@ -78,7 +78,7 @@ func TestAdminMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.Code)
 
 		var resp map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Equal(t, "Forbidden - admin access required", resp["error"])
 	})
 
@@ -98,7 +98,7 @@ func TestAdminMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 		var resp map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Equal(t, "Unauthorized - authentication required", resp["error"])
 	})
 
@@ -122,7 +122,7 @@ func TestAdminMiddleware(t *testing.T) {
 		assert.Equal(t, http.StatusForbidden, w.Code)
 
 		var resp map[string]interface{}
-		json.Unmarshal(w.Body.Bytes(), &resp)
+		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		assert.Contains(t, resp["debug"], "is_admin not found in context")
 	})
 

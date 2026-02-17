@@ -220,7 +220,7 @@ func GetValuationHistorySummary(ticker string) (*models.ValuationHistorySummary,
 		ORDER BY period_end_date DESC
 		LIMIT 1
 	`
-	DB.Get(&netMargin, marginQuery, ticker)
+	_ = DB.Get(&netMargin, marginQuery, ticker)
 
 	if netMargin != nil && *netMargin < 5 {
 		summary.IsGrowthStock = true
@@ -444,7 +444,7 @@ func BatchUpsertEPSEstimates(ctx context.Context, estimates []models.EPSEstimate
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, e := range estimates {
 		if err := UpsertEPSEstimate(ctx, &e); err != nil {
@@ -461,7 +461,7 @@ func BatchUpsertValuationHistory(ctx context.Context, snapshots []models.Valuati
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, s := range snapshots {
 		if err := UpsertValuationHistory(ctx, &s); err != nil {

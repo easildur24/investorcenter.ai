@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"time"
@@ -88,20 +89,26 @@ func (s *BacktestService) SubmitBacktestJob(config models.BacktestConfig, userID
 func (s *BacktestService) runBacktestJob(jobID string, config models.BacktestConfig) {
 	// Update status to running
 	if err := database.UpdateBacktestJobStatus(jobID, models.BacktestStatusRunning); err != nil {
-		database.FailBacktestJob(jobID, fmt.Sprintf("failed to update status: %v", err))
+		if failErr := database.FailBacktestJob(jobID, fmt.Sprintf("failed to update status: %v", err)); failErr != nil {
+			log.Printf("Failed to mark backtest job %s as failed: %v", jobID, failErr)
+		}
 		return
 	}
 
 	// Run backtest
 	summary, err := s.RunBacktest(config)
 	if err != nil {
-		database.FailBacktestJob(jobID, err.Error())
+		if failErr := database.FailBacktestJob(jobID, err.Error()); failErr != nil {
+			log.Printf("Failed to mark backtest job %s as failed: %v", jobID, failErr)
+		}
 		return
 	}
 
 	// Mark as completed
 	if err := database.CompleteBacktestJob(jobID, summary); err != nil {
-		database.FailBacktestJob(jobID, fmt.Sprintf("failed to save results: %v", err))
+		if failErr := database.FailBacktestJob(jobID, fmt.Sprintf("failed to save results: %v", err)); failErr != nil {
+			log.Printf("Failed to mark backtest job %s as failed: %v", jobID, failErr)
+		}
 		return
 	}
 }
