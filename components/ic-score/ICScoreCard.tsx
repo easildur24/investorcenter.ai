@@ -41,7 +41,7 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
         // Fetch current score and history in parallel
         const [currentScore, history] = await Promise.all([
           getICScore(ticker),
-          getICScoreHistory(ticker, 30).catch(() => []) // Fail silently if history not available
+          getICScoreHistory(ticker, 30).catch(() => []), // Fail silently if history not available
         ]);
 
         setIcScore(currentScore);
@@ -55,7 +55,7 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
           setScoreChange({
             change: Math.abs(change),
             direction: change > 0 ? 'up' : change < 0 ? 'down' : 'unchanged',
-            period: '30 days'
+            period: '30 days',
           });
         }
       } catch (err) {
@@ -104,21 +104,28 @@ export default function ICScoreCard({ ticker, variant = 'full' }: ICScoreCardPro
               {Math.round(icScore.overall_score)}
               <span className="text-xl text-ic-text-dim">/100</span>
             </div>
-            <div className="text-sm font-medium text-ic-text-secondary mb-2">
-              {icScore.rating}
-            </div>
+            <div className="text-sm font-medium text-ic-text-secondary mb-2">{icScore.rating}</div>
 
             {/* Score Change Indicator */}
             {scoreChange && scoreChange.change !== 0 && (
-              <div className={`inline-flex items-center gap-1 text-sm font-medium ${
-                scoreChange.direction === 'up' ? 'text-ic-positive' :
-                scoreChange.direction === 'down' ? 'text-ic-negative' : 'text-ic-text-muted'
-              }`}>
+              <div
+                className={`inline-flex items-center gap-1 text-sm font-medium ${
+                  scoreChange.direction === 'up'
+                    ? 'text-ic-positive'
+                    : scoreChange.direction === 'down'
+                      ? 'text-ic-negative'
+                      : 'text-ic-text-muted'
+                }`}
+              >
                 {scoreChange.direction === 'up' && <ArrowUpIcon className="h-4 w-4" />}
                 {scoreChange.direction === 'down' && <ArrowDownIcon className="h-4 w-4" />}
                 {scoreChange.direction === 'unchanged' && <MinusIcon className="h-4 w-4" />}
                 <span>
-                  {scoreChange.direction === 'up' ? '+' : scoreChange.direction === 'down' ? '-' : ''}
+                  {scoreChange.direction === 'up'
+                    ? '+'
+                    : scoreChange.direction === 'down'
+                      ? '-'
+                      : ''}
                   {scoreChange.change} pts ({scoreChange.period})
                 </span>
               </div>
@@ -208,9 +215,7 @@ function ErrorState({ message, ticker }: { message: string; ticker: string }) {
     <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-8 text-center">
       <div className="text-ic-text-dim text-5xl mb-4">📊</div>
       <h3 className="text-lg font-semibold text-ic-text-primary mb-2">IC Score Not Available</h3>
-      <p className="text-ic-text-muted mb-4">
-        IC Score for {ticker} hasn't been calculated yet.
-      </p>
+      <p className="text-ic-text-muted mb-4">IC Score for {ticker} hasn't been calculated yet.</p>
       <p className="text-sm text-ic-text-muted">
         We're working on expanding coverage. Check back soon!
       </p>

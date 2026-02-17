@@ -24,7 +24,9 @@ export async function getMyTask(id: string): Promise<WorkerTask> {
 
 // Update task status
 export async function updateMyTaskStatus(id: string, status: TaskStatus): Promise<WorkerTask> {
-  const res = await apiClient.put<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}/status`, { status });
+  const res = await apiClient.put<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}/status`, {
+    status,
+  });
   return res.data;
 }
 
@@ -36,7 +38,9 @@ export async function getMyTaskUpdates(taskId: string): Promise<TaskUpdate[]> {
 
 // Post an update to a task
 export async function postTaskUpdate(taskId: string, content: string): Promise<TaskUpdate> {
-  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, { content });
+  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, {
+    content,
+  });
   return res.data;
 }
 

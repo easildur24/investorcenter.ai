@@ -39,11 +39,14 @@ export default function LoginPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-ic-bg-primary">
       <div className="w-full max-w-md p-8 bg-ic-surface rounded-lg border border-ic-border">
-        <h1 className="text-2xl font-bold mb-6 text-center text-ic-text-primary">Login to InvestorCenter.ai</h1>
+        <h1 className="text-2xl font-bold mb-6 text-center text-ic-text-primary">
+          Login to InvestorCenter.ai
+        </h1>
 
         {sessionExpired && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-400 text-yellow-800 rounded">
-            <strong>Session Expired:</strong> Your session has expired. Please log in again to continue.
+            <strong>Session Expired:</strong> Your session has expired. Please log in again to
+            continue.
           </div>
         )}
 
@@ -55,7 +58,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="email">
+            <label
+              className="block text-sm font-medium text-ic-text-secondary mb-2"
+              htmlFor="email"
+            >
               Email
             </label>
             <input
@@ -69,7 +75,10 @@ export default function LoginPage() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="password">
+            <label
+              className="block text-sm font-medium text-ic-text-secondary mb-2"
+              htmlFor="password"
+            >
               Password
             </label>
             <input

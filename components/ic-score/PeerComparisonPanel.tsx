@@ -56,11 +56,7 @@ export default function PeerComparisonPanel({
       {/* Peer list */}
       <div className="space-y-3">
         {peerList.map((peer) => (
-          <PeerRow
-            key={peer.ticker}
-            peer={peer}
-            currentScore={currentScore}
-          />
+          <PeerRow key={peer.ticker} peer={peer} currentScore={currentScore} />
         ))}
       </div>
 
@@ -74,8 +70,17 @@ export default function PeerComparisonPanel({
               {vsPeersDelta !== null && (
                 <span className="text-gray-400">
                   ({ticker} is{' '}
-                  <span className={vsPeersDelta > 0 ? 'text-green-600' : vsPeersDelta < 0 ? 'text-red-600' : 'text-gray-500'}>
-                    {vsPeersDelta > 0 ? '+' : ''}{Math.round(vsPeersDelta)} pts
+                  <span
+                    className={
+                      vsPeersDelta > 0
+                        ? 'text-green-600'
+                        : vsPeersDelta < 0
+                          ? 'text-red-600'
+                          : 'text-gray-500'
+                    }
+                  >
+                    {vsPeersDelta > 0 ? '+' : ''}
+                    {Math.round(vsPeersDelta)} pts
                   </span>{' '}
                   vs peers)
                 </span>
@@ -107,9 +112,7 @@ function PeerRow({ peer, currentScore }: PeerRowProps) {
           {peer.ticker}
         </Link>
         {peer.company_name && (
-          <span className="text-sm text-gray-500 truncate max-w-[150px]">
-            {peer.company_name}
-          </span>
+          <span className="text-sm text-gray-500 truncate max-w-[150px]">{peer.company_name}</span>
         )}
       </div>
 
@@ -157,8 +160,17 @@ export function PeerComparisonCompact({
         <div className="flex items-center gap-1">
           <span className="text-gray-500">vs Peers:</span>
           {vsPeersDelta !== null && (
-            <span className={vsPeersDelta > 0 ? 'text-green-600 font-medium' : vsPeersDelta < 0 ? 'text-red-600 font-medium' : 'text-gray-500'}>
-              {vsPeersDelta > 0 ? '+' : ''}{Math.round(vsPeersDelta)} pts
+            <span
+              className={
+                vsPeersDelta > 0
+                  ? 'text-green-600 font-medium'
+                  : vsPeersDelta < 0
+                    ? 'text-red-600 font-medium'
+                    : 'text-gray-500'
+              }
+            >
+              {vsPeersDelta > 0 ? '+' : ''}
+              {Math.round(vsPeersDelta)} pts
             </span>
           )}
         </div>
@@ -166,7 +178,9 @@ export function PeerComparisonCompact({
       {sectorRank && sectorTotal && (
         <div className="flex items-center gap-1">
           <span className="text-gray-500">Sector:</span>
-          <span className="font-medium">#{sectorRank}/{sectorTotal}</span>
+          <span className="font-medium">
+            #{sectorRank}/{sectorTotal}
+          </span>
         </div>
       )}
     </div>

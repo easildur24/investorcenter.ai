@@ -187,7 +187,11 @@ export default function NotesPage() {
       const feature = await createFeature(groupId, newName.trim());
       setCreatingFeatureGroupId(null);
       setNewName('');
-      setExpandedGroups((prev) => { const next = new Set(prev); next.add(groupId); return next; });
+      setExpandedGroups((prev) => {
+        const next = new Set(prev);
+        next.add(groupId);
+        return next;
+      });
       fetchTree();
     } catch (err: any) {
       alert('Failed to create feature: ' + err.message);
@@ -387,10 +391,16 @@ export default function NotesPage() {
                   placeholder="Group name..."
                   className="flex-1 text-sm px-2 py-1 border border-ic-border rounded bg-ic-bg-primary text-ic-text-primary"
                 />
-                <button onClick={handleCreateGroup} className="p-1 text-green-600 hover:bg-green-50 rounded">
+                <button
+                  onClick={handleCreateGroup}
+                  className="p-1 text-green-600 hover:bg-green-50 rounded"
+                >
                   <Check className="w-4 h-4" />
                 </button>
-                <button onClick={() => setCreatingGroup(false)} className="p-1 text-ic-text-secondary hover:bg-ic-bg-secondary rounded">
+                <button
+                  onClick={() => setCreatingGroup(false)}
+                  className="p-1 text-ic-text-secondary hover:bg-ic-bg-secondary rounded"
+                >
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -495,7 +505,10 @@ export default function NotesPage() {
 
                     {/* Features */}
                     {group.features.map((feature) => {
-                      const totalNotes = Object.values(feature.note_counts).reduce((a, b) => a + b, 0);
+                      const totalNotes = Object.values(feature.note_counts).reduce(
+                        (a, b) => a + b,
+                        0
+                      );
                       return (
                         <div
                           key={feature.id}
@@ -559,7 +572,9 @@ export default function NotesPage() {
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Name</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Name
+                  </label>
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
@@ -567,7 +582,9 @@ export default function NotesPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Notes</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Notes
+                  </label>
                   <textarea
                     value={editNotes}
                     onChange={(e) => setEditNotes(e.target.value)}
@@ -599,7 +616,9 @@ export default function NotesPage() {
 
                 <div className="space-y-4 mb-8">
                   <div>
-                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Name</label>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                      Name
+                    </label>
                     <input
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
@@ -607,7 +626,9 @@ export default function NotesPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Notes</label>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                      Notes
+                    </label>
                     <textarea
                       value={editNotes}
                       onChange={(e) => setEditNotes(e.target.value)}
@@ -646,7 +667,9 @@ export default function NotesPage() {
                         {SECTION_ICONS[sec]}
                         {SECTION_LABELS[sec]}
                         {count > 0 && (
-                          <span className="text-xs bg-ic-bg-secondary px-1.5 py-0.5 rounded-full">{count}</span>
+                          <span className="text-xs bg-ic-bg-secondary px-1.5 py-0.5 rounded-full">
+                            {count}
+                          </span>
                         )}
                       </button>
                     );
@@ -743,9 +766,7 @@ export default function NotesPage() {
                   placeholder="Write your notes here..."
                 />
                 <div className="flex items-center justify-between text-xs text-ic-text-secondary">
-                  <span>
-                    Last updated: {new Date(selectedNote.updated_at).toLocaleString()}
-                  </span>
+                  <span>Last updated: {new Date(selectedNote.updated_at).toLocaleString()}</span>
                   <span className="flex items-center gap-1">
                     {saving ? (
                       <>

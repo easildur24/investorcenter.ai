@@ -83,9 +83,7 @@ export default function FinancialsTab({ symbol }: FinancialsTabProps) {
         <h4 className="text-base font-medium text-ic-text-primary">
           {statementTypeLabels[activeTab]}
         </h4>
-        <p className="text-sm text-ic-text-dim mt-1">
-          {getStatementDescription(activeTab)}
-        </p>
+        <p className="text-sm text-ic-text-dim mt-1">{getStatementDescription(activeTab)}</p>
       </div>
 
       {/* Financial Table */}
@@ -101,9 +99,8 @@ export default function FinancialsTab({ symbol }: FinancialsTabProps) {
       <div className="mt-6 p-4 bg-blue-50 rounded-lg">
         <h4 className="text-sm font-medium text-blue-900 mb-1">About This Data</h4>
         <p className="text-sm text-blue-700">
-          Financial data is sourced from SEC EDGAR filings via Polygon.io.
-          Includes 10-K (annual) and 10-Q (quarterly) filings.
-          All values are in USD.
+          Financial data is sourced from SEC EDGAR filings via Polygon.io. Includes 10-K (annual)
+          and 10-Q (quarterly) filings. All values are in USD.
         </p>
       </div>
     </div>

@@ -46,12 +46,12 @@ export default function CategoryScoreBadge({
             category.score >= 80
               ? 'bg-green-500'
               : category.score >= 65
-              ? 'bg-green-400'
-              : category.score >= 50
-              ? 'bg-yellow-400'
-              : category.score >= 35
-              ? 'bg-orange-400'
-              : 'bg-red-400'
+                ? 'bg-green-400'
+                : category.score >= 50
+                  ? 'bg-yellow-400'
+                  : category.score >= 35
+                    ? 'bg-orange-400'
+                    : 'bg-red-400'
           }`}
           style={{ width: `${category.score}%` }}
         />
@@ -60,9 +60,7 @@ export default function CategoryScoreBadge({
       {/* Expanded: show contributing factors */}
       {expanded && category.factors.length > 0 && (
         <div className="mt-3 pt-3 border-t border-white/30">
-          <div className="text-xs text-gray-500">
-            Based on: {category.factors.join(', ')}
-          </div>
+          <div className="text-xs text-gray-500">Based on: {category.factors.join(', ')}</div>
         </div>
       )}
     </div>

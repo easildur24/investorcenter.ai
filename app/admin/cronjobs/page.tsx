@@ -21,7 +21,9 @@ export default function CronjobsMonitoringPage() {
   const [overview, setOverview] = useState<CronjobOverviewResponse | null>(null);
   const [metrics, setMetrics] = useState<CronjobMetricsResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'core_pipeline' | 'ic_score_pipeline' | 'failed'>('all');
+  const [filter, setFilter] = useState<'all' | 'core_pipeline' | 'ic_score_pipeline' | 'failed'>(
+    'all'
+  );
 
   // Modal state for job details
   const [selectedJob, setSelectedJob] = useState<string | null>(null);
@@ -66,11 +68,12 @@ export default function CronjobsMonitoringPage() {
     setJobHistory(null);
   }
 
-  const filteredJobs = overview?.jobs.filter((job) => {
-    if (filter === 'all') return true;
-    if (filter === 'failed') return job.health_status === 'critical';
-    return job.job_category === filter;
-  }) || [];
+  const filteredJobs =
+    overview?.jobs.filter((job) => {
+      if (filter === 'all') return true;
+      if (filter === 'failed') return job.health_status === 'critical';
+      return job.job_category === filter;
+    }) || [];
 
   if (loading || !overview) {
     return (
@@ -101,7 +104,9 @@ export default function CronjobsMonitoringPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-ic-text-muted">Total Cronjobs</p>
-                <p className="text-3xl font-bold text-ic-text-primary mt-2">{overview.summary.total_jobs}</p>
+                <p className="text-3xl font-bold text-ic-text-primary mt-2">
+                  {overview.summary.total_jobs}
+                </p>
                 <p className="text-sm text-ic-text-muted mt-1">All configured</p>
               </div>
               <Activity className="h-12 w-12 text-ic-blue" />
@@ -113,7 +118,9 @@ export default function CronjobsMonitoringPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-ic-text-muted">Active Jobs</p>
-                <p className="text-3xl font-bold text-ic-positive mt-2">{overview.summary.active_jobs}</p>
+                <p className="text-3xl font-bold text-ic-positive mt-2">
+                  {overview.summary.active_jobs}
+                </p>
                 <p className="text-sm text-ic-text-muted mt-1">Currently enabled</p>
               </div>
               <CheckCircle className="h-12 w-12 text-ic-positive" />
@@ -129,7 +136,8 @@ export default function CronjobsMonitoringPage() {
                   {overview.summary.last_24h.success_rate.toFixed(1)}%
                 </p>
                 <p className="text-sm text-ic-text-muted mt-1">
-                  {overview.summary.last_24h.successful}/{overview.summary.last_24h.total_executions} succeeded
+                  {overview.summary.last_24h.successful}/
+                  {overview.summary.last_24h.total_executions} succeeded
                 </p>
               </div>
               <TrendingUp className="h-12 w-12 text-ic-blue" />
@@ -231,8 +239,12 @@ export default function CronjobsMonitoringPage() {
                       <div className="flex items-center">
                         <span className="mr-2">{getHealthStatusIcon(job.health_status)}</span>
                         <div>
-                          <div className="text-sm font-medium text-ic-text-primary">{job.job_name}</div>
-                          <div className="text-xs text-ic-text-muted">{job.schedule_description}</div>
+                          <div className="text-sm font-medium text-ic-text-primary">
+                            {job.job_name}
+                          </div>
+                          <div className="text-xs text-ic-text-muted">
+                            {job.schedule_description}
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -253,7 +265,9 @@ export default function CronjobsMonitoringPage() {
                       {job.last_run ? formatTimeAgo(job.last_run.started_at) : '--'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-ic-text-muted">
-                      {job.last_run?.duration_seconds ? formatDuration(job.last_run.duration_seconds) : '--'}
+                      {job.last_run?.duration_seconds
+                        ? formatDuration(job.last_run.duration_seconds)
+                        : '--'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       {job.success_rate_7d !== null && job.success_rate_7d !== undefined ? (
@@ -264,13 +278,15 @@ export default function CronjobsMonitoringPage() {
                                 job.success_rate_7d >= 95
                                   ? 'bg-ic-positive'
                                   : job.success_rate_7d >= 80
-                                  ? 'bg-ic-warning'
-                                  : 'bg-ic-negative'
+                                    ? 'bg-ic-warning'
+                                    : 'bg-ic-negative'
                               }`}
                               style={{ width: `${job.success_rate_7d}%` }}
                             ></div>
                           </div>
-                          <span className="text-sm text-ic-text-secondary">{job.success_rate_7d.toFixed(1)}%</span>
+                          <span className="text-sm text-ic-text-secondary">
+                            {job.success_rate_7d.toFixed(1)}%
+                          </span>
                         </div>
                       ) : (
                         <span className="text-sm text-ic-text-muted">--</span>
@@ -294,24 +310,43 @@ export default function CronjobsMonitoringPage() {
         {/* Daily Success Rate Chart */}
         {metrics && metrics.daily_success_rate.length > 0 && (
           <div className="bg-ic-surface rounded-lg border border-ic-border p-6 mt-6">
-            <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Daily Success Rate (Last 7 Days)</h3>
+            <h3 className="text-lg font-semibold text-ic-text-primary mb-4">
+              Daily Success Rate (Last 7 Days)
+            </h3>
             <div className="h-64 flex items-end justify-between space-x-2">
-              {metrics.daily_success_rate.slice(0, 7).reverse().map((day) => (
-                <div key={day.date} className="flex-1 flex flex-col items-center">
-                  <div className="w-full bg-ic-bg-secondary rounded-t" style={{ height: '200px', position: 'relative' }}>
+              {metrics.daily_success_rate
+                .slice(0, 7)
+                .reverse()
+                .map((day) => (
+                  <div key={day.date} className="flex-1 flex flex-col items-center">
                     <div
-                      className={`absolute bottom-0 w-full rounded-t ${
-                        day.rate >= 95 ? 'bg-ic-positive' : day.rate >= 80 ? 'bg-ic-warning' : 'bg-ic-negative'
-                      }`}
-                      style={{ height: `${day.rate}%` }}
-                    ></div>
+                      className="w-full bg-ic-bg-secondary rounded-t"
+                      style={{ height: '200px', position: 'relative' }}
+                    >
+                      <div
+                        className={`absolute bottom-0 w-full rounded-t ${
+                          day.rate >= 95
+                            ? 'bg-ic-positive'
+                            : day.rate >= 80
+                              ? 'bg-ic-warning'
+                              : 'bg-ic-negative'
+                        }`}
+                        style={{ height: `${day.rate}%` }}
+                      ></div>
+                    </div>
+                    <div className="text-center mt-2">
+                      <p className="text-xs font-medium text-ic-text-primary">
+                        {day.rate.toFixed(0)}%
+                      </p>
+                      <p className="text-xs text-ic-text-muted">
+                        {new Date(day.date).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
                   </div>
-                  <div className="text-center mt-2">
-                    <p className="text-xs font-medium text-ic-text-primary">{day.rate.toFixed(0)}%</p>
-                    <p className="text-xs text-ic-text-muted">{new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           </div>
         )}
@@ -364,7 +399,9 @@ export default function CronjobsMonitoringPage() {
                   </div>
 
                   {/* Recent Executions */}
-                  <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Recent Executions (Last 10)</h3>
+                  <h3 className="text-lg font-semibold text-ic-text-primary mb-4">
+                    Recent Executions (Last 10)
+                  </h3>
                   <div className="space-y-3">
                     {jobHistory.executions.map((execution) => (
                       <div key={execution.id} className="border border-ic-border rounded-lg p-4">
@@ -388,15 +425,21 @@ export default function CronjobsMonitoringPage() {
                         <div className="grid grid-cols-3 gap-4 text-sm">
                           <div>
                             <span className="text-ic-text-muted">Processed:</span>{' '}
-                            <span className="font-medium text-ic-text-primary">{execution.records_processed}</span>
+                            <span className="font-medium text-ic-text-primary">
+                              {execution.records_processed}
+                            </span>
                           </div>
                           <div>
                             <span className="text-ic-text-muted">Updated:</span>{' '}
-                            <span className="font-medium text-ic-text-primary">{execution.records_updated}</span>
+                            <span className="font-medium text-ic-text-primary">
+                              {execution.records_updated}
+                            </span>
                           </div>
                           <div>
                             <span className="text-ic-text-muted">Failed:</span>{' '}
-                            <span className="font-medium text-ic-text-primary">{execution.records_failed}</span>
+                            <span className="font-medium text-ic-text-primary">
+                              {execution.records_failed}
+                            </span>
                           </div>
                         </div>
                         {execution.error_message && (
@@ -409,7 +452,9 @@ export default function CronjobsMonitoringPage() {
                   </div>
                 </>
               ) : (
-                <p className="text-center text-ic-text-muted py-12">No execution history available</p>
+                <p className="text-center text-ic-text-muted py-12">
+                  No execution history available
+                </p>
               )}
             </div>
           </div>

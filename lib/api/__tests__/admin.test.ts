@@ -79,8 +79,16 @@ testAdminEndpoint('getAdminTTMFinancials', getAdminTTMFinancials, '/admin/ttm-fi
 testAdminEndpoint('getAdminValuationRatios', getAdminValuationRatios, '/admin/valuation-ratios');
 testAdminEndpoint('getAdminAnalystRatings', getAdminAnalystRatings, '/admin/analyst-ratings');
 testAdminEndpoint('getAdminInsiderTrades', getAdminInsiderTrades, '/admin/insider-trades');
-testAdminEndpoint('getAdminInstitutionalHoldings', getAdminInstitutionalHoldings, '/admin/institutional-holdings');
-testAdminEndpoint('getAdminTechnicalIndicators', getAdminTechnicalIndicators, '/admin/technical-indicators');
+testAdminEndpoint(
+  'getAdminInstitutionalHoldings',
+  getAdminInstitutionalHoldings,
+  '/admin/institutional-holdings'
+);
+testAdminEndpoint(
+  'getAdminTechnicalIndicators',
+  getAdminTechnicalIndicators,
+  '/admin/technical-indicators'
+);
 testAdminEndpoint('getAdminCompanies', getAdminCompanies, '/admin/companies');
 testAdminEndpoint('getAdminRiskMetrics', getAdminRiskMetrics, '/admin/risk-metrics');
 

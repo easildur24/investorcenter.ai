@@ -29,11 +29,7 @@ export function DecileBarChart({ data, height = 300 }: DecileBarChartProps) {
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-        <XAxis
-          dataKey="name"
-          tick={{ fontSize: 12 }}
-          tickLine={false}
-        />
+        <XAxis dataKey="name" tick={{ fontSize: 12 }} tickLine={false} />
         <YAxis
           tick={{ fontSize: 12 }}
           tickLine={false}
@@ -48,7 +44,8 @@ export function DecileBarChart({ data, height = 300 }: DecileBarChartProps) {
                 <div className="bg-white border rounded-lg shadow-lg p-3">
                   <p className="font-semibold">Decile {data.decile}</p>
                   <p className="text-sm">
-                    CAGR: <span style={{ color: data.return >= 0 ? '#10b981' : '#ef4444' }}>
+                    CAGR:{' '}
+                    <span style={{ color: data.return >= 0 ? '#10b981' : '#ef4444' }}>
                       {data.return.toFixed(2)}%
                     </span>
                   </p>
@@ -61,10 +58,7 @@ export function DecileBarChart({ data, height = 300 }: DecileBarChartProps) {
         <ReferenceLine y={0} stroke="#9ca3af" strokeWidth={1} />
         <Bar dataKey="return" radius={[4, 4, 0, 0]}>
           {chartData.map((entry, index) => (
-            <Cell
-              key={`cell-${index}`}
-              fill={getDecileColor(entry.decile)}
-            />
+            <Cell key={`cell-${index}`} fill={getDecileColor(entry.decile)} />
           ))}
         </Bar>
       </BarChart>
@@ -78,11 +72,7 @@ interface DecileComparisonChartProps {
   height?: number;
 }
 
-export function DecileComparisonChart({
-  data,
-  metric,
-  height = 300,
-}: DecileComparisonChartProps) {
+export function DecileComparisonChart({ data, metric, height = 300 }: DecileComparisonChartProps) {
   const labels: Record<string, string> = {
     annualized_return: 'CAGR',
     sharpe_ratio: 'Sharpe Ratio',
@@ -97,7 +87,10 @@ export function DecileComparisonChart({
 
   const chartData = data.map((dp) => ({
     name: `D${dp.decile}`,
-    value: metric === 'max_drawdown' ? -dp[metric] * 100 : dp[metric] * (metric === 'sharpe_ratio' ? 1 : 100),
+    value:
+      metric === 'max_drawdown'
+        ? -dp[metric] * 100
+        : dp[metric] * (metric === 'sharpe_ratio' ? 1 : 100),
     decile: dp.decile,
     raw: dp[metric],
   }));
@@ -116,7 +109,9 @@ export function DecileComparisonChart({
                 const data = payload[0].payload;
                 return (
                   <div className="bg-white border rounded-lg shadow-lg p-2 text-sm">
-                    <p className="font-medium">D{data.decile}: {formatValue(data.raw)}</p>
+                    <p className="font-medium">
+                      D{data.decile}: {formatValue(data.raw)}
+                    </p>
                   </div>
                 );
               }
@@ -125,10 +120,7 @@ export function DecileComparisonChart({
           />
           <Bar dataKey="value" radius={[2, 2, 0, 0]}>
             {chartData.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={getDecileColor(entry.decile)}
-              />
+              <Cell key={`cell-${index}`} fill={getDecileColor(entry.decile)} />
             ))}
           </Bar>
         </BarChart>

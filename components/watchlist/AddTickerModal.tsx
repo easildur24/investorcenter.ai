@@ -12,7 +12,13 @@ interface SearchResult {
 
 interface AddTickerModalProps {
   onClose: () => void;
-  onAdd: (symbol: string, notes?: string, tags?: string[], targetBuy?: number, targetSell?: number) => Promise<void>;
+  onAdd: (
+    symbol: string,
+    notes?: string,
+    tags?: string[],
+    targetBuy?: number,
+    targetSell?: number
+  ) => Promise<void>;
 }
 
 export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) {
@@ -61,7 +67,10 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
     e.preventDefault();
     setLoading(true);
     try {
-      const tagArray = tags.split(',').map(t => t.trim()).filter(t => t);
+      const tagArray = tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t);
       await onAdd(
         symbol.toUpperCase(),
         notes || undefined,
@@ -81,7 +90,10 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4 relative">
-            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="symbol">
+            <label
+              className="block text-sm font-medium mb-2 text-ic-text-secondary"
+              htmlFor="symbol"
+            >
               Symbol *
             </label>
             <input
@@ -115,7 +127,9 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-ic-text-primary text-sm">{result.symbol}</div>
+                          <div className="font-semibold text-ic-text-primary text-sm">
+                            {result.symbol}
+                          </div>
                           <div className="text-sm text-ic-text-muted truncate">{result.name}</div>
                         </div>
                         <div className="ml-2 text-xs text-ic-text-dim bg-ic-bg-secondary px-2 py-1 rounded">
@@ -134,7 +148,10 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="notes">
+            <label
+              className="block text-sm font-medium mb-2 text-ic-text-secondary"
+              htmlFor="notes"
+            >
               Notes (optional)
             </label>
             <textarea
@@ -159,14 +176,15 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               placeholder="e.g., tech, growth, dividend"
               className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
             />
-            <p className="text-xs text-ic-text-muted mt-1">
-              Separate multiple tags with commas
-            </p>
+            <p className="text-xs text-ic-text-muted mt-1">Separate multiple tags with commas</p>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="targetBuy">
+              <label
+                className="block text-sm font-medium mb-2 text-ic-text-secondary"
+                htmlFor="targetBuy"
+              >
                 Target Buy Price
               </label>
               <input
@@ -180,7 +198,10 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               />
             </div>
             <div>
-              <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="targetSell">
+              <label
+                className="block text-sm font-medium mb-2 text-ic-text-secondary"
+                htmlFor="targetSell"
+              >
                 Target Sell Price
               </label>
               <input
@@ -196,7 +217,8 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
           </div>
 
           <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
-            <strong>💡 Tip:</strong> Set target prices to get visual alerts when the price reaches your buy or sell targets.
+            <strong>💡 Tip:</strong> Set target prices to get visual alerts when the price reaches
+            your buy or sell targets.
           </div>
 
           <div className="flex gap-2 justify-end">

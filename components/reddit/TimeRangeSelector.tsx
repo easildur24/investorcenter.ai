@@ -26,9 +26,10 @@ export default function TimeRangeSelector({ value, onChange }: TimeRangeSelector
               px-4 py-2 text-sm font-medium
               ${index === 0 ? 'rounded-l-lg' : ''}
               ${index === options.length - 1 ? 'rounded-r-lg' : ''}
-              ${value === option.value
-                ? 'bg-primary-600 text-ic-text-primary hover:bg-primary-700'
-                : 'bg-ic-surface text-ic-text-secondary hover:bg-ic-surface-hover border border-ic-border'
+              ${
+                value === option.value
+                  ? 'bg-primary-600 text-ic-text-primary hover:bg-primary-700'
+                  : 'bg-ic-surface text-ic-text-secondary hover:bg-ic-surface-hover border border-ic-border'
               }
               ${index > 0 && value !== option.value ? '-ml-px' : ''}
               transition-colors duration-150

@@ -70,7 +70,10 @@ export default function InputTab({ symbol }: InputTabProps) {
       }
     } catch (error) {
       console.error('Error:', error);
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Invalid JSON format' });
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : 'Invalid JSON format',
+      });
     } finally {
       setLoading(false);
     }
@@ -116,18 +119,18 @@ export default function InputTab({ symbol }: InputTabProps) {
       ebit_ttm: 133050000000,
       ebitda_ttm: 144750000000,
       eps_diluted_ttm: 7.459,
-      
+
       // Income Statement (Quarterly)
       revenue_quarterly: 102470000000,
       net_income_quarterly: 27470000000,
       ebit_quarterly: 32430000000,
       ebitda_quarterly: 35550000000,
-      
+
       // YoY Growth
       revenue_growth_yoy: 0.0794,
       eps_growth_yoy: 0.9114,
       ebitda_growth_yoy: 0.0939,
-      
+
       // Balance Sheet
       total_assets: 359240000000,
       total_liabilities: 285510000000,
@@ -136,14 +139,14 @@ export default function InputTab({ symbol }: InputTabProps) {
       total_long_term_assets: 133560000000,
       total_long_term_debt: 102820000000,
       book_value: 73730000000,
-      
+
       // Cash Flow
       operating_cash_flow_ttm: 111480000000,
       investing_cash_flow_ttm: 15200000000,
       financing_cash_flow_ttm: -120690000000,
       capital_expenditures_ttm: 12720000000,
       free_cash_flow_ttm: 98770000000,
-      
+
       // Ratios
       pe_ratio: 32.76,
       pb_ratio: 51.9,
@@ -151,21 +154,22 @@ export default function InputTab({ symbol }: InputTabProps) {
       roe: 1.697,
       roa: 0.3235,
       roic: 0.6526,
-      
+
       // Margins
       gross_margin: 0.4691,
       operating_margin: 0.3197,
       net_margin: 0.2691,
-      
+
       // Shares
       shares_outstanding: 14780000000,
-      
+
       // Metadata
-      period_end_date: "2025-09-27",
+      period_end_date: '2025-09-27',
       fiscal_year: 2025,
       fiscal_quarter: 4,
-      data_source: "Manual Input",
-      calculation_notes: "All TTM metrics calculated from last 4 quarters. Ratios use current stock price."
+      data_source: 'Manual Input',
+      calculation_notes:
+        'All TTM metrics calculated from last 4 quarters. Ratios use current stock price.',
     };
     setJsonInput(JSON.stringify(sample, null, 2));
     setMessage({ type: 'success', text: 'Loaded sample template - replace with actual data' });
@@ -174,9 +178,12 @@ export default function InputTab({ symbol }: InputTabProps) {
   return (
     <div className="bg-ic-surface rounded-lg shadow p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-ic-text-primary mb-2">Manual Fundamental Data Input</h2>
+        <h2 className="text-2xl font-bold text-ic-text-primary mb-2">
+          Manual Fundamental Data Input
+        </h2>
         <p className="text-ic-text-muted">
-          Upload calculated fundamental metrics as JSON for <span className="font-semibold text-ic-text-primary">{symbol}</span>
+          Upload calculated fundamental metrics as JSON for{' '}
+          <span className="font-semibold text-ic-text-primary">{symbol}</span>
         </p>
       </div>
 
@@ -210,21 +217,23 @@ export default function InputTab({ symbol }: InputTabProps) {
       {existingData && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm">
           <p className="text-blue-800">
-            <strong>Existing data found:</strong> Created {new Date(existingData.meta.created_at).toLocaleString()}
-            {existingData.meta.updated_at !== existingData.meta.created_at && 
-              `, Updated ${new Date(existingData.meta.updated_at).toLocaleString()}`
-            }
+            <strong>Existing data found:</strong> Created{' '}
+            {new Date(existingData.meta.created_at).toLocaleString()}
+            {existingData.meta.updated_at !== existingData.meta.created_at &&
+              `, Updated ${new Date(existingData.meta.updated_at).toLocaleString()}`}
           </p>
         </div>
       )}
 
       {/* Message Display */}
       {message && (
-        <div className={`mb-4 p-4 rounded ${
-          message.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
+        <div
+          className={`mb-4 p-4 rounded ${
+            message.type === 'success'
+              ? 'bg-green-50 border border-green-200 text-green-800'
+              : 'bg-red-50 border border-red-200 text-red-800'
+          }`}
+        >
           {message.text}
         </div>
       )}

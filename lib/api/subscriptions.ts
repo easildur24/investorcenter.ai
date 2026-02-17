@@ -31,7 +31,14 @@ export interface UserSubscription {
   id: string;
   user_id: string;
   plan_id: string;
-  status: 'active' | 'past_due' | 'canceled' | 'trialing' | 'incomplete' | 'incomplete_expired' | 'unpaid';
+  status:
+    | 'active'
+    | 'past_due'
+    | 'canceled'
+    | 'trialing'
+    | 'incomplete'
+    | 'incomplete_expired'
+    | 'unpaid';
   billing_period: 'monthly' | 'yearly';
   started_at: string;
   current_period_start: string;
@@ -128,7 +135,10 @@ export const subscriptionAPI = {
 };
 
 // Helper function to check if user has reached limit
-export function hasReachedLimit(limits: SubscriptionLimits, type: 'watch_lists' | 'alert_rules'): boolean {
+export function hasReachedLimit(
+  limits: SubscriptionLimits,
+  type: 'watch_lists' | 'alert_rules'
+): boolean {
   if (type === 'watch_lists') {
     return limits.max_watch_lists !== -1 && limits.current_watch_lists >= limits.max_watch_lists;
   }

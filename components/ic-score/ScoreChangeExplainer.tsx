@@ -39,9 +39,7 @@ export default function ScoreChangeExplainer({
     return (
       <div className="border-t border-gray-200 p-4">
         <h3 className="font-medium text-gray-900 mb-2">Score Analysis</h3>
-        <p className="text-sm text-gray-500">
-          Score unchanged since last calculation.
-        </p>
+        <p className="text-sm text-gray-500">Score unchanged since last calculation.</p>
       </div>
     );
   }
@@ -111,16 +109,15 @@ function FactorChangeRow({ change }: FactorChangeRowProps) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <span className="font-medium text-gray-900">{displayName}</span>
-          <span className={`text-sm font-medium ${deltaColor}`}>
-            {formatDelta(change.delta)}
-          </span>
+          <span className={`text-sm font-medium ${deltaColor}`}>{formatDelta(change.delta)}</span>
         </div>
         <p className="text-xs text-gray-500 truncate">{change.explanation}</p>
       </div>
 
       <div className="text-right flex-shrink-0">
         <div className={`text-sm font-medium ${deltaColor}`}>
-          {change.contribution > 0 ? '+' : ''}{change.contribution.toFixed(1)} pts
+          {change.contribution > 0 ? '+' : ''}
+          {change.contribution.toFixed(1)} pts
         </div>
         <div className="text-xs text-gray-400">contribution</div>
       </div>
@@ -129,9 +126,7 @@ function FactorChangeRow({ change }: FactorChangeRowProps) {
 }
 
 function formatFactorName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+  return name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 /**
@@ -155,9 +150,7 @@ export function ScoreChangeSummary({ explanation }: ScoreChangeSummaryProps) {
         {explanation.delta > 0 ? '↑' : '↓'} {formatDelta(explanation.delta)}
       </span>
       {topReason && (
-        <span className="text-gray-500 truncate max-w-[200px]">
-          {topReason.explanation}
-        </span>
+        <span className="text-gray-500 truncate max-w-[200px]">{topReason.explanation}</span>
       )}
     </div>
   );
@@ -179,9 +172,7 @@ export function ScoreChangeInline({ previousScore, currentScore }: ScoreChangeIn
   const delta = currentScore - previousScore;
 
   if (Math.abs(delta) < 0.5) {
-    return (
-      <span className="text-gray-400 text-sm">unchanged</span>
-    );
+    return <span className="text-gray-400 text-sm">unchanged</span>;
   }
 
   const deltaColor = getDeltaColor(delta);

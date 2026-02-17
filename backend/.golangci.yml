@@ -1,0 +1,20 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  enable:
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  disable:
+    - errcheck  # 65 existing violations — enable incrementally in a follow-up PR
+    - gosec     # Enable later once existing issues are triaged
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude-dirs:
+    - vendor

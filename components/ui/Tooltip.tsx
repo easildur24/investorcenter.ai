@@ -113,8 +113,8 @@ export function Tooltip({
         <div
           ref={tooltipRef}
           className={cn(
-            "fixed z-50 px-3 py-2 text-sm bg-ic-bg-tertiary border border-ic-border rounded-lg shadow-lg max-w-xs transition-opacity duration-150",
-            isPositioned ? "opacity-100" : "opacity-0"
+            'fixed z-50 px-3 py-2 text-sm bg-ic-bg-tertiary border border-ic-border rounded-lg shadow-lg max-w-xs transition-opacity duration-150',
+            isPositioned ? 'opacity-100' : 'opacity-0'
           )}
           style={{
             top: coords.top,
@@ -150,9 +150,7 @@ export function CalculationTooltip({
       <div className="font-mono text-xs bg-ic-bg-secondary px-2 py-1 rounded text-ic-blue">
         {formula}
       </div>
-      {description && (
-        <div className="text-xs text-ic-text-muted">{description}</div>
-      )}
+      {description && <div className="text-xs text-ic-text-muted">{description}</div>}
     </div>
   );
 

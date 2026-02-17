@@ -15,8 +15,8 @@ export type ICScoreRating = 'Strong Buy' | 'Buy' | 'Hold' | 'Underperform' | 'Se
  */
 export interface ICScoreFactor {
   name: string;
-  value: number;        // Factor score (0-100)
-  weight: number;       // Weight percentage (0-1)
+  value: number; // Factor score (0-100)
+  weight: number; // Weight percentage (0-1)
   contribution: number; // Weighted contribution to total score
 }
 
@@ -25,9 +25,9 @@ export interface ICScoreFactor {
  */
 export interface ICScore {
   ticker: string;
-  score: number;                    // Overall IC Score (1-100)
-  rating: ICScoreRating;            // Rating band
-  calculatedAt: string;             // ISO 8601 timestamp
+  score: number; // Overall IC Score (1-100)
+  rating: ICScoreRating; // Rating band
+  calculatedAt: string; // ISO 8601 timestamp
 
   // 10-factor breakdown
   factors: {
@@ -49,19 +49,19 @@ export interface ICScore {
   marketCap?: number;
 
   // Comparison metrics
-  percentile?: number;              // Percentile rank vs all stocks
-  sectorPercentile?: number;        // Percentile rank within sector
-  previousScore?: number;           // Score from previous calculation
-  scoreChange?: number;             // Change from previous score
+  percentile?: number; // Percentile rank vs all stocks
+  sectorPercentile?: number; // Percentile rank within sector
+  previousScore?: number; // Score from previous calculation
+  scoreChange?: number; // Change from previous score
 }
 
 /**
  * Historical IC Score data point
  */
 export interface ICScoreHistoryPoint {
-  date: string;                     // ISO 8601 date
-  score: number;                    // IC Score on that date
-  rating: ICScoreRating;            // Rating on that date
+  date: string; // ISO 8601 date
+  score: number; // IC Score on that date
+  rating: ICScoreRating; // Rating on that date
 }
 
 /**
@@ -75,7 +75,7 @@ export interface ICScoreHistory {
   averageScore: number;
   minScore: number;
   maxScore: number;
-  volatility: number;               // Standard deviation of scores
+  volatility: number; // Standard deviation of scores
 }
 
 /**
@@ -105,16 +105,16 @@ export interface ICScoreStockEntry {
  * IC Score screener filter options
  */
 export interface ICScoreScreenerFilters {
-  minScore?: number;                // Minimum IC Score (1-100)
-  maxScore?: number;                // Maximum IC Score (1-100)
-  rating?: ICScoreRating[];         // Filter by rating bands
-  sector?: string[];                // Filter by sectors
-  minMarketCap?: number;            // Minimum market cap
-  maxMarketCap?: number;            // Maximum market cap
+  minScore?: number; // Minimum IC Score (1-100)
+  maxScore?: number; // Maximum IC Score (1-100)
+  rating?: ICScoreRating[]; // Filter by rating bands
+  sector?: string[]; // Filter by sectors
+  minMarketCap?: number; // Minimum market cap
+  maxMarketCap?: number; // Maximum market cap
   sortBy?: 'score' | 'marketCap' | 'change' | 'volume';
   sortOrder?: 'asc' | 'desc';
-  limit?: number;                   // Number of results
-  offset?: number;                  // Pagination offset
+  limit?: number; // Number of results
+  offset?: number; // Pagination offset
 }
 
 /**

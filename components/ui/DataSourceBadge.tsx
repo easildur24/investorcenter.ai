@@ -10,14 +10,17 @@ interface DataSourceBadgeProps {
   showTooltip?: boolean;
 }
 
-const sourceConfig: Record<DataSourceType, {
-  label: string;
-  description: string;
-  bgColor: string;
-  textColor: string;
-  borderColor: string;
-}> = {
-  'realtime': {
+const sourceConfig: Record<
+  DataSourceType,
+  {
+    label: string;
+    description: string;
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+  }
+> = {
+  realtime: {
     label: 'Real-time',
     description: 'Live market data updated in real-time from Polygon.io',
     bgColor: 'bg-green-50',
@@ -31,14 +34,14 @@ const sourceConfig: Record<DataSourceType, {
     textColor: 'text-blue-700',
     borderColor: 'border-blue-200',
   },
-  'calculated': {
+  calculated: {
     label: 'Calculated',
     description: 'Derived from multiple data sources using proprietary algorithms',
     bgColor: 'bg-purple-50',
     textColor: 'text-purple-700',
     borderColor: 'border-purple-200',
   },
-  'estimated': {
+  estimated: {
     label: 'Estimated',
     description: 'Estimated value - may not reflect actual current data',
     bgColor: 'bg-amber-50',
@@ -59,9 +62,7 @@ export default function DataSourceBadge({
       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${config.bgColor} ${config.textColor} ${config.borderColor} ${className}`}
       title={showTooltip ? config.description : undefined}
     >
-      {type === 'estimated' && (
-        <InformationCircleIcon className="w-3 h-3" />
-      )}
+      {type === 'estimated' && <InformationCircleIcon className="w-3 h-3" />}
       {config.label}
     </span>
   );
@@ -102,12 +103,10 @@ export function MultiSourceBadge({
   return (
     <span
       className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${config.bgColor} ${config.textColor} ${config.borderColor} ${className}`}
-      title={`Sources: ${sources.map(s => sourceConfig[s].label).join(', ')}`}
+      title={`Sources: ${sources.map((s) => sourceConfig[s].label).join(', ')}`}
     >
       {config.label}
-      {sources.length > 1 && (
-        <span className="text-ic-text-muted">+{sources.length - 1}</span>
-      )}
+      {sources.length > 1 && <span className="text-ic-text-muted">+{sources.length - 1}</span>}
     </span>
   );
 }

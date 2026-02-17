@@ -15,7 +15,8 @@ describe('fetchWithRetry', () => {
   });
 
   it('retries on failure and succeeds', async () => {
-    const fetchFn = jest.fn()
+    const fetchFn = jest
+      .fn()
       .mockRejectedValueOnce(new Error('fail 1'))
       .mockResolvedValue('success after retry');
 
@@ -43,7 +44,8 @@ describe('fetchWithRetry', () => {
   });
 
   it('calls onRetry callback with attempt number', async () => {
-    const fetchFn = jest.fn()
+    const fetchFn = jest
+      .fn()
       .mockRejectedValueOnce(new Error('fail 1'))
       .mockRejectedValueOnce(new Error('fail 2'))
       .mockResolvedValue('success');
@@ -64,9 +66,9 @@ describe('fetchWithRetry', () => {
   it('wraps non-Error thrown values', async () => {
     const fetchFn = jest.fn().mockRejectedValue('string error');
 
-    await expect(
-      fetchWithRetry(fetchFn, { maxRetries: 0, retryDelay: 10 })
-    ).rejects.toThrow('string error');
+    await expect(fetchWithRetry(fetchFn, { maxRetries: 0, retryDelay: 10 })).rejects.toThrow(
+      'string error'
+    );
   });
 
   it('uses default options when none provided', async () => {
@@ -81,7 +83,8 @@ describe('fetchWithRetry', () => {
   it('applies exponential backoff timing', async () => {
     jest.useFakeTimers();
 
-    const fetchFn = jest.fn()
+    const fetchFn = jest
+      .fn()
       .mockRejectedValueOnce(new Error('fail 1'))
       .mockRejectedValueOnce(new Error('fail 2'))
       .mockRejectedValueOnce(new Error('fail 3'))
@@ -138,7 +141,10 @@ describe('useApiWithRetry', () => {
   it('sets loading state during execution', async () => {
     let resolveFn: (val: string) => void;
     const apiCall = jest.fn(
-      () => new Promise<string>(resolve => { resolveFn = resolve; })
+      () =>
+        new Promise<string>((resolve) => {
+          resolveFn = resolve;
+        })
     );
 
     const { result } = renderHook(() => useApiWithRetry(apiCall));
@@ -182,9 +188,7 @@ describe('useApiWithRetry', () => {
     const apiCall = jest.fn().mockResolvedValue('result');
     const onSuccess = jest.fn();
 
-    const { result } = renderHook(() =>
-      useApiWithRetry(apiCall, { onSuccess })
-    );
+    const { result } = renderHook(() => useApiWithRetry(apiCall, { onSuccess }));
 
     await act(async () => {
       await result.current.execute();
@@ -194,7 +198,8 @@ describe('useApiWithRetry', () => {
   });
 
   it('retries on network error and eventually succeeds', async () => {
-    const apiCall = jest.fn()
+    const apiCall = jest
+      .fn()
       .mockRejectedValueOnce(new Error('Network error'))
       .mockRejectedValueOnce(new Error('Timeout'))
       .mockResolvedValue('recovered');
@@ -247,9 +252,11 @@ describe('useApiWithRetry', () => {
     expect(result.current.data).toBeNull();
     expect(result.current.loading).toBe(false);
     expect(result.current.isRetrying).toBe(false);
-    expect(onError).toHaveBeenCalledWith(expect.objectContaining({
-      message: 'Server down',
-    }));
+    expect(onError).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Server down',
+      })
+    );
   });
 
   it('wraps non-Error thrown values into Error objects', async () => {
@@ -335,7 +342,8 @@ describe('useApiWithRetry', () => {
   });
 
   it('retry calls execute again', async () => {
-    const apiCall = jest.fn()
+    const apiCall = jest
+      .fn()
       .mockRejectedValueOnce(new Error('first failure'))
       .mockResolvedValue('second success');
 
@@ -365,7 +373,7 @@ describe('useApiWithRetry', () => {
     const apiCall = jest.fn(() => {
       callCount++;
       const currentCall = callCount;
-      return new Promise<string>(resolve => {
+      return new Promise<string>((resolve) => {
         setTimeout(() => resolve(`result-${currentCall}`), 100);
       });
     });
@@ -405,9 +413,7 @@ describe('useApiWithRetry', () => {
   it('uses default maxRetries of 3', async () => {
     const apiCall = jest.fn().mockRejectedValue(new Error('fail'));
 
-    const { result } = renderHook(() =>
-      useApiWithRetry(apiCall, { retryDelay: 10 })
-    );
+    const { result } = renderHook(() => useApiWithRetry(apiCall, { retryDelay: 10 }));
 
     await act(async () => {
       await result.current.execute();
@@ -434,11 +440,15 @@ describe('useApiWithRetry', () => {
 
   it('tracks retryCount during retries', async () => {
     let resolveSecond: (val: string) => void;
-    const apiCall = jest.fn()
+    const apiCall = jest
+      .fn()
       .mockRejectedValueOnce(new Error('fail'))
-      .mockImplementation(() => new Promise<string>(resolve => {
-        resolveSecond = resolve;
-      }));
+      .mockImplementation(
+        () =>
+          new Promise<string>((resolve) => {
+            resolveSecond = resolve;
+          })
+      );
 
     const retryCounts: number[] = [];
 
@@ -455,7 +465,7 @@ describe('useApiWithRetry', () => {
     const executePromise = act(async () => {
       const promise = result.current.execute();
       // Let the first attempt fail and retry start
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 50));
       resolveSecond!('done');
       return promise;
     });

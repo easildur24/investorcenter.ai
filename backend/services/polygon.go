@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/shopspring/decimal"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"investorcenter-api/models"
 )
 
@@ -781,8 +783,8 @@ func (p *PolygonClient) GetNews(symbol string, limit int) ([]models.NewsArticle,
 		// Get sentiment for this ticker
 		sentiment := "Neutral"
 		for _, insight := range article.Insights {
-			if strings.ToUpper(insight.Ticker) == strings.ToUpper(symbol) {
-				sentiment = strings.Title(insight.Sentiment)
+			if strings.EqualFold(insight.Ticker, symbol) {
+				sentiment = cases.Title(language.English).String(insight.Sentiment)
 				break
 			}
 		}

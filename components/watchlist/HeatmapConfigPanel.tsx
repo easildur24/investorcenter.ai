@@ -16,7 +16,11 @@ interface HeatmapConfigPanelProps {
   onSave?: (name: string) => void;
 }
 
-export default function HeatmapConfigPanel({ settings, onChange, onSave }: HeatmapConfigPanelProps) {
+export default function HeatmapConfigPanel({
+  settings,
+  onChange,
+  onSave,
+}: HeatmapConfigPanelProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [configName, setConfigName] = useState('');
 
@@ -38,8 +42,18 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
         {/* Size Metric */}
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg className="w-4 h-4 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+            <svg
+              className="w-4 h-4 text-blue-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+              />
             </svg>
             Tile Size
           </label>
@@ -59,8 +73,18 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
         {/* Color Metric */}
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg className="w-4 h-4 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            <svg
+              className="w-4 h-4 text-purple-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
             </svg>
             Tile Color
           </label>
@@ -79,8 +103,18 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
         {/* Time Period */}
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <svg
+              className="w-4 h-4 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
             </svg>
             Time Period
           </label>
@@ -103,8 +137,18 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
         {/* Color Scheme */}
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg className="w-4 h-4 text-pink-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+            <svg
+              className="w-4 h-4 text-pink-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
+              />
             </svg>
             Color Scheme
           </label>
@@ -134,10 +178,20 @@ export default function HeatmapConfigPanel({ settings, onChange, onSave }: Heatm
 
       {/* Save Config Modal */}
       {showSaveModal && (
-        <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50" onClick={() => setShowSaveModal(false)}>
-          <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-xl font-bold mb-4 text-ic-text-primary">💾 Save Heatmap Configuration</h3>
-            <p className="text-sm text-ic-text-muted mb-4">Give your configuration a memorable name</p>
+        <div
+          className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50"
+          onClick={() => setShowSaveModal(false)}
+        >
+          <div
+            className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold mb-4 text-ic-text-primary">
+              💾 Save Heatmap Configuration
+            </h3>
+            <p className="text-sm text-ic-text-muted mb-4">
+              Give your configuration a memorable name
+            </p>
             <input
               type="text"
               value={configName}

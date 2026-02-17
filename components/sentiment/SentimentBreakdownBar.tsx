@@ -3,7 +3,7 @@
 import type { SentimentBreakdown } from '@/lib/types/sentiment';
 
 interface SentimentBreakdownBarProps {
-  breakdown: SentimentBreakdown;  // Values are 0-100 percentages
+  breakdown: SentimentBreakdown; // Values are 0-100 percentages
   showLabels?: boolean;
   showPercentages?: boolean;
   height?: 'sm' | 'md' | 'lg';
@@ -67,9 +67,7 @@ export default function SentimentBreakdownBar({
             <span className="text-ic-text-muted">
               Bullish
               {showPercentages && (
-                <span className="font-medium text-green-600 ml-1">
-                  {bullish.toFixed(0)}%
-                </span>
+                <span className="font-medium text-green-600 ml-1">{bullish.toFixed(0)}%</span>
               )}
             </span>
           </div>
@@ -79,9 +77,7 @@ export default function SentimentBreakdownBar({
             <span className="text-ic-text-muted">
               Neutral
               {showPercentages && (
-                <span className="font-medium text-ic-text-dim ml-1">
-                  {neutral.toFixed(0)}%
-                </span>
+                <span className="font-medium text-ic-text-dim ml-1">{neutral.toFixed(0)}%</span>
               )}
             </span>
           </div>
@@ -91,9 +87,7 @@ export default function SentimentBreakdownBar({
             <span className="text-ic-text-muted">
               Bearish
               {showPercentages && (
-                <span className="font-medium text-red-600 ml-1">
-                  {bearish.toFixed(0)}%
-                </span>
+                <span className="font-medium text-red-600 ml-1">{bearish.toFixed(0)}%</span>
               )}
             </span>
           </div>
@@ -115,9 +109,7 @@ export function CompactBreakdownBar({ breakdown }: CompactBreakdownBarProps) {
   const total = bullish + bearish + neutral;
 
   if (total === 0) {
-    return (
-      <div className="h-1.5 rounded-full bg-ic-bg-tertiary w-full" />
-    );
+    return <div className="h-1.5 rounded-full bg-ic-bg-tertiary w-full" />;
   }
 
   const normalizedBullish = (bullish / total) * 100;
@@ -127,22 +119,13 @@ export function CompactBreakdownBar({ breakdown }: CompactBreakdownBarProps) {
   return (
     <div className="h-1.5 rounded-full overflow-hidden flex w-full">
       {normalizedBullish > 0 && (
-        <div
-          className="bg-ic-positive"
-          style={{ width: `${normalizedBullish}%` }}
-        />
+        <div className="bg-ic-positive" style={{ width: `${normalizedBullish}%` }} />
       )}
       {normalizedNeutral > 0 && (
-        <div
-          className="bg-ic-bg-tertiary"
-          style={{ width: `${normalizedNeutral}%` }}
-        />
+        <div className="bg-ic-bg-tertiary" style={{ width: `${normalizedNeutral}%` }} />
       )}
       {normalizedBearish > 0 && (
-        <div
-          className="bg-ic-negative"
-          style={{ width: `${normalizedBearish}%` }}
-        />
+        <div className="bg-ic-negative" style={{ width: `${normalizedBearish}%` }} />
       )}
     </div>
   );

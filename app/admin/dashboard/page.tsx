@@ -18,7 +18,7 @@ import {
   getAdminTechnicalIndicators,
   getAdminCompanies,
   getAdminRiskMetrics,
-  AdminDataResponse
+  AdminDataResponse,
 } from '@/lib/api/admin';
 import {
   Search,
@@ -35,11 +35,27 @@ import {
   Filter,
   TrendingDown,
   Building2,
-  LineChart
+  LineChart,
 } from 'lucide-react';
 import { filterDerivatives } from '@/lib/utils/tickerFilters';
 
-type TabType = 'stats' | 'stocks' | 'users' | 'news' | 'fundamentals' | 'sec-financials' | 'ttm-financials' | 'valuation-ratios' | 'alerts' | 'watchlists' | 'analyst-ratings' | 'insider-trades' | 'institutional-holdings' | 'technical-indicators' | 'companies' | 'risk-metrics';
+type TabType =
+  | 'stats'
+  | 'stocks'
+  | 'users'
+  | 'news'
+  | 'fundamentals'
+  | 'sec-financials'
+  | 'ttm-financials'
+  | 'valuation-ratios'
+  | 'alerts'
+  | 'watchlists'
+  | 'analyst-ratings'
+  | 'insider-trades'
+  | 'institutional-holdings'
+  | 'technical-indicators'
+  | 'companies'
+  | 'risk-metrics';
 
 export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<TabType>('stats');
@@ -270,7 +286,10 @@ export default function AdminDashboardPage() {
                   Clear
                 </button>
               )}
-              {(activeTab === 'fundamentals' || activeTab === 'sec-financials' || activeTab === 'ttm-financials' || activeTab === 'valuation-ratios') && (
+              {(activeTab === 'fundamentals' ||
+                activeTab === 'sec-financials' ||
+                activeTab === 'ttm-financials' ||
+                activeTab === 'valuation-ratios') && (
                 <label className="flex items-center gap-2 px-4 py-2 bg-ic-bg-secondary border border-ic-border rounded-lg cursor-pointer hover:bg-ic-surface-hover transition-colors">
                   <input
                     type="checkbox"
@@ -299,9 +318,15 @@ export default function AdminDashboardPage() {
             <StatsView stats={stats} />
           ) : (
             <DataTable
-              data={hideDerivatives && (activeTab === 'fundamentals' || activeTab === 'sec-financials' || activeTab === 'ttm-financials' || activeTab === 'valuation-ratios')
-                ? filterDerivatives(data, 'ticker')
-                : data}
+              data={
+                hideDerivatives &&
+                (activeTab === 'fundamentals' ||
+                  activeTab === 'sec-financials' ||
+                  activeTab === 'ttm-financials' ||
+                  activeTab === 'valuation-ratios')
+                  ? filterDerivatives(data, 'ticker')
+                  : data
+              }
               type={activeTab}
               meta={meta}
               currentPage={currentPage}
@@ -321,15 +346,11 @@ interface StatsViewProps {
 
 function StatsView({ stats }: StatsViewProps) {
   if (!stats) {
-    return (
-      <div className="p-12 text-center text-ic-text-muted">
-        No statistics available
-      </div>
-    );
+    return <div className="p-12 text-center text-ic-text-muted">No statistics available</div>;
   }
 
   const statItems = Object.entries(stats).map(([key, value]) => ({
-    name: key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+    name: key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase()),
     value: (value as number).toLocaleString(),
     key,
   }));
@@ -339,7 +360,10 @@ function StatsView({ stats }: StatsViewProps) {
       <h2 className="text-xl font-bold text-ic-text-primary mb-6">Database Statistics</h2>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {statItems.map((stat) => (
-          <div key={stat.key} className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+          <div
+            key={stat.key}
+            className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4"
+          >
             <div className="text-sm text-blue-600 font-medium">{stat.name}</div>
             <div className="text-3xl font-bold text-blue-900 mt-2">{stat.value}</div>
           </div>
@@ -360,11 +384,7 @@ interface DataTableProps {
 
 function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: DataTableProps) {
   if (data.length === 0) {
-    return (
-      <div className="p-12 text-center text-ic-text-muted">
-        No data found
-      </div>
-    );
+    return <div className="p-12 text-center text-ic-text-muted">No data found</div>;
   }
 
   return (
@@ -374,7 +394,10 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
           <thead className="bg-ic-bg-secondary border-b border-ic-border">
             <tr>
               {Object.keys(data[0]).map((key) => (
-                <th key={key} className="px-6 py-3 text-left text-xs font-semibold text-ic-text-secondary uppercase tracking-wider">
+                <th
+                  key={key}
+                  className="px-6 py-3 text-left text-xs font-semibold text-ic-text-secondary uppercase tracking-wider"
+                >
                   {key.replace(/_/g, ' ')}
                 </th>
               ))}
@@ -398,7 +421,8 @@ function DataTable({ data, type, meta, currentPage, totalPages, onPageChange }: 
       <div className="px-6 py-4 bg-ic-bg-secondary border-t border-ic-border">
         <div className="flex items-center justify-between">
           <div className="text-sm text-ic-text-muted">
-            Showing {meta.offset + 1} to {Math.min(meta.offset + meta.limit, meta.total)} of {meta.total} results
+            Showing {meta.offset + 1} to {Math.min(meta.offset + meta.limit, meta.total)} of{' '}
+            {meta.total} results
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -435,9 +459,7 @@ function ExpandableSummary({ text }: { text: string }) {
 
   return (
     <div className="max-w-md">
-      <p className="text-sm">
-        {isExpanded ? text : shortText}
-      </p>
+      <p className="text-sm">{isExpanded ? text : shortText}</p>
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className="mt-1 text-xs text-ic-blue hover:text-blue-800 font-medium"
@@ -465,7 +487,10 @@ function formatValue(value: any, key?: string): React.ReactNode {
       return (
         <div className="flex flex-wrap gap-1">
           {value.map((item, idx) => (
-            <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+            <span
+              key={idx}
+              className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+            >
               {item}
             </span>
           ))}
@@ -475,7 +500,10 @@ function formatValue(value: any, key?: string): React.ReactNode {
     return (
       <div className="flex flex-wrap gap-1">
         {value.slice(0, 2).map((item, idx) => (
-          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+          <span
+            key={idx}
+            className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+          >
             {item}
           </span>
         ))}
@@ -498,7 +526,12 @@ function formatValue(value: any, key?: string): React.ReactNode {
   }
   if (key === 'url') {
     return (
-      <a href={str} target="_blank" rel="noopener noreferrer" className="text-ic-blue hover:text-blue-800 underline truncate block max-w-xs">
+      <a
+        href={str}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-ic-blue hover:text-blue-800 underline truncate block max-w-xs"
+      >
         {str.length > 40 ? str.substring(0, 40) + '...' : str}
       </a>
     );

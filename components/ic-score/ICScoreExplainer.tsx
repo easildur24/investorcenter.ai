@@ -23,7 +23,7 @@ const factorDefinitions = [
     name: 'growth',
     displayName: 'Growth',
     weight: 15,
-    description: 'Measures the company\'s historical and projected growth trajectory.',
+    description: "Measures the company's historical and projected growth trajectory.",
     metrics: ['Revenue Growth (YoY)', 'Earnings Growth (YoY)', 'Forward EPS Growth'],
     interpretation: 'Higher growth rates earn better scores, adjusted for consistency.',
   },
@@ -39,7 +39,7 @@ const factorDefinitions = [
     name: 'financial_health',
     displayName: 'Financial Health',
     weight: 10,
-    description: 'Evaluates the company\'s balance sheet strength and liquidity.',
+    description: "Evaluates the company's balance sheet strength and liquidity.",
     metrics: ['Debt-to-Equity Ratio', 'Current Ratio', 'Interest Coverage'],
     interpretation: 'Lower debt and higher liquidity ratios indicate financial stability.',
   },
@@ -113,15 +113,23 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
 
   const getFactorScore = (factorName: string) => {
     if (!factorScores) return null;
-    const factor = factorScores.find(f => f.name === factorName);
+    const factor = factorScores.find((f) => f.name === factorName);
     return factor?.score ?? null;
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="ic-score-explainer" role="dialog" aria-modal="true">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto"
+      aria-labelledby="ic-score-explainer"
+      role="dialog"
+      aria-modal="true"
+    >
       <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
         {/* Background overlay */}
-        <div className="fixed inset-0 bg-ic-bg-tertiary bg-opacity-75 transition-opacity" onClick={onClose}></div>
+        <div
+          className="fixed inset-0 bg-ic-bg-tertiary bg-opacity-75 transition-opacity"
+          onClick={onClose}
+        ></div>
 
         {/* Modal panel */}
         <div className="inline-block align-bottom bg-ic-surface rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-4xl sm:w-full">
@@ -129,7 +137,9 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 px-6 py-4 flex justify-between items-center">
             <div>
               <h2 className="text-xl font-semibold text-ic-text-primary">Understanding IC Score</h2>
-              <p className="text-primary-100 text-sm">Our proprietary 10-factor investment analysis</p>
+              <p className="text-primary-100 text-sm">
+                Our proprietary 10-factor investment analysis
+              </p>
             </div>
             <button
               onClick={onClose}
@@ -145,15 +155,15 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
             <div className="mb-8">
               <h3 className="text-lg font-semibold text-ic-text-primary mb-3">What is IC Score?</h3>
               <p className="text-ic-text-muted mb-4">
-                IC Score is InvestorCenter&apos;s proprietary investment rating that combines 10 key factors
-                to provide a comprehensive view of a stock&apos;s investment potential. Each factor is weighted
-                based on its historical predictive power and contribution to investment returns.
+                IC Score is InvestorCenter&apos;s proprietary investment rating that combines 10 key
+                factors to provide a comprehensive view of a stock&apos;s investment potential. Each
+                factor is weighted based on its historical predictive power and contribution to
+                investment returns.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                 <p className="text-sm text-blue-800">
-                  <strong>Score Range:</strong> 0-100 |
-                  <strong className="ml-2">80+:</strong> Strong Buy |
-                  <strong className="ml-2">65-79:</strong> Buy |
+                  <strong>Score Range:</strong> 0-100 |<strong className="ml-2">80+:</strong> Strong
+                  Buy |<strong className="ml-2">65-79:</strong> Buy |
                   <strong className="ml-2">50-64:</strong> Hold |
                   <strong className="ml-2">&lt;50:</strong> Caution
                 </p>
@@ -172,12 +182,18 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
                     <div
                       key={factor.name}
                       className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedFactor === factor.name ? 'bg-primary-50 ring-1 ring-primary-200' : 'hover:bg-ic-bg-secondary'
+                        selectedFactor === factor.name
+                          ? 'bg-primary-50 ring-1 ring-primary-200'
+                          : 'hover:bg-ic-bg-secondary'
                       }`}
-                      onClick={() => setSelectedFactor(selectedFactor === factor.name ? null : factor.name)}
+                      onClick={() =>
+                        setSelectedFactor(selectedFactor === factor.name ? null : factor.name)
+                      }
                     >
                       <div className="w-32 sm:w-40 flex-shrink-0">
-                        <span className="text-sm font-medium text-ic-text-secondary">{factor.displayName}</span>
+                        <span className="text-sm font-medium text-ic-text-secondary">
+                          {factor.displayName}
+                        </span>
                       </div>
                       <div className="flex-grow">
                         <div className="h-6 bg-ic-bg-secondary rounded-full overflow-hidden">
@@ -185,7 +201,9 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
                             className="h-full bg-primary-500 rounded-full flex items-center justify-end pr-2"
                             style={{ width: `${factor.weight * 5}%` }}
                           >
-                            <span className="text-xs font-medium text-ic-text-primary">{factor.weight}%</span>
+                            <span className="text-xs font-medium text-ic-text-primary">
+                              {factor.weight}%
+                            </span>
                           </div>
                         </div>
                       </div>
@@ -204,17 +222,24 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
             {selectedFactor && (
               <div className="mb-8 bg-ic-bg-secondary rounded-lg p-4 animate-fadeIn">
                 {(() => {
-                  const factor = factorDefinitions.find(f => f.name === selectedFactor);
+                  const factor = factorDefinitions.find((f) => f.name === selectedFactor);
                   if (!factor) return null;
                   return (
                     <>
-                      <h4 className="font-semibold text-ic-text-primary mb-2">{factor.displayName}</h4>
+                      <h4 className="font-semibold text-ic-text-primary mb-2">
+                        {factor.displayName}
+                      </h4>
                       <p className="text-ic-text-muted text-sm mb-3">{factor.description}</p>
                       <div className="mb-3">
-                        <span className="text-xs font-medium text-ic-text-muted uppercase">Key Metrics:</span>
+                        <span className="text-xs font-medium text-ic-text-muted uppercase">
+                          Key Metrics:
+                        </span>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {factor.metrics.map((metric) => (
-                            <span key={metric} className="text-xs bg-ic-surface border border-ic-border rounded px-2 py-1">
+                            <span
+                              key={metric}
+                              className="text-xs bg-ic-surface border border-ic-border rounded px-2 py-1"
+                            >
                               {metric}
                             </span>
                           ))}
@@ -230,9 +255,10 @@ export default function ICScoreExplainer({ icScore, onClose }: ICScoreExplainerP
             {/* Disclaimer */}
             <div className="text-xs text-ic-text-dim border-t border-ic-border pt-4">
               <p>
-                <strong>Disclaimer:</strong> IC Score is for informational purposes only and should not be considered
-                investment advice. Past performance does not guarantee future results. Always conduct your own
-                research and consult a financial advisor before making investment decisions.
+                <strong>Disclaimer:</strong> IC Score is for informational purposes only and should
+                not be considered investment advice. Past performance does not guarantee future
+                results. Always conduct your own research and consult a financial advisor before
+                making investment decisions.
               </p>
             </div>
           </div>

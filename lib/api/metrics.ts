@@ -5,10 +5,7 @@
  * /api/v1/stocks/:ticker/metrics endpoint (FMP data).
  */
 
-import {
-  ComprehensiveMetricsResponse,
-  ComprehensiveMetricsData,
-} from '@/types/metrics';
+import { ComprehensiveMetricsResponse, ComprehensiveMetricsData } from '@/types/metrics';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
@@ -34,16 +31,13 @@ export async function getComprehensiveMetrics(
   ticker: string
 ): Promise<ComprehensiveMetricsResponse | null> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        cache: 'no-store',
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+    });
 
     if (response.status === 404) {
       return null;
@@ -70,15 +64,12 @@ export async function getComprehensiveMetrics(
  */
 export async function hasComprehensiveMetrics(ticker: string): Promise<boolean> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
 
     if (!response.ok) {
       return false;

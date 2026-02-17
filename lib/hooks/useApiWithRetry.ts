@@ -23,13 +23,7 @@ export function useApiWithRetry<T>(
   apiCall: () => Promise<T>,
   options: UseApiWithRetryOptions = {}
 ): UseApiWithRetryResult<T> {
-  const {
-    maxRetries = 3,
-    retryDelay = 1000,
-    onRetry,
-    onSuccess,
-    onError,
-  } = options;
+  const { maxRetries = 3, retryDelay = 1000, onRetry, onSuccess, onError } = options;
 
   const [data, setData] = useState<T | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -39,7 +33,7 @@ export function useApiWithRetry<T>(
 
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const execute = useCallback(async (): Promise<T | null> => {
     // Cancel any ongoing request
@@ -149,7 +143,7 @@ export async function fetchWithRetry<T>(
       if (attempt > 0) {
         onRetry?.(attempt);
         // Exponential backoff
-        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt - 1)));
+        await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt - 1)));
       }
       return await fetchFn();
     } catch (err) {

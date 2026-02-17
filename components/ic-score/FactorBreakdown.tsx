@@ -31,9 +31,9 @@ export default function FactorBreakdown({ icScore }: FactorBreakdownProps) {
           <div className="flex items-start gap-2 text-xs text-ic-text-muted">
             <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
             <p>
-              Scores are calculated using sector-relative percentile rankings and weighted
-              by importance. Missing factors are excluded from the overall calculation and
-              weights are redistributed proportionally.
+              Scores are calculated using sector-relative percentile rankings and weighted by
+              importance. Missing factors are excluded from the overall calculation and weights are
+              redistributed proportionally.
             </p>
           </div>
         </div>
@@ -114,14 +114,10 @@ function FactorCard({ factor }: FactorCardProps) {
         </div>
         <div className="ml-4 text-right flex-shrink-0">
           <div className="flex items-baseline gap-1">
-            <span className={`text-2xl font-bold ${textColor}`}>
-              {Math.round(score)}
-            </span>
+            <span className={`text-2xl font-bold ${textColor}`}>{Math.round(score)}</span>
             <span className="text-sm text-ic-text-dim">/100</span>
           </div>
-          <div className="text-sm font-medium text-ic-text-secondary mt-0.5">
-            Grade: {grade}
-          </div>
+          <div className="text-sm font-medium text-ic-text-secondary mt-0.5">Grade: {grade}</div>
         </div>
       </div>
 

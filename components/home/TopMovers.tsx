@@ -65,33 +65,40 @@ export default function TopMovers() {
     {
       id: 'gainers',
       label: 'Top Gainers',
-      icon: <ArrowTrendingUpIcon className="h-4 w-4" />
+      icon: <ArrowTrendingUpIcon className="h-4 w-4" />,
     },
     {
       id: 'losers',
       label: 'Top Losers',
-      icon: <ArrowTrendingDownIcon className="h-4 w-4" />
+      icon: <ArrowTrendingDownIcon className="h-4 w-4" />,
     },
     {
       id: 'active',
       label: 'Most Active',
-      icon: <FireIcon className="h-4 w-4" />
+      icon: <FireIcon className="h-4 w-4" />,
     },
   ];
 
   const getCurrentData = (): MoverStock[] => {
     if (!movers) return [];
     switch (activeTab) {
-      case 'gainers': return movers.gainers;
-      case 'losers': return movers.losers;
-      case 'active': return movers.mostActive;
-      default: return [];
+      case 'gainers':
+        return movers.gainers;
+      case 'losers':
+        return movers.losers;
+      case 'active':
+        return movers.mostActive;
+      default:
+        return [];
     }
   };
 
   if (loading) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+      <div
+        className="bg-ic-surface rounded-lg border border-ic-border p-6"
+        style={{ boxShadow: 'var(--ic-shadow-card)' }}
+      >
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         </div>
@@ -114,7 +121,10 @@ export default function TopMovers() {
 
   if (error) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+      <div
+        className="bg-ic-surface rounded-lg border border-ic-border p-6"
+        style={{ boxShadow: 'var(--ic-shadow-card)' }}
+      >
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Top Movers</h2>
         <div className="text-ic-negative text-sm">
           <p>Error loading market movers: {error}</p>
@@ -129,7 +139,10 @@ export default function TopMovers() {
   const currentData = getCurrentData();
 
   return (
-    <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+    <div
+      className="bg-ic-surface rounded-lg border border-ic-border p-6"
+      style={{ boxShadow: 'var(--ic-shadow-card)' }}
+    >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-ic-text-primary">Top Movers</h2>
         {lastUpdated && (
@@ -170,9 +183,7 @@ export default function TopMovers() {
             >
               <div className="flex items-center gap-3">
                 <span className="font-semibold text-ic-text-primary w-14">{stock.symbol}</span>
-                <span className="text-sm text-ic-text-muted">
-                  ${safeToFixed(stock.price, 2)}
-                </span>
+                <span className="text-sm text-ic-text-muted">${safeToFixed(stock.price, 2)}</span>
               </div>
 
               <div className="flex items-center gap-3">

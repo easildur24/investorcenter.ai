@@ -104,18 +104,26 @@ function OverviewSection() {
       <h2 className="text-2xl font-bold">What is the IC Score?</h2>
 
       <p className="text-gray-700">
-        The Investor Center Score (IC Score) is a comprehensive stock evaluation metric
-        that combines fundamental analysis, market signals, and quantitative factors
-        to produce a single score from 0-100.
+        The Investor Center Score (IC Score) is a comprehensive stock evaluation metric that
+        combines fundamental analysis, market signals, and quantitative factors to produce a single
+        score from 0-100.
       </p>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">Key Features</h3>
         <ul className="list-disc list-inside text-blue-800 space-y-1">
-          <li><strong>Sector-Relative:</strong> Compares stocks against peers in the same sector</li>
-          <li><strong>Lifecycle-Aware:</strong> Adjusts factor weights based on company stage</li>
-          <li><strong>Multi-Factor:</strong> Combines 10+ individual factors across 3 categories</li>
-          <li><strong>Transparent:</strong> Shows detailed breakdown of all contributing factors</li>
+          <li>
+            <strong>Sector-Relative:</strong> Compares stocks against peers in the same sector
+          </li>
+          <li>
+            <strong>Lifecycle-Aware:</strong> Adjusts factor weights based on company stage
+          </li>
+          <li>
+            <strong>Multi-Factor:</strong> Combines 10+ individual factors across 3 categories
+          </li>
+          <li>
+            <strong>Transparent:</strong> Shows detailed breakdown of all contributing factors
+          </li>
         </ul>
       </div>
 
@@ -132,27 +140,37 @@ function OverviewSection() {
         <tbody>
           <tr className="border-b">
             <td className="py-2">80-100</td>
-            <td className="py-2"><span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded">Strong Buy</span></td>
+            <td className="py-2">
+              <span className="px-2 py-1 bg-emerald-100 text-emerald-800 rounded">Strong Buy</span>
+            </td>
             <td className="py-2 text-gray-600">Exceptional fundamentals and momentum</td>
           </tr>
           <tr className="border-b">
             <td className="py-2">65-79</td>
-            <td className="py-2"><span className="px-2 py-1 bg-green-100 text-green-800 rounded">Buy</span></td>
+            <td className="py-2">
+              <span className="px-2 py-1 bg-green-100 text-green-800 rounded">Buy</span>
+            </td>
             <td className="py-2 text-gray-600">Above-average characteristics</td>
           </tr>
           <tr className="border-b">
             <td className="py-2">50-64</td>
-            <td className="py-2"><span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Hold</span></td>
+            <td className="py-2">
+              <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Hold</span>
+            </td>
             <td className="py-2 text-gray-600">Mixed signals, wait for clarity</td>
           </tr>
           <tr className="border-b">
             <td className="py-2">35-49</td>
-            <td className="py-2"><span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">Sell</span></td>
+            <td className="py-2">
+              <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded">Sell</span>
+            </td>
             <td className="py-2 text-gray-600">Below-average profile</td>
           </tr>
           <tr>
             <td className="py-2">0-34</td>
-            <td className="py-2"><span className="px-2 py-1 bg-red-100 text-red-800 rounded">Strong Sell</span></td>
+            <td className="py-2">
+              <span className="px-2 py-1 bg-red-100 text-red-800 rounded">Strong Sell</span>
+            </td>
             <td className="py-2 text-gray-600">Significant concerns</td>
           </tr>
         </tbody>
@@ -240,8 +258,8 @@ function FactorsSection() {
       <h2 className="text-2xl font-bold">Scoring Factors</h2>
 
       <p className="text-gray-700">
-        The IC Score combines 10 individual factors, each measuring a specific aspect
-        of stock quality, valuation, or market signals.
+        The IC Score combines 10 individual factors, each measuring a specific aspect of stock
+        quality, valuation, or market signals.
       </p>
 
       <div className="space-y-4">
@@ -250,11 +268,15 @@ function FactorsSection() {
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-semibold text-lg">{factor.name}</h3>
               <div className="flex items-center gap-2">
-                <span className={`px-2 py-1 text-xs rounded ${
-                  factor.category === 'Quality' ? 'bg-blue-100 text-blue-800' :
-                  factor.category === 'Valuation' ? 'bg-purple-100 text-purple-800' :
-                  'bg-green-100 text-green-800'
-                }`}>
+                <span
+                  className={`px-2 py-1 text-xs rounded ${
+                    factor.category === 'Quality'
+                      ? 'bg-blue-100 text-blue-800'
+                      : factor.category === 'Valuation'
+                        ? 'bg-purple-100 text-purple-800'
+                        : 'bg-green-100 text-green-800'
+                  }`}
+                >
                   {factor.category}
                 </span>
                 <span className="text-sm font-medium text-gray-600">{factor.weight}</span>
@@ -395,9 +417,8 @@ function LifecycleSection() {
       <h2 className="text-2xl font-bold">Lifecycle Classification</h2>
 
       <p className="text-gray-700">
-        Companies at different stages deserve different evaluation criteria. A hypergrowth
-        startup shouldn&apos;t be penalized for low profitability the same way a mature
-        company would be.
+        Companies at different stages deserve different evaluation criteria. A hypergrowth startup
+        shouldn&apos;t be penalized for low profitability the same way a mature company would be.
       </p>
 
       <div className="space-y-4">
@@ -431,16 +452,15 @@ function SectorRelativeSection() {
       <h2 className="text-2xl font-bold">Sector-Relative Scoring</h2>
 
       <p className="text-gray-700">
-        Raw financial metrics are converted to sector percentiles before scoring.
-        This ensures fair comparison across different industries with varying
-        characteristics.
+        Raw financial metrics are converted to sector percentiles before scoring. This ensures fair
+        comparison across different industries with varying characteristics.
       </p>
 
       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
         <h3 className="font-semibold text-amber-900 mb-2">Why Sector-Relative?</h3>
         <p className="text-amber-800">
-          A 15% net margin might be excellent for a retailer but below average for a
-          software company. Sector-relative scoring accounts for these differences.
+          A 15% net margin might be excellent for a retailer but below average for a software
+          company. Sector-relative scoring accounts for these differences.
         </p>
       </div>
 
@@ -448,20 +468,20 @@ function SectorRelativeSection() {
 
       <ol className="list-decimal list-inside space-y-3 text-gray-700">
         <li>
-          <strong>Calculate sector statistics:</strong> For each metric, we compute
-          percentile distributions across all companies in the sector.
+          <strong>Calculate sector statistics:</strong> For each metric, we compute percentile
+          distributions across all companies in the sector.
         </li>
         <li>
-          <strong>Convert to percentile:</strong> A stock&apos;s raw metric is converted
-          to its percentile rank within the sector (0-100).
+          <strong>Convert to percentile:</strong> A stock&apos;s raw metric is converted to its
+          percentile rank within the sector (0-100).
         </li>
         <li>
-          <strong>Invert where appropriate:</strong> For metrics where lower is better
-          (e.g., P/E ratio), we invert the percentile so higher scores are always better.
+          <strong>Invert where appropriate:</strong> For metrics where lower is better (e.g., P/E
+          ratio), we invert the percentile so higher scores are always better.
         </li>
         <li>
-          <strong>Apply to factor calculation:</strong> The sector-relative percentile
-          feeds into the factor score calculation.
+          <strong>Apply to factor calculation:</strong> The sector-relative percentile feeds into
+          the factor score calculation.
         </li>
       </ol>
 
@@ -495,8 +515,8 @@ function SectorRelativeSection() {
           </tbody>
         </table>
         <p className="text-xs text-gray-600 mt-2">
-          Despite having a lower P/E, MSFT scores lower on valuation because Tech
-          companies typically trade at higher multiples.
+          Despite having a lower P/E, MSFT scores lower on valuation because Tech companies
+          typically trade at higher multiples.
         </p>
       </div>
     </div>
@@ -509,8 +529,8 @@ function ConfidenceSection() {
       <h2 className="text-2xl font-bold">Confidence & Data Quality</h2>
 
       <p className="text-gray-700">
-        Not all IC Scores are created equal. The confidence level indicates how much
-        data was available and how recent it is.
+        Not all IC Scores are created equal. The confidence level indicates how much data was
+        available and how recent it is.
       </p>
 
       <h3 className="text-xl font-semibold mt-6">Confidence Levels</h3>
@@ -524,9 +544,7 @@ function ConfidenceSection() {
         </div>
         <div className="flex items-center gap-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
           <span className="px-3 py-1 bg-yellow-600 text-white rounded font-medium">Medium</span>
-          <p className="text-gray-700">
-            60-80% data, some factors estimated or using older data
-          </p>
+          <p className="text-gray-700">60-80% data, some factors estimated or using older data</p>
         </div>
         <div className="flex items-center gap-4 p-3 bg-red-50 border border-red-200 rounded">
           <span className="px-3 py-1 bg-red-600 text-white rounded font-medium">Low</span>
@@ -538,14 +556,18 @@ function ConfidenceSection() {
 
       <h3 className="text-xl font-semibold mt-6">Per-Factor Data Status</h3>
 
-      <p className="text-gray-700 mb-3">
-        Each factor shows its individual data availability:
-      </p>
+      <p className="text-gray-700 mb-3">Each factor shows its individual data availability:</p>
 
       <ul className="list-disc list-inside space-y-2 text-gray-700">
-        <li><strong>Available:</strong> All required data present</li>
-        <li><strong>Partial:</strong> Some metrics missing, factor calculated with available data</li>
-        <li><strong>Unavailable:</strong> Critical data missing, factor excluded from score</li>
+        <li>
+          <strong>Available:</strong> All required data present
+        </li>
+        <li>
+          <strong>Partial:</strong> Some metrics missing, factor calculated with available data
+        </li>
+        <li>
+          <strong>Unavailable:</strong> Critical data missing, factor excluded from score
+        </li>
       </ul>
     </div>
   );
@@ -557,8 +579,8 @@ function StabilitySection() {
       <h2 className="text-2xl font-bold">Score Stability</h2>
 
       <p className="text-gray-700">
-        To prevent score whipsaw from daily data fluctuations, we apply exponential
-        smoothing to the score calculation.
+        To prevent score whipsaw from daily data fluctuations, we apply exponential smoothing to the
+        score calculation.
       </p>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -574,8 +596,7 @@ function StabilitySection() {
       <h3 className="text-xl font-semibold mt-6">Event-Based Resets</h3>
 
       <p className="text-gray-700 mb-3">
-        Smoothing is bypassed when significant events occur, allowing scores to
-        react immediately:
+        Smoothing is bypassed when significant events occur, allowing scores to react immediately:
       </p>
 
       <ul className="list-disc list-inside space-y-1 text-gray-700">
@@ -590,8 +611,8 @@ function StabilitySection() {
       <h3 className="text-xl font-semibold mt-6">Minimum Change Threshold</h3>
 
       <p className="text-gray-700">
-        Score changes less than 0.5 points are not displayed to users. This prevents
-        noise from appearing as meaningful movement.
+        Score changes less than 0.5 points are not displayed to users. This prevents noise from
+        appearing as meaningful movement.
       </p>
     </div>
   );

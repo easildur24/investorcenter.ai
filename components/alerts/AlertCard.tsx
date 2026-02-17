@@ -45,17 +45,21 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
   };
 
   return (
-    <div className={`bg-slate-800/50 backdrop-blur-sm border rounded-lg p-6 transition-all ${
-      alert.is_active ? 'border-purple-500/50' : 'border-slate-700'
-    }`}>
+    <div
+      className={`bg-slate-800/50 backdrop-blur-sm border rounded-lg p-6 transition-all ${
+        alert.is_active ? 'border-purple-500/50' : 'border-slate-700'
+      }`}
+    >
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-start gap-4 flex-1">
           {/* Alert Icon */}
-          <div className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${
-            alert.is_active
-              ? 'bg-purple-600/20 border border-purple-500/50'
-              : 'bg-slate-700/50 border border-slate-600'
-          }`}>
+          <div
+            className={`w-12 h-12 rounded-lg flex items-center justify-center text-2xl ${
+              alert.is_active
+                ? 'bg-purple-600/20 border border-purple-500/50'
+                : 'bg-slate-700/50 border border-slate-600'
+            }`}
+          >
             {alertInfo?.icon || '🔔'}
           </div>
 
@@ -90,17 +94,23 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
 
               <div>
                 <div className="text-ic-text-muted mb-1">Type</div>
-                <div className="text-ic-text-primary font-medium">{alertInfo?.label || alert.alert_type}</div>
+                <div className="text-ic-text-primary font-medium">
+                  {alertInfo?.label || alert.alert_type}
+                </div>
               </div>
 
               <div>
                 <div className="text-ic-text-muted mb-1">Condition</div>
-                <div className="text-ic-text-primary font-medium">{formatConditions(alert.conditions)}</div>
+                <div className="text-ic-text-primary font-medium">
+                  {formatConditions(alert.conditions)}
+                </div>
               </div>
 
               <div>
                 <div className="text-ic-text-muted mb-1">Frequency</div>
-                <div className="text-ic-text-primary font-medium">{frequencyInfo?.label || alert.frequency}</div>
+                <div className="text-ic-text-primary font-medium">
+                  {frequencyInfo?.label || alert.frequency}
+                </div>
               </div>
             </div>
 
@@ -113,12 +123,18 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-ic-text-muted" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-4 h-4 text-ic-text-muted"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                   </svg>
                 )}
-                <span className={alert.notify_email ? 'text-ic-blue' : 'text-ic-text-muted'}>Email</span>
+                <span className={alert.notify_email ? 'text-ic-blue' : 'text-ic-text-muted'}>
+                  Email
+                </span>
               </div>
 
               <div className="flex items-center gap-1">
@@ -127,22 +143,30 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 ) : (
-                  <svg className="w-4 h-4 text-ic-text-muted" fill="currentColor" viewBox="0 0 20 20">
+                  <svg
+                    className="w-4 h-4 text-ic-text-muted"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
                     <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                   </svg>
                 )}
-                <span className={alert.notify_in_app ? 'text-purple-400' : 'text-ic-text-muted'}>In-App</span>
+                <span className={alert.notify_in_app ? 'text-purple-400' : 'text-ic-text-muted'}>
+                  In-App
+                </span>
               </div>
             </div>
 
             {/* Trigger Stats */}
             <div className="flex items-center gap-6 mt-3 text-xs text-ic-text-dim">
               <div>
-                <span className="font-semibold text-ic-text-primary">{alert.trigger_count}</span> triggers
+                <span className="font-semibold text-ic-text-primary">{alert.trigger_count}</span>{' '}
+                triggers
               </div>
               {alert.last_triggered_at && (
                 <div>
-                  Last triggered {formatDistanceToNow(new Date(alert.last_triggered_at), { addSuffix: true })}
+                  Last triggered{' '}
+                  {formatDistanceToNow(new Date(alert.last_triggered_at), { addSuffix: true })}
                 </div>
               )}
               <div>
@@ -172,12 +196,27 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
           >
             {alert.is_active ? (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             ) : (
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
             )}
           </button>
@@ -189,7 +228,12 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             title="Edit"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
             </svg>
           </button>
 
@@ -200,7 +244,12 @@ export default function AlertCard({ alert, onEdit, onToggleActive, onDelete }: A
             title="Delete"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+              />
             </svg>
           </button>
         </div>

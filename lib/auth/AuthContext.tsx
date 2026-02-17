@@ -56,12 +56,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!accessToken) return;
 
     // Refresh token 5 minutes before expiry (assuming 1 hour expiry = 55 min interval)
-    const refreshInterval = setInterval(() => {
-      const refreshToken = localStorage.getItem('refresh_token');
-      if (refreshToken) {
-        refreshTokens(refreshToken);
-      }
-    }, 55 * 60 * 1000); // 55 minutes
+    const refreshInterval = setInterval(
+      () => {
+        const refreshToken = localStorage.getItem('refresh_token');
+        if (refreshToken) {
+          refreshTokens(refreshToken);
+        }
+      },
+      55 * 60 * 1000
+    ); // 55 minutes
 
     return () => clearInterval(refreshInterval);
   }, [accessToken]);
@@ -173,7 +176,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, accessToken, loading, login, signup, logout, refreshAuth }}>
+    <AuthContext.Provider
+      value={{ user, accessToken, loading, login, signup, logout, refreshAuth }}
+    >
       {children}
     </AuthContext.Provider>
   );

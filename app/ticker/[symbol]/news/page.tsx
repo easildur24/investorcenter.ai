@@ -28,9 +28,9 @@ interface NewsArticle {
     sentiment_reasoning: string;
   }>;
   // IC Score AI sentiment fields (primary)
-  sentiment_score?: number;    // -100 to +100 (from FinBERT AI analysis)
-  sentiment_label?: string;    // "Positive", "Negative", "Neutral"
-  relevance_score?: number;    // 0 to 100
+  sentiment_score?: number; // -100 to +100 (from FinBERT AI analysis)
+  sentiment_label?: string; // "Positive", "Negative", "Neutral"
+  relevance_score?: number; // 0 to 100
   // Backward compatibility
   summary?: string;
   source?: string;
@@ -78,9 +78,7 @@ function getConfidence(article: NewsArticle, symbol: string): number {
   }
 
   // Fallback: Try Polygon insights
-  const insight = article.insights?.find(
-    (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-  );
+  const insight = article.insights?.find((i) => i.ticker?.toUpperCase() === symbol.toUpperCase());
 
   if (insight?.sentiment_reasoning) {
     const reasoning = insight.sentiment_reasoning;
@@ -168,9 +166,7 @@ export default function TickerNewsPage() {
       return getSentimentFromApi(article.sentiment_label);
     }
     // Fallback: Try Polygon insights
-    const insight = article.insights?.find(
-      (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-    );
+    const insight = article.insights?.find((i) => i.ticker?.toUpperCase() === symbol.toUpperCase());
     return getSentimentFromApi(insight?.sentiment || article.sentiment);
   };
 
@@ -194,9 +190,7 @@ export default function TickerNewsPage() {
 
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-ic-text-primary">
-                {symbol} News & Sentiment
-              </h1>
+              <h1 className="text-2xl font-bold text-ic-text-primary">{symbol} News & Sentiment</h1>
               <p className="text-ic-text-muted mt-1">
                 {news.length} articles with AI-powered sentiment analysis
               </p>
@@ -353,11 +347,7 @@ export default function TickerNewsPage() {
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
                     .filter((page) => {
                       // Show first, last, current, and adjacent pages
-                      return (
-                        page === 1 ||
-                        page === totalPages ||
-                        Math.abs(page - currentPage) <= 1
-                      );
+                      return page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
                     })
                     .map((page, idx, arr) => (
                       <span key={page} className="flex items-center">

@@ -69,9 +69,7 @@ export default function SentimentHistoryChart({
   if (error || !data || data.history.length === 0) {
     return (
       <div className="flex items-center justify-center bg-ic-surface rounded-lg" style={{ height }}>
-        <p className="text-ic-text-dim text-sm">
-          {error || 'No sentiment history available'}
-        </p>
+        <p className="text-ic-text-dim text-sm">{error || 'No sentiment history available'}</p>
       </div>
     );
   }
@@ -110,10 +108,7 @@ export default function SentimentHistoryChart({
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
-        >
+        <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
@@ -139,12 +134,7 @@ export default function SentimentHistoryChart({
           <Tooltip content={<CustomTooltip />} />
 
           {/* Reference line at 0 */}
-          <ReferenceLine
-            yAxisId="left"
-            y={0}
-            stroke={chartColors.text}
-            strokeDasharray="3 3"
-          />
+          <ReferenceLine yAxisId="left" y={0} stroke={chartColors.text} strokeDasharray="3 3" />
 
           {/* Reference lines for thresholds */}
           <ReferenceLine
@@ -231,7 +221,8 @@ function CustomTooltip({ active, payload }: TooltipProps) {
         <div className="flex justify-between gap-4">
           <span className="text-ic-text-muted">Sentiment:</span>
           <span className="font-bold" style={{ color: scoreColor }}>
-            {data.score >= 0 ? '+' : ''}{data.score.toFixed(2)}
+            {data.score >= 0 ? '+' : ''}
+            {data.score.toFixed(2)}
           </span>
         </div>
         <div className="flex justify-between gap-4">

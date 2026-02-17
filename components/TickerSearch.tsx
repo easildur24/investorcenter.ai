@@ -37,9 +37,12 @@ const saveRecentSearch = (symbol: string, name: string) => {
   try {
     const searches = getRecentSearches();
     // Remove if already exists
-    const filtered = searches.filter(s => s.symbol !== symbol);
+    const filtered = searches.filter((s) => s.symbol !== symbol);
     // Add to front
-    const updated = [{ symbol, name, timestamp: Date.now() }, ...filtered].slice(0, MAX_RECENT_SEARCHES);
+    const updated = [{ symbol, name, timestamp: Date.now() }, ...filtered].slice(
+      0,
+      MAX_RECENT_SEARCHES
+    );
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
   } catch {
     // Ignore localStorage errors
@@ -111,7 +114,7 @@ export default function TickerSearch() {
 
   const handleRemoveRecentItem = (e: React.MouseEvent, symbol: string) => {
     e.stopPropagation();
-    const updated = recentSearches.filter(s => s.symbol !== symbol);
+    const updated = recentSearches.filter((s) => s.symbol !== symbol);
     localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(updated));
     setRecentSearches(updated);
   };
@@ -164,7 +167,9 @@ export default function TickerSearch() {
               >
                 <div className="flex justify-between items-center">
                   <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-ic-text-primary text-sm">{result.symbol}</div>
+                    <div className="font-semibold text-ic-text-primary text-sm">
+                      {result.symbol}
+                    </div>
                     <div className="text-sm text-ic-text-secondary truncate">{result.name}</div>
                   </div>
                   <div className="ml-2 text-xs text-ic-text-dim bg-ic-bg-tertiary px-2 py-1 rounded">
@@ -199,7 +204,9 @@ export default function TickerSearch() {
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 min-w-0">
-                      <div className="font-semibold text-ic-text-primary text-sm">{item.symbol}</div>
+                      <div className="font-semibold text-ic-text-primary text-sm">
+                        {item.symbol}
+                      </div>
                       <div className="text-xs text-ic-text-muted truncate">{item.name}</div>
                     </div>
                     <button

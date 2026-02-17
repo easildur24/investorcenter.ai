@@ -22,11 +22,7 @@ interface PostsListProps {
 /**
  * Sortable list of representative social media posts
  */
-export default function PostsList({
-  ticker,
-  initialSort = 'recent',
-  limit = 10,
-}: PostsListProps) {
+export default function PostsList({ ticker, initialSort = 'recent', limit = 10 }: PostsListProps) {
   const [data, setData] = useState<RepresentativePostsResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,9 +57,7 @@ export default function PostsList({
       {/* Header */}
       <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h3 className="text-lg font-semibold text-ic-text-primary">
-            Social Media Posts
-          </h3>
+          <h3 className="text-lg font-semibold text-ic-text-primary">Social Media Posts</h3>
           <div className="flex items-center gap-2">
             <label className="text-sm text-ic-text-dim">Sort:</label>
             <select
@@ -233,18 +227,8 @@ export function CompactPostsList({ posts, limit = 3 }: CompactPostsListProps) {
  */
 function UpvoteIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M5 15l7-7 7 7"
-      />
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
     </svg>
   );
 }
@@ -254,12 +238,7 @@ function UpvoteIcon({ className }: { className?: string }) {
  */
 function CommentIcon({ className }: { className?: string }) {
   return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"

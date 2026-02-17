@@ -1,9 +1,13 @@
 'use client';
 
-import { getSentimentScoreColor, formatSentimentScore, SentimentLabel } from '@/lib/types/sentiment';
+import {
+  getSentimentScoreColor,
+  formatSentimentScore,
+  SentimentLabel,
+} from '@/lib/types/sentiment';
 
 interface SentimentGaugeProps {
-  score: number;        // -1 to +1
+  score: number; // -1 to +1
   label: SentimentLabel;
   size?: 'sm' | 'md' | 'lg';
   showLabel?: boolean;
@@ -55,17 +59,16 @@ export default function SentimentGauge({
           <span className={`font-semibold ${config.text}`} style={{ color }}>
             {formatSentimentScore(score)}
           </span>
-          <span className={`${config.labelText} text-ic-text-dim capitalize`}>
-            {label}
-          </span>
+          <span className={`${config.labelText} text-ic-text-dim capitalize`}>{label}</span>
         </div>
       )}
 
       {/* Gauge bar */}
       <div className="relative">
         {/* Background gradient bar */}
-        <div className={`${config.height} rounded-full overflow-hidden bg-gradient-to-r from-ic-negative via-gray-300 to-ic-positive`}>
-        </div>
+        <div
+          className={`${config.height} rounded-full overflow-hidden bg-gradient-to-r from-ic-negative via-gray-300 to-ic-positive`}
+        ></div>
 
         {/* Marker */}
         <div
@@ -102,14 +105,8 @@ export function SentimentIndicator({ score, label }: SentimentIndicatorProps) {
 
   return (
     <div className="inline-flex items-center gap-1.5">
-      <div
-        className="w-2 h-2 rounded-full"
-        style={{ backgroundColor: color }}
-      />
-      <span
-        className="text-sm font-medium capitalize"
-        style={{ color }}
-      >
+      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+      <span className="text-sm font-medium capitalize" style={{ color }}>
         {label}
       </span>
     </div>

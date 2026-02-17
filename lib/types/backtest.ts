@@ -143,27 +143,27 @@ export function formatNumber(value: number, decimals: number = 2): string {
 export function getDecileColor(decile: number): string {
   // Green for top deciles, red for bottom
   const colors: Record<number, string> = {
-    1: '#10b981',   // Emerald
+    1: '#10b981', // Emerald
     2: '#34d399',
     3: '#6ee7b7',
     4: '#a7f3d0',
-    5: '#d1fae5',   // Light green
-    6: '#fef3c7',   // Light yellow
+    5: '#d1fae5', // Light green
+    6: '#fef3c7', // Light yellow
     7: '#fde68a',
     8: '#fca5a5',
     9: '#f87171',
-    10: '#ef4444',  // Red
+    10: '#ef4444', // Red
   };
   return colors[decile] || '#6b7280';
 }
 
 export function getReturnColor(value: number): string {
-  if (value > 0.15) return '#10b981';  // Strong positive
-  if (value > 0.05) return '#34d399';  // Positive
-  if (value > 0) return '#6ee7b7';     // Slight positive
+  if (value > 0.15) return '#10b981'; // Strong positive
+  if (value > 0.05) return '#34d399'; // Positive
+  if (value > 0) return '#6ee7b7'; // Slight positive
   if (value > -0.05) return '#fca5a5'; // Slight negative
   if (value > -0.15) return '#f87171'; // Negative
-  return '#ef4444';                     // Strong negative
+  return '#ef4444'; // Strong negative
 }
 
 export function getRatingFromSharpe(sharpe: number): string {

@@ -1,11 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  GranularConfidence,
-  FactorDataStatus,
-  FACTOR_CONFIGS,
-} from '@/lib/types/ic-score-v2';
+import { GranularConfidence, FactorDataStatus, FACTOR_CONFIGS } from '@/lib/types/ic-score-v2';
 import { ConfidenceBadge } from './Badges';
 
 interface GranularConfidenceDisplayProps {
@@ -43,9 +39,7 @@ export default function GranularConfidenceDisplay({
           <h3 className="font-medium text-gray-900">Data Confidence</h3>
           <ConfidenceBadge level={level} percentage={percentage} />
         </div>
-        <button className="text-gray-400 hover:text-gray-600">
-          {isExpanded ? '▲' : '▼'}
-        </button>
+        <button className="text-gray-400 hover:text-gray-600">{isExpanded ? '▲' : '▼'}</button>
       </div>
 
       {isExpanded && (
@@ -62,8 +56,8 @@ export default function GranularConfidenceDisplay({
                   percentage >= 90
                     ? 'bg-green-500'
                     : percentage >= 70
-                    ? 'bg-yellow-500'
-                    : 'bg-red-500'
+                      ? 'bg-yellow-500'
+                      : 'bg-red-500'
                 }`}
                 style={{ width: `${percentage}%` }}
               />
@@ -73,11 +67,7 @@ export default function GranularConfidenceDisplay({
           {/* Factor status grid */}
           <div className="grid grid-cols-2 gap-2">
             {Object.entries(factors).map(([factorName, status]) => (
-              <FactorStatusRow
-                key={factorName}
-                factorName={factorName}
-                status={status}
-              />
+              <FactorStatusRow key={factorName} factorName={factorName} status={status} />
             ))}
           </div>
 
@@ -126,9 +116,7 @@ function FactorStatusRow({ factorName, status }: FactorStatusRowProps) {
             )}
           </>
         ) : (
-          <span className="text-xs text-gray-400">
-            {status.reason || 'Missing'}
-          </span>
+          <span className="text-xs text-gray-400">{status.reason || 'Missing'}</span>
         )}
       </div>
     </div>
@@ -156,9 +144,7 @@ function getFreshnessConfig(freshness: string): FreshnessConfig {
 }
 
 function formatFactorName(name: string): string {
-  return name
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
+  return name.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
 /**
@@ -171,11 +157,7 @@ interface ConfidenceIndicatorProps {
 
 export function ConfidenceIndicator({ level, percentage }: ConfidenceIndicatorProps) {
   const dotColor =
-    level === 'High'
-      ? 'bg-green-500'
-      : level === 'Medium'
-      ? 'bg-yellow-500'
-      : 'bg-red-500';
+    level === 'High' ? 'bg-green-500' : level === 'Medium' ? 'bg-yellow-500' : 'bg-red-500';
 
   return (
     <div className="flex items-center gap-1.5">
@@ -198,7 +180,9 @@ interface DataFreshnessBarProps {
 export function DataFreshnessBar({ factors }: DataFreshnessBarProps) {
   const total = Object.keys(factors).length;
   const fresh = Object.values(factors).filter((f) => f.available && f.freshness === 'fresh').length;
-  const recent = Object.values(factors).filter((f) => f.available && f.freshness === 'recent').length;
+  const recent = Object.values(factors).filter(
+    (f) => f.available && f.freshness === 'recent'
+  ).length;
   const stale = Object.values(factors).filter((f) => f.available && f.freshness === 'stale').length;
   const missing = Object.values(factors).filter((f) => !f.available).length;
 

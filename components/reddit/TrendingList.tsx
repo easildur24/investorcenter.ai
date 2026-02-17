@@ -34,7 +34,7 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
   // Fetch company names for tickers
   useEffect(() => {
     const fetchTickerNames = async () => {
-      const symbols = items.map(item => item.tickerSymbol).slice(0, 20); // Limit to first 20 for performance
+      const symbols = items.map((item) => item.tickerSymbol).slice(0, 20); // Limit to first 20 for performance
       const names: TickerMetadata = {};
 
       // Fetch names in parallel (with a simple implementation)

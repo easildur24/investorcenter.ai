@@ -79,7 +79,8 @@ export const alertAPI = {
   }): Promise<AlertRuleWithDetails[]> {
     const queryParams = new URLSearchParams();
     if (params?.watch_list_id) queryParams.append('watch_list_id', params.watch_list_id);
-    if (params?.is_active !== undefined) queryParams.append('is_active', params.is_active.toString());
+    if (params?.is_active !== undefined)
+      queryParams.append('is_active', params.is_active.toString());
 
     const query = queryParams.toString();
     return apiClient.get(`/alerts${query ? `?${query}` : ''}`);
@@ -106,10 +107,7 @@ export const alertAPI = {
   },
 
   // Get alert logs (trigger history)
-  async getAlertLogs(params?: {
-    limit?: number;
-    offset?: number;
-  }): Promise<AlertLogWithRule[]> {
+  async getAlertLogs(params?: { limit?: number; offset?: number }): Promise<AlertLogWithRule[]> {
     const queryParams = new URLSearchParams();
     if (params?.limit) queryParams.append('limit', params.limit.toString());
     if (params?.offset) queryParams.append('offset', params.offset.toString());

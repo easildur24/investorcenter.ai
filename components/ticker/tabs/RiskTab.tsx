@@ -23,12 +23,40 @@ interface RiskMetrics {
   downside_deviation?: number;
 }
 
-function getBetaInterpretation(beta: number): { label: string; description: string; color: string } {
-  if (beta > 1.5) return { label: 'High Risk', description: 'Much more volatile than market', color: 'text-ic-negative bg-ic-negative-bg' };
-  if (beta > 1.1) return { label: 'Above Market', description: 'More volatile than market', color: 'text-orange-600 bg-orange-50' };
-  if (beta >= 0.9) return { label: 'Market-Like', description: 'Similar to market', color: 'text-ic-text-muted bg-ic-bg-secondary' };
-  if (beta >= 0.5) return { label: 'Defensive', description: 'Less volatile than market', color: 'text-ic-positive bg-ic-positive-bg' };
-  return { label: 'Low Beta', description: 'Much less volatile', color: 'text-blue-600 bg-blue-50' };
+function getBetaInterpretation(beta: number): {
+  label: string;
+  description: string;
+  color: string;
+} {
+  if (beta > 1.5)
+    return {
+      label: 'High Risk',
+      description: 'Much more volatile than market',
+      color: 'text-ic-negative bg-ic-negative-bg',
+    };
+  if (beta > 1.1)
+    return {
+      label: 'Above Market',
+      description: 'More volatile than market',
+      color: 'text-orange-600 bg-orange-50',
+    };
+  if (beta >= 0.9)
+    return {
+      label: 'Market-Like',
+      description: 'Similar to market',
+      color: 'text-ic-text-muted bg-ic-bg-secondary',
+    };
+  if (beta >= 0.5)
+    return {
+      label: 'Defensive',
+      description: 'Less volatile than market',
+      color: 'text-ic-positive bg-ic-positive-bg',
+    };
+  return {
+    label: 'Low Beta',
+    description: 'Much less volatile',
+    color: 'text-blue-600 bg-blue-50',
+  };
 }
 
 function getSharpeInterpretation(sharpe: number): { label: string; color: string } {
@@ -92,7 +120,8 @@ export default function RiskTab({ symbol }: RiskTabProps) {
   }
 
   const betaInfo = data.beta !== undefined ? getBetaInterpretation(data.beta) : null;
-  const sharpeInfo = data.sharpe_ratio !== undefined ? getSharpeInterpretation(data.sharpe_ratio) : null;
+  const sharpeInfo =
+    data.sharpe_ratio !== undefined ? getSharpeInterpretation(data.sharpe_ratio) : null;
 
   return (
     <div className="p-6">
@@ -119,13 +148,16 @@ export default function RiskTab({ symbol }: RiskTabProps) {
       {/* Data Info */}
       {data.calculation_date && (
         <div className="text-sm text-ic-text-muted mb-4">
-          Calculated: {new Date(data.calculation_date).toLocaleDateString()} • {data.data_points || 0} data points
+          Calculated: {new Date(data.calculation_date).toLocaleDateString()} •{' '}
+          {data.data_points || 0} data points
         </div>
       )}
 
       {/* Key Risk Metrics */}
       <div className="mb-8">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">Key Metrics</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">
+          Key Metrics
+        </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Beta */}
           <div className="bg-ic-bg-secondary rounded-lg p-4">
@@ -159,9 +191,7 @@ export default function RiskTab({ symbol }: RiskTabProps) {
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-ic-text-muted">Sharpe Ratio</span>
               {sharpeInfo && (
-                <span className={cn('text-xs', sharpeInfo.color)}>
-                  {sharpeInfo.label}
-                </span>
+                <span className={cn('text-xs', sharpeInfo.color)}>{sharpeInfo.label}</span>
               )}
             </div>
             <div className="text-2xl font-semibold text-ic-text-primary">
@@ -183,7 +213,9 @@ export default function RiskTab({ symbol }: RiskTabProps) {
 
       {/* Risk-Adjusted Performance */}
       <div className="mb-8">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">Risk-Adjusted Performance</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">
+          Risk-Adjusted Performance
+        </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Sortino Ratio */}
           <div className="bg-ic-bg-secondary rounded-lg p-4">
@@ -197,11 +229,14 @@ export default function RiskTab({ symbol }: RiskTabProps) {
           {/* Alpha */}
           <div className="bg-ic-bg-secondary rounded-lg p-4">
             <div className="text-sm text-ic-text-muted mb-2">Alpha</div>
-            <div className={cn(
-              'text-xl font-semibold',
-              safeParseNumber(data.alpha) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-            )}>
-              {safeParseNumber(data.alpha) >= 0 ? '+' : ''}{safeToFixed(data.alpha, 2)}%
+            <div
+              className={cn(
+                'text-xl font-semibold',
+                safeParseNumber(data.alpha) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
+              )}
+            >
+              {safeParseNumber(data.alpha) >= 0 ? '+' : ''}
+              {safeToFixed(data.alpha, 2)}%
             </div>
             <div className="text-xs text-ic-text-muted mt-1">Excess return vs benchmark</div>
           </div>
@@ -209,11 +244,16 @@ export default function RiskTab({ symbol }: RiskTabProps) {
           {/* Annualized Return */}
           <div className="bg-ic-bg-secondary rounded-lg p-4">
             <div className="text-sm text-ic-text-muted mb-2">Annualized Return</div>
-            <div className={cn(
-              'text-xl font-semibold',
-              safeParseNumber(data.annualized_return) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-            )}>
-              {safeParseNumber(data.annualized_return) >= 0 ? '+' : ''}{safeToFixed(data.annualized_return, 1)}%
+            <div
+              className={cn(
+                'text-xl font-semibold',
+                safeParseNumber(data.annualized_return) >= 0
+                  ? 'text-ic-positive'
+                  : 'text-ic-negative'
+              )}
+            >
+              {safeParseNumber(data.annualized_return) >= 0 ? '+' : ''}
+              {safeToFixed(data.annualized_return, 1)}%
             </div>
             <div className="text-xs text-ic-text-muted mt-1">Yearly return rate</div>
           </div>
@@ -231,14 +271,17 @@ export default function RiskTab({ symbol }: RiskTabProps) {
 
       {/* Value at Risk */}
       <div>
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">Value at Risk (VaR)</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-4 uppercase tracking-wide">
+          Value at Risk (VaR)
+        </h4>
         <div className="bg-ic-bg-secondary rounded-lg p-4">
           <div className="text-sm text-ic-text-muted mb-2">VaR (95% Confidence)</div>
           <div className="text-2xl font-semibold text-ic-negative">
             {safeToFixed(data.var_95, 2)}%
           </div>
           <div className="text-sm text-ic-text-muted mt-2">
-            There is a 5% chance of losing more than {safeToFixed(Math.abs(safeParseNumber(data.var_95)), 1)}% in a single day.
+            There is a 5% chance of losing more than{' '}
+            {safeToFixed(Math.abs(safeParseNumber(data.var_95)), 1)}% in a single day.
           </div>
         </div>
       </div>
@@ -247,10 +290,18 @@ export default function RiskTab({ symbol }: RiskTabProps) {
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
         <h4 className="text-sm font-medium text-blue-800 mb-2">Understanding These Metrics</h4>
         <ul className="text-sm text-blue-700 space-y-1">
-          <li>• <strong>Beta &gt; 1:</strong> Stock is more volatile than the market (S&P 500)</li>
-          <li>• <strong>Sharpe Ratio &gt; 1:</strong> Good risk-adjusted returns</li>
-          <li>• <strong>Positive Alpha:</strong> Outperforming the benchmark</li>
-          <li>• <strong>Sortino &gt; Sharpe:</strong> More upside than downside volatility</li>
+          <li>
+            • <strong>Beta &gt; 1:</strong> Stock is more volatile than the market (S&P 500)
+          </li>
+          <li>
+            • <strong>Sharpe Ratio &gt; 1:</strong> Good risk-adjusted returns
+          </li>
+          <li>
+            • <strong>Positive Alpha:</strong> Outperforming the benchmark
+          </li>
+          <li>
+            • <strong>Sortino &gt; Sharpe:</strong> More upside than downside volatility
+          </li>
         </ul>
       </div>
     </div>

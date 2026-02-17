@@ -2,11 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getICScore, ICScoreData } from '@/lib/api/ic-score';
-import {
-  ICScoreDataV2,
-  getCategoryScore,
-  Categories,
-} from '@/lib/types/ic-score-v2';
+import { ICScoreDataV2, getCategoryScore, Categories } from '@/lib/types/ic-score-v2';
 import ICScoreGauge from './ICScoreGauge';
 import { CategoryScoreGrid } from './CategoryScoreBadge';
 import { LifecycleBadge, ConfidenceBadge, RatingBadge, SectorRankBadge } from './Badges';
@@ -98,17 +94,16 @@ export default function ICScoreCardV2({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden" id="ic-score">
+      <div
+        className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
+        id="ic-score"
+      >
         {/* Header with gauge and badges */}
         <div className="p-6 bg-gradient-to-br from-gray-50 to-white">
           <div className="flex items-start justify-between gap-6">
             {/* Left: Gauge and rating */}
             <div className="flex items-center gap-6">
-              <ICScoreGauge
-                score={icScore.overall_score}
-                size="lg"
-                showLabel
-              />
+              <ICScoreGauge score={icScore.overall_score} size="lg" showLabel />
               <div>
                 <RatingBadge rating={icScore.rating} size="lg" />
                 <ScoreChangeInline
@@ -259,10 +254,7 @@ function CompactCard({
       </div>
 
       {showExplainerModal && (
-        <ICScoreExplainer
-          icScore={icScore as unknown as ICScoreData}
-          onClose={onCloseExplainer}
-        />
+        <ICScoreExplainer icScore={icScore as unknown as ICScoreData} onClose={onCloseExplainer} />
       )}
     </>
   );
@@ -273,12 +265,12 @@ function MiniCategoryBadge({ name, score }: { name: string; score: number }) {
     score >= 80
       ? 'bg-green-100 text-green-700'
       : score >= 65
-      ? 'bg-green-50 text-green-600'
-      : score >= 50
-      ? 'bg-yellow-100 text-yellow-700'
-      : score >= 35
-      ? 'bg-orange-100 text-orange-700'
-      : 'bg-red-100 text-red-700';
+        ? 'bg-green-50 text-green-600'
+        : score >= 50
+          ? 'bg-yellow-100 text-yellow-700'
+          : score >= 35
+            ? 'bg-orange-100 text-orange-700'
+            : 'bg-red-100 text-red-700';
 
   return (
     <span className={`px-2 py-1 rounded text-xs font-medium ${bgColor}`}>
@@ -357,12 +349,8 @@ function ErrorState({ message, ticker }: { message: string; ticker: string }) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
       <div className="text-gray-400 text-5xl mb-4">📊</div>
       <h3 className="text-lg font-semibold text-gray-900 mb-2">IC Score Not Available</h3>
-      <p className="text-gray-500 mb-4">
-        IC Score for {ticker} hasn't been calculated yet.
-      </p>
-      <p className="text-sm text-gray-400">
-        We're working on expanding coverage. Check back soon!
-      </p>
+      <p className="text-gray-500 mb-4">IC Score for {ticker} hasn't been calculated yet.</p>
+      <p className="text-sm text-gray-400">We're working on expanding coverage. Check back soon!</p>
     </div>
   );
 }

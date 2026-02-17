@@ -19,7 +19,7 @@ interface TickerTabsProps {
 export default function TickerTabs({ symbol, children, tabs, defaultTab }: TickerTabsProps) {
   const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || 'overview');
 
-  const activeIndex = tabs.findIndex(tab => tab.id === activeTab);
+  const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
 
   return (
     <div className="w-full">
@@ -47,9 +47,7 @@ export default function TickerTabs({ symbol, children, tabs, defaultTab }: Ticke
       </div>
 
       {/* Tab Content */}
-      <div className="bg-ic-surface rounded-b-lg shadow">
-        {children[activeIndex]}
-      </div>
+      <div className="bg-ic-surface rounded-b-lg shadow">{children[activeIndex]}</div>
     </div>
   );
 }

@@ -57,7 +57,7 @@ export default function CryptoPage() {
 
             // Clear flash after 1 second
             setTimeout(() => {
-              setFlashColors(prev => {
+              setFlashColors((prev) => {
                 const updated = new Map(prev);
                 updated.set(crypto.symbol, null);
                 return updated;
@@ -66,7 +66,7 @@ export default function CryptoPage() {
           }
 
           // Update previous prices
-          setPreviousPrices(prev => {
+          setPreviousPrices((prev) => {
             const updated = new Map(prev);
             updated.set(crypto.symbol, currentPrice);
             return updated;
@@ -121,16 +121,36 @@ export default function CryptoPage() {
 
     // Major crypto market caps (approximate circulating supply)
     switch (cleanSymbol) {
-      case 'BTCUSD': mcap = priceNum * 19.8e6; break;  // ~19.8M BTC
-      case 'ETHUSD': mcap = priceNum * 120e6; break;   // ~120M ETH
-      case 'SOLUSD': mcap = priceNum * 470e6; break;   // ~470M SOL
-      case 'XRPUSD': mcap = priceNum * 56e9; break;    // ~56B XRP
-      case 'DOGEUSD': mcap = priceNum * 147e9; break;  // ~147B DOGE
-      case 'ADAUSD': mcap = priceNum * 35e9; break;    // ~35B ADA
-      case 'LTCUSD': mcap = priceNum * 75e6; break;    // ~75M LTC
-      case 'LINKUSD': mcap = priceNum * 600e6; break;  // ~600M LINK
-      case 'AVAXUSD': mcap = priceNum * 400e6; break;  // ~400M AVAX
-      case 'MATICUSD': mcap = priceNum * 10e9; break;  // ~10B MATIC
+      case 'BTCUSD':
+        mcap = priceNum * 19.8e6;
+        break; // ~19.8M BTC
+      case 'ETHUSD':
+        mcap = priceNum * 120e6;
+        break; // ~120M ETH
+      case 'SOLUSD':
+        mcap = priceNum * 470e6;
+        break; // ~470M SOL
+      case 'XRPUSD':
+        mcap = priceNum * 56e9;
+        break; // ~56B XRP
+      case 'DOGEUSD':
+        mcap = priceNum * 147e9;
+        break; // ~147B DOGE
+      case 'ADAUSD':
+        mcap = priceNum * 35e9;
+        break; // ~35B ADA
+      case 'LTCUSD':
+        mcap = priceNum * 75e6;
+        break; // ~75M LTC
+      case 'LINKUSD':
+        mcap = priceNum * 600e6;
+        break; // ~600M LINK
+      case 'AVAXUSD':
+        mcap = priceNum * 400e6;
+        break; // ~400M AVAX
+      case 'MATICUSD':
+        mcap = priceNum * 10e9;
+        break; // ~10B MATIC
       default:
         // For other cryptos, use volume as a rough proxy (not accurate but better than nothing)
         mcap = priceNum * 1e6; // Assume 1M supply as default
@@ -170,7 +190,9 @@ export default function CryptoPage() {
       <div className="min-h-screen bg-ic-bg-primary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-ic-text-primary mb-4">Error Loading Crypto Data</h1>
+            <h1 className="text-2xl font-bold text-ic-text-primary mb-4">
+              Error Loading Crypto Data
+            </h1>
             <p className="text-ic-text-muted">{error}</p>
             <button
               onClick={() => fetchCryptoData(currentPage)}
@@ -192,7 +214,8 @@ export default function CryptoPage() {
           <div>
             <h1 className="text-3xl font-bold text-ic-text-primary">Cryptocurrency Prices</h1>
             <p className="text-ic-text-muted mt-2">
-              Live prices for {cryptoData?.meta.total || 0} cryptocurrencies, updated every 5 seconds
+              Live prices for {cryptoData?.meta.total || 0} cryptocurrencies, updated every 5
+              seconds
             </p>
           </div>
 
@@ -267,32 +290,37 @@ export default function CryptoPage() {
                             <div className="text-sm font-medium text-ic-text-primary">
                               {cleanSymbol}
                             </div>
-                            <div className="text-sm text-ic-text-muted">
-                              {crypto.symbol}
-                            </div>
+                            <div className="text-sm text-ic-text-muted">{crypto.symbol}</div>
                           </div>
                         </Link>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <span className={`transition-colors duration-1000 ${
-                          flashColors.get(crypto.symbol) === 'green' ? 'text-ic-positive' :
-                          flashColors.get(crypto.symbol) === 'red' ? 'text-ic-negative' :
-                          'text-ic-text-primary'
-                        }`}>
+                        <span
+                          className={`transition-colors duration-1000 ${
+                            flashColors.get(crypto.symbol) === 'green'
+                              ? 'text-ic-positive'
+                              : flashColors.get(crypto.symbol) === 'red'
+                                ? 'text-ic-negative'
+                                : 'text-ic-text-primary'
+                          }`}
+                        >
                           {formatPrice(crypto.price)}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                        <div className={`flex items-center justify-end space-x-1 ${
-                          isPositive ? 'text-ic-positive' : 'text-ic-negative'
-                        }`}>
+                        <div
+                          className={`flex items-center justify-end space-x-1 ${
+                            isPositive ? 'text-ic-positive' : 'text-ic-negative'
+                          }`}
+                        >
                           {isPositive ? (
                             <ArrowTrendingUpIcon className="h-4 w-4" />
                           ) : (
                             <ArrowTrendingDownIcon className="h-4 w-4" />
                           )}
                           <span className="font-medium">
-                            {isPositive ? '+' : ''}{changeNum.toFixed(2)}%
+                            {isPositive ? '+' : ''}
+                            {changeNum.toFixed(2)}%
                           </span>
                         </div>
                       </td>

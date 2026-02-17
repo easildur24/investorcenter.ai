@@ -45,7 +45,10 @@ export default function CreateWatchListModal({ onClose, onCreate }: CreateWatchL
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="description">
+            <label
+              className="block text-sm font-medium mb-2 text-ic-text-secondary"
+              htmlFor="description"
+            >
               Description (optional)
             </label>
             <textarea

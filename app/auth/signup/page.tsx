@@ -45,7 +45,10 @@ export default function SignupPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="fullName">
+            <label
+              className="block text-sm font-medium text-ic-text-secondary mb-2"
+              htmlFor="fullName"
+            >
               Full Name
             </label>
             <input
@@ -59,7 +62,10 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-4">
-            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="email">
+            <label
+              className="block text-sm font-medium text-ic-text-secondary mb-2"
+              htmlFor="email"
+            >
               Email
             </label>
             <input
@@ -73,7 +79,10 @@ export default function SignupPage() {
           </div>
 
           <div className="mb-6">
-            <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="password">
+            <label
+              className="block text-sm font-medium text-ic-text-secondary mb-2"
+              htmlFor="password"
+            >
               Password (min 8 characters)
             </label>
             <input

@@ -58,7 +58,17 @@ import {
 } from 'lucide-react';
 
 type View = 'workers' | 'tasks' | 'task-types';
-type RightPanel = 'none' | 'worker' | 'task' | 'create-worker' | 'create-task' | 'task-type' | 'create-task-type' | 'edit-task' | 'edit-task-type' | 'assign-task';
+type RightPanel =
+  | 'none'
+  | 'worker'
+  | 'task'
+  | 'create-worker'
+  | 'create-task'
+  | 'task-type'
+  | 'create-task-type'
+  | 'edit-task'
+  | 'edit-task-type'
+  | 'assign-task';
 
 export default function WorkersPage() {
   const [view, setView] = useState<View>('workers');
@@ -263,7 +273,12 @@ export default function WorkersPage() {
 
   // Remove worker
   const handleRemoveWorker = async (id: string) => {
-    if (!confirm('Remove this worker? Their user account will remain but they will no longer be flagged as a worker.')) return;
+    if (
+      !confirm(
+        'Remove this worker? Their user account will remain but they will no longer be flagged as a worker.'
+      )
+    )
+      return;
     try {
       await removeWorker(id);
       if (selectedWorker?.id === id) {
@@ -321,7 +336,10 @@ export default function WorkersPage() {
             params[key] = JSON.parse(val);
           } catch {
             // Fallback: split by comma
-            params[key] = val.split(',').map((s) => s.trim()).filter(Boolean);
+            params[key] = val
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
           }
         } else {
           // String and unknown types — keep as string
@@ -389,7 +407,8 @@ export default function WorkersPage() {
 
   // Delete task type
   const handleDeleteTaskType = async (id: number) => {
-    if (!confirm('Delete this task type? Existing tasks using it will keep their reference.')) return;
+    if (!confirm('Delete this task type? Existing tasks using it will keep their reference.'))
+      return;
     try {
       await deleteTaskType(id);
       if (selectedTaskType?.id === id) {
@@ -477,7 +496,10 @@ export default function WorkersPage() {
           try {
             params[key] = JSON.parse(val);
           } catch {
-            params[key] = val.split(',').map((s) => s.trim()).filter(Boolean);
+            params[key] = val
+              .split(',')
+              .map((s) => s.trim())
+              .filter(Boolean);
           }
         } else {
           params[key] = val;
@@ -656,7 +678,9 @@ export default function WorkersPage() {
                 </button>
 
                 {workers.length === 0 ? (
-                  <p className="text-sm text-ic-text-secondary text-center py-8">No workers registered yet.</p>
+                  <p className="text-sm text-ic-text-secondary text-center py-8">
+                    No workers registered yet.
+                  </p>
                 ) : (
                   <div className="space-y-1">
                     {workers.map((worker) => (
@@ -671,7 +695,9 @@ export default function WorkersPage() {
                       >
                         <Circle
                           className={`w-2.5 h-2.5 flex-shrink-0 ${
-                            worker.is_online ? 'text-green-500 fill-green-500' : 'text-gray-300 fill-gray-300'
+                            worker.is_online
+                              ? 'text-green-500 fill-green-500'
+                              : 'text-gray-300 fill-gray-300'
                           }`}
                         />
                         <div className="flex-1 min-w-0">
@@ -721,7 +747,9 @@ export default function WorkersPage() {
                   >
                     <option value="">All statuses</option>
                     {TASK_STATUSES.map((s) => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                      <option key={s} value={s}>
+                        {STATUS_LABELS[s]}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -741,10 +769,14 @@ export default function WorkersPage() {
                         onClick={() => selectTask(task)}
                       >
                         <div className="flex items-center gap-2 mb-1">
-                          <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}>
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}
+                          >
                             {STATUS_LABELS[task.status]}
                           </span>
-                          <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                          <span
+                            className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}
+                          >
                             {PRIORITY_LABELS[task.priority]}
                           </span>
                           {task.task_type && (
@@ -755,7 +787,9 @@ export default function WorkersPage() {
                         </div>
                         <p className="text-sm font-medium truncate">{task.title}</p>
                         {task.assigned_to_name && (
-                          <p className="text-xs text-ic-text-secondary mt-0.5">{task.assigned_to_name}</p>
+                          <p className="text-xs text-ic-text-secondary mt-0.5">
+                            {task.assigned_to_name}
+                          </p>
                         )}
                       </div>
                     ))}
@@ -781,7 +815,9 @@ export default function WorkersPage() {
                 </button>
 
                 {taskTypes.length === 0 ? (
-                  <p className="text-sm text-ic-text-secondary text-center py-8">No task types defined yet.</p>
+                  <p className="text-sm text-ic-text-secondary text-center py-8">
+                    No task types defined yet.
+                  </p>
                 ) : (
                   <div className="space-y-1">
                     {taskTypes.map((tt) => (
@@ -797,7 +833,9 @@ export default function WorkersPage() {
                         <FileText className="w-4 h-4 flex-shrink-0 text-purple-400" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium truncate">{tt.label}</p>
-                          <p className="text-xs text-ic-text-secondary truncate font-mono">{tt.name}</p>
+                          <p className="text-xs text-ic-text-secondary truncate font-mono">
+                            {tt.name}
+                          </p>
                         </div>
                         <button
                           onClick={(e) => {
@@ -839,7 +877,9 @@ export default function WorkersPage() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Name</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Name
+                  </label>
                   <input
                     value={newWorkerName}
                     onChange={(e) => setNewWorkerName(e.target.value)}
@@ -848,7 +888,9 @@ export default function WorkersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Email</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={newWorkerEmail}
@@ -858,7 +900,9 @@ export default function WorkersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Password</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Password
+                  </label>
                   <input
                     type="password"
                     value={newWorkerPassword}
@@ -873,7 +917,11 @@ export default function WorkersPage() {
                     disabled={creating || !newWorkerEmail || !newWorkerPassword || !newWorkerName}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
                     Register
                   </button>
                   <button
@@ -897,21 +945,29 @@ export default function WorkersPage() {
               <div className="space-y-4">
                 {/* Task Type */}
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Task Type</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Task Type
+                  </label>
                   <select
                     value={newTaskTypeId}
-                    onChange={(e) => handleTaskTypeChange(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) =>
+                      handleTaskTypeChange(e.target.value ? Number(e.target.value) : '')
+                    }
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
                   >
                     <option value="">No type (custom task)</option>
                     {taskTypes.map((tt) => (
-                      <option key={tt.id} value={tt.id}>{tt.label}</option>
+                      <option key={tt.id} value={tt.id}>
+                        {tt.label}
+                      </option>
                     ))}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Title</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Title
+                  </label>
                   <input
                     value={newTaskTitle}
                     onChange={(e) => setNewTaskTitle(e.target.value)}
@@ -920,7 +976,9 @@ export default function WorkersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Description</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Description
+                  </label>
                   <textarea
                     value={newTaskDesc}
                     onChange={(e) => setNewTaskDesc(e.target.value)}
@@ -935,34 +993,43 @@ export default function WorkersPage() {
                   const schema = getSelectedTaskTypeSchema();
                   if (!schema) return null;
                   return (
-                  <div className="border border-ic-border rounded-lg p-4 bg-ic-bg-secondary">
-                    <p className="text-sm font-medium text-ic-text-secondary mb-3 flex items-center gap-1.5">
-                      <Braces className="w-4 h-4" />
-                      Parameters
-                    </p>
-                    <div className="space-y-3">
-                      {Object.entries(schema).map(([key, type]) => (
-                        <div key={key}>
-                          <label className="block text-xs font-medium text-ic-text-secondary mb-1">
-                            {key} <span className="text-ic-text-secondary font-normal">({type})</span>
-                          </label>
-                          <input
-                            value={newTaskParams[key] || ''}
-                            onChange={(e) =>
-                              setNewTaskParams((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                            placeholder={type === 'string[]' ? '["value1", "value2"]' : type === 'number' ? '0' : ''}
-                            className="w-full px-3 py-1.5 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                          />
-                        </div>
-                      ))}
+                    <div className="border border-ic-border rounded-lg p-4 bg-ic-bg-secondary">
+                      <p className="text-sm font-medium text-ic-text-secondary mb-3 flex items-center gap-1.5">
+                        <Braces className="w-4 h-4" />
+                        Parameters
+                      </p>
+                      <div className="space-y-3">
+                        {Object.entries(schema).map(([key, type]) => (
+                          <div key={key}>
+                            <label className="block text-xs font-medium text-ic-text-secondary mb-1">
+                              {key}{' '}
+                              <span className="text-ic-text-secondary font-normal">({type})</span>
+                            </label>
+                            <input
+                              value={newTaskParams[key] || ''}
+                              onChange={(e) =>
+                                setNewTaskParams((prev) => ({ ...prev, [key]: e.target.value }))
+                              }
+                              placeholder={
+                                type === 'string[]'
+                                  ? '["value1", "value2"]'
+                                  : type === 'number'
+                                    ? '0'
+                                    : ''
+                              }
+                              className="w-full px-3 py-1.5 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                            />
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
                   );
                 })()}
 
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Assign To</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Assign To
+                  </label>
                   <select
                     value={newTaskAssignee}
                     onChange={(e) => setNewTaskAssignee(e.target.value)}
@@ -971,21 +1038,24 @@ export default function WorkersPage() {
                     <option value="">Unassigned</option>
                     {workers.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.full_name} ({w.email})
-                        {w.is_online ? ' - Online' : ''}
+                        {w.full_name} ({w.email}){w.is_online ? ' - Online' : ''}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Priority</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Priority
+                  </label>
                   <select
                     value={newTaskPriority}
                     onChange={(e) => setNewTaskPriority(e.target.value as TaskPriority)}
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
                   >
                     {TASK_PRIORITIES.map((p) => (
-                      <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                      <option key={p} value={p}>
+                        {PRIORITY_LABELS[p]}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -995,7 +1065,11 @@ export default function WorkersPage() {
                     disabled={creating || !newTaskTitle}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
                     Create Task
                   </button>
                   <button
@@ -1019,16 +1093,22 @@ export default function WorkersPage() {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Name (slug)</label>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                      Name (slug)
+                    </label>
                     <input
                       value={newTTName}
-                      onChange={(e) => setNewTTName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))}
+                      onChange={(e) =>
+                        setNewTTName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '_'))
+                      }
                       placeholder="reddit_crawl"
                       className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">Label</label>
+                    <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                      Label
+                    </label>
                     <input
                       value={newTTLabel}
                       onChange={(e) => setNewTTLabel(e.target.value)}
@@ -1038,7 +1118,9 @@ export default function WorkersPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">SOP (Markdown)</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    SOP (Markdown)
+                  </label>
                   <textarea
                     value={newTTSop}
                     onChange={(e) => setNewTTSop(e.target.value)}
@@ -1059,7 +1141,9 @@ export default function WorkersPage() {
                     placeholder='{"ticker": "string", "days": "number", "subreddits": "string[]"}'
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-y font-mono text-sm"
                   />
-                  <p className="text-xs text-ic-text-secondary mt-1">Defines the parameter fields shown when creating tasks of this type.</p>
+                  <p className="text-xs text-ic-text-secondary mt-1">
+                    Defines the parameter fields shown when creating tasks of this type.
+                  </p>
                 </div>
                 <div className="flex gap-2">
                   <button
@@ -1067,7 +1151,11 @@ export default function WorkersPage() {
                     disabled={creating || !newTTName || !newTTLabel}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4" />
+                    )}
                     Create Task Type
                   </button>
                   <button
@@ -1087,11 +1175,15 @@ export default function WorkersPage() {
               <h2 className="text-lg font-semibold text-ic-text-primary mb-6 flex items-center gap-2">
                 <Pencil className="w-5 h-5 text-purple-500" />
                 Edit Task Type
-                <span className="text-sm font-mono text-ic-text-secondary font-normal">({selectedTaskType.name})</span>
+                <span className="text-sm font-mono text-ic-text-secondary font-normal">
+                  ({selectedTaskType.name})
+                </span>
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Label</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Label
+                  </label>
                   <input
                     value={editTTLabel}
                     onChange={(e) => setEditTTLabel(e.target.value)}
@@ -1100,7 +1192,9 @@ export default function WorkersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">SOP (Markdown)</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    SOP (Markdown)
+                  </label>
                   <textarea
                     value={editTTSop}
                     onChange={(e) => setEditTTSop(e.target.value)}
@@ -1128,7 +1222,11 @@ export default function WorkersPage() {
                     disabled={creating || !editTTLabel}
                     className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save Changes
                   </button>
                   <button
@@ -1152,7 +1250,9 @@ export default function WorkersPage() {
                       <FileText className="w-5 h-5 text-purple-500" />
                       {selectedTaskType.label}
                     </h2>
-                    <p className="text-sm text-ic-text-secondary font-mono mt-1">{selectedTaskType.name}</p>
+                    <p className="text-sm text-ic-text-secondary font-mono mt-1">
+                      {selectedTaskType.name}
+                    </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <button
@@ -1191,7 +1291,9 @@ export default function WorkersPage() {
               {/* SOP */}
               {selectedTaskType.sop && (
                 <div>
-                  <h3 className="text-sm font-medium text-ic-text-secondary mb-2">Standard Operating Procedure</h3>
+                  <h3 className="text-sm font-medium text-ic-text-secondary mb-2">
+                    Standard Operating Procedure
+                  </h3>
                   <div className="bg-ic-bg-secondary rounded-lg p-4 max-h-[60vh] overflow-y-auto">
                     <pre className="text-sm text-ic-text-primary whitespace-pre-wrap font-mono leading-relaxed">
                       {selectedTaskType.sop}
@@ -1201,7 +1303,8 @@ export default function WorkersPage() {
               )}
 
               <div className="mt-4 text-xs text-ic-text-secondary">
-                Created: {formatTime(selectedTaskType.created_at)} | Updated: {formatTime(selectedTaskType.updated_at)}
+                Created: {formatTime(selectedTaskType.created_at)} | Updated:{' '}
+                {formatTime(selectedTaskType.updated_at)}
               </div>
             </div>
           )}
@@ -1213,13 +1316,19 @@ export default function WorkersPage() {
               <div className="bg-ic-surface border border-ic-border rounded-lg p-6 mb-6 max-w-3xl">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className={`w-3 h-3 rounded-full ${selectedWorker.is_online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    <div
+                      className={`w-3 h-3 rounded-full ${selectedWorker.is_online ? 'bg-green-500' : 'bg-gray-300'}`}
+                    />
                     <div>
-                      <h2 className="text-lg font-semibold text-ic-text-primary">{selectedWorker.full_name}</h2>
+                      <h2 className="text-lg font-semibold text-ic-text-primary">
+                        {selectedWorker.full_name}
+                      </h2>
                       <p className="text-sm text-ic-text-secondary">{selectedWorker.email}</p>
                     </div>
                   </div>
-                  <span className={`text-xs font-medium px-2 py-1 rounded ${selectedWorker.is_online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                  <span
+                    className={`text-xs font-medium px-2 py-1 rounded ${selectedWorker.is_online ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}
+                  >
                     {selectedWorker.is_online ? 'Online' : 'Offline'}
                   </span>
                 </div>
@@ -1227,13 +1336,17 @@ export default function WorkersPage() {
                   <div>
                     <p className="text-ic-text-secondary">Last Login</p>
                     <p className="text-ic-text-primary">
-                      {selectedWorker.last_login_at ? new Date(selectedWorker.last_login_at).toLocaleString() : 'Never'}
+                      {selectedWorker.last_login_at
+                        ? new Date(selectedWorker.last_login_at).toLocaleString()
+                        : 'Never'}
                     </p>
                   </div>
                   <div>
                     <p className="text-ic-text-secondary">Last Activity</p>
                     <p className="text-ic-text-primary">
-                      {selectedWorker.last_activity_at ? new Date(selectedWorker.last_activity_at).toLocaleString() : 'Never'}
+                      {selectedWorker.last_activity_at
+                        ? new Date(selectedWorker.last_activity_at).toLocaleString()
+                        : 'Never'}
                     </p>
                   </div>
                   <div>
@@ -1269,7 +1382,9 @@ export default function WorkersPage() {
                 </div>
 
                 {workerTasks.length === 0 ? (
-                  <p className="text-sm text-ic-text-secondary text-center py-6">No tasks assigned to this worker.</p>
+                  <p className="text-sm text-ic-text-secondary text-center py-6">
+                    No tasks assigned to this worker.
+                  </p>
                 ) : (
                   <div className="space-y-2">
                     {workerTasks.map((task) => (
@@ -1280,10 +1395,14 @@ export default function WorkersPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}>
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}
+                            >
                               {STATUS_LABELS[task.status]}
                             </span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}
+                            >
                               {PRIORITY_LABELS[task.priority]}
                             </span>
                             {task.task_type && (
@@ -1292,9 +1411,13 @@ export default function WorkersPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-medium text-ic-text-primary truncate">{task.title}</p>
+                          <p className="text-sm font-medium text-ic-text-primary truncate">
+                            {task.title}
+                          </p>
                         </div>
-                        <span className="text-xs text-ic-text-secondary">{new Date(task.updated_at).toLocaleDateString()}</span>
+                        <span className="text-xs text-ic-text-secondary">
+                          {new Date(task.updated_at).toLocaleDateString()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1310,13 +1433,19 @@ export default function WorkersPage() {
                 <Plus className="w-5 h-5 text-blue-500" />
                 Assign Task to {selectedWorker.full_name}
               </h2>
-              <p className="text-sm text-ic-text-secondary mb-6">Pick an unassigned task to assign to this worker.</p>
+              <p className="text-sm text-ic-text-secondary mb-6">
+                Pick an unassigned task to assign to this worker.
+              </p>
               {(() => {
-                const unassigned = tasks.filter((t) => !t.assigned_to && (t.status === 'pending' || t.status === 'in_progress'));
+                const unassigned = tasks.filter(
+                  (t) => !t.assigned_to && (t.status === 'pending' || t.status === 'in_progress')
+                );
                 if (unassigned.length === 0) {
                   return (
                     <div className="text-center py-8">
-                      <p className="text-sm text-ic-text-secondary mb-4">No unassigned tasks available.</p>
+                      <p className="text-sm text-ic-text-secondary mb-4">
+                        No unassigned tasks available.
+                      </p>
                       <button
                         onClick={() => {
                           setNewTaskAssignee(selectedWorker.id);
@@ -1349,10 +1478,14 @@ export default function WorkersPage() {
                       >
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}>
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}
+                            >
                               {STATUS_LABELS[task.status]}
                             </span>
-                            <span className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                            <span
+                              className={`text-xs px-1.5 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}
+                            >
                               {PRIORITY_LABELS[task.priority]}
                             </span>
                             {task.task_type && (
@@ -1361,9 +1494,13 @@ export default function WorkersPage() {
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-medium text-ic-text-primary truncate">{task.title}</p>
+                          <p className="text-sm font-medium text-ic-text-primary truncate">
+                            {task.title}
+                          </p>
                         </div>
-                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition">Assign</span>
+                        <span className="text-xs text-blue-500 opacity-0 group-hover:opacity-100 transition">
+                          Assign
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -1387,20 +1524,28 @@ export default function WorkersPage() {
               </h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Task Type</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Task Type
+                  </label>
                   <select
                     value={editTaskTypeId}
-                    onChange={(e) => handleEditTaskTypeChange(e.target.value ? Number(e.target.value) : '')}
+                    onChange={(e) =>
+                      handleEditTaskTypeChange(e.target.value ? Number(e.target.value) : '')
+                    }
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
                   >
                     <option value="">No type (custom task)</option>
                     {taskTypes.map((tt) => (
-                      <option key={tt.id} value={tt.id}>{tt.label}</option>
+                      <option key={tt.id} value={tt.id}>
+                        {tt.label}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Title</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Title
+                  </label>
                   <input
                     value={editTaskTitle}
                     onChange={(e) => setEditTaskTitle(e.target.value)}
@@ -1409,7 +1554,9 @@ export default function WorkersPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Description</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Description
+                  </label>
                   <textarea
                     value={editTaskDesc}
                     onChange={(e) => setEditTaskDesc(e.target.value)}
@@ -1434,14 +1581,21 @@ export default function WorkersPage() {
                         {Object.entries(schema).map(([key, type]) => (
                           <div key={key}>
                             <label className="block text-xs font-medium text-ic-text-secondary mb-1">
-                              {key} <span className="text-ic-text-secondary font-normal">({type})</span>
+                              {key}{' '}
+                              <span className="text-ic-text-secondary font-normal">({type})</span>
                             </label>
                             <input
                               value={editTaskParams[key] || ''}
                               onChange={(e) =>
                                 setEditTaskParams((prev) => ({ ...prev, [key]: e.target.value }))
                               }
-                              placeholder={type === 'string[]' ? '["value1", "value2"]' : type === 'number' ? '0' : ''}
+                              placeholder={
+                                type === 'string[]'
+                                  ? '["value1", "value2"]'
+                                  : type === 'number'
+                                    ? '0'
+                                    : ''
+                              }
                               className="w-full px-3 py-1.5 text-sm border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
                             />
                           </div>
@@ -1452,7 +1606,9 @@ export default function WorkersPage() {
                 })()}
 
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Assign To</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Assign To
+                  </label>
                   <select
                     value={editTaskAssignee}
                     onChange={(e) => setEditTaskAssignee(e.target.value)}
@@ -1461,21 +1617,24 @@ export default function WorkersPage() {
                     <option value="">Unassigned</option>
                     {workers.map((w) => (
                       <option key={w.id} value={w.id}>
-                        {w.full_name} ({w.email})
-                        {w.is_online ? ' - Online' : ''}
+                        {w.full_name} ({w.email}){w.is_online ? ' - Online' : ''}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">Priority</label>
+                  <label className="block text-sm font-medium text-ic-text-secondary mb-1">
+                    Priority
+                  </label>
                   <select
                     value={editTaskPriority}
                     onChange={(e) => setEditTaskPriority(e.target.value as TaskPriority)}
                     className="w-full px-3 py-2 border border-ic-border rounded-lg bg-ic-bg-primary text-ic-text-primary"
                   >
                     {TASK_PRIORITIES.map((p) => (
-                      <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+                      <option key={p} value={p}>
+                        {PRIORITY_LABELS[p]}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1485,7 +1644,11 @@ export default function WorkersPage() {
                     disabled={creating || !editTaskTitle}
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
-                    {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    {creating ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4" />
+                    )}
                     Save Changes
                   </button>
                   <button
@@ -1515,9 +1678,13 @@ export default function WorkersPage() {
 
               {/* Task header */}
               <div className="mb-4">
-                <h2 className="text-xl font-semibold text-ic-text-primary mb-2">{selectedTask.title}</h2>
+                <h2 className="text-xl font-semibold text-ic-text-primary mb-2">
+                  {selectedTask.title}
+                </h2>
                 {selectedTask.description && (
-                  <p className="text-sm text-ic-text-secondary whitespace-pre-wrap">{selectedTask.description}</p>
+                  <p className="text-sm text-ic-text-secondary whitespace-pre-wrap">
+                    {selectedTask.description}
+                  </p>
                 )}
               </div>
 
@@ -1527,15 +1694,21 @@ export default function WorkersPage() {
                   <span className="text-xs text-ic-text-secondary">Status:</span>
                   <select
                     value={selectedTask.status}
-                    onChange={(e) => handleUpdateTaskStatus(selectedTask.id, e.target.value as TaskStatus)}
+                    onChange={(e) =>
+                      handleUpdateTaskStatus(selectedTask.id, e.target.value as TaskStatus)
+                    }
                     className={`text-xs px-2 py-1 rounded font-medium border-0 ${STATUS_COLORS[selectedTask.status]}`}
                   >
                     {TASK_STATUSES.map((s) => (
-                      <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                      <option key={s} value={s}>
+                        {STATUS_LABELS[s]}
+                      </option>
                     ))}
                   </select>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${PRIORITY_COLORS[selectedTask.priority]}`}>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${PRIORITY_COLORS[selectedTask.priority]}`}
+                >
                   {PRIORITY_LABELS[selectedTask.priority]}
                 </span>
                 {selectedTask.task_type && (
@@ -1571,7 +1744,8 @@ export default function WorkersPage() {
                     ) : (
                       <XCircle className="w-3 h-3 text-red-500" />
                     )}
-                    {selectedTask.status === 'completed' ? 'Completed' : 'Failed'}: {formatTime(selectedTask.completed_at)}
+                    {selectedTask.status === 'completed' ? 'Completed' : 'Failed'}:{' '}
+                    {formatTime(selectedTask.completed_at)}
                   </span>
                 )}
               </div>
@@ -1579,11 +1753,17 @@ export default function WorkersPage() {
               {/* Retry count badge */}
               {selectedTask.retry_count > 0 && (
                 <div className="mb-4">
-                  <span className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
-                    selectedTask.retry_count >= 2 ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
+                  <span
+                    className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                      selectedTask.retry_count >= 2
+                        ? 'bg-red-100 text-red-700'
+                        : 'bg-yellow-100 text-yellow-700'
+                    }`}
+                  >
                     <RefreshCw className="w-3 h-3" />
-                    {selectedTask.retry_count >= 2 ? `Failed after ${selectedTask.retry_count} retries` : `Retry ${selectedTask.retry_count}/2`}
+                    {selectedTask.retry_count >= 2
+                      ? `Failed after ${selectedTask.retry_count} retries`
+                      : `Retry ${selectedTask.retry_count}/2`}
                   </span>
                 </div>
               )}
@@ -1595,7 +1775,11 @@ export default function WorkersPage() {
                     onClick={() => setShowParams(!showParams)}
                     className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
                   >
-                    {showParams ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {showParams ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                     <Braces className="w-4 h-4" />
                     Parameters
                   </button>
@@ -1616,7 +1800,11 @@ export default function WorkersPage() {
                     onClick={() => setShowResult(!showResult)}
                     className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
                   >
-                    {showResult ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {showResult ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                     <CheckCircle2 className="w-4 h-4" />
                     Result
                   </button>
@@ -1637,7 +1825,11 @@ export default function WorkersPage() {
                     onClick={() => setShowData(!showData)}
                     className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
                   >
-                    {showData ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {showData ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                     <Braces className="w-4 h-4" />
                     Collected Data ({taskDataTotal} {taskDataTotal === 1 ? 'row' : 'rows'})
                   </button>
@@ -1685,19 +1877,29 @@ export default function WorkersPage() {
                     onClick={() => setShowFiles(!showFiles)}
                     className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
                   >
-                    {showFiles ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {showFiles ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                     <FileText className="w-4 h-4" />
                     Result Files ({taskFilesTotal})
                   </button>
                   {showFiles && (
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {taskFiles.map((file) => (
-                        <div key={file.id} className="bg-ic-bg-secondary rounded-lg p-3 flex items-center gap-3">
+                        <div
+                          key={file.id}
+                          className="bg-ic-bg-secondary rounded-lg p-3 flex items-center gap-3"
+                        >
                           <FileText className="w-4 h-4 text-ic-text-secondary flex-shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-ic-text-primary truncate">{file.filename}</p>
+                            <p className="text-sm font-medium text-ic-text-primary truncate">
+                              {file.filename}
+                            </p>
                             <p className="text-xs text-ic-text-secondary">
-                              {file.content_type} &middot; {(file.size_bytes / 1024).toFixed(1)} KB &middot; {new Date(file.created_at).toLocaleString()}
+                              {file.content_type} &middot; {(file.size_bytes / 1024).toFixed(1)} KB
+                              &middot; {new Date(file.created_at).toLocaleString()}
                             </p>
                           </div>
                           <a
@@ -1726,7 +1928,11 @@ export default function WorkersPage() {
                     onClick={() => setShowSop(!showSop)}
                     className="flex items-center gap-1 text-sm font-medium text-ic-text-secondary mb-2 hover:text-ic-text-primary transition"
                   >
-                    {showSop ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    {showSop ? (
+                      <ChevronDown className="w-4 h-4" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4" />
+                    )}
                     <FileText className="w-4 h-4" />
                     SOP ({selectedTask.task_type.label})
                   </button>
@@ -1777,14 +1983,18 @@ export default function WorkersPage() {
                             {new Date(update.created_at).toLocaleString()}
                           </span>
                         </div>
-                        <p className="text-sm text-ic-text-primary whitespace-pre-wrap">{update.content}</p>
+                        <p className="text-sm text-ic-text-primary whitespace-pre-wrap">
+                          {update.content}
+                        </p>
                       </div>
                     ))}
                   </div>
                 )}
 
                 {taskUpdates.length === 0 && (
-                  <p className="text-sm text-ic-text-secondary text-center py-4 mb-4">No updates yet.</p>
+                  <p className="text-sm text-ic-text-secondary text-center py-4 mb-4">
+                    No updates yet.
+                  </p>
                 )}
 
                 {/* Post update form */}
@@ -1806,7 +2016,11 @@ export default function WorkersPage() {
                     disabled={sendingUpdate || !newUpdateContent.trim()}
                     className="flex items-center gap-1.5 px-3 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
                   >
-                    {sendingUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                    {sendingUpdate ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
                     Send
                   </button>
                 </div>
