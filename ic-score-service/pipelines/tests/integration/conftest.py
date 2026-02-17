@@ -71,25 +71,35 @@ _HYPERTABLES = [
 def _split_sql_statements(sql: str) -> list:
     """Split a SQL file into individual statements.
 
-    Handles -- comments, multi-line statements, and GRANT filtering.
+    Handles:
+    - ``--`` line comments
+    - ``$$`` dollar-quoted blocks (PL/pgSQL functions)
+    - ``GRANT`` statement filtering
     Returns a list of non-empty SQL statements.
     """
     statements = []
     current = []
+    in_dollar_quote = False
 
     for line in sql.split("\n"):
         stripped = line.strip()
-        # Skip pure comment lines and GRANT statements
-        if stripped.startswith("--") or not stripped:
-            continue
-        upper = stripped.upper()
-        if upper.startswith("GRANT "):
-            continue
+
+        # Skip pure comment lines and blanks outside $$
+        if not in_dollar_quote:
+            if stripped.startswith("--") or not stripped:
+                continue
+            if stripped.upper().startswith("GRANT "):
+                continue
 
         current.append(line)
 
-        # Statement ends with semicolon
-        if stripped.endswith(";"):
+        # Track $$ dollar-quoting (toggle on each $$)
+        count = line.count("$$")
+        if count % 2 == 1:
+            in_dollar_quote = not in_dollar_quote
+
+        # Statement ends with ; only when NOT inside $$
+        if not in_dollar_quote and stripped.endswith(";"):
             stmt = "\n".join(current).strip()
             if stmt and stmt != ";":
                 statements.append(stmt)
