@@ -63,9 +63,9 @@ func (h *AdminDataHandler) GetStocks(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2] // Exclude limit and offset
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	// Execute query
@@ -143,9 +143,9 @@ func (h *AdminDataHandler) GetUsers(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -223,9 +223,9 @@ func (h *AdminDataHandler) GetNewsArticles(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -314,9 +314,9 @@ func (h *AdminDataHandler) GetFundamentals(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -381,7 +381,7 @@ func (h *AdminDataHandler) GetAlerts(c *gin.Context) {
 	`
 
 	var total int
-	h.db.QueryRow("SELECT COUNT(*) FROM alert_rules").Scan(&total)
+	_ = h.db.QueryRow("SELECT COUNT(*) FROM alert_rules").Scan(&total)
 
 	rows, err := h.db.Query(query, limit, offset)
 	if err != nil {
@@ -443,7 +443,7 @@ func (h *AdminDataHandler) GetWatchLists(c *gin.Context) {
 	`
 
 	var total int
-	h.db.QueryRow("SELECT COUNT(*) FROM watch_lists").Scan(&total)
+	_ = h.db.QueryRow("SELECT COUNT(*) FROM watch_lists").Scan(&total)
 
 	rows, err := h.db.Query(query, limit, offset)
 	if err != nil {
@@ -520,9 +520,9 @@ func (h *AdminDataHandler) GetSECFinancials(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -632,9 +632,9 @@ func (h *AdminDataHandler) GetTTMFinancials(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -740,9 +740,9 @@ func (h *AdminDataHandler) GetValuationRatios(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -870,9 +870,9 @@ func (h *AdminDataHandler) GetAnalystRatings(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -974,9 +974,9 @@ func (h *AdminDataHandler) GetInsiderTrades(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -1069,9 +1069,9 @@ func (h *AdminDataHandler) GetInstitutionalHoldings(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -1165,9 +1165,9 @@ func (h *AdminDataHandler) GetTechnicalIndicators(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -1244,9 +1244,9 @@ func (h *AdminDataHandler) GetCompanies(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	rows, err := h.db.Query(query, args...)
@@ -1337,9 +1337,9 @@ func (h *AdminDataHandler) GetRiskMetrics(c *gin.Context) {
 	var total int
 	countArgs := args[:len(args)-2]
 	if len(countArgs) == 0 {
-		h.db.QueryRow(countQuery).Scan(&total)
+		_ = h.db.QueryRow(countQuery).Scan(&total)
 	} else {
-		h.db.QueryRow(countQuery, countArgs...).Scan(&total)
+		_ = h.db.QueryRow(countQuery, countArgs...).Scan(&total)
 	}
 
 	// Execute query

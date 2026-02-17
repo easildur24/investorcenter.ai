@@ -349,7 +349,7 @@ func TestRunBacktest_Success(t *testing.T) {
 		assert.Equal(t, "/api/v1/backtest", r.URL.Path)
 
 		var config models.BacktestConfig
-		json.NewDecoder(r.Body).Decode(&config)
+		_ = json.NewDecoder(r.Body).Decode(&config)
 		assert.Equal(t, "sp500", config.Universe)
 
 		summary := models.BacktestSummary{
@@ -363,7 +363,7 @@ func TestRunBacktest_Success(t *testing.T) {
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(summary)
+		_ = json.NewEncoder(w).Encode(summary)
 	}))
 	defer server.Close()
 

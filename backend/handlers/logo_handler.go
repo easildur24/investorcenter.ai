@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -61,5 +62,7 @@ func ProxyLogo(c *gin.Context) {
 	c.Header("Content-Type", resp.Header.Get("Content-Type"))
 
 	// Stream the response
-	io.Copy(c.Writer, resp.Body)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		log.Printf("Failed to stream logo for %s: %v", symbol, err)
+	}
 }

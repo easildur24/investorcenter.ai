@@ -430,7 +430,7 @@ func BulkUpsertPosts(posts []models.SocialPost) (int, error) {
 	if err != nil {
 		return 0, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	stmt, err := tx.Prepare(`
 		INSERT INTO social_posts (
@@ -544,9 +544,9 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		return nil, fmt.Errorf("failed to get ticker sentiment: %w", err)
 	}
 
-	// Get company name from stocks table
+	// Get company name from stocks table (best-effort, non-critical)
 	var companyName sql.NullString
-	DB.QueryRow("SELECT name FROM tickers WHERE symbol = $1", ticker).Scan(&companyName)
+	_ = DB.QueryRow("SELECT name FROM tickers WHERE symbol = $1", ticker).Scan(&companyName)
 
 	// Get top subreddits
 	subredditQuery := `
@@ -586,7 +586,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		SELECT COALESCE(rank, 0) FROM ticker_ranks WHERE ticker = $1
 	`
 	var rank int
-	DB.QueryRow(rankQuery, ticker).Scan(&rank)
+	_ = DB.QueryRow(rankQuery, ticker).Scan(&rank)
 
 	// Calculate rank change (compare current vs previous 7 day period)
 	rankChangeQuery := `
@@ -611,7 +611,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		WHERE c.ticker = $1
 	`
 	var rankChange int
-	DB.QueryRow(rankChangeQuery, ticker).Scan(&rankChange)
+	_ = DB.QueryRow(rankChangeQuery, ticker).Scan(&rankChange)
 
 	// Calculate percentages
 	var breakdown models.SentimentBreakdown
@@ -871,7 +871,7 @@ func GetRepresentativePostsForAPI(ticker string, sort models.SocialPostSortOptio
 	// Get total count
 	var total int
 	countQuery := `SELECT COUNT(*) FROM social_posts WHERE ticker = $1 AND posted_at > NOW() - INTERVAL '7 days'`
-	DB.QueryRow(countQuery, ticker).Scan(&total)
+	_ = DB.QueryRow(countQuery, ticker).Scan(&total)
 
 	// Determine sort string for response
 	sortStr := "recent"

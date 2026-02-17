@@ -2,6 +2,7 @@ package services
 
 import (
 	"encoding/json"
+	"log"
 	"os"
 	"sync"
 	"time"
@@ -50,7 +51,9 @@ func NewFeatureFlagService() *FeatureFlagService {
 	service.initializeDefaultFlags()
 
 	// Load from config file if exists
-	service.loadFromFile()
+	if err := service.loadFromFile(); err != nil {
+		log.Printf("Failed to load feature flags from file: %v", err)
+	}
 
 	return service
 }

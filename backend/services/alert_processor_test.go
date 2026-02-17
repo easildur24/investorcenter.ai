@@ -286,7 +286,7 @@ func BenchmarkEvaluatePriceAbove(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ap.evaluatePriceAbove(alert, quote)
+		_, _ = ap.evaluatePriceAbove(alert, quote)
 	}
 }
 
@@ -311,7 +311,7 @@ func BenchmarkEvaluateVolumeAbove(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		ap.evaluateVolumeAbove(alert, quote)
+		_, _ = ap.evaluateVolumeAbove(alert, quote)
 	}
 }
 

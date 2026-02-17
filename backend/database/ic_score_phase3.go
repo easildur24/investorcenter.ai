@@ -179,7 +179,7 @@ func BatchUpsertStockPeers(ctx context.Context, peers []models.StockPeer) error 
 	if err != nil {
 		return err
 	}
-	defer tx.Rollback()
+	defer func() { _ = tx.Rollback() }()
 
 	for _, peer := range peers {
 		if err := UpsertStockPeer(ctx, &peer); err != nil {

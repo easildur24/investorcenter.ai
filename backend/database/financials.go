@@ -610,7 +610,7 @@ func ConvertICScoreRatiosToFinancialPeriods(records []ICScoreRatioRecord) []mode
 		// Format is YYYY-MM-DD
 		fiscalYear := 0
 		if len(rec.CalculationDate) >= 4 {
-			fmt.Sscanf(rec.CalculationDate, "%d", &fiscalYear)
+			_, _ = fmt.Sscanf(rec.CalculationDate, "%d", &fiscalYear)
 		}
 
 		periods[i] = models.FinancialPeriod{

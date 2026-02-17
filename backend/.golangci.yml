@@ -4,13 +4,13 @@ run:
 
 linters:
   enable:
+    - errcheck
     - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
   disable:
-    - errcheck  # 65 existing violations — enable incrementally in a follow-up PR
     - gosec     # Enable later once existing issues are triaged
 
 issues:
