@@ -24,15 +24,34 @@ pytestmark = pytest.mark.skipif(
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text  # noqa: E402
+from sqlalchemy.pool import NullPool  # noqa: E402
 
-from database.database import Database, DatabaseConfig  # noqa: E402
+from database.database import (  # noqa: E402
+    Database,
+    DatabaseConfig,
+)
 
 
-@pytest_asyncio.fixture(scope="module")
+@pytest_asyncio.fixture
 async def db():
-    """Create Database instance and all tables once per module."""
+    """Create Database instance and all tables for each test.
+
+    Uses NullPool to avoid connection-reuse issues across
+    pytest-asyncio event loops.
+    """
     config = DatabaseConfig()
     database = Database(config)
+
+    # Override engine with NullPool (no persistent connections)
+    from sqlalchemy.ext.asyncio import create_async_engine
+
+    database._engine = create_async_engine(
+        config.url,
+        echo=config.echo,
+        poolclass=NullPool,
+    )
+    database._session_factory = None  # Reset so it recreates
+
     await database.create_all_tables()
     yield database
     await database.drop_all_tables()
@@ -45,9 +64,7 @@ async def clean_tables(db):
     async with db.engine.begin() as conn:
         # Truncate tables in an order that respects FKs (CASCADE)
         await conn.execute(
-            text(
-                "TRUNCATE ic_scores, companies CASCADE"
-            )
+            text("TRUNCATE ic_scores, companies CASCADE")
         )
     yield
 
@@ -131,8 +148,10 @@ async def test_company_null_optional_fields(session):
     await session.commit()
 
     result = await session.execute(
-        text("SELECT sector, industry FROM companies"
-             " WHERE ticker = :t"),
+        text(
+            "SELECT sector, industry FROM companies"
+            " WHERE ticker = :t"
+        ),
         {"t": "RARE"},
     )
     row = result.fetchone()
@@ -161,7 +180,8 @@ async def test_ic_score_insert_and_latest_query(session):
 
     # Insert an IC Score
     await session.execute(
-        text("""
+        text(
+            """
             INSERT INTO ic_scores
                 (ticker, date, overall_score, rating,
                  value_score, growth_score, profitability_score,
@@ -170,7 +190,8 @@ async def test_ic_score_insert_and_latest_query(session):
                 (:ticker, :date, :score, :rating,
                  70, 80, 85,
                  'High', 0.95)
-        """),
+        """
+        ),
         {
             "ticker": "AAPL",
             "date": date(2025, 1, 15),
@@ -182,11 +203,13 @@ async def test_ic_score_insert_and_latest_query(session):
 
     # Query using the same pattern as api/main.py
     result = await session.execute(
-        text("""
+        text(
+            """
             SELECT * FROM ic_scores
             WHERE ticker = :ticker
             ORDER BY date DESC LIMIT 1
-        """),
+        """
+        ),
         {"ticker": "AAPL"},
     )
     row = result.fetchone()
@@ -217,23 +240,27 @@ async def test_ic_score_multiple_dates(session):
         (date(2025, 1, 15), 76.0),
     ]:
         await session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO ic_scores
                     (ticker, date, overall_score, rating,
                      confidence_level, data_completeness)
                 VALUES (:t, :d, :s, 'Buy', 'High', 0.9)
-            """),
+            """
+            ),
             {"t": "AAPL", "d": day, "s": score},
         )
     await session.commit()
 
     # Latest first
     result = await session.execute(
-        text("""
+        text(
+            """
             SELECT * FROM ic_scores
             WHERE ticker = :t
             ORDER BY date DESC
-        """),
+        """
+        ),
         {"t": "AAPL"},
     )
     rows = result.fetchall()
@@ -258,12 +285,14 @@ async def test_ic_score_history_date_range(session):
     # Insert 5 days of scores
     for i in range(5):
         await session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO ic_scores
                     (ticker, date, overall_score, rating,
                      confidence_level, data_completeness)
                 VALUES (:t, :d, :s, 'Hold', 'Medium', 0.8)
-            """),
+            """
+            ),
             {
                 "t": "MSFT",
                 "d": date(2025, 1, 11 + i),
@@ -274,12 +303,14 @@ async def test_ic_score_history_date_range(session):
 
     # Query date range Jan 12-14 (3 days)
     result = await session.execute(
-        text("""
+        text(
+            """
             SELECT * FROM ic_scores
             WHERE ticker = :t
               AND date >= :start AND date <= :end
             ORDER BY date ASC
-        """),
+        """
+        ),
         {
             "t": "MSFT",
             "start": date(2025, 1, 12),
@@ -312,25 +343,46 @@ async def test_ic_score_top_distinct_on(session):
 
     # Insert multiple days of scores for each
     for ticker, scores in [
-        ("AAPL", [(date(2025, 1, 14), 80.0), (date(2025, 1, 15), 85.0)]),
-        ("MSFT", [(date(2025, 1, 14), 75.0), (date(2025, 1, 15), 78.0)]),
-        ("GOOGL", [(date(2025, 1, 14), 70.0), (date(2025, 1, 15), 72.0)]),
+        (
+            "AAPL",
+            [
+                (date(2025, 1, 14), 80.0),
+                (date(2025, 1, 15), 85.0),
+            ],
+        ),
+        (
+            "MSFT",
+            [
+                (date(2025, 1, 14), 75.0),
+                (date(2025, 1, 15), 78.0),
+            ],
+        ),
+        (
+            "GOOGL",
+            [
+                (date(2025, 1, 14), 70.0),
+                (date(2025, 1, 15), 72.0),
+            ],
+        ),
     ]:
         for d, s in scores:
             await session.execute(
-                text("""
+                text(
+                    """
                     INSERT INTO ic_scores
                         (ticker, date, overall_score, rating,
                          confidence_level, data_completeness)
                     VALUES (:t, :d, :s, 'Buy', 'High', 0.9)
-                """),
+                """
+                ),
                 {"t": ticker, "d": d, "s": s},
             )
     await session.commit()
 
-    # DISTINCT ON: get latest score per ticker, sorted by score DESC
+    # DISTINCT ON: get latest score per ticker, sorted by score
     result = await session.execute(
-        text("""
+        text(
+            """
             WITH latest_scores AS (
                 SELECT DISTINCT ON (ticker) *
                 FROM ic_scores
@@ -338,12 +390,13 @@ async def test_ic_score_top_distinct_on(session):
             )
             SELECT * FROM latest_scores
             ORDER BY overall_score DESC
-        """)
+        """
+        )
     )
     rows = result.fetchall()
 
     assert len(rows) == 3
-    # AAPL has highest score (85), then MSFT (78), then GOOGL (72)
+    # AAPL highest (85), then MSFT (78), then GOOGL (72)
     assert rows[0]._asdict()["ticker"] == "AAPL"
     assert float(rows[0]._asdict()["overall_score"]) == 85.0
     assert rows[1]._asdict()["ticker"] == "MSFT"
@@ -362,24 +415,29 @@ async def test_ic_score_unique_ticker_date(session):
     )
 
     await session.execute(
-        text("""
+        text(
+            """
             INSERT INTO ic_scores
                 (ticker, date, overall_score, rating,
                  confidence_level, data_completeness)
-            VALUES ('AAPL', '2025-01-15', 75.0, 'Buy', 'High', 0.9)
-        """)
+            VALUES ('AAPL', '2025-01-15', 75.0, 'Buy',
+                    'High', 0.9)
+        """
+        )
     )
     await session.commit()
 
     # Inserting same ticker+date should fail
     with pytest.raises(Exception):
         await session.execute(
-            text("""
+            text(
+                """
                 INSERT INTO ic_scores
                     (ticker, date, overall_score, rating,
                      confidence_level, data_completeness)
                 VALUES ('AAPL', '2025-01-15', 80.0, 'Buy',
                         'High', 0.95)
-            """)
+            """
+            )
         )
         await session.commit()

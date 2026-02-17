@@ -12,7 +12,7 @@ func GetStockBySymbol(symbol string) (*models.Stock, error) {
 	var stock models.Stock
 
 	query := `
-		SELECT id, symbol, name, exchange,
+		SELECT id, symbol, name, COALESCE(exchange, '') as exchange,
 		       COALESCE(sector, '') as sector,
 		       COALESCE(industry, '') as industry,
 		       COALESCE(country, 'US') as country,
@@ -52,7 +52,7 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 	var stocks []models.Stock
 
 	searchQuery := `
-		SELECT id, symbol, name, exchange,
+		SELECT id, symbol, name, COALESCE(exchange, '') as exchange,
 		       COALESCE(sector, '') as sector,
 		       COALESCE(industry, '') as industry,
 		       COALESCE(country, 'US') as country,
@@ -108,7 +108,7 @@ func GetPopularStocks(limit int) ([]models.Stock, error) {
 
 	// Get some popular stocks - you can customize this query
 	query := `
-		SELECT id, symbol, name, exchange,
+		SELECT id, symbol, name, COALESCE(exchange, '') as exchange,
 		       COALESCE(sector, '') as sector,
 		       COALESCE(industry, '') as industry,
 		       COALESCE(country, 'US') as country,
