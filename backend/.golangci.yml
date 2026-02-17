@@ -1,0 +1,36 @@
+run:
+  timeout: 5m
+  tests: false
+
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  disable:
+    - gosec  # Enable later once existing issues are triaged
+
+linters-settings:
+  errcheck:
+    # Don't flag unchecked errors on fmt.Print/Fprintf (logging)
+    exclude-functions:
+      - fmt.Fprintf
+      - fmt.Printf
+      - fmt.Print
+      - fmt.Println
+      - (io.Closer).Close
+
+issues:
+  # Show all issues, don't cap at 50
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  # Don't fail on existing issues in generated/test files
+  exclude-dirs:
+    - vendor
+  exclude-rules:
+    - path: _test\.go
+      linters:
+        - errcheck

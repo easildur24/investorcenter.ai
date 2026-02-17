@@ -81,6 +81,8 @@ coverage.xml
 .hypothesis/
 coverage/
 backend/coverage/
+backend/coverage.out
+*.out
 task-service/coverage/
 data-ingestion-service/coverage/
 ic-score-service/htmlcov/
