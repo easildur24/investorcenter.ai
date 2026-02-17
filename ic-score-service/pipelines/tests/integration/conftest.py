@@ -107,18 +107,16 @@ def _split_sql_statements(sql: str) -> list:
 async def _apply_migrations(engine):
     """Apply SQL migration files and create TimescaleDB hypertables.
 
-    Uses raw asyncpg connection to avoid the asyncpg limitation
-    that prepared statements cannot contain multiple commands.
+    Splits each migration file into individual statements because
+    asyncpg cannot execute multiple commands in one prepared statement.
     """
-    async with engine.connect() as conn:
-        # Get the raw asyncpg connection for multi-statement
-        raw = await conn.get_raw_connection()
-        driver_conn = raw.dbapi_connection
-
+    async with engine.begin() as conn:
         # Enable TimescaleDB extension
-        await driver_conn.execute(
-            "CREATE EXTENSION IF NOT EXISTS timescaledb"
-            " CASCADE"
+        await conn.execute(
+            text(
+                "CREATE EXTENSION IF NOT EXISTS timescaledb"
+                " CASCADE"
+            )
         )
 
         # Apply each migration file statement by statement
@@ -127,7 +125,7 @@ async def _apply_migrations(engine):
             stmts = _split_sql_statements(sql)
             for stmt in stmts:
                 try:
-                    await driver_conn.execute(stmt)
+                    await conn.execute(text(stmt))
                 except Exception as e:
                     # Tables/indexes may already exist from
                     # create_all_tables() — that's OK
@@ -139,11 +137,13 @@ async def _apply_migrations(engine):
         # Create hypertables (idempotent)
         for table_name, time_col in _HYPERTABLES:
             try:
-                await driver_conn.execute(
-                    f"SELECT create_hypertable("
-                    f"'{table_name}', '{time_col}',"
-                    f" if_not_exists => TRUE,"
-                    f" migrate_data => TRUE)"
+                await conn.execute(
+                    text(
+                        f"SELECT create_hypertable("
+                        f"'{table_name}', '{time_col}',"
+                        f" if_not_exists => TRUE,"
+                        f" migrate_data => TRUE)"
+                    )
                 )
             except Exception:
                 pass  # Table may not exist or already hypertable
