@@ -161,6 +161,39 @@ async def _apply_migrations(engine):
                         )
                     )
 
+        # Add columns that exist in production but have no
+        # migration file (were added via manual ALTER TABLE).
+        _extra_columns = [
+            (
+                "ttm_financials",
+                "avg_shareholders_equity_5q",
+                "BIGINT",
+            ),
+            ("treasury_rates", "rate_5y", "NUMERIC(5,2)"),
+            ("risk_metrics", "volatility", "NUMERIC(10,6)"),
+        ]
+        for tbl, col, dtype in _extra_columns:
+            try:
+                await conn.execute(
+                    text(f"SAVEPOINT extra_col")
+                )
+                await conn.execute(
+                    text(
+                        f"ALTER TABLE {tbl}"
+                        f" ADD COLUMN IF NOT EXISTS"
+                        f" {col} {dtype}"
+                    )
+                )
+                await conn.execute(
+                    text("RELEASE SAVEPOINT extra_col")
+                )
+            except Exception:
+                await conn.execute(
+                    text(
+                        "ROLLBACK TO SAVEPOINT extra_col"
+                    )
+                )
+
         # Create hypertables (idempotent)
         for table_name, time_col in _HYPERTABLES:
             try:
