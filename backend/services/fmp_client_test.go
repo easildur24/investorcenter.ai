@@ -192,6 +192,16 @@ func TestGetPayoutRatioInterpretation(t *testing.T) {
 // coalesce / coalesceWithSource — pure functions
 // ---------------------------------------------------------------------------
 
+// coalesce returns the first non-nil value (test helper)
+func coalesce(values ...*float64) *float64 {
+	for _, v := range values {
+		if v != nil {
+			return v
+		}
+	}
+	return nil
+}
+
 func TestCoalesce(t *testing.T) {
 	a := 1.0
 	b := 2.0

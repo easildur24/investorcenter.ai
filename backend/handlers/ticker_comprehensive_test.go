@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +11,55 @@ import (
 
 	"investorcenter-api/models"
 )
+
+// calculateMarketCap estimates market cap for a crypto symbol (test helper)
+func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
+	cleanSymbol := strings.Replace(symbol, "X:", "", 1)
+
+	var supply int64
+	var usdPrice decimal.Decimal = price
+
+	if strings.HasPrefix(cleanSymbol, "BTC") {
+		supply = 19_800_000
+		if strings.Contains(cleanSymbol, "JPY") {
+			usdPrice = price.Div(decimal.NewFromInt(150))
+		} else if strings.Contains(cleanSymbol, "EUR") {
+			usdPrice = price.Mul(decimal.NewFromFloat(1.1))
+		}
+	} else if strings.HasPrefix(cleanSymbol, "ETH") {
+		supply = 120_000_000
+		if strings.Contains(cleanSymbol, "JPY") {
+			usdPrice = price.Div(decimal.NewFromInt(150))
+		} else if strings.Contains(cleanSymbol, "EUR") {
+			usdPrice = price.Mul(decimal.NewFromFloat(1.1))
+		}
+	} else {
+		switch {
+		case strings.HasPrefix(cleanSymbol, "SOL"):
+			supply = 470_000_000
+		case strings.HasPrefix(cleanSymbol, "XRP"):
+			supply = 56_000_000_000
+		case strings.HasPrefix(cleanSymbol, "DOGE"):
+			supply = 147_000_000_000
+		case strings.HasPrefix(cleanSymbol, "ADA"):
+			supply = 35_000_000_000
+		case strings.HasPrefix(cleanSymbol, "LTC"):
+			supply = 75_000_000
+		case strings.HasPrefix(cleanSymbol, "LINK"):
+			supply = 600_000_000
+		case strings.HasPrefix(cleanSymbol, "AVAX"):
+			supply = 400_000_000
+		case strings.HasPrefix(cleanSymbol, "MATIC"):
+			supply = 10_000_000_000
+		case strings.Contains(cleanSymbol, "USDT") || strings.Contains(cleanSymbol, "USDC"):
+			supply = 100_000_000_000
+		default:
+			supply = 1_000_000
+		}
+	}
+
+	return usdPrice.Mul(decimal.NewFromInt(supply))
+}
 
 // ---------------------------------------------------------------------------
 // isCryptoAsset — pure function

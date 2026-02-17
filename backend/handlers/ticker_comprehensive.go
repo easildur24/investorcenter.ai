@@ -565,59 +565,6 @@ func GetTickerNews(c *gin.Context) {
 	})
 }
 
-// calculateMarketCap estimates market cap for a crypto symbol
-func calculateMarketCap(symbol string, price decimal.Decimal) decimal.Decimal {
-	cleanSymbol := strings.Replace(symbol, "X:", "", 1)
-
-	// Extract base crypto (BTC, ETH, etc.) from pairs like BTCUSD, BTCJPY, etc.
-	var supply int64
-	var usdPrice decimal.Decimal = price
-
-	// Identify the base cryptocurrency
-	if strings.HasPrefix(cleanSymbol, "BTC") {
-		supply = 19_800_000 // ~19.8M BTC
-		// Convert to USD if needed (rough conversion for JPY, EUR, etc.)
-		if strings.Contains(cleanSymbol, "JPY") {
-			usdPrice = price.Div(decimal.NewFromInt(150)) // ~150 JPY per USD
-		} else if strings.Contains(cleanSymbol, "EUR") {
-			usdPrice = price.Mul(decimal.NewFromFloat(1.1)) // ~1.1 USD per EUR
-		}
-	} else if strings.HasPrefix(cleanSymbol, "ETH") {
-		supply = 120_000_000 // ~120M ETH
-		if strings.Contains(cleanSymbol, "JPY") {
-			usdPrice = price.Div(decimal.NewFromInt(150))
-		} else if strings.Contains(cleanSymbol, "EUR") {
-			usdPrice = price.Mul(decimal.NewFromFloat(1.1))
-		}
-	} else {
-		// For other cryptos, extract the base
-		switch {
-		case strings.HasPrefix(cleanSymbol, "SOL"):
-			supply = 470_000_000 // ~470M SOL
-		case strings.HasPrefix(cleanSymbol, "XRP"):
-			supply = 56_000_000_000 // ~56B XRP
-		case strings.HasPrefix(cleanSymbol, "DOGE"):
-			supply = 147_000_000_000 // ~147B DOGE
-		case strings.HasPrefix(cleanSymbol, "ADA"):
-			supply = 35_000_000_000 // ~35B ADA
-		case strings.HasPrefix(cleanSymbol, "LTC"):
-			supply = 75_000_000 // ~75M LTC
-		case strings.HasPrefix(cleanSymbol, "LINK"):
-			supply = 600_000_000 // ~600M LINK
-		case strings.HasPrefix(cleanSymbol, "AVAX"):
-			supply = 400_000_000 // ~400M AVAX
-		case strings.HasPrefix(cleanSymbol, "MATIC"):
-			supply = 10_000_000_000 // ~10B MATIC
-		case strings.Contains(cleanSymbol, "USDT") || strings.Contains(cleanSymbol, "USDC"):
-			supply = 100_000_000_000 // ~100B for stablecoins
-		default:
-			supply = 1_000_000 // 1M default
-		}
-	}
-
-	return usdPrice.Mul(decimal.NewFromInt(supply))
-}
-
 // GetAllCryptos returns all cached crypto prices sorted by market cap
 func GetAllCryptos(c *gin.Context) {
 	log.Printf("GetAllCryptos called")

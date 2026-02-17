@@ -2,7 +2,6 @@ package services
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
@@ -437,13 +436,4 @@ func (s *CronjobService) GetAllSchedules() ([]models.CronjobSchedule, error) {
 	}
 
 	return schedules, nil
-}
-
-// Helper function to convert JSONB to string
-func jsonbToString(data interface{}) string {
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		return "[]"
-	}
-	return string(bytes)
 }

@@ -1531,16 +1531,6 @@ func sourceFor(val *float64, source DataSource) DataSource {
 	return SourceNone
 }
 
-// coalesce returns the first non-nil value
-func coalesce(values ...*float64) *float64 {
-	for _, v := range values {
-		if v != nil {
-			return v
-		}
-	}
-	return nil
-}
-
 // coalesceWithSource returns the first non-nil value and its source (FMP or database)
 func coalesceWithSource(fmpVal, dbVal *float64) (*float64, DataSource) {
 	if fmpVal != nil {

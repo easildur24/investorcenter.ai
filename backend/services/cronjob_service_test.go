@@ -1,6 +1,7 @@
 package services
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -9,6 +10,15 @@ import (
 
 	"investorcenter-api/models"
 )
+
+// jsonbToString converts data to JSON string (test helper)
+func jsonbToString(data interface{}) string {
+	bytes, err := json.Marshal(data)
+	if err != nil {
+		return "[]"
+	}
+	return string(bytes)
+}
 
 // ---------------------------------------------------------------------------
 // NewCronjobService — constructor

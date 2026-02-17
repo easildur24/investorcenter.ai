@@ -179,13 +179,6 @@ func (s *NotificationService) SendAlertEmail(userID string, alert *models.AlertR
 
 	// Format alert email
 	subject := fmt.Sprintf("Alert Triggered: %s", alert.Name)
-
-	// Parse market data
-	var marketDataMap map[string]interface{}
-	if err := json.Unmarshal(alert.Conditions, &marketDataMap); err == nil {
-		// Use market data if available
-	}
-
 	body := s.formatAlertEmailBody(alert, conditionMet, marketData)
 
 	return s.emailService.sendEmail(*emailAddr, subject, body)

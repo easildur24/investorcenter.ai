@@ -158,7 +158,7 @@ func GetInAppNotifications(userID string, unreadOnly bool, limit int) ([]models.
 	query += " ORDER BY created_at DESC"
 
 	if limit > 0 {
-		query += fmt.Sprintf(" LIMIT $2")
+		query += " LIMIT $2"
 		args = append(args, limit)
 	}
 
