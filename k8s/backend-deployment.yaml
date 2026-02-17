@@ -18,6 +18,7 @@ spec:
       containers:
       - name: investorcenter-backend
         image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/backend:data-ingest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
         env:
