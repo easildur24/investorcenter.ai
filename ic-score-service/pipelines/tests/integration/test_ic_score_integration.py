@@ -569,7 +569,8 @@ async def test_multi_ticker_ic_scores(db, calculator):
         rows = result.fetchall()
 
     scored_tickers = {row[0] for row in rows}
-    for ticker in tickers:
+    expected = [s["ticker"] for s in stocks]
+    for ticker in expected:
         assert ticker in scored_tickers, (
             f"{ticker} should have an IC score, "
             f"got scores for: {scored_tickers}"
