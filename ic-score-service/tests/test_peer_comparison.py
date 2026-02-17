@@ -59,10 +59,11 @@ class TestPeerComparisonService:
         }
         stock2 = stock1.copy()
 
-        similarity = service._calculate_similarity(stock1, stock2)
+        result = service._calculate_similarity(stock1, stock2)
 
-        # Identical stocks should have perfect similarity
-        assert similarity == 1.0
+        # Returns dict with 'total' and 'factors' keys
+        assert isinstance(result, dict)
+        assert result['total'] == 1.0
 
     def test_calculate_similarity_different(self, service):
         """Test similarity calculation for different metrics."""
@@ -81,11 +82,11 @@ class TestPeerComparisonService:
             'beta': 2.0,  # Different
         }
 
-        similarity = service._calculate_similarity(stock1, stock2)
+        result = service._calculate_similarity(stock1, stock2)
 
         # Different stocks should have lower similarity
-        assert similarity < 1.0
-        assert similarity >= 0.0
+        assert result['total'] < 1.0
+        assert result['total'] >= 0.0
 
     def test_calculate_similarity_partial_data(self, service):
         """Test similarity calculation with missing metrics."""
@@ -104,10 +105,10 @@ class TestPeerComparisonService:
             'beta': 1.1,
         }
 
-        similarity = service._calculate_similarity(stock1, stock2)
+        result = service._calculate_similarity(stock1, stock2)
 
         # Should still compute similarity for available metrics
-        assert 0 <= similarity <= 1.0
+        assert 0 <= result['total'] <= 1.0
 
     # ==================
     # Get Peers Tests
@@ -238,8 +239,8 @@ class TestPeerComparisonEdgeCases:
         }
 
         # Should not raise exception
-        similarity = service._calculate_similarity(stock1, stock2)
-        assert 0 <= similarity <= 1.0
+        result = service._calculate_similarity(stock1, stock2)
+        assert 0 <= result['total'] <= 1.0
 
     def test_similarity_with_negative_growth(self, service):
         """Test similarity calculation handles negative growth."""
@@ -258,5 +259,5 @@ class TestPeerComparisonEdgeCases:
             'beta': 1.3,
         }
 
-        similarity = service._calculate_similarity(stock1, stock2)
-        assert 0 <= similarity <= 1.0
+        result = service._calculate_similarity(stock1, stock2)
+        assert 0 <= result['total'] <= 1.0
