@@ -9,7 +9,10 @@ from pipelines.utils.data_validator import (
     validate_eps_consistency,
     validate_fair_value,
     validate_financial_record,
+    validate_ic_score_output,
+    validate_pipeline_coverage,
     validate_range,
+    validate_risk_metrics_output,
     validate_ttm_financials,
 )
 
@@ -265,3 +268,129 @@ class TestValidateEpsConsistency:
         )
         assert result.is_valid
         assert len(result.errors) == 0
+
+
+# =====================================================================
+# validate_risk_metrics_output
+# =====================================================================
+
+
+class TestValidateRiskMetricsOutput:
+    def test_valid_risk_metrics(self):
+        data = {
+            "beta": 1.15,
+            "sharpe_ratio": 1.5,
+            "max_drawdown": -0.18,
+            "volatility": 0.22,
+            "var_95": -0.028,
+        }
+        result = validate_risk_metrics_output(data)
+        assert result.is_valid
+
+    def test_beta_out_of_range(self):
+        data = {"beta": 8.0}
+        result = validate_risk_metrics_output(data)
+        assert not result.is_valid
+        assert any("beta" in e for e in result.errors)
+
+    def test_max_drawdown_positive_invalid(self):
+        data = {"max_drawdown": 0.5}
+        result = validate_risk_metrics_output(data)
+        assert not result.is_valid
+
+    def test_var95_positive_invalid(self):
+        data = {"var_95": 0.05}
+        result = validate_risk_metrics_output(data)
+        assert not result.is_valid
+        assert any("var_95" in e for e in result.errors)
+
+    def test_empty_data_valid(self):
+        result = validate_risk_metrics_output({})
+        assert result.is_valid
+
+
+# =====================================================================
+# validate_ic_score_output
+# =====================================================================
+
+
+class TestValidateIcScoreOutput:
+    def test_valid_ic_score(self):
+        data = {
+            "overall_score": 75.0,
+            "value_score": 80.0,
+            "growth_score": 70.0,
+            "profitability_score": 85.0,
+            "rating": "Buy",
+            "confidence_level": "High",
+        }
+        result = validate_ic_score_output(data)
+        assert result.is_valid
+
+    def test_score_out_of_range_high(self):
+        data = {"overall_score": 150.0}
+        result = validate_ic_score_output(data)
+        assert not result.is_valid
+        assert any("overall_score" in e for e in result.errors)
+
+    def test_score_out_of_range_low(self):
+        data = {"overall_score": 0.0}
+        result = validate_ic_score_output(data)
+        assert not result.is_valid
+
+    def test_missing_overall_score(self):
+        data = {"rating": "Buy"}
+        result = validate_ic_score_output(data)
+        assert not result.is_valid
+        assert any("overall_score" in e for e in result.errors)
+
+    def test_invalid_rating(self):
+        data = {"overall_score": 50.0, "rating": "Very Buy"}
+        result = validate_ic_score_output(data)
+        assert not result.is_valid
+        assert any("rating" in e for e in result.errors)
+
+    def test_invalid_confidence_level(self):
+        data = {
+            "overall_score": 50.0,
+            "confidence_level": "Super High",
+        }
+        result = validate_ic_score_output(data)
+        assert not result.is_valid
+        assert any("confidence_level" in e for e in result.errors)
+
+
+# =====================================================================
+# validate_pipeline_coverage
+# =====================================================================
+
+
+class TestValidatePipelineCoverage:
+    def test_good_coverage(self):
+        result = validate_pipeline_coverage(
+            "ttm_financials", expected_count=100, actual_count=90
+        )
+        assert result.is_valid
+        assert any("90.0%" in w for w in result.warnings)
+
+    def test_low_coverage_fails(self):
+        result = validate_pipeline_coverage(
+            "ttm_financials", expected_count=100, actual_count=50
+        )
+        assert not result.is_valid
+        assert any("50.0%" in e for e in result.errors)
+
+    def test_exact_threshold(self):
+        result = validate_pipeline_coverage(
+            "ttm_financials",
+            expected_count=100,
+            actual_count=70,
+            min_coverage_pct=70.0,
+        )
+        assert result.is_valid
+
+    def test_zero_expected(self):
+        result = validate_pipeline_coverage(
+            "ttm_financials", expected_count=0, actual_count=0
+        )
+        assert result.is_valid  # Warning, not error
