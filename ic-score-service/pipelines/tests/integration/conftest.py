@@ -72,7 +72,7 @@ def _split_sql_statements(sql: str) -> list:
     """Split a SQL file into individual statements.
 
     Handles:
-    - ``--`` line comments
+    - ``--`` line comments (both standalone and inline)
     - ``$$`` dollar-quoted blocks (PL/pgSQL functions)
     - ``GRANT`` statement filtering
     Returns a list of non-empty SQL statements.
@@ -98,12 +98,19 @@ def _split_sql_statements(sql: str) -> list:
         if count % 2 == 1:
             in_dollar_quote = not in_dollar_quote
 
-        # Statement ends with ; only when NOT inside $$
-        if not in_dollar_quote and stripped.endswith(";"):
-            stmt = "\n".join(current).strip()
-            if stmt and stmt != ";":
-                statements.append(stmt)
-            current = []
+        # Check for statement end: ; before any inline --
+        # e.g. "HAVING COUNT(*) >= 5;  -- comment"
+        if not in_dollar_quote:
+            code_part = stripped
+            if "--" in code_part:
+                code_part = code_part[
+                    : code_part.index("--")
+                ].rstrip()
+            if code_part.endswith(";"):
+                stmt = "\n".join(current).strip()
+                if stmt and stmt != ";":
+                    statements.append(stmt)
+                current = []
 
     # Leftover without trailing semicolon
     if current:
