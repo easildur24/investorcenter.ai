@@ -183,7 +183,184 @@ async def _seed_technical_indicators(session, ticker):
     await session.commit()
 
 
-async def _seed_all_upstream(session, ticker):
+async def _seed_sector_percentiles(session, sector):
+    """Populate sector_percentiles for all metrics the IC Score
+    calculator looks up, then refresh the materialized view.
+
+    Without this data the calculator gets 'No sector stats'
+    for every metric and the scoring falls through to code
+    paths that hit missing tables (eps_estimates, etc.).
+    """
+    today = date.today()
+    metrics = [
+        ("pe_ratio", 10, 15, 20, 25, 35, 45, 60, 28, 12, 50),
+        ("pb_ratio", 1, 2, 3, 5, 8, 15, 40, 6, 5, 50),
+        ("ps_ratio", 0.5, 1, 2, 4, 7, 12, 25, 5, 4, 50),
+        (
+            "revenue_growth_yoy",
+            -10,
+            0,
+            3,
+            8,
+            15,
+            25,
+            60,
+            10,
+            12,
+            50,
+        ),
+        (
+            "eps_growth_yoy",
+            -20,
+            -5,
+            2,
+            10,
+            20,
+            35,
+            80,
+            12,
+            18,
+            50,
+        ),
+        (
+            "net_margin",
+            -5,
+            2,
+            5,
+            10,
+            18,
+            25,
+            40,
+            12,
+            8,
+            50,
+        ),
+        (
+            "gross_margin",
+            10,
+            20,
+            30,
+            40,
+            55,
+            65,
+            80,
+            42,
+            15,
+            50,
+        ),
+        (
+            "operating_margin",
+            -5,
+            5,
+            10,
+            18,
+            28,
+            35,
+            50,
+            18,
+            12,
+            50,
+        ),
+        ("roe", -10, 2, 8, 15, 25, 35, 60, 18, 14, 50),
+        ("roa", -5, 1, 3, 7, 12, 18, 30, 8, 6, 50),
+        (
+            "debt_to_equity",
+            0,
+            0.1,
+            0.3,
+            0.6,
+            1.0,
+            1.8,
+            5.0,
+            0.9,
+            0.8,
+            50,
+        ),
+        (
+            "current_ratio",
+            0.5,
+            0.8,
+            1.0,
+            1.5,
+            2.2,
+            3.5,
+            8.0,
+            1.8,
+            1.2,
+            50,
+        ),
+        (
+            "quick_ratio",
+            0.3,
+            0.5,
+            0.8,
+            1.2,
+            1.8,
+            3.0,
+            6.0,
+            1.4,
+            1.0,
+            50,
+        ),
+    ]
+    for row in metrics:
+        (
+            name,
+            mn,
+            p10,
+            p25,
+            p50,
+            p75,
+            p90,
+            mx,
+            mean,
+            std,
+            cnt,
+        ) = row
+        await session.execute(
+            text(
+                "INSERT INTO sector_percentiles"
+                " (sector, metric_name, calculated_at,"
+                "  min_value, p10_value, p25_value,"
+                "  p50_value, p75_value, p90_value,"
+                "  max_value, mean_value, std_dev,"
+                "  sample_count)"
+                " VALUES (:sec, :met, :d,"
+                "  :mn, :p10, :p25,"
+                "  :p50, :p75, :p90,"
+                "  :mx, :mean, :std,"
+                "  :cnt)"
+                " ON CONFLICT DO NOTHING"
+            ),
+            {
+                "sec": sector,
+                "met": name,
+                "d": today,
+                "mn": mn,
+                "p10": p10,
+                "p25": p25,
+                "p50": p50,
+                "p75": p75,
+                "p90": p90,
+                "mx": mx,
+                "mean": mean,
+                "std": std,
+                "cnt": cnt,
+            },
+        )
+    await session.commit()
+
+    # Refresh materialized view so queries see the data
+    await session.execute(
+        text(
+            "REFRESH MATERIALIZED VIEW"
+            " mv_latest_sector_percentiles"
+        )
+    )
+    await session.commit()
+
+
+async def _seed_all_upstream(session, ticker, sector=None):
     """Seed all upstream data required for IC Score calculation.
 
     Calls seed_data helpers plus local helpers for tables
@@ -198,6 +375,8 @@ async def _seed_all_upstream(session, ticker):
     await _seed_fundamental_metrics(session, ticker)
     await _seed_valuation_ratios(session, ticker)
     await _seed_technical_indicators(session, ticker)
+    if sector:
+        await _seed_sector_percentiles(session, sector)
 
 
 # ---------------------------------------------------------------------------
@@ -224,7 +403,9 @@ async def calculator(db):
 async def seeded_aapl(db):
     """Seed all upstream data for AAPL IC Score calculation."""
     async with db.session() as session:
-        await _seed_all_upstream(session, "AAPL")
+        await _seed_all_upstream(
+            session, "AAPL", sector="Technology"
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -364,17 +545,17 @@ async def test_skips_without_upstream_data(
 async def test_multi_ticker_ic_scores(db, calculator):
     """Seed 3 tickers with full upstream data, run the
     calculator, and verify each ticker has an IC score."""
-    tickers = ["AAPL", "JNJ", "JPM"]
-
-    async with db.session() as session:
-        for ticker in tickers:
-            await _seed_all_upstream(session, ticker)
-
     stocks = [
         {"ticker": "AAPL", "sector": "Technology"},
         {"ticker": "JNJ", "sector": "Healthcare"},
         {"ticker": "JPM", "sector": "Financial Services"},
     ]
+
+    async with db.session() as session:
+        for s in stocks:
+            await _seed_all_upstream(
+                session, s["ticker"], sector=s["sector"]
+            )
     await calculator.process_stocks(stocks, show_progress=False)
 
     async with db.session() as session:

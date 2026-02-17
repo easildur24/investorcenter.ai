@@ -231,9 +231,10 @@ async def _apply_migrations(engine):
                     )
                 )
 
-        # Create sector_percentiles table + materialized view
-        # (from Alembic migration 006, not in *.sql files)
+        # Create tables from Alembic migrations (006-010) that
+        # are not in the *.sql files and not in models.py.
         _alembic_stmts = [
+            # --- Migration 006: sector_percentiles ---
             (
                 "CREATE TABLE IF NOT EXISTS"
                 " sector_percentiles ("
@@ -258,13 +259,6 @@ async def _apply_migrations(engine):
                 " calculated_at))"
             ),
             (
-                "CREATE INDEX IF NOT EXISTS"
-                " idx_sector_percentiles_lookup"
-                " ON sector_percentiles"
-                "(sector, metric_name,"
-                " calculated_at DESC)"
-            ),
-            (
                 "CREATE MATERIALIZED VIEW"
                 " IF NOT EXISTS"
                 " mv_latest_sector_percentiles AS"
@@ -281,12 +275,115 @@ async def _apply_migrations(engine):
                 " ORDER BY sector, metric_name,"
                 " calculated_at DESC"
             ),
+            # --- Migration 007: lifecycle_classifications ---
             (
-                "CREATE UNIQUE INDEX"
-                " IF NOT EXISTS"
-                " idx_mv_sector_percentiles"
-                " ON mv_latest_sector_percentiles"
-                "(sector, metric_name)"
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " lifecycle_stage VARCHAR(20)"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " raw_score NUMERIC(5,2)"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " smoothing_applied BOOLEAN"
+                " DEFAULT FALSE"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " weights_used JSONB"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " sector_rank INTEGER"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " sector_total INTEGER"
+            ),
+            # --- Migration 008: eps_estimates ---
+            (
+                "CREATE TABLE IF NOT EXISTS"
+                " eps_estimates ("
+                " id UUID PRIMARY KEY"
+                " DEFAULT gen_random_uuid(),"
+                " ticker VARCHAR(10) NOT NULL,"
+                " fiscal_year INTEGER NOT NULL,"
+                " fiscal_quarter INTEGER,"
+                " consensus_eps NUMERIC(10,4),"
+                " num_analysts INTEGER,"
+                " high_estimate NUMERIC(10,4),"
+                " low_estimate NUMERIC(10,4),"
+                " estimate_30d_ago NUMERIC(10,4),"
+                " estimate_60d_ago NUMERIC(10,4),"
+                " estimate_90d_ago NUMERIC(10,4),"
+                " upgrades_30d INTEGER DEFAULT 0,"
+                " downgrades_30d INTEGER DEFAULT 0,"
+                " upgrades_60d INTEGER DEFAULT 0,"
+                " downgrades_60d INTEGER DEFAULT 0,"
+                " upgrades_90d INTEGER DEFAULT 0,"
+                " downgrades_90d INTEGER DEFAULT 0,"
+                " revision_pct_30d NUMERIC(10,4),"
+                " revision_pct_60d NUMERIC(10,4),"
+                " revision_pct_90d NUMERIC(10,4),"
+                " fetched_at TIMESTAMPTZ,"
+                " created_at TIMESTAMPTZ"
+                " DEFAULT NOW(),"
+                " updated_at TIMESTAMPTZ"
+                " DEFAULT NOW(),"
+                " UNIQUE (ticker, fiscal_year,"
+                " fiscal_quarter))"
+            ),
+            # --- Migration 009: valuation_history ---
+            (
+                "CREATE TABLE IF NOT EXISTS"
+                " valuation_history ("
+                " id UUID PRIMARY KEY"
+                " DEFAULT gen_random_uuid(),"
+                " ticker VARCHAR(10) NOT NULL,"
+                " snapshot_date DATE NOT NULL,"
+                " pe_ratio NUMERIC(10,2),"
+                " ps_ratio NUMERIC(10,2),"
+                " pb_ratio NUMERIC(10,2),"
+                " ev_ebitda NUMERIC(10,2),"
+                " peg_ratio NUMERIC(10,2),"
+                " stock_price NUMERIC(10,2),"
+                " market_cap NUMERIC(20,2),"
+                " eps_ttm NUMERIC(10,4),"
+                " revenue_ttm NUMERIC(20,2),"
+                " created_at TIMESTAMPTZ"
+                " DEFAULT NOW(),"
+                " UNIQUE (ticker, snapshot_date))"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " earnings_revisions_score"
+                " NUMERIC(5,2)"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " historical_value_score"
+                " NUMERIC(5,2)"
+            ),
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " dividend_quality_score"
+                " NUMERIC(5,2)"
+            ),
+            # --- Migration 010: phase 3 tables ---
+            (
+                "ALTER TABLE ic_scores"
+                " ADD COLUMN IF NOT EXISTS"
+                " previous_score NUMERIC(5,2)"
             ),
         ]
         for stmt in _alembic_stmts:
@@ -333,22 +430,16 @@ async def db():
 
     yield database
 
-    # Drop materialized views first — they block DROP TABLE
-    # on tables they depend on (e.g. fundamental_metrics_extended).
+    # Nuclear teardown: drop everything in public schema.
+    # drop_all_tables() fails when materialized views or
+    # foreign key constraints reference migration-only tables.
     async with database.engine.begin() as conn:
-        for mv in (
-            "mv_latest_sector_percentiles",
-            "sector_metric_averages",
-            "industry_metric_averages",
-            "screener_data",
-        ):
-            await conn.execute(
-                text(
-                    f"DROP MATERIALIZED VIEW"
-                    f" IF EXISTS {mv} CASCADE"
-                )
-            )
-    await database.drop_all_tables()
+        await conn.execute(
+            text("DROP SCHEMA public CASCADE")
+        )
+        await conn.execute(
+            text("CREATE SCHEMA public")
+        )
     await database.close()
 
 
