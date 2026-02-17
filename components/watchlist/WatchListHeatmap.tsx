@@ -38,7 +38,8 @@ export default function WatchListHeatmap({
     d3.select(svgRef.current).selectAll('*').remove();
 
     // Create treemap layout with proper sizing
-    const root = d3.hierarchy({ children: data.tiles } as any)
+    const root = d3
+      .hierarchy({ children: data.tiles } as any)
       .sum((d: any) => {
         // Ensure we have a valid size_value, use a minimum of 10 for visibility
         const sizeValue = d.size_value || 10;
@@ -47,27 +48,35 @@ export default function WatchListHeatmap({
       })
       .sort((a, b) => (b.value || 0) - (a.value || 0));
 
-    const treemap = d3.treemap<any>()
+    const treemap = d3
+      .treemap<any>()
       .size([width, height])
-      .padding(3)  // Increased padding for better visual separation
-      .paddingOuter(4)  // Extra padding on edges
+      .padding(3) // Increased padding for better visual separation
+      .paddingOuter(4) // Extra padding on edges
       .round(true);
 
     treemap(root);
 
     // Color scale based on color metric (theme-aware)
-    const colorScale = getColorScale(data.color_scheme, data.min_color_value, data.max_color_value, neutralColor);
+    const colorScale = getColorScale(
+      data.color_scheme,
+      data.min_color_value,
+      data.max_color_value,
+      neutralColor
+    );
 
     const svg = d3.select(svgRef.current);
 
     // Create groups for each tile
-    const nodes = svg.selectAll('g')
+    const nodes = svg
+      .selectAll('g')
       .data(root.leaves())
       .join('g')
       .attr('transform', (d: any) => `translate(${d.x0},${d.y0})`);
 
     // Add rectangles
-    nodes.append('rect')
+    nodes
+      .append('rect')
       .attr('width', (d: any) => d.x1 - d.x0)
       .attr('height', (d: any) => d.y1 - d.y0)
       .attr('fill', (d: any) => colorScale(d.data.color_value))
@@ -75,20 +84,16 @@ export default function WatchListHeatmap({
       .attr('stroke-width', 2)
       .attr('rx', 4)
       .style('cursor', 'pointer')
-      .on('mouseover', function(event: any, d: any) {
+      .on('mouseover', function (event: any, d: any) {
         // Highlight tile
-        d3.select(this)
-          .attr('stroke', strokeHighlight)
-          .attr('stroke-width', 3);
+        d3.select(this).attr('stroke', strokeHighlight).attr('stroke-width', 3);
 
         // Show tooltip
         showTooltip(event, d.data);
       })
-      .on('mouseout', function() {
+      .on('mouseout', function () {
         // Remove highlight
-        d3.select(this)
-          .attr('stroke', strokeColor)
-          .attr('stroke-width', 2);
+        d3.select(this).attr('stroke', strokeColor).attr('stroke-width', 2);
 
         // Hide tooltip
         hideTooltip();
@@ -102,7 +107,8 @@ export default function WatchListHeatmap({
       });
 
     // Add symbol text
-    nodes.append('text')
+    nodes
+      .append('text')
       .attr('x', (d: any) => (d.x1 - d.x0) / 2)
       .attr('y', (d: any) => (d.y1 - d.y0) / 2 - 8)
       .attr('text-anchor', 'middle')
@@ -117,7 +123,8 @@ export default function WatchListHeatmap({
 
     // Add change percentage text
     if (data.color_metric === 'price_change_pct') {
-      nodes.append('text')
+      nodes
+        .append('text')
         .attr('x', (d: any) => (d.x1 - d.x0) / 2)
         .attr('y', (d: any) => (d.y1 - d.y0) / 2 + 12)
         .attr('text-anchor', 'middle')
@@ -129,8 +136,17 @@ export default function WatchListHeatmap({
         .style('pointer-events', 'none')
         .text((d: any) => d.data.color_label);
     }
-
-  }, [data, width, height, router, onTileClick, resolvedTheme, strokeColor, strokeHighlight, neutralColor]);
+  }, [
+    data,
+    width,
+    height,
+    router,
+    onTileClick,
+    resolvedTheme,
+    strokeColor,
+    strokeHighlight,
+    neutralColor,
+  ]);
 
   const showTooltip = (event: any, tile: HeatmapTile) => {
     const tooltip = tooltipRef.current;
@@ -147,61 +163,99 @@ export default function WatchListHeatmap({
           ${tile.price_change >= 0 ? '+' : ''}${tile.price_change.toFixed(2)} (${tile.price_change_pct.toFixed(2)}%)
         </div>
 
-        ${tile.market_cap ? `
+        ${
+          tile.market_cap
+            ? `
           <div class="text-ic-text-muted">Market Cap:</div>
           <div class="font-medium">${tile.size_label}</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.volume ? `
+        ${
+          tile.volume
+            ? `
           <div class="text-ic-text-muted">Volume:</div>
           <div class="font-medium">${formatVolume(tile.volume)}</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.reddit_rank ? `
+        ${
+          tile.reddit_rank
+            ? `
           <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
           <div class="text-ic-text-muted">Reddit Rank:</div>
           <div class="font-medium text-purple-600">#${tile.reddit_rank}</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.reddit_mentions ? `
+        ${
+          tile.reddit_mentions
+            ? `
           <div class="text-ic-text-muted">Reddit Mentions:</div>
           <div class="font-medium">${tile.reddit_mentions.toLocaleString()}</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.reddit_popularity ? `
+        ${
+          tile.reddit_popularity
+            ? `
           <div class="text-ic-text-muted">Reddit Score:</div>
           <div class="font-medium">${tile.reddit_popularity.toFixed(1)}/100</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.reddit_trend ? `
+        ${
+          tile.reddit_trend
+            ? `
           <div class="text-ic-text-muted">Reddit Trend:</div>
           <div class="font-medium ${
-            tile.reddit_trend === 'rising' ? 'text-ic-positive' :
-            tile.reddit_trend === 'falling' ? 'text-ic-negative' :
-            'text-ic-text-muted'
+            tile.reddit_trend === 'rising'
+              ? 'text-ic-positive'
+              : tile.reddit_trend === 'falling'
+                ? 'text-ic-negative'
+                : 'text-ic-text-muted'
           }">
             ${tile.reddit_trend === 'rising' ? '↑' : tile.reddit_trend === 'falling' ? '↓' : '→'} ${tile.reddit_trend}
             ${tile.reddit_rank_change ? ` (${tile.reddit_rank_change > 0 ? '+' : ''}${tile.reddit_rank_change})` : ''}
           </div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.target_buy_price ? `
+        ${
+          tile.target_buy_price
+            ? `
           <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
           <div class="text-ic-text-muted">Target Buy:</div>
           <div class="font-medium text-ic-blue">$${tile.target_buy_price.toFixed(2)}</div>
-        ` : ''}
+        `
+            : ''
+        }
 
-        ${tile.target_sell_price ? `
+        ${
+          tile.target_sell_price
+            ? `
           <div class="text-ic-text-muted">Target Sell:</div>
           <div class="font-medium text-orange-600">$${tile.target_sell_price.toFixed(2)}</div>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
       ${tile.notes ? `<div class="mt-2 text-sm text-ic-text-muted italic">${tile.notes}</div>` : ''}
-      ${tile.tags.length > 0 ? `
+      ${
+        tile.tags.length > 0
+          ? `
         <div class="mt-2 flex flex-wrap gap-1">
-          ${tile.tags.map(tag => `<span class="text-xs bg-ic-bg-secondary px-2 py-1 rounded">${tag}</span>`).join('')}
+          ${tile.tags.map((tag) => `<span class="text-xs bg-ic-bg-secondary px-2 py-1 rounded">${tag}</span>`).join('')}
         </div>
-      ` : ''}
+      `
+          : ''
+      }
     `;
 
     tooltip.style.display = 'block';
@@ -245,21 +299,23 @@ function getColorScale(scheme: string, min: number, max: number, neutralColor: s
 
   switch (scheme) {
     case 'red_green':
-      return d3.scaleLinear<string>()
+      return d3
+        .scaleLinear<string>()
         .domain([min, 0, max])
         .range([negativeColor, neutralColor, positiveColor]);
 
     case 'blue_red':
-      return d3.scaleLinear<string>()
+      return d3
+        .scaleLinear<string>()
         .domain([min, 0, max])
         .range([blueColor, neutralColor, negativeColor]);
 
     case 'heatmap':
-      return d3.scaleSequential(d3.interpolateRdYlGn)
-        .domain([min, max]);
+      return d3.scaleSequential(d3.interpolateRdYlGn).domain([min, max]);
 
     default:
-      return d3.scaleLinear<string>()
+      return d3
+        .scaleLinear<string>()
         .domain([min, 0, max])
         .range([negativeColor, neutralColor, positiveColor]);
   }

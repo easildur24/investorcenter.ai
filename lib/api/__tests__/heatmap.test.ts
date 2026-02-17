@@ -86,10 +86,7 @@ describe('heatmapAPI', () => {
       const updates = { name: 'Updated' };
       mockPut.mockResolvedValueOnce({});
       await heatmapAPI.updateConfig('wl-1', 'cfg-1', updates);
-      expect(mockPut).toHaveBeenCalledWith(
-        '/watchlists/wl-1/heatmap/configs/cfg-1',
-        updates
-      );
+      expect(mockPut).toHaveBeenCalledWith('/watchlists/wl-1/heatmap/configs/cfg-1', updates);
     });
   });
 
@@ -97,9 +94,7 @@ describe('heatmapAPI', () => {
     it('calls DELETE /watchlists/:id/heatmap/configs/:configId', async () => {
       mockDelete.mockResolvedValueOnce(undefined);
       await heatmapAPI.deleteConfig('wl-1', 'cfg-1');
-      expect(mockDelete).toHaveBeenCalledWith(
-        '/watchlists/wl-1/heatmap/configs/cfg-1'
-      );
+      expect(mockDelete).toHaveBeenCalledWith('/watchlists/wl-1/heatmap/configs/cfg-1');
     });
   });
 });

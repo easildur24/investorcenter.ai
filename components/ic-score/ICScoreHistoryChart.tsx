@@ -104,9 +104,7 @@ export default function ICScoreHistoryChart({
   if (error || history.length === 0) {
     return (
       <div className="flex items-center justify-center bg-gray-50 rounded-lg" style={{ height }}>
-        <p className="text-gray-500">
-          {error || 'No historical data available'}
-        </p>
+        <p className="text-gray-500">{error || 'No historical data available'}</p>
       </div>
     );
   }
@@ -270,7 +268,15 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-function LegendItem({ color, label, dashed = false }: { color: string; label: string; dashed?: boolean }) {
+function LegendItem({
+  color,
+  label,
+  dashed = false,
+}: {
+  color: string;
+  label: string;
+  dashed?: boolean;
+}) {
   return (
     <div className="flex items-center gap-1">
       <div
@@ -296,7 +302,8 @@ function EventRow({ event }: { event: ScoreEvent }) {
       <span className="text-gray-700">{event.title}</span>
       {event.score_impact !== undefined && (
         <span className={event.score_impact > 0 ? 'text-green-600' : 'text-red-600'}>
-          {event.score_impact > 0 ? '+' : ''}{event.score_impact.toFixed(1)} pts
+          {event.score_impact > 0 ? '+' : ''}
+          {event.score_impact.toFixed(1)} pts
         </span>
       )}
     </div>
@@ -314,11 +321,20 @@ function ChartSkeleton({ height }: { height: number }) {
   );
 }
 
-function calculateCategoryScore(score: ICScoreData, category: 'quality' | 'valuation' | 'signals'): number | undefined {
+function calculateCategoryScore(
+  score: ICScoreData,
+  category: 'quality' | 'valuation' | 'signals'
+): number | undefined {
   const categoryFactors: Record<string, (keyof ICScoreData)[]> = {
     quality: ['profitability_score', 'financial_health_score', 'growth_score'],
     valuation: ['value_score'],
-    signals: ['momentum_score', 'technical_score', 'analyst_consensus_score', 'insider_activity_score', 'institutional_score'],
+    signals: [
+      'momentum_score',
+      'technical_score',
+      'analyst_consensus_score',
+      'insider_activity_score',
+      'institutional_score',
+    ],
   };
 
   const factors = categoryFactors[category];
@@ -340,7 +356,12 @@ interface ICScoreSparklineProps {
   height?: number;
 }
 
-export function ICScoreSparkline({ ticker, days = 30, width = 100, height = 30 }: ICScoreSparklineProps) {
+export function ICScoreSparkline({
+  ticker,
+  days = 30,
+  width = 100,
+  height = 30,
+}: ICScoreSparklineProps) {
   const [history, setHistory] = useState<ICScoreData[]>([]);
 
   useEffect(() => {

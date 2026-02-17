@@ -16,15 +16,23 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
 
         {/* Market type filters */}
         <div className="flex space-x-4 mb-6">
-          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">ALL</button>
+          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">
+            ALL
+          </button>
           <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">CEX</button>
           <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">DEX</button>
         </div>
 
         <div className="flex space-x-4 mb-6">
-          <button className="bg-ic-bg-secondary text-ic-text-secondary px-4 py-2 rounded font-medium">Spot</button>
-          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">Perpetual</button>
-          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">Futures</button>
+          <button className="bg-ic-bg-secondary text-ic-text-secondary px-4 py-2 rounded font-medium">
+            Spot
+          </button>
+          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">
+            Perpetual
+          </button>
+          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">
+            Futures
+          </button>
         </div>
 
         {/* Markets table placeholder */}
@@ -38,8 +46,12 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
         <h2 className="text-xl font-semibold text-ic-text-primary mb-6">{cryptoName} News</h2>
 
         <div className="flex space-x-4 mb-6">
-          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">Top</button>
-          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">Latest</button>
+          <button className="bg-ic-blue text-ic-text-primary px-4 py-2 rounded font-medium">
+            Top
+          </button>
+          <button className="text-ic-text-muted hover:text-ic-text-primary px-4 py-2">
+            Latest
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -88,29 +100,39 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
 
         <div className="space-y-6">
           <div>
-            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">What Is {cryptoName} ({ticker})?</h3>
+            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">
+              What Is {cryptoName} ({ticker})?
+            </h3>
             <p className="text-ic-text-secondary leading-relaxed">
-              {cryptoName} is a decentralized cryptocurrency originally described in a 2008 whitepaper by a person,
-              or group of people, using the alias Satoshi Nakamoto. It was launched soon after, in January 2009.
+              {cryptoName} is a decentralized cryptocurrency originally described in a 2008
+              whitepaper by a person, or group of people, using the alias Satoshi Nakamoto. It was
+              launched soon after, in January 2009.
             </p>
             <p className="text-ic-text-secondary leading-relaxed mt-4">
-              {cryptoName} is a peer-to-peer online currency, meaning that all transactions happen directly between
-              equal, independent network participants, without the need for any intermediary to permit or facilitate them.
+              {cryptoName} is a peer-to-peer online currency, meaning that all transactions happen
+              directly between equal, independent network participants, without the need for any
+              intermediary to permit or facilitate them.
             </p>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">Who Are the Founders of {cryptoName}?</h3>
+            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">
+              Who Are the Founders of {cryptoName}?
+            </h3>
             <p className="text-ic-text-secondary leading-relaxed">
-              {cryptoName}'s original inventor is known under a pseudonym, Satoshi Nakamoto. As of 2021, the true identity
-              of the person — or organization — that is behind the alias remains unknown.
+              {cryptoName}'s original inventor is known under a pseudonym, Satoshi Nakamoto. As of
+              2021, the true identity of the person — or organization — that is behind the alias
+              remains unknown.
             </p>
           </div>
 
           <div>
-            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">What Makes {cryptoName} Unique?</h3>
+            <h3 className="text-lg font-semibold text-ic-text-primary mb-3">
+              What Makes {cryptoName} Unique?
+            </h3>
             <p className="text-ic-text-secondary leading-relaxed">
-              {cryptoName}'s most unique advantage comes from the fact that it was the very first cryptocurrency to appear on the market.
+              {cryptoName}'s most unique advantage comes from the fact that it was the very first
+              cryptocurrency to appear on the market.
             </p>
           </div>
         </div>

@@ -136,7 +136,9 @@ function CustomTooltip({ active, payload }: TooltipProps) {
         </div>
         <div className="flex justify-between gap-4">
           <span>Weight:</span>
-          <span className="font-medium text-ic-text-primary">{(data.weight * 100).toFixed(0)}%</span>
+          <span className="font-medium text-ic-text-primary">
+            {(data.weight * 100).toFixed(0)}%
+          </span>
         </div>
         <div className="flex justify-between gap-4">
           <span>Contribution:</span>

@@ -89,8 +89,12 @@ export default function WatchListDashboard() {
             <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-lg font-semibold text-blue-900 mb-2">How to use Watch Lists</h3>
               <ul className="text-blue-800 text-sm space-y-1">
-                <li>• Click <strong>View</strong> on a watch list to see details and manage tickers</li>
-                <li>• Click <strong>+ Add Ticker</strong> inside a watch list to add stocks/crypto</li>
+                <li>
+                  • Click <strong>View</strong> on a watch list to see details and manage tickers
+                </li>
+                <li>
+                  • Click <strong>+ Add Ticker</strong> inside a watch list to add stocks/crypto
+                </li>
                 <li>• Set target buy/sell prices to get visual alerts when targets are hit</li>
                 <li>• Prices update automatically every 30 seconds</li>
               </ul>
@@ -98,11 +102,16 @@ export default function WatchListDashboard() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {watchLists.map((watchList) => (
-                <div key={watchList.id} className="bg-ic-surface p-6 rounded-lg border border-ic-border transition">
+                <div
+                  key={watchList.id}
+                  className="bg-ic-surface p-6 rounded-lg border border-ic-border transition"
+                >
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-semibold text-ic-text-primary">{watchList.name}</h3>
                     {watchList.is_default && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">Default</span>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        Default
+                      </span>
                     )}
                   </div>
 

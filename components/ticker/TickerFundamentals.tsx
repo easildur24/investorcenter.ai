@@ -1,7 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { safeToFixed, safeParseNumber, formatLargeNumber, formatPercent, formatRelativeTime } from '@/lib/utils';
+import {
+  safeToFixed,
+  safeParseNumber,
+  formatLargeNumber,
+  formatPercent,
+  formatRelativeTime,
+} from '@/lib/utils';
 import { useAuth } from '@/lib/auth/AuthContext';
 
 interface TickerFundamentalsProps {
@@ -115,16 +121,20 @@ interface MetricValueProps {
   isAdmin?: boolean;
 }
 
-function MetricValue({ value, metricType = 'default', formatter, colorClass = 'text-ic-text-primary', dataSource, isAdmin }: MetricValueProps) {
+function MetricValue({
+  value,
+  metricType = 'default',
+  formatter,
+  colorClass = 'text-ic-text-primary',
+  dataSource,
+  isAdmin,
+}: MetricValueProps) {
   const config = metricConfigs[metricType];
 
   // Check if value is null/undefined/N/A
   if (value === null || value === undefined || value === 'N/A' || value === '') {
     return (
-      <span
-        className="text-ic-text-dim cursor-help"
-        title={config.tooltip}
-      >
+      <span className="text-ic-text-dim cursor-help" title={config.tooltip}>
         {config.nullMessage}
       </span>
     );
@@ -149,10 +159,7 @@ function MetricValue({ value, metricType = 'default', formatter, colorClass = 't
   // If formatter returned N/A, show contextual message
   if (displayValue === 'N/A') {
     return (
-      <span
-        className="text-ic-text-dim cursor-help"
-        title={config.tooltip}
-      >
+      <span className="text-ic-text-dim cursor-help" title={config.tooltip}>
         {config.nullMessage}
       </span>
     );
@@ -160,7 +167,8 @@ function MetricValue({ value, metricType = 'default', formatter, colorClass = 't
 
   // Show data source badge for admin users
   if (isAdmin && dataSource) {
-    const sourceColor = dataSource === 'fmp' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400';
+    const sourceColor =
+      dataSource === 'fmp' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400';
     const sourceLabel = dataSource === 'fmp' ? 'FMP' : 'DB';
     return (
       <span className="inline-flex items-center gap-1.5">
@@ -198,12 +206,13 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
         console.log(`🔥 Fetching fundamentals for ${symbol}...`);
 
         // Fetch all data sources in parallel (including manual fundamentals)
-        const [tickerResponse, manualFundamentalsResponse, financialsResponse, riskResponse] = await Promise.all([
-          fetch(`/api/v1/tickers/${symbol}`),
-          fetch(`/api/v1/tickers/${symbol}/keystats`).catch(() => null),
-          fetch(`/api/v1/stocks/${symbol}/financials`).catch(() => null),
-          fetch(`/api/v1/stocks/${symbol}/risk?period=1Y`).catch(() => null)
-        ]);
+        const [tickerResponse, manualFundamentalsResponse, financialsResponse, riskResponse] =
+          await Promise.all([
+            fetch(`/api/v1/tickers/${symbol}`),
+            fetch(`/api/v1/tickers/${symbol}/keystats`).catch(() => null),
+            fetch(`/api/v1/stocks/${symbol}/financials`).catch(() => null),
+            fetch(`/api/v1/stocks/${symbol}/risk?period=1Y`).catch(() => null),
+          ]);
 
         if (!tickerResponse.ok) {
           throw new Error(`HTTP ${tickerResponse.status}: Failed to fetch ticker data`);
@@ -244,7 +253,9 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           // Capture the filing date if available (only if no manual data)
           if (!manualFundamentals || Object.keys(manualFundamentals).length === 0) {
             if (icScoreFinancials.period_end_date || icScoreFinancials.filing_date) {
-              setIcScoreDataDate(icScoreFinancials.period_end_date || icScoreFinancials.filing_date);
+              setIcScoreDataDate(
+                icScoreFinancials.period_end_date || icScoreFinancials.filing_date
+              );
             }
           }
           // Capture debug sources for admin mode
@@ -264,20 +275,60 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
         // Merge data - PRIORITY: Manual > IC Score > Polygon
         const mappedFundamentals: Fundamentals = {
-          pe: manualFundamentals?.pe_ratio || polygonFundamentals?.pe || icScoreFinancials?.pe_ratio || 'N/A',
-          pb: manualFundamentals?.pb_ratio || polygonFundamentals?.pb || icScoreFinancials?.pb_ratio || 'N/A',
-          ps: manualFundamentals?.ps_ratio || polygonFundamentals?.ps || icScoreFinancials?.ps_ratio || 'N/A',
+          pe:
+            manualFundamentals?.pe_ratio ||
+            polygonFundamentals?.pe ||
+            icScoreFinancials?.pe_ratio ||
+            'N/A',
+          pb:
+            manualFundamentals?.pb_ratio ||
+            polygonFundamentals?.pb ||
+            icScoreFinancials?.pb_ratio ||
+            'N/A',
+          ps:
+            manualFundamentals?.ps_ratio ||
+            polygonFundamentals?.ps ||
+            icScoreFinancials?.ps_ratio ||
+            'N/A',
           // Prefer Manual > IC Score > Polygon
-          roe: isValidValue(manualFundamentals?.roe) ? manualFundamentals.roe : (isValidValue(icScoreFinancials?.roe) ? icScoreFinancials.roe : (polygonFundamentals?.roe || 'N/A')),
-          roa: isValidValue(manualFundamentals?.roa) ? manualFundamentals.roa : (isValidValue(icScoreFinancials?.roa) ? icScoreFinancials.roa : (polygonFundamentals?.roa || 'N/A')),
+          roe: isValidValue(manualFundamentals?.roe)
+            ? manualFundamentals.roe
+            : isValidValue(icScoreFinancials?.roe)
+              ? icScoreFinancials.roe
+              : polygonFundamentals?.roe || 'N/A',
+          roa: isValidValue(manualFundamentals?.roa)
+            ? manualFundamentals.roa
+            : isValidValue(icScoreFinancials?.roa)
+              ? icScoreFinancials.roa
+              : polygonFundamentals?.roa || 'N/A',
           revenue: manualFundamentals?.revenue_ttm || polygonFundamentals?.revenue || '0',
           netIncome: manualFundamentals?.net_income_ttm || polygonFundamentals?.netIncome || '0',
           eps: manualFundamentals?.eps_diluted_ttm || polygonFundamentals?.eps || 'N/A',
-          debtToEquity: isValidValue(manualFundamentals?.debt_to_equity) ? manualFundamentals.debt_to_equity : (isValidValue(icScoreFinancials?.debt_to_equity) ? icScoreFinancials.debt_to_equity : (polygonKeyMetrics?.debtToEquity || 'N/A')),
-          currentRatio: isValidValue(manualFundamentals?.current_ratio) ? manualFundamentals.current_ratio : (isValidValue(icScoreFinancials?.current_ratio) ? icScoreFinancials.current_ratio : (polygonKeyMetrics?.currentRatio || 'N/A')),
-          grossMargin: isValidValue(manualFundamentals?.gross_margin) ? manualFundamentals.gross_margin : (isValidValue(icScoreFinancials?.gross_margin) ? icScoreFinancials.gross_margin : (polygonFundamentals?.grossMargin || 'N/A')),
-          operatingMargin: isValidValue(manualFundamentals?.operating_margin) ? manualFundamentals.operating_margin : (isValidValue(icScoreFinancials?.operating_margin) ? icScoreFinancials.operating_margin : (polygonFundamentals?.operatingMargin || 'N/A')),
-          netMargin: isValidValue(manualFundamentals?.net_margin) ? manualFundamentals.net_margin : (isValidValue(icScoreFinancials?.net_margin) ? icScoreFinancials.net_margin : (polygonFundamentals?.netMargin || 'N/A'))
+          debtToEquity: isValidValue(manualFundamentals?.debt_to_equity)
+            ? manualFundamentals.debt_to_equity
+            : isValidValue(icScoreFinancials?.debt_to_equity)
+              ? icScoreFinancials.debt_to_equity
+              : polygonKeyMetrics?.debtToEquity || 'N/A',
+          currentRatio: isValidValue(manualFundamentals?.current_ratio)
+            ? manualFundamentals.current_ratio
+            : isValidValue(icScoreFinancials?.current_ratio)
+              ? icScoreFinancials.current_ratio
+              : polygonKeyMetrics?.currentRatio || 'N/A',
+          grossMargin: isValidValue(manualFundamentals?.gross_margin)
+            ? manualFundamentals.gross_margin
+            : isValidValue(icScoreFinancials?.gross_margin)
+              ? icScoreFinancials.gross_margin
+              : polygonFundamentals?.grossMargin || 'N/A',
+          operatingMargin: isValidValue(manualFundamentals?.operating_margin)
+            ? manualFundamentals.operating_margin
+            : isValidValue(icScoreFinancials?.operating_margin)
+              ? icScoreFinancials.operating_margin
+              : polygonFundamentals?.operatingMargin || 'N/A',
+          netMargin: isValidValue(manualFundamentals?.net_margin)
+            ? manualFundamentals.net_margin
+            : isValidValue(icScoreFinancials?.net_margin)
+              ? icScoreFinancials.net_margin
+              : polygonFundamentals?.netMargin || 'N/A',
         };
 
         const mappedKeyMetrics: KeyMetrics = {
@@ -285,13 +336,29 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           week52Low: polygonKeyMetrics?.week52Low || '0',
           ytdChange: polygonKeyMetrics?.ytdChange || '0',
           // Prefer Manual > IC Score Risk > Polygon
-          beta: isValidValue(manualFundamentals?.beta) ? manualFundamentals.beta : (isValidValue(icScoreRisk?.beta) ? icScoreRisk.beta : (polygonKeyMetrics?.beta || '1.0')),
+          beta: isValidValue(manualFundamentals?.beta)
+            ? manualFundamentals.beta
+            : isValidValue(icScoreRisk?.beta)
+              ? icScoreRisk.beta
+              : polygonKeyMetrics?.beta || '1.0',
           averageVolume: polygonKeyMetrics?.averageVolume || '0',
           // Prefer Manual > IC Score > Polygon
-          sharesOutstanding: isValidValue(manualFundamentals?.shares_outstanding) ? manualFundamentals.shares_outstanding : (isValidValue(icScoreFinancials?.shares_outstanding) ? icScoreFinancials.shares_outstanding : (polygonKeyMetrics?.sharesOutstanding || '0')),
+          sharesOutstanding: isValidValue(manualFundamentals?.shares_outstanding)
+            ? manualFundamentals.shares_outstanding
+            : isValidValue(icScoreFinancials?.shares_outstanding)
+              ? icScoreFinancials.shares_outstanding
+              : polygonKeyMetrics?.sharesOutstanding || '0',
           // Prefer Manual > IC Score growth metrics
-          revenueGrowth1Y: isValidValue(manualFundamentals?.revenue_growth_yoy) ? manualFundamentals.revenue_growth_yoy : (isValidValue(icScoreFinancials?.revenue_growth_yoy) ? icScoreFinancials.revenue_growth_yoy : (polygonKeyMetrics?.revenueGrowth1Y || '0')),
-          earningsGrowth1Y: isValidValue(manualFundamentals?.earnings_growth_yoy) ? manualFundamentals.earnings_growth_yoy : (isValidValue(icScoreFinancials?.earnings_growth_yoy) ? icScoreFinancials.earnings_growth_yoy : (polygonKeyMetrics?.earningsGrowth1Y || '0'))
+          revenueGrowth1Y: isValidValue(manualFundamentals?.revenue_growth_yoy)
+            ? manualFundamentals.revenue_growth_yoy
+            : isValidValue(icScoreFinancials?.revenue_growth_yoy)
+              ? icScoreFinancials.revenue_growth_yoy
+              : polygonKeyMetrics?.revenueGrowth1Y || '0',
+          earningsGrowth1Y: isValidValue(manualFundamentals?.earnings_growth_yoy)
+            ? manualFundamentals.earnings_growth_yoy
+            : isValidValue(icScoreFinancials?.earnings_growth_yoy)
+              ? icScoreFinancials.earnings_growth_yoy
+              : polygonKeyMetrics?.earningsGrowth1Y || '0',
         };
 
         console.log('✅ Merged Fundamentals:', mappedFundamentals);
@@ -342,8 +409,6 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
     );
   }
 
-
-
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -357,64 +422,126 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Valuation Metrics */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Valuation</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">
+          Valuation
+        </h4>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">P/E Ratio</span>
-            <MetricValue value={fundamentals.pe} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.pe_ratio} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.pe}
+              metricType="valuation"
+              formatter={(v) => safeToFixed(v, 1)}
+              dataSource={debugSources?.pe_ratio}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Price/Book</span>
-            <MetricValue value={fundamentals.pb} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.pb_ratio} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.pb}
+              metricType="valuation"
+              formatter={(v) => safeToFixed(v, 1)}
+              dataSource={debugSources?.pb_ratio}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Price/Sales</span>
-            <MetricValue value={fundamentals.ps} metricType="valuation" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.ps_ratio} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.ps}
+              metricType="valuation"
+              formatter={(v) => safeToFixed(v, 1)}
+              dataSource={debugSources?.ps_ratio}
+              isAdmin={isAdmin}
+            />
           </div>
         </div>
       </div>
 
       {/* Profitability */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Profitability</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">
+          Profitability
+        </h4>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">ROE</span>
-            <MetricValue value={fundamentals.roe} metricType="ratio" formatter={formatPercent} dataSource={debugSources?.roe} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.roe}
+              metricType="ratio"
+              formatter={formatPercent}
+              dataSource={debugSources?.roe}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">ROA</span>
-            <MetricValue value={fundamentals.roa} metricType="ratio" formatter={formatPercent} dataSource={debugSources?.roa} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.roa}
+              metricType="ratio"
+              formatter={formatPercent}
+              dataSource={debugSources?.roa}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Gross Margin</span>
-            <MetricValue value={fundamentals.grossMargin} metricType="margin" formatter={formatPercent} dataSource={debugSources?.gross_margin} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.grossMargin}
+              metricType="margin"
+              formatter={formatPercent}
+              dataSource={debugSources?.gross_margin}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Net Margin</span>
-            <MetricValue value={fundamentals.netMargin} metricType="margin" formatter={formatPercent} dataSource={debugSources?.net_margin} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.netMargin}
+              metricType="margin"
+              formatter={formatPercent}
+              dataSource={debugSources?.net_margin}
+              isAdmin={isAdmin}
+            />
           </div>
         </div>
       </div>
 
       {/* Financial Health */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Financial Health</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">
+          Financial Health
+        </h4>
         <div className="space-y-3">
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Debt/Equity</span>
-            <MetricValue value={fundamentals.debtToEquity} metricType="debt" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.debt_to_equity} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.debtToEquity}
+              metricType="debt"
+              formatter={(v) => safeToFixed(v, 1)}
+              dataSource={debugSources?.debt_to_equity}
+              isAdmin={isAdmin}
+            />
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Current Ratio</span>
-            <MetricValue value={fundamentals.currentRatio} metricType="ratio" formatter={(v) => safeToFixed(v, 1)} dataSource={debugSources?.current_ratio} isAdmin={isAdmin} />
+            <MetricValue
+              value={fundamentals.currentRatio}
+              metricType="ratio"
+              formatter={(v) => safeToFixed(v, 1)}
+              dataSource={debugSources?.current_ratio}
+              isAdmin={isAdmin}
+            />
           </div>
         </div>
       </div>
 
       {/* Performance */}
       <div className="mb-6">
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Performance</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">
+          Performance
+        </h4>
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-ic-text-muted">YTD Change</span>
@@ -422,7 +549,9 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
               value={keyMetrics.ytdChange}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
+              colorClass={
+                safeParseNumber(keyMetrics.ytdChange) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
+              }
             />
           </div>
           <div className="flex justify-between">
@@ -431,7 +560,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
               value={keyMetrics.revenueGrowth1Y}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
+              colorClass={
+                safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0
+                  ? 'text-ic-positive'
+                  : 'text-ic-negative'
+              }
             />
           </div>
           <div className="flex justify-between">
@@ -440,7 +573,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
               value={keyMetrics.earningsGrowth1Y}
               metricType="growth"
               formatter={formatPercent}
-              colorClass={safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
+              colorClass={
+                safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0
+                  ? 'text-ic-positive'
+                  : 'text-ic-negative'
+              }
             />
           </div>
         </div>
@@ -448,11 +585,17 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
       {/* Market Data */}
       <div>
-        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">Market Data</h4>
+        <h4 className="text-sm font-medium text-ic-text-secondary mb-3 uppercase tracking-wide">
+          Market Data
+        </h4>
         <div className="space-y-3">
           <div className="flex justify-between">
             <span className="text-ic-text-muted">Beta</span>
-            <MetricValue value={keyMetrics.beta} metricType="market" formatter={(v) => safeToFixed(v, 2)} />
+            <MetricValue
+              value={keyMetrics.beta}
+              metricType="market"
+              formatter={(v) => safeToFixed(v, 2)}
+            />
           </div>
           <div className="flex justify-between">
             <span className="text-ic-text-muted">Avg Volume</span>

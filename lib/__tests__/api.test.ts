@@ -14,8 +14,8 @@ beforeEach(() => {
 
 describe('apiClient', () => {
   // Use dynamic import so we can reset modules between tests
-  let apiClient: typeof import('../api')['apiClient'];
-  let icScoreApi: typeof import('../api')['icScoreApi'];
+  let apiClient: (typeof import('../api'))['apiClient'];
+  let icScoreApi: (typeof import('../api'))['icScoreApi'];
 
   beforeAll(async () => {
     const mod = await import('../api');
@@ -89,9 +89,7 @@ describe('apiClient', () => {
         json: async () => ({ error: 'Not found' }),
       });
 
-      await expect(
-        apiClient.request('/nonexistent')
-      ).rejects.toThrow('Not found');
+      await expect(apiClient.request('/nonexistent')).rejects.toThrow('Not found');
     });
 
     it('throws with HTTP status when no error message in body', async () => {
@@ -101,9 +99,7 @@ describe('apiClient', () => {
         json: async () => ({}),
       });
 
-      await expect(
-        apiClient.request('/error')
-      ).rejects.toThrow('HTTP 500');
+      await expect(apiClient.request('/error')).rejects.toThrow('HTTP 500');
     });
 
     it('returns parsed JSON on success', async () => {
@@ -142,7 +138,7 @@ describe('apiClient', () => {
 });
 
 describe('icScoreApi', () => {
-  let icScoreApi: typeof import('../api')['icScoreApi'];
+  let icScoreApi: (typeof import('../api'))['icScoreApi'];
 
   beforeAll(async () => {
     const mod = await import('../api');

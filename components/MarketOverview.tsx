@@ -44,7 +44,10 @@ export default function MarketOverview() {
 
   if (loading) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+      <div
+        className="bg-ic-surface rounded-lg border border-ic-border p-6"
+        style={{ boxShadow: 'var(--ic-shadow-card)' }}
+      >
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="animate-pulse space-y-4">
           {[1, 2, 3].map((i) => (
@@ -60,7 +63,10 @@ export default function MarketOverview() {
 
   if (error) {
     return (
-      <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+      <div
+        className="bg-ic-surface rounded-lg border border-ic-border p-6"
+        style={{ boxShadow: 'var(--ic-shadow-card)' }}
+      >
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="text-ic-negative text-sm">
           <p>Error loading market data: {error}</p>
@@ -73,7 +79,10 @@ export default function MarketOverview() {
   }
 
   return (
-    <div className="bg-ic-surface rounded-lg border border-ic-border p-6" style={{ boxShadow: 'var(--ic-shadow-card)' }}>
+    <div
+      className="bg-ic-surface rounded-lg border border-ic-border p-6"
+      style={{ boxShadow: 'var(--ic-shadow-card)' }}
+    >
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-ic-text-primary">Market Overview</h2>
         <span className="text-xs text-ic-text-muted">
@@ -83,7 +92,10 @@ export default function MarketOverview() {
 
       <div className="space-y-4">
         {indices.map((index) => (
-          <div key={index.symbol} className="flex justify-between items-center py-2 border-b border-ic-border-subtle last:border-b-0">
+          <div
+            key={index.symbol}
+            className="flex justify-between items-center py-2 border-b border-ic-border-subtle last:border-b-0"
+          >
             <div>
               <div className="font-medium text-ic-text-primary">{index.name}</div>
               <div className="text-sm text-ic-text-muted">{index.symbol}</div>
@@ -91,23 +103,28 @@ export default function MarketOverview() {
 
             <div className="text-right">
               <div className="font-semibold text-ic-text-primary">
-                ${safeParseNumber(index.price).toLocaleString('en-US', {
+                $
+                {safeParseNumber(index.price).toLocaleString('en-US', {
                   minimumFractionDigits: 2,
-                  maximumFractionDigits: 2
+                  maximumFractionDigits: 2,
                 })}
               </div>
 
-              <div className={`flex items-center text-sm ${
-                safeParseNumber(index.change) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-              }`}>
+              <div
+                className={`flex items-center text-sm ${
+                  safeParseNumber(index.change) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
+                }`}
+              >
                 {safeParseNumber(index.change) >= 0 ? (
                   <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
                 ) : (
                   <ArrowTrendingDownIcon className="h-4 w-4 mr-1" />
                 )}
                 <span>
-                  {safeParseNumber(index.change) >= 0 ? '+' : ''}{safeToFixed(index.change, 2)}
-                  ({safeParseNumber(index.changePercent) >= 0 ? '+' : ''}{safeToFixed(index.changePercent, 2)}%)
+                  {safeParseNumber(index.change) >= 0 ? '+' : ''}
+                  {safeToFixed(index.change, 2)}(
+                  {safeParseNumber(index.changePercent) >= 0 ? '+' : ''}
+                  {safeToFixed(index.changePercent, 2)}%)
                 </span>
               </div>
             </div>

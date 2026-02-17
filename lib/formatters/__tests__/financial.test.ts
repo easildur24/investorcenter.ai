@@ -363,9 +363,7 @@ describe('extractTrendData', () => {
   });
 
   it('returns empty array for missing key', () => {
-    const periods = [
-      { data: { revenue: 100 } },
-    ];
+    const periods = [{ data: { revenue: 100 } }];
     const result = extractTrendData(periods, 'nonexistent');
     expect(result).toEqual([]);
   });
@@ -397,9 +395,7 @@ describe('exportToCSV', () => {
       { fiscal_year: 2024, fiscal_quarter: 2, data: { revenue: 500 } },
       { fiscal_year: 2024, fiscal_quarter: 1, data: { revenue: 450 } },
     ];
-    const rows = [
-      { key: 'revenue', label: 'Revenue', format: 'currency' },
-    ];
+    const rows = [{ key: 'revenue', label: 'Revenue', format: 'currency' }];
 
     const csv = exportToCSV(periods, rows, 'MSFT', 'Income Statement');
     expect(csv).toContain('"Q2 2024"');
@@ -407,12 +403,8 @@ describe('exportToCSV', () => {
   });
 
   it('handles null values as empty strings', () => {
-    const periods = [
-      { fiscal_year: 2024, data: { revenue: null } },
-    ];
-    const rows = [
-      { key: 'revenue', label: 'Revenue', format: 'currency' },
-    ];
+    const periods = [{ fiscal_year: 2024, data: { revenue: null } }];
+    const rows = [{ key: 'revenue', label: 'Revenue', format: 'currency' }];
 
     const csv = exportToCSV(periods, rows, 'GOOG', 'Income Statement');
     expect(csv).toContain('""');

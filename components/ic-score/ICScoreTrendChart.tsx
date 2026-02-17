@@ -67,34 +67,16 @@ export default function ICScoreTrendChart({
       {/* Statistics */}
       {showStats && (
         <div className="mb-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard
-            label="Current"
-            value={currentScore.toFixed(1)}
-            trend={scoreChange}
-          />
-          <StatCard
-            label="Average"
-            value={history.averageScore.toFixed(1)}
-          />
-          <StatCard
-            label="High"
-            value={history.maxScore.toFixed(1)}
-            isPositive
-          />
-          <StatCard
-            label="Low"
-            value={history.minScore.toFixed(1)}
-            isNegative
-          />
+          <StatCard label="Current" value={currentScore.toFixed(1)} trend={scoreChange} />
+          <StatCard label="Average" value={history.averageScore.toFixed(1)} />
+          <StatCard label="High" value={history.maxScore.toFixed(1)} isPositive />
+          <StatCard label="Low" value={history.minScore.toFixed(1)} isNegative />
         </div>
       )}
 
       {/* Chart */}
       <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
-        <ComposedChart
-          data={chartData}
-          margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
-        >
+        <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
@@ -142,12 +124,7 @@ export default function ICScoreTrendChart({
               <stop offset="95%" stopColor={lineColor} stopOpacity={0} />
             </linearGradient>
           </defs>
-          <Area
-            type="monotone"
-            dataKey="score"
-            fill="url(#scoreGradient)"
-            stroke="none"
-          />
+          <Area type="monotone" dataKey="score" fill="url(#scoreGradient)" stroke="none" />
 
           {/* Line */}
           <Line
@@ -273,13 +250,7 @@ export function ICScoreSparkline({
       <div className="flex-1">
         <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
           <LineChart data={chartData}>
-            <Line
-              type="monotone"
-              dataKey="score"
-              stroke={lineColor}
-              strokeWidth={2}
-              dot={false}
-            />
+            <Line type="monotone" dataKey="score" stroke={lineColor} strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>
       </div>

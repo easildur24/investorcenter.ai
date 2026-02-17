@@ -1,23 +1,19 @@
-import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
-import './globals.css'
-import Header from '@/components/Header'
-import { AuthProvider } from '@/lib/auth/AuthContext'
-import { ToastProvider } from '@/lib/hooks/useToast'
-import { ThemeProvider, themeInitScript } from '@/lib/contexts/ThemeContext'
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+import Header from '@/components/Header';
+import { AuthProvider } from '@/lib/auth/AuthContext';
+import { ToastProvider } from '@/lib/hooks/useToast';
+import { ThemeProvider, themeInitScript } from '@/lib/contexts/ThemeContext';
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'InvestorCenter - Financial Data & Analytics',
   description: 'Professional financial data, charts, and investment analytics platform',
-}
+};
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -35,5 +31,5 @@ export default function RootLayout({
         </ThemeProvider>
       </body>
     </html>
-  )
+  );
 }

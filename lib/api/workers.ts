@@ -101,8 +101,16 @@ export async function listWorkers(): Promise<Worker[]> {
   return res.data;
 }
 
-export async function registerWorker(email: string, password: string, fullName: string): Promise<Worker> {
-  const res = await apiClient.post<ApiResponse<Worker>>(BASE, { email, password, full_name: fullName });
+export async function registerWorker(
+  email: string,
+  password: string,
+  fullName: string
+): Promise<Worker> {
+  const res = await apiClient.post<ApiResponse<Worker>>(BASE, {
+    email,
+    password,
+    full_name: fullName,
+  });
   return res.data;
 }
 
@@ -126,11 +134,14 @@ export async function createTaskType(data: {
   return res.data;
 }
 
-export async function updateTaskType(id: number, data: {
-  label?: string;
-  sop?: string;
-  param_schema?: Record<string, string> | null;
-}): Promise<TaskType> {
+export async function updateTaskType(
+  id: number,
+  data: {
+    label?: string;
+    sop?: string;
+    param_schema?: Record<string, string> | null;
+  }
+): Promise<TaskType> {
   const res = await apiClient.put<ApiResponse<TaskType>>(`${BASE}/task-types/${id}`, data);
   return res.data;
 }
@@ -140,7 +151,11 @@ export async function deleteTaskType(id: number): Promise<void> {
 }
 
 // Tasks
-export async function listTasks(params?: { status?: TaskStatus; assigned_to?: string; task_type?: string }): Promise<WorkerTask[]> {
+export async function listTasks(params?: {
+  status?: TaskStatus;
+  assigned_to?: string;
+  task_type?: string;
+}): Promise<WorkerTask[]> {
   const query = new URLSearchParams();
   if (params?.status) query.set('status', params.status);
   if (params?.assigned_to) query.set('assigned_to', params.assigned_to);
@@ -167,15 +182,18 @@ export async function createTask(data: {
   return res.data;
 }
 
-export async function updateTask(id: string, data: {
-  title?: string;
-  description?: string;
-  assigned_to?: string;
-  status?: TaskStatus;
-  priority?: TaskPriority;
-  task_type_id?: number;
-  params?: Record<string, unknown>;
-}): Promise<WorkerTask> {
+export async function updateTask(
+  id: string,
+  data: {
+    title?: string;
+    description?: string;
+    assigned_to?: string;
+    status?: TaskStatus;
+    priority?: TaskPriority;
+    task_type_id?: number;
+    params?: Record<string, unknown>;
+  }
+): Promise<WorkerTask> {
   const res = await apiClient.put<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}`, data);
   return res.data;
 }
@@ -191,7 +209,9 @@ export async function listTaskUpdates(taskId: string): Promise<TaskUpdate[]> {
 }
 
 export async function createTaskUpdate(taskId: string, content: string): Promise<TaskUpdate> {
-  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, { content });
+  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, {
+    content,
+  });
   return res.data;
 }
 
@@ -224,7 +244,9 @@ export async function getTaskData(
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString();
-  const res = await apiClient.get<ApiResponse<TaskDataResponse>>(`${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`);
+  const res = await apiClient.get<ApiResponse<TaskDataResponse>>(
+    `${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`
+  );
   return res.data;
 }
 
@@ -255,7 +277,9 @@ export async function getTaskFiles(
   if (params?.limit) query.set('limit', String(params.limit));
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString();
-  const res = await apiClient.get<ApiResponse<TaskFilesResponse>>(`${BASE}/tasks/${taskId}/files${qs ? '?' + qs : ''}`);
+  const res = await apiClient.get<ApiResponse<TaskFilesResponse>>(
+    `${BASE}/tasks/${taskId}/files${qs ? '?' + qs : ''}`
+  );
   return res.data;
 }
 

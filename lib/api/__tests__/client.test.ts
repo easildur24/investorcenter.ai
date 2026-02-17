@@ -14,7 +14,7 @@ beforeEach(() => {
 });
 
 describe('apiClient', () => {
-  let apiClient: typeof import('../client')['apiClient'];
+  let apiClient: (typeof import('../client'))['apiClient'];
 
   beforeEach(async () => {
     jest.resetModules();
@@ -213,7 +213,7 @@ describe('apiClient', () => {
     it('throws on 401 when no refresh token available', async () => {
       (window.localStorage.getItem as jest.Mock).mockImplementation((key: string) => {
         if (key === 'access_token') return 'expired-token';
-        return null;  // no refresh_token
+        return null; // no refresh_token
       });
 
       jest.resetModules();
@@ -240,9 +240,7 @@ describe('apiClient', () => {
         json: async () => ({ error: 'Bad request: invalid symbol' }),
       });
 
-      await expect(apiClient.get('/invalid')).rejects.toThrow(
-        'Bad request: invalid symbol'
-      );
+      await expect(apiClient.get('/invalid')).rejects.toThrow('Bad request: invalid symbol');
     });
 
     it('throws "Request failed" when no error in body', async () => {

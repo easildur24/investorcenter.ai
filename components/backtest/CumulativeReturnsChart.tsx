@@ -161,10 +161,7 @@ function generateChartDataFromCumulative(
   return chartData;
 }
 
-function generateSimulatedData(
-  summary: BacktestSummary,
-  showDeciles: number[]
-): any[] {
+function generateSimulatedData(summary: BacktestSummary, showDeciles: number[]): any[] {
   // Generate simulated cumulative return data based on CAGR
   const startDate = new Date(summary.start_date);
   const endDate = new Date(summary.end_date);
@@ -271,9 +268,7 @@ export function SpreadChart({ summary, height = 200 }: SpreadChartProps) {
               return (
                 <div className="bg-white border rounded-lg shadow-lg p-2">
                   <p className="text-sm font-medium">{label}</p>
-                  <p className="text-sm text-purple-600">
-                    Spread: {payload[0].value?.toFixed(1)}%
-                  </p>
+                  <p className="text-sm text-purple-600">Spread: {payload[0].value?.toFixed(1)}%</p>
                 </div>
               );
             }

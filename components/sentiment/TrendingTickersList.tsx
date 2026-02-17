@@ -59,9 +59,7 @@ export default function TrendingTickersList({
       {/* Header with period toggle */}
       <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-ic-text-primary">
-            Trending by Sentiment
-          </h3>
+          <h3 className="text-lg font-semibold text-ic-text-primary">Trending by Sentiment</h3>
           <div className="flex gap-1">
             <button
               onClick={() => setPeriod('24h')}
@@ -175,9 +173,7 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
       }}
     >
       {/* Rank */}
-      <span className="w-12 text-center text-sm font-medium text-ic-text-dim">
-        {ticker.rank}
-      </span>
+      <span className="w-12 text-center text-sm font-medium text-ic-text-dim">{ticker.rank}</span>
 
       {/* Ticker info */}
       <div className="flex-1 min-w-0">
@@ -194,7 +190,8 @@ function TrendingTickerRow({ ticker, onClick }: TrendingTickerRowProps) {
           className="text-xs font-medium"
           style={{ color: getSentimentScoreColor(ticker.score) }}
         >
-          {ticker.score >= 0 ? '+' : ''}{(ticker.score * 100).toFixed(0)}%
+          {ticker.score >= 0 ? '+' : ''}
+          {(ticker.score * 100).toFixed(0)}%
         </span>
       </div>
 

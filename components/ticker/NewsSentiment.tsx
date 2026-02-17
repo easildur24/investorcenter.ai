@@ -29,9 +29,9 @@ interface NewsArticle {
     sentiment_reasoning: string;
   }>;
   // IC Score AI sentiment fields (primary)
-  sentiment_score?: number;    // -100 to +100 (from FinBERT AI analysis)
-  sentiment_label?: string;    // "Positive", "Negative", "Neutral"
-  relevance_score?: number;    // 0 to 100
+  sentiment_score?: number; // -100 to +100 (from FinBERT AI analysis)
+  sentiment_label?: string; // "Positive", "Negative", "Neutral"
+  relevance_score?: number; // 0 to 100
   // Backward compatibility
   summary?: string;
   source?: string;
@@ -83,9 +83,7 @@ function getConfidence(article: NewsArticle, symbol: string): number {
   }
 
   // Fallback: Try Polygon insights
-  const insight = article.insights?.find(
-    (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-  );
+  const insight = article.insights?.find((i) => i.ticker?.toUpperCase() === symbol.toUpperCase());
 
   if (insight?.sentiment_reasoning) {
     const reasoning = insight.sentiment_reasoning;
@@ -157,9 +155,7 @@ export default function NewsSentiment({ symbol }: NewsSentimentProps) {
       return getSentimentFromApi(article.sentiment_label);
     }
     // Fallback: Try Polygon insights
-    const insight = article.insights?.find(
-      (i) => i.ticker?.toUpperCase() === symbol.toUpperCase()
-    );
+    const insight = article.insights?.find((i) => i.ticker?.toUpperCase() === symbol.toUpperCase());
     return getSentimentFromApi(insight?.sentiment || article.sentiment);
   };
 
@@ -172,7 +168,10 @@ export default function NewsSentiment({ symbol }: NewsSentimentProps) {
         </div>
         <div className="space-y-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="py-4 border-t border-ic-border-subtle first:border-t-0 animate-pulse">
+            <div
+              key={i}
+              className="py-4 border-t border-ic-border-subtle first:border-t-0 animate-pulse"
+            >
               <div className="h-4 bg-ic-border rounded w-1/3 mb-2"></div>
               <div className="h-5 bg-ic-border rounded w-full mb-2"></div>
               <div className="h-4 bg-ic-border rounded w-2/3 mb-3"></div>

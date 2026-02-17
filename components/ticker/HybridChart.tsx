@@ -74,50 +74,53 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   }, [initialData]);
 
   // Fetch chart data for a period (with caching)
-  const fetchChartData = useCallback(async (period: string) => {
-    // Check cache first
-    const cached = chartCache.current.get(period);
-    if (cached) {
-      setChartData(cached);
-      setSelectedPeriod(period);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=${period}`);
-      const result = await response.json();
-
-      if (result.data?.dataPoints) {
-        const newData: ChartData = {
-          dataPoints: result.data.dataPoints,
-          period: period,
-          count: result.data.count || result.data.dataPoints.length,
-        };
-        // Cache the result
-        chartCache.current.set(period, newData);
-        setChartData(newData);
+  const fetchChartData = useCallback(
+    async (period: string) => {
+      // Check cache first
+      const cached = chartCache.current.get(period);
+      if (cached) {
+        setChartData(cached);
         setSelectedPeriod(period);
+        return;
       }
-    } catch (error) {
-      console.error('Failed to fetch chart data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [symbol]);
+
+      setIsLoading(true);
+      try {
+        const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=${period}`);
+        const result = await response.json();
+
+        if (result.data?.dataPoints) {
+          const newData: ChartData = {
+            dataPoints: result.data.dataPoints,
+            period: period,
+            count: result.data.count || result.data.dataPoints.length,
+          };
+          // Cache the result
+          chartCache.current.set(period, newData);
+          setChartData(newData);
+          setSelectedPeriod(period);
+        }
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [symbol]
+  );
 
   // Fetch S&P 500 data when comparison is enabled
   useEffect(() => {
     if (showSP500 && sp500Data.length === 0 && !sp500Loading) {
       setSp500Loading(true);
       fetch(`/api/v1/tickers/SPY/chart?period=${selectedPeriod}`)
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           if (data.data?.dataPoints) {
             setSp500Data(data.data.dataPoints);
           }
         })
-        .catch(err => console.error('Failed to fetch S&P 500 data:', err))
+        .catch((err) => console.error('Failed to fetch S&P 500 data:', err))
         .finally(() => setSp500Loading(false));
     }
   }, [showSP500, sp500Data.length, sp500Loading, selectedPeriod]);
@@ -162,8 +165,8 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   }
 
   const dataPoints: ChartDataPoint[] = chartData.dataPoints;
-  const prices = dataPoints.map(d => parseFloat(d.close));
-  const volumes = dataPoints.map(d => d.volume);
+  const prices = dataPoints.map((d) => parseFloat(d.close));
+  const volumes = dataPoints.map((d) => d.volume);
   const rawHigh = Math.max(...prices);
   const rawLow = Math.min(...prices);
   const maxVolume = Math.max(...volumes);
@@ -208,14 +211,14 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
   // Chart dimensions - adjusted for volume section and axis labels
   // In fullscreen mode, use larger dimensions
-  const baseChartHeight = isFullscreen ? 600 : (showVolume ? 420 : 340);
-  const basePriceChartHeight = isFullscreen ? 480 : (showVolume ? 280 : 300);
+  const baseChartHeight = isFullscreen ? 600 : showVolume ? 420 : 340;
+  const basePriceChartHeight = isFullscreen ? 480 : showVolume ? 280 : 300;
   const volumeChartHeight = isFullscreen ? 100 : 80;
-  const totalChartHeight = showVolume ? baseChartHeight : (isFullscreen ? 520 : 340);
-  const priceChartHeight = showVolume ? basePriceChartHeight : (isFullscreen ? 480 : 300);
+  const totalChartHeight = showVolume ? baseChartHeight : isFullscreen ? 520 : 340;
+  const priceChartHeight = showVolume ? basePriceChartHeight : isFullscreen ? 480 : 300;
   const xAxisHeight = 30;
   const chartWidth = isFullscreen ? 1600 : 900;
-  const paddingLeft = 70;  // More space for Y-axis labels
+  const paddingLeft = 70; // More space for Y-axis labels
   const paddingRight = 30;
   const paddingTop = 20;
   const paddingBottom = 10;
@@ -256,30 +259,38 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const dateLabels = getDateLabels();
 
   // Generate SVG paths for price line
-  const pathData = dataPoints.map((point, index) => {
-    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
-    const y = paddingTop + plotHeight - (parseFloat(point.close) - low) * priceScale;
-    return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-  }).join(' ');
+  const pathData = dataPoints
+    .map((point, index) => {
+      const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+      const y = paddingTop + plotHeight - (parseFloat(point.close) - low) * priceScale;
+      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .join(' ');
 
   // Generate SVG path for 50-day MA
-  const ma50PathData = ma50.map((value, index) => {
-    if (value === null) return '';
-    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
-    const y = paddingTop + plotHeight - (value - low) * priceScale;
-    // Find the first non-null index to start the path
-    const isFirst = ma50.slice(0, index).every(v => v === null);
-    return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
-  }).filter(Boolean).join(' ');
+  const ma50PathData = ma50
+    .map((value, index) => {
+      if (value === null) return '';
+      const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+      const y = paddingTop + plotHeight - (value - low) * priceScale;
+      // Find the first non-null index to start the path
+      const isFirst = ma50.slice(0, index).every((v) => v === null);
+      return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .filter(Boolean)
+    .join(' ');
 
   // Generate SVG path for 200-day MA
-  const ma200PathData = ma200.map((value, index) => {
-    if (value === null) return '';
-    const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
-    const y = paddingTop + plotHeight - (value - low) * priceScale;
-    const isFirst = ma200.slice(0, index).every(v => v === null);
-    return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
-  }).filter(Boolean).join(' ');
+  const ma200PathData = ma200
+    .map((value, index) => {
+      if (value === null) return '';
+      const x = paddingLeft + (index / (dataPoints.length - 1)) * plotWidth;
+      const y = paddingTop + plotHeight - (value - low) * priceScale;
+      const isFirst = ma200.slice(0, index).every((v) => v === null);
+      return `${isFirst ? 'M' : 'L'} ${x} ${y}`;
+    })
+    .filter(Boolean)
+    .join(' ');
 
   // Generate SVG path for S&P 500 comparison (normalized to start at same point as stock)
   const sp500PathData = useMemo(() => {
@@ -291,17 +302,32 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
     if (sp500StartPrice === 0) return '';
 
     // Calculate the scaling factor: sp500 normalized price = stockStartPrice * (sp500Price / sp500StartPrice)
-    const sp500Prices = sp500Data.map(d => stockStartPrice * (parseFloat(d.close) / sp500StartPrice));
+    const sp500Prices = sp500Data.map(
+      (d) => stockStartPrice * (parseFloat(d.close) / sp500StartPrice)
+    );
 
-    return sp500Prices.map((price, index) => {
-      // Map S&P 500 index to stock data index (in case they have different lengths)
-      const x = paddingLeft + (index / (sp500Prices.length - 1)) * plotWidth;
-      // Clamp price to visible range
-      const clampedPrice = Math.max(low, Math.min(high, price));
-      const y = paddingTop + plotHeight - (clampedPrice - low) * priceScale;
-      return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
-    }).join(' ');
-  }, [showSP500, sp500Data, prices, paddingLeft, plotWidth, paddingTop, plotHeight, low, high, priceScale]);
+    return sp500Prices
+      .map((price, index) => {
+        // Map S&P 500 index to stock data index (in case they have different lengths)
+        const x = paddingLeft + (index / (sp500Prices.length - 1)) * plotWidth;
+        // Clamp price to visible range
+        const clampedPrice = Math.max(low, Math.min(high, price));
+        const y = paddingTop + plotHeight - (clampedPrice - low) * priceScale;
+        return `${index === 0 ? 'M' : 'L'} ${x} ${y}`;
+      })
+      .join(' ');
+  }, [
+    showSP500,
+    sp500Data,
+    prices,
+    paddingLeft,
+    plotWidth,
+    paddingTop,
+    plotHeight,
+    low,
+    high,
+    priceScale,
+  ]);
 
   // Volume bar data
   const volumeBars = dataPoints.map((point, index) => {
@@ -330,7 +356,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       const scaleX = chartWidth / rect.width;
 
       // Calculate which data point we're hovering over
-      const dataIndex = Math.round(((x * scaleX - paddingLeft) / plotWidth) * (dataPoints.length - 1));
+      const dataIndex = Math.round(
+        ((x * scaleX - paddingLeft) / plotWidth) * (dataPoints.length - 1)
+      );
 
       if (dataIndex >= 0 && dataIndex < dataPoints.length) {
         const point = dataPoints[dataIndex];
@@ -346,11 +374,20 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
         if (tooltipOhlc) {
           tooltipOhlc.innerHTML =
-            'Open: $' + parseFloat(point.open).toFixed(2) + '<br>' +
-            'High: $' + parseFloat(point.high).toFixed(2) + '<br>' +
-            'Low: $' + parseFloat(point.low).toFixed(2) + '<br>' +
-            '<strong>Close: $' + parseFloat(point.close).toFixed(2) + '</strong><br>' +
-            'Volume: ' + point.volume.toLocaleString();
+            'Open: $' +
+            parseFloat(point.open).toFixed(2) +
+            '<br>' +
+            'High: $' +
+            parseFloat(point.high).toFixed(2) +
+            '<br>' +
+            'Low: $' +
+            parseFloat(point.low).toFixed(2) +
+            '<br>' +
+            '<strong>Close: $' +
+            parseFloat(point.close).toFixed(2) +
+            '</strong><br>' +
+            'Volume: ' +
+            point.volume.toLocaleString();
         }
 
         // Position tooltip near cursor
@@ -397,7 +434,9 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const chartContent = (
     <>
       <div className="flex items-center justify-between mb-4">
-        <h3 className={`font-semibold text-ic-text-primary ${isFullscreen ? 'text-xl' : 'text-lg'}`}>
+        <h3
+          className={`font-semibold text-ic-text-primary ${isFullscreen ? 'text-xl' : 'text-lg'}`}
+        >
           {isFullscreen && <span className="text-primary-600">{symbol}</span>}
           {isFullscreen ? ' - ' : ''}Interactive Price Chart
         </h3>
@@ -477,7 +516,10 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       </div>
 
       {/* Enhanced Interactive SVG Chart */}
-      <div className={`relative bg-ic-surface border rounded-lg overflow-hidden`} style={{ height: `${totalChartHeight}px` }}>
+      <div
+        className={`relative bg-ic-surface border rounded-lg overflow-hidden`}
+        style={{ height: `${totalChartHeight}px` }}
+      >
         {/* Loading overlay */}
         {isLoading && (
           <div className="absolute inset-0 bg-ic-bg-primary/50 flex items-center justify-center z-10">
@@ -496,13 +538,19 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           {/* Gradient definition */}
           <defs>
             <linearGradient id={`priceGradient-${resolvedTheme}`} x1="0%" y1="0%" x2="0%" y2="100%">
-              <stop offset="0%" style={{stopColor: chartColors.positive, stopOpacity: 0.2}} />
-              <stop offset="100%" style={{stopColor: chartColors.positive, stopOpacity: 0.02}} />
+              <stop offset="0%" style={{ stopColor: chartColors.positive, stopOpacity: 0.2 }} />
+              <stop offset="100%" style={{ stopColor: chartColors.positive, stopOpacity: 0.02 }} />
             </linearGradient>
           </defs>
 
           {/* Background for plot area */}
-          <rect x={paddingLeft} y={paddingTop} width={plotWidth} height={plotHeight} fill="var(--ic-bg-secondary)" />
+          <rect
+            x={paddingLeft}
+            y={paddingTop}
+            width={plotWidth}
+            height={plotHeight}
+            fill="var(--ic-bg-secondary)"
+          />
 
           {/* Y-axis grid lines and labels */}
           {yTicks.map((tick, i) => {
@@ -620,7 +668,15 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
               />
 
               {/* Volume label */}
-              <text x={paddingLeft - 8} y={priceChartHeight + xAxisHeight + 15} textAnchor="end" className="fill-ic-text-dim" style={{ fontSize: '10px' }}>Vol</text>
+              <text
+                x={paddingLeft - 8}
+                y={priceChartHeight + xAxisHeight + 15}
+                textAnchor="end"
+                className="fill-ic-text-dim"
+                style={{ fontSize: '10px' }}
+              >
+                Vol
+              </text>
 
               {/* Volume bars */}
               {volumeBars.map((bar, index) => (
@@ -643,7 +699,10 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           className="fixed z-30 bg-ic-bg-tertiary text-ic-text-primary p-2 rounded shadow-xl text-xs pointer-events-none opacity-0 transition-opacity duration-100 border border-ic-border"
           style={{ left: -200, top: -200, minWidth: '140px', fontFamily: 'monospace' }}
         >
-          <div id="tooltip-date" className="font-semibold mb-1 text-ic-text-secondary text-xs"></div>
+          <div
+            id="tooltip-date"
+            className="font-semibold mb-1 text-ic-text-secondary text-xs"
+          ></div>
           <div id="tooltip-ohlc" className="leading-tight"></div>
         </div>
       </div>
@@ -657,8 +716,11 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           </div>
           <div className="flex items-center gap-2">
             <span className="text-ic-text-muted">Change:</span>
-            <span className={`font-bold ${priceChange >= 0 ? 'text-ic-positive' : 'text-ic-negative'}`}>
-              {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
+            <span
+              className={`font-bold ${priceChange >= 0 ? 'text-ic-positive' : 'text-ic-negative'}`}
+            >
+              {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)} (
+              {priceChangePercent.toFixed(2)}%)
             </span>
           </div>
           <div className="flex items-center gap-2">
@@ -672,29 +734,42 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
           <div className="flex items-center gap-2">
             <span className="text-ic-text-muted">Avg Volume:</span>
             <span className="font-bold text-purple-600">
-              {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
+              {(
+                dataPoints.reduce((sum, p) => sum + p.volume, 0) /
+                dataPoints.length /
+                1000000
+              ).toFixed(1)}
+              M
             </span>
           </div>
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-4">
           <div className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 rounded-xl border border-blue-200">
-            <div className="text-blue-600 text-xs font-semibold uppercase tracking-wide">Current</div>
+            <div className="text-blue-600 text-xs font-semibold uppercase tracking-wide">
+              Current
+            </div>
             <div className="font-bold text-xl text-blue-900">${currentPrice.toFixed(2)}</div>
           </div>
-          <div className={`bg-gradient-to-br p-4 rounded-xl border ${
-            priceChange >= 0
-              ? 'from-green-50 to-green-100 border-green-200'
-              : 'from-red-50 to-red-100 border-red-200'
-          }`}>
-            <div className={`text-xs font-semibold uppercase tracking-wide ${
-              priceChange >= 0 ? 'text-green-600' : 'text-red-600'
-            }`}>
+          <div
+            className={`bg-gradient-to-br p-4 rounded-xl border ${
+              priceChange >= 0
+                ? 'from-green-50 to-green-100 border-green-200'
+                : 'from-red-50 to-red-100 border-red-200'
+            }`}
+          >
+            <div
+              className={`text-xs font-semibold uppercase tracking-wide ${
+                priceChange >= 0 ? 'text-green-600' : 'text-red-600'
+              }`}
+            >
               Change
             </div>
-            <div className={`font-bold text-lg ${
-              priceChange >= 0 ? 'text-green-900' : 'text-red-900'
-            }`}>
+            <div
+              className={`font-bold text-lg ${
+                priceChange >= 0 ? 'text-green-900' : 'text-red-900'
+              }`}
+            >
               {priceChange >= 0 ? '+' : ''}${priceChange.toFixed(2)}
               <div className="text-sm">({priceChangePercent.toFixed(2)}%)</div>
             </div>
@@ -708,9 +783,16 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
             <div className="font-bold text-lg text-red-900">${low.toFixed(2)}</div>
           </div>
           <div className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 rounded-xl border border-purple-200">
-            <div className="text-purple-600 text-xs font-semibold uppercase tracking-wide">Volume</div>
+            <div className="text-purple-600 text-xs font-semibold uppercase tracking-wide">
+              Volume
+            </div>
             <div className="font-bold text-lg text-purple-900">
-              {(dataPoints.reduce((sum, p) => sum + p.volume, 0) / dataPoints.length / 1000000).toFixed(1)}M
+              {(
+                dataPoints.reduce((sum, p) => sum + p.volume, 0) /
+                dataPoints.length /
+                1000000
+              ).toFixed(1)}
+              M
             </div>
           </div>
         </div>
@@ -719,11 +801,10 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       {/* Chart Info */}
       <div className="mt-4 flex justify-between items-center text-sm">
         <div className="text-ic-text-secondary">
-          <span className="font-semibold">{selectedPeriod}</span> • {dataPoints.length} data points • Local database
+          <span className="font-semibold">{selectedPeriod}</span> • {dataPoints.length} data points
+          • Local database
         </div>
-        <div className="text-ic-text-muted">
-          Last updated: {new Date().toLocaleTimeString()}
-        </div>
+        <div className="text-ic-text-muted">Last updated: {new Date().toLocaleTimeString()}</div>
       </div>
     </>
   );
@@ -732,17 +813,11 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   if (isFullscreen) {
     return (
       <div className="fixed inset-0 z-50 bg-ic-bg-primary overflow-auto">
-        <div className="min-h-screen p-6">
-          {chartContent}
-        </div>
+        <div className="min-h-screen p-6">{chartContent}</div>
       </div>
     );
   }
 
   // Normal view
-  return (
-    <div className="p-6">
-      {chartContent}
-    </div>
-  );
+  return <div className="p-6">{chartContent}</div>;
 }

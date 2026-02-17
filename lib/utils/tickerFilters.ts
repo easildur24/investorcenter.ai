@@ -125,7 +125,7 @@ export function filterDerivatives<T extends Record<string, any>>(
   data: T[],
   tickerField: keyof T = 'ticker' as keyof T
 ): T[] {
-  return data.filter(item => {
+  return data.filter((item) => {
     const ticker = item[tickerField];
     if (typeof ticker !== 'string') {
       return true; // Keep items without valid ticker field
@@ -161,7 +161,7 @@ export function categorizeTickers<T extends Record<string, any>>(
   const commonStocks: T[] = [];
   const derivatives: T[] = [];
 
-  data.forEach(item => {
+  data.forEach((item) => {
     const ticker = item[tickerField];
     if (typeof ticker !== 'string') {
       commonStocks.push(item);

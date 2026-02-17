@@ -14,11 +14,7 @@ export default function OverviewTab({ symbol, chartData, currentPrice }: Overvie
     <div className="space-y-6 p-6">
       {/* Price Chart */}
       <div className="bg-ic-surface rounded-lg -mx-6 -mt-6 mb-6">
-        <HybridChart
-          symbol={symbol}
-          initialData={chartData}
-          currentPrice={currentPrice}
-        />
+        <HybridChart symbol={symbol} initialData={chartData} currentPrice={currentPrice} />
       </div>
 
       {/* News & Sentiment - Full Width */}

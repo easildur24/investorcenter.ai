@@ -37,10 +37,7 @@ export default function FinancialTable({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const rowConfig = useMemo(
-    () => getRowConfigForStatementType(statementType),
-    [statementType]
-  );
+  const rowConfig = useMemo(() => getRowConfigForStatementType(statementType), [statementType]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,12 +99,7 @@ export default function FinancialTable({
           onClick={handleExport}
           className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-ic-text-muted hover:text-ic-text-primary hover:bg-ic-surface-hover rounded-md transition-colors"
         >
-          <svg
-            className="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -139,12 +131,7 @@ export default function FinancialTable({
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rowsWithData.map((row) => (
-              <FinancialTableRow
-                key={row.key}
-                row={row}
-                periods={periods}
-                showYoY={showYoY}
-              />
+              <FinancialTableRow key={row.key} row={row} periods={periods} showYoY={showYoY} />
             ))}
           </tbody>
         </table>
@@ -196,9 +183,7 @@ function FinancialTableRow({ row, periods, showYoY }: FinancialTableRowProps) {
               {formatFinancialValue(value as number, row.format, row.decimals)}
             </div>
             {showYoY && yoyChange !== undefined && (
-              <div className={cn('text-xs mt-0.5', formattedYoY.color)}>
-                {formattedYoY.text}
-              </div>
+              <div className={cn('text-xs mt-0.5', formattedYoY.color)}>{formattedYoY.text}</div>
             )}
           </td>
         );

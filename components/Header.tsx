@@ -97,7 +97,12 @@ export default function Header() {
                 >
                   <span>{user.full_name}</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
 
@@ -137,47 +142,47 @@ export default function Header() {
                       </>
                     )}
                     {user.is_admin && (
-                    <>
-                    <div className="border-t border-ic-border my-1"></div>
-                    <div className="px-4 py-2 text-xs font-semibold text-ic-text-dim uppercase">
-                      Admin
-                    </div>
-                    <Link
-                      href="/admin/dashboard"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/admin/cronjobs"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      Cronjob Monitoring
-                    </Link>
-                    <Link
-                      href="/admin/ic-scores"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      IC Score Admin
-                    </Link>
-                    <Link
-                      href="/admin/notes"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      Feature Notes
-                    </Link>
-                    <Link
-                      href="/admin/workers"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      Workers & Tasks
-                    </Link>
-                    </>
+                      <>
+                        <div className="border-t border-ic-border my-1"></div>
+                        <div className="px-4 py-2 text-xs font-semibold text-ic-text-dim uppercase">
+                          Admin
+                        </div>
+                        <Link
+                          href="/admin/dashboard"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          Dashboard
+                        </Link>
+                        <Link
+                          href="/admin/cronjobs"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          Cronjob Monitoring
+                        </Link>
+                        <Link
+                          href="/admin/ic-scores"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          IC Score Admin
+                        </Link>
+                        <Link
+                          href="/admin/notes"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          Feature Notes
+                        </Link>
+                        <Link
+                          href="/admin/workers"
+                          className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          Workers & Tasks
+                        </Link>
+                      </>
                     )}
                     <div className="border-t border-ic-border my-1"></div>
                     <button
@@ -194,10 +199,16 @@ export default function Header() {
               </div>
             ) : (
               <>
-                <Link href="/auth/login" className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors">
+                <Link
+                  href="/auth/login"
+                  className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
                   Login
                 </Link>
-                <Link href="/auth/signup" className="bg-ic-blue hover:bg-ic-blue-hover text-ic-text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors">
+                <Link
+                  href="/auth/signup"
+                  className="bg-ic-blue hover:bg-ic-blue-hover text-ic-text-primary px-4 py-2 rounded-md text-sm font-medium transition-colors"
+                >
                   Get Started
                 </Link>
               </>

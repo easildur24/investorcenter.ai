@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getICScores, getICScore, ICScoreListItem, ICScoreData, getScoreColor, getFactorDetails } from '@/lib/api/ic-score';
+import {
+  getICScores,
+  getICScore,
+  ICScoreListItem,
+  ICScoreData,
+  getScoreColor,
+  getFactorDetails,
+} from '@/lib/api/ic-score';
 import { Search, ChevronLeft, ChevronRight, ArrowUpDown, X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -98,9 +105,7 @@ export default function ICScoresAdminPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div>
             <h1 className="text-3xl font-bold text-ic-text-primary">IC Scores Admin</h1>
-            <p className="text-ic-text-muted mt-1">
-              Development view of all calculated IC Scores
-            </p>
+            <p className="text-ic-text-muted mt-1">Development view of all calculated IC Scores</p>
           </div>
 
           {/* Stats */}
@@ -230,7 +235,9 @@ export default function ICScoresAdminPage() {
                           Calculated
                         </SortButton>
                       </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-ic-text-secondary uppercase tracking-wider">Actions</th>
+                      <th className="px-6 py-3 text-left text-xs font-semibold text-ic-text-secondary uppercase tracking-wider">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-ic-border">
@@ -258,8 +265,8 @@ export default function ICScoresAdminPage() {
                                     score.overall_score >= 70
                                       ? 'bg-ic-positive'
                                       : score.overall_score >= 50
-                                      ? 'bg-ic-warning'
-                                      : 'bg-ic-negative'
+                                        ? 'bg-ic-warning'
+                                        : 'bg-ic-negative'
                                   }`}
                                   style={{ width: `${score.overall_score}%` }}
                                 />
@@ -273,8 +280,8 @@ export default function ICScoresAdminPage() {
                               score.rating.includes('Buy')
                                 ? 'bg-ic-positive-bg text-green-800'
                                 : score.rating === 'Hold'
-                                ? 'bg-ic-warning-bg text-yellow-800'
-                                : 'bg-ic-negative-bg text-red-800'
+                                  ? 'bg-ic-warning-bg text-yellow-800'
+                                  : 'bg-ic-negative-bg text-red-800'
                             }`}
                           >
                             {score.rating}
@@ -373,7 +380,9 @@ export default function ICScoresAdminPage() {
                     <div className="flex items-center justify-between">
                       <div>
                         <div className="text-sm text-ic-blue font-medium">Overall IC Score</div>
-                        <div className={`text-5xl font-bold ${getScoreColor(detailedScore.overall_score)} mt-2`}>
+                        <div
+                          className={`text-5xl font-bold ${getScoreColor(detailedScore.overall_score)} mt-2`}
+                        >
                           {Math.round(detailedScore.overall_score)}
                         </div>
                         <div className="mt-2 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-ic-surface border border-blue-200">
@@ -394,7 +403,9 @@ export default function ICScoresAdminPage() {
 
                   {/* Factor Breakdown */}
                   <div>
-                    <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Factor Breakdown</h3>
+                    <h3 className="text-lg font-semibold text-ic-text-primary mb-4">
+                      Factor Breakdown
+                    </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {getFactorDetails(detailedScore).map((factor) => (
                         <div
@@ -406,7 +417,9 @@ export default function ICScoresAdminPage() {
                           }`}
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <div className="font-medium text-ic-text-primary">{factor.display_name}</div>
+                            <div className="font-medium text-ic-text-primary">
+                              {factor.display_name}
+                            </div>
                             {factor.available ? (
                               <span className={`text-2xl font-bold ${getScoreColor(factor.score)}`}>
                                 {Math.round(factor.score!)}
@@ -424,8 +437,8 @@ export default function ICScoresAdminPage() {
                                       factor.score! >= 70
                                         ? 'bg-ic-positive'
                                         : factor.score! >= 50
-                                        ? 'bg-ic-warning'
-                                        : 'bg-ic-negative'
+                                          ? 'bg-ic-warning'
+                                          : 'bg-ic-negative'
                                     }`}
                                     style={{ width: `${factor.score}%` }}
                                   />
@@ -452,7 +465,9 @@ export default function ICScoresAdminPage() {
                       </div>
                       <div>
                         <span className="text-ic-text-muted">Confidence:</span>{' '}
-                        <span className="font-medium text-ic-text-primary">{detailedScore.confidence_level}</span>
+                        <span className="font-medium text-ic-text-primary">
+                          {detailedScore.confidence_level}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -503,9 +518,7 @@ function SortButton({ column, currentSort, currentOrder, onClick, children }: So
       className="flex items-center gap-2 text-xs font-semibold text-ic-text-secondary uppercase tracking-wider hover:text-ic-text-primary transition-colors"
     >
       {children}
-      <ArrowUpDown
-        className={`w-4 h-4 ${isActive ? 'text-ic-blue' : 'text-ic-text-dim'}`}
-      />
+      <ArrowUpDown className={`w-4 h-4 ${isActive ? 'text-ic-blue' : 'text-ic-text-dim'}`} />
     </button>
   );
 }

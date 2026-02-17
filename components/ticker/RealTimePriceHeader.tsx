@@ -37,16 +37,10 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
   const [lastUpdate, setLastUpdate] = useState(new Date(initialData.price.lastUpdated));
   const [previousPrice, setPreviousPrice] = useState<string>(initialData.price.price);
   const [flashColor, setFlashColor] = useState<'green' | 'red' | null>(null);
-  
-  const { 
-    priceData, 
-    error, 
-    isMarketOpen, 
-    isCrypto,
-    updateInterval 
-  } = useRealTimePrice({ 
-    symbol, 
-    enabled: initialData.market.shouldUpdateRealtime 
+
+  const { priceData, error, isMarketOpen, isCrypto, updateInterval } = useRealTimePrice({
+    symbol,
+    enabled: initialData.market.shouldUpdateRealtime,
   });
 
   // Update current price when real-time data comes in
@@ -55,14 +49,14 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
       const newPrice = priceData.price;
       const oldPrice = parseFloat(previousPrice);
       const newPriceNum = parseFloat(newPrice);
-      
+
       // Determine flash color based on price change
       if (newPriceNum > oldPrice) {
         setFlashColor('green');
       } else if (newPriceNum < oldPrice) {
         setFlashColor('red');
       }
-      
+
       // Update price data
       setCurrentPrice({
         price: priceData.price,
@@ -73,7 +67,7 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
       });
       setLastUpdate(new Date(priceData.lastUpdated));
       setPreviousPrice(newPrice);
-      
+
       // Clear flash after animation
       if (newPriceNum !== oldPrice) {
         setTimeout(() => setFlashColor(null), 1000); // 1 second flash
@@ -106,26 +100,14 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
 
   const getMarketStatusDisplay = () => {
     if (isCrypto) {
-      return (
-        <span className="text-ic-positive text-sm">
-          • Live (24/7)
-        </span>
-      );
+      return <span className="text-ic-positive text-sm">• Live (24/7)</span>;
     }
 
     if (isMarketOpen) {
-      return (
-        <span className="text-ic-positive text-sm">
-          • Market Open
-        </span>
-      );
+      return <span className="text-ic-positive text-sm">• Market Open</span>;
     }
 
-    return (
-      <span className="text-ic-text-dim text-sm">
-        • Market Closed
-      </span>
-    );
+    return <span className="text-ic-text-dim text-sm">• Market Closed</span>;
   };
 
   const getPriceChangeColor = () => {
@@ -187,25 +169,26 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
           </div>
         </div>
       </div>
-      
+
       <div className="text-right">
         <div className="flex items-center justify-end">
-          <div className={`text-3xl font-bold transition-colors duration-1000 ${
-            flashColor === 'green'
-              ? 'text-ic-positive'
-              : flashColor === 'red'
-              ? 'text-ic-negative'
-              : 'text-ic-text-primary'
-          }`}>
+          <div
+            className={`text-3xl font-bold transition-colors duration-1000 ${
+              flashColor === 'green'
+                ? 'text-ic-positive'
+                : flashColor === 'red'
+                  ? 'text-ic-negative'
+                  : 'text-ic-text-primary'
+            }`}
+          >
             ${formatPrice(currentPrice.price)}
           </div>
         </div>
-        
+
         <div className={`flex items-center justify-end space-x-1 text-sm ${getPriceChangeColor()}`}>
           {getPriceChangeIcon()}
           <span>{formatChange(currentPrice.change, currentPrice.changePercent)}</span>
         </div>
-        
       </div>
     </div>
   );

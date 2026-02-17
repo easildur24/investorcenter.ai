@@ -76,9 +76,7 @@ export default function ICScoreScreener() {
     setFilters((prev) => ({
       ...prev,
       offset:
-        direction === 'next'
-          ? prev.offset! + prev.limit!
-          : Math.max(0, prev.offset! - prev.limit!),
+        direction === 'next' ? prev.offset! + prev.limit! : Math.max(0, prev.offset! - prev.limit!),
     }));
   };
 
@@ -169,13 +167,7 @@ interface FilterPanelProps {
 }
 
 function FilterPanel({ filters, onFilterChange }: FilterPanelProps) {
-  const ratingOptions: ICScoreRating[] = [
-    'Strong Buy',
-    'Buy',
-    'Hold',
-    'Underperform',
-    'Sell',
-  ];
+  const ratingOptions: ICScoreRating[] = ['Strong Buy', 'Buy', 'Hold', 'Underperform', 'Sell'];
 
   const sectorOptions = [
     'Technology',
@@ -405,9 +397,7 @@ function ResultsTable({ stocks, sortBy, sortOrder, onSort }: ResultsTableProps) 
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <span
-                    className={
-                      stock.changePercent >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-                    }
+                    className={stock.changePercent >= 0 ? 'text-ic-positive' : 'text-ic-negative'}
                   >
                     {stock.changePercent >= 0 ? '+' : ''}
                     {stock.changePercent.toFixed(2)}%

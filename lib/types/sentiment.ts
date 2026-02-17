@@ -9,9 +9,9 @@
  * Sentiment breakdown percentages
  */
 export interface SentimentBreakdown {
-  bullish: number;  // 0-100 percentage
-  bearish: number;  // 0-100 percentage
-  neutral: number;  // 0-100 percentage
+  bullish: number; // 0-100 percentage
+  bearish: number; // 0-100 percentage
+  neutral: number; // 0-100 percentage
 }
 
 /**
@@ -32,26 +32,26 @@ export type SentimentLabel = 'bullish' | 'bearish' | 'neutral';
  */
 export interface SentimentResponse {
   ticker: string;
-  company_name?: string;            // Company name from stocks table
-  score: number;                    // -1 to +1
+  company_name?: string; // Company name from stocks table
+  score: number; // -1 to +1
   label: SentimentLabel;
   breakdown: SentimentBreakdown;
   post_count_24h: number;
   post_count_7d: number;
-  rank: number;                     // Current rank by activity
-  rank_change: number;              // Change from previous period (+/- or 0)
+  rank: number; // Current rank by activity
+  rank_change: number; // Change from previous period (+/- or 0)
   top_subreddits: SubredditCount[];
-  last_updated: string;             // ISO 8601
+  last_updated: string; // ISO 8601
 }
 
 /**
  * Historical sentiment data point
  */
 export interface SentimentHistoryPoint {
-  date: string;       // YYYY-MM-DD
-  score: number;      // -1 to +1
+  date: string; // YYYY-MM-DD
+  score: number; // -1 to +1
   post_count: number;
-  bullish: number;    // Count (not percentage)
+  bullish: number; // Count (not percentage)
   bearish: number;
   neutral: number;
 }
@@ -61,7 +61,7 @@ export interface SentimentHistoryPoint {
  */
 export interface SentimentHistoryResponse {
   ticker: string;
-  period: string;     // "7d", "30d", "90d"
+  period: string; // "7d", "30d", "90d"
   history: SentimentHistoryPoint[];
 }
 
@@ -70,11 +70,11 @@ export interface SentimentHistoryResponse {
  */
 export interface TrendingTicker {
   ticker: string;
-  company_name?: string;  // Company name from stocks table
-  score: number;          // -1 to +1
+  company_name?: string; // Company name from stocks table
+  score: number; // -1 to +1
   label: SentimentLabel;
   post_count: number;
-  mention_delta: number;  // % change from previous period
+  mention_delta: number; // % change from previous period
   rank: number;
 }
 
@@ -82,9 +82,9 @@ export interface TrendingTicker {
  * GET /api/v1/sentiment/trending?period=24h|7d&limit=N
  */
 export interface TrendingResponse {
-  period: string;         // "24h" or "7d"
+  period: string; // "24h" or "7d"
   tickers: TrendingTicker[];
-  updated_at: string;     // ISO 8601
+  updated_at: string; // ISO 8601
 }
 
 /**
@@ -93,17 +93,17 @@ export interface TrendingResponse {
 export interface RepresentativePost {
   id: number;
   title: string;
-  body_preview?: string;            // Preview of post body
+  body_preview?: string; // Preview of post body
   url: string;
-  source: string;                   // "reddit"
+  source: string; // "reddit"
   subreddit: string;
   upvotes: number;
   comment_count: number;
   award_count: number;
   sentiment: SentimentLabel;
-  sentiment_confidence?: number;    // 0 to 1
+  sentiment_confidence?: number; // 0 to 1
   flair?: string;
-  posted_at: string;                // ISO 8601
+  posted_at: string; // ISO 8601
 }
 
 /**
@@ -113,7 +113,7 @@ export interface RepresentativePostsResponse {
   ticker: string;
   posts: RepresentativePost[];
   total: number;
-  sort: string;                     // Sort option that was applied
+  sort: string; // Sort option that was applied
 }
 
 /**
@@ -146,7 +146,7 @@ export function getSentimentLabelColor(label: SentimentLabel): string {
  * Helper function to get sentiment score color
  */
 export function getSentimentScoreColor(score: number): string {
-  if (score >= 0.2) return '#22c55e';  // green-500
+  if (score >= 0.2) return '#22c55e'; // green-500
   if (score <= -0.2) return '#ef4444'; // red-500
   return '#6b7280'; // gray-500
 }

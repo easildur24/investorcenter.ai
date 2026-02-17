@@ -102,7 +102,10 @@ export default function ResetPasswordPage() {
         {!success && token && (
           <form onSubmit={handleSubmit}>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="newPassword">
+              <label
+                className="block text-sm font-medium text-ic-text-secondary mb-2"
+                htmlFor="newPassword"
+              >
                 New Password
               </label>
               <input
@@ -118,7 +121,10 @@ export default function ResetPasswordPage() {
             </div>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="confirmPassword">
+              <label
+                className="block text-sm font-medium text-ic-text-secondary mb-2"
+                htmlFor="confirmPassword"
+              >
                 Confirm Password
               </label>
               <input

@@ -73,13 +73,16 @@ export const watchListAPI = {
   },
 
   // Add ticker to watch list
-  async addTicker(watchListId: string, data: {
-    symbol: string;
-    notes?: string;
-    tags?: string[];
-    target_buy_price?: number;
-    target_sell_price?: number;
-  }): Promise<WatchListItem> {
+  async addTicker(
+    watchListId: string,
+    data: {
+      symbol: string;
+      notes?: string;
+      tags?: string[];
+      target_buy_price?: number;
+      target_sell_price?: number;
+    }
+  ): Promise<WatchListItem> {
     return apiClient.post(`/watchlists/${watchListId}/items`, data);
   },
 
@@ -89,17 +92,24 @@ export const watchListAPI = {
   },
 
   // Update ticker metadata
-  async updateTicker(watchListId: string, symbol: string, data: {
-    notes?: string;
-    tags?: string[];
-    target_buy_price?: number;
-    target_sell_price?: number;
-  }): Promise<WatchListItem> {
+  async updateTicker(
+    watchListId: string,
+    symbol: string,
+    data: {
+      notes?: string;
+      tags?: string[];
+      target_buy_price?: number;
+      target_sell_price?: number;
+    }
+  ): Promise<WatchListItem> {
     return apiClient.put(`/watchlists/${watchListId}/items/${symbol}`, data);
   },
 
   // Bulk add tickers
-  async bulkAddTickers(watchListId: string, symbols: string[]): Promise<{
+  async bulkAddTickers(
+    watchListId: string,
+    symbols: string[]
+  ): Promise<{
     added: string[];
     failed: string[];
     total: number;
@@ -108,7 +118,10 @@ export const watchListAPI = {
   },
 
   // Reorder items
-  async reorderItems(watchListId: string, itemOrders: Array<{ item_id: string; display_order: number }>): Promise<void> {
+  async reorderItems(
+    watchListId: string,
+    itemOrders: Array<{ item_id: string; display_order: number }>
+  ): Promise<void> {
     return apiClient.post(`/watchlists/${watchListId}/reorder`, { item_orders: itemOrders });
   },
 };

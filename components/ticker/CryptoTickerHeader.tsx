@@ -46,7 +46,7 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
   const { priceData } = useRealTimePrice({
     symbol,
-    enabled: initialData.market.shouldUpdateRealtime
+    enabled: initialData.market.shouldUpdateRealtime,
   });
 
   // Fetch chart data on mount
@@ -173,13 +173,15 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
       {/* EXACT price display */}
       <div className="flex items-baseline space-x-4 mb-8">
-        <div className={`text-6xl font-bold transition-colors duration-1000 ${
-          flashColor === 'green'
-            ? 'text-ic-positive'
-            : flashColor === 'red'
-            ? 'text-ic-negative'
-            : 'text-ic-text-primary'
-        }`}>
+        <div
+          className={`text-6xl font-bold transition-colors duration-1000 ${
+            flashColor === 'green'
+              ? 'text-ic-positive'
+              : flashColor === 'red'
+                ? 'text-ic-negative'
+                : 'text-ic-text-primary'
+          }`}
+        >
           ${formatPrice(currentPrice.price)}
         </div>
 
@@ -193,7 +195,9 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
       {/* Interactive Price Chart */}
       <div className="mb-8">
-        <h2 className="text-xl font-semibold text-ic-text-primary mb-4">{cryptoName} to USD Chart</h2>
+        <h2 className="text-xl font-semibold text-ic-text-primary mb-4">
+          {cryptoName} to USD Chart
+        </h2>
         {chartLoading ? (
           <div className="bg-ic-bg-secondary rounded-lg p-8 text-center">
             <div className="text-ic-text-muted">Loading chart data...</div>
@@ -223,7 +227,9 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
             <div className="flex justify-between items-start">
               <span className="text-ic-text-muted font-medium">Market cap</span>
               <div className="text-right">
-                <div className="text-xl font-bold text-ic-text-primary">{formatMarketCap(currentPrice.price)}</div>
+                <div className="text-xl font-bold text-ic-text-primary">
+                  {formatMarketCap(currentPrice.price)}
+                </div>
                 <div className={`text-sm font-medium ${getPriceChangeColor()}`}>
                   {formatChange(currentPrice.change, currentPrice.changePercent)}
                 </div>
@@ -233,7 +239,9 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
             <div className="flex justify-between items-start">
               <span className="text-ic-text-muted font-medium">Volume (24h)</span>
               <div className="text-right">
-                <div className="text-xl font-bold text-ic-text-primary">{formatVolume(currentPrice.volume)}</div>
+                <div className="text-xl font-bold text-ic-text-primary">
+                  {formatVolume(currentPrice.volume)}
+                </div>
                 <div className="text-sm font-medium text-ic-positive">5.67%</div>
               </div>
             </div>
@@ -274,8 +282,12 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
               <div className="flex justify-between items-center mb-3">
                 <span className="text-ic-text-muted font-medium">Website</span>
                 <div className="flex space-x-2">
-                  <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">Website</button>
-                  <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">Whitepaper</button>
+                  <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">
+                    Website
+                  </button>
+                  <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">
+                    Whitepaper
+                  </button>
                 </div>
               </div>
 
@@ -286,7 +298,9 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
               <div className="flex justify-between items-center">
                 <span className="text-ic-text-muted font-medium">Explorers</span>
-                <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">blockchain.info</button>
+                <button className="text-ic-blue hover:text-ic-blue text-sm font-medium">
+                  blockchain.info
+                </button>
               </div>
             </div>
           </div>
@@ -295,7 +309,9 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
 
       {/* BTC to USD converter - exact like CMC */}
       <div className="mb-8 p-6 bg-ic-bg-secondary rounded-lg">
-        <h3 className="text-lg font-semibold text-ic-text-primary mb-4">{displaySymbol} to USD converter</h3>
+        <h3 className="text-lg font-semibold text-ic-text-primary mb-4">
+          {displaySymbol} to USD converter
+        </h3>
         <div className="flex items-center space-x-4">
           <div className="flex-1">
             <div className="flex items-center space-x-2 bg-ic-surface border rounded-lg p-3">
@@ -333,11 +349,15 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
             <div className="flex justify-between items-center mb-2">
               <div className="text-center">
                 <div className="text-sm text-ic-text-muted">Low</div>
-                <div className="font-bold text-ic-text-primary">${formatPrice(currentPrice.low)}</div>
+                <div className="font-bold text-ic-text-primary">
+                  ${formatPrice(currentPrice.low)}
+                </div>
               </div>
               <div className="text-center">
                 <div className="text-sm text-ic-text-muted">High</div>
-                <div className="font-bold text-ic-text-primary">${formatPrice(currentPrice.high)}</div>
+                <div className="font-bold text-ic-text-primary">
+                  ${formatPrice(currentPrice.high)}
+                </div>
               </div>
             </div>
 
@@ -347,8 +367,15 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
               <div
                 className="absolute w-4 h-4 bg-gray-800 rounded-full -mt-1 border-2 border-white shadow-lg"
                 style={{
-                  left: `${Math.max(0, Math.min(100, ((parseFloat(currentPrice.price) - parseFloat(currentPrice.low)) /
-                         (parseFloat(currentPrice.high) - parseFloat(currentPrice.low))) * 100))}%`
+                  left: `${Math.max(
+                    0,
+                    Math.min(
+                      100,
+                      ((parseFloat(currentPrice.price) - parseFloat(currentPrice.low)) /
+                        (parseFloat(currentPrice.high) - parseFloat(currentPrice.low))) *
+                        100
+                    )
+                  )}%`,
                 }}
               ></div>
             </div>
@@ -381,9 +408,13 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
       <div className="mb-8">
         <div className="text-sm text-ic-text-muted mb-2">Tags</div>
         <div className="flex flex-wrap gap-2">
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Bitcoin Ecosystem</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+            Bitcoin Ecosystem
+          </span>
           <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Layer 1</span>
-          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">Store of Value</span>
+          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
+            Store of Value
+          </span>
           <button className="text-ic-blue text-sm font-medium">Show all</button>
         </div>
       </div>

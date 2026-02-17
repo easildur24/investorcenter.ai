@@ -74,11 +74,7 @@ async function refreshAccessToken(): Promise<string> {
 }
 
 // Make an authenticated request with automatic token refresh
-async function makeRequest<T>(
-  endpoint: string,
-  options: RequestInit,
-  retryCount = 0
-): Promise<T> {
+async function makeRequest<T>(endpoint: string, options: RequestInit, retryCount = 0): Promise<T> {
   const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',

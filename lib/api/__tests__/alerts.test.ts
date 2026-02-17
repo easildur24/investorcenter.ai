@@ -43,9 +43,7 @@ describe('alertAPI', () => {
     it('appends multiple query params', async () => {
       mockGet.mockResolvedValueOnce([]);
       await alertAPI.listAlerts({ watch_list_id: 'wl-2', is_active: false });
-      expect(mockGet).toHaveBeenCalledWith(
-        '/alerts?watch_list_id=wl-2&is_active=false'
-      );
+      expect(mockGet).toHaveBeenCalledWith('/alerts?watch_list_id=wl-2&is_active=false');
     });
   });
 

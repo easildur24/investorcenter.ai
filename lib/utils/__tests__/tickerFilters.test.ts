@@ -99,7 +99,7 @@ describe('filterDerivatives', () => {
 
     const filtered = filterDerivatives(data);
     expect(filtered).toHaveLength(2);
-    expect(filtered.map(d => d.ticker)).toEqual(['AAPL', 'MSFT']);
+    expect(filtered.map((d) => d.ticker)).toEqual(['AAPL', 'MSFT']);
   });
 
   it('keeps all items when no derivatives', () => {
@@ -123,9 +123,7 @@ describe('filterDerivatives', () => {
   });
 
   it('keeps items without valid ticker field', () => {
-    const data = [
-      { ticker: 123 as any, price: 50 },
-    ];
+    const data = [{ ticker: 123 as any, price: 50 }];
 
     expect(filterDerivatives(data)).toHaveLength(1);
   });
@@ -167,9 +165,7 @@ describe('categorizeTickers', () => {
   });
 
   it('puts items without valid ticker into commonStocks', () => {
-    const data = [
-      { ticker: null as any, price: 50 },
-    ];
+    const data = [{ ticker: null as any, price: 50 }];
 
     const { commonStocks } = categorizeTickers(data);
     expect(commonStocks).toHaveLength(1);

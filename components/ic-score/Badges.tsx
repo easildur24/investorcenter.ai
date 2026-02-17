@@ -27,7 +27,9 @@ export function LifecycleBadge({ stage, size = 'md' }: LifecycleBadgeProps) {
   const sizeClass = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${colorClass} ${sizeClass}`}>
+    <span
+      className={`inline-flex items-center rounded-full font-medium ${colorClass} ${sizeClass}`}
+    >
       {label}
     </span>
   );
@@ -54,14 +56,14 @@ export function ConfidenceBadge({ level, percentage, size = 'md' }: ConfidenceBa
   const sizeClass = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full font-medium ${colorClass} ${sizeClass}`}>
+    <span
+      className={`inline-flex items-center gap-1 rounded-full font-medium ${colorClass} ${sizeClass}`}
+    >
       {level === 'High' && '✓'}
       {level === 'Medium' && '~'}
       {level === 'Low' && '!'}
       <span>{level}</span>
-      {percentage !== undefined && (
-        <span className="opacity-75">({Math.round(percentage)}%)</span>
-      )}
+      {percentage !== undefined && <span className="opacity-75">({Math.round(percentage)}%)</span>}
     </span>
   );
 }
@@ -80,15 +82,12 @@ export function DeltaBadge({ delta, showSign = true, size = 'md' }: DeltaBadgePr
   const colorClass = getDeltaColor(delta);
   const sizeClass = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-2 py-1';
 
-  const bgClass =
-    delta > 0
-      ? 'bg-green-50'
-      : delta < 0
-      ? 'bg-red-50'
-      : 'bg-gray-50';
+  const bgClass = delta > 0 ? 'bg-green-50' : delta < 0 ? 'bg-red-50' : 'bg-gray-50';
 
   return (
-    <span className={`inline-flex items-center rounded font-medium ${colorClass} ${bgClass} ${sizeClass}`}>
+    <span
+      className={`inline-flex items-center rounded font-medium ${colorClass} ${bgClass} ${sizeClass}`}
+    >
       {showSign && delta > 0 && '↑'}
       {showSign && delta < 0 && '↓'}
       {showSign && delta === 0 && '→'}
@@ -145,15 +144,17 @@ export function SectorRankBadge({ rank, total, size = 'md' }: SectorRankBadgePro
     percentile >= 80
       ? 'text-green-700 bg-green-100'
       : percentile >= 60
-      ? 'text-green-600 bg-green-50'
-      : percentile >= 40
-      ? 'text-yellow-700 bg-yellow-100'
-      : percentile >= 20
-      ? 'text-orange-700 bg-orange-100'
-      : 'text-red-700 bg-red-100';
+        ? 'text-green-600 bg-green-50'
+        : percentile >= 40
+          ? 'text-yellow-700 bg-yellow-100'
+          : percentile >= 20
+            ? 'text-orange-700 bg-orange-100'
+            : 'text-red-700 bg-red-100';
 
   return (
-    <span className={`inline-flex items-center rounded-full font-medium ${colorClass} ${sizeClass}`}>
+    <span
+      className={`inline-flex items-center rounded-full font-medium ${colorClass} ${sizeClass}`}
+    >
       #{rank} of {total}
     </span>
   );
@@ -179,14 +180,12 @@ const RATING_STYLES: Record<string, string> = {
 export function RatingBadge({ rating, size = 'md' }: RatingBadgeProps) {
   const styleClass = RATING_STYLES[rating] || 'text-gray-700 bg-gray-100 border-gray-200';
   const sizeClass =
-    size === 'lg'
-      ? 'text-lg px-4 py-2'
-      : size === 'sm'
-      ? 'text-xs px-2 py-1'
-      : 'text-sm px-3 py-1';
+    size === 'lg' ? 'text-lg px-4 py-2' : size === 'sm' ? 'text-xs px-2 py-1' : 'text-sm px-3 py-1';
 
   return (
-    <span className={`inline-flex items-center rounded-lg font-semibold border ${styleClass} ${sizeClass}`}>
+    <span
+      className={`inline-flex items-center rounded-lg font-semibold border ${styleClass} ${sizeClass}`}
+    >
       {rating}
     </span>
   );

@@ -122,10 +122,7 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
           <div className="bg-ic-surface px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-ic-text-primary">Create Alert</h3>
-              <button
-                onClick={onClose}
-                className="text-ic-text-dim hover:text-ic-text-muted"
-              >
+              <button onClick={onClose} className="text-ic-text-dim hover:text-ic-text-muted">
                 <XMarkIcon className="h-6 w-6" />
               </button>
             </div>
@@ -168,7 +165,9 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
                   disabled={loadingItems}
                   required
                 >
-                  <option value="">{loadingItems ? 'Loading symbols...' : 'Select a symbol...'}</option>
+                  <option value="">
+                    {loadingItems ? 'Loading symbols...' : 'Select a symbol...'}
+                  </option>
                   {watchListItems.map((item) => (
                     <option key={item.symbol} value={item.symbol}>
                       {item.symbol} {item.name ? `- ${item.name}` : ''}
@@ -213,7 +212,8 @@ export default function CreateAlertModal({ onClose, onSuccess }: CreateAlertModa
               {/* Threshold */}
               <div>
                 <label className="block text-sm font-medium text-ic-text-secondary mb-1">
-                  Threshold {alertType.includes('price') ? '(Price)' : '(Volume)'} <span className="text-ic-negative">*</span>
+                  Threshold {alertType.includes('price') ? '(Price)' : '(Volume)'}{' '}
+                  <span className="text-ic-negative">*</span>
                 </label>
                 <input
                   type="number"

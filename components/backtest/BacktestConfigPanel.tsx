@@ -26,9 +26,7 @@ export function BacktestConfigPanel({
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Date Range */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Start Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
           <input
             type="date"
             value={config.start_date}
@@ -38,9 +36,7 @@ export function BacktestConfigPanel({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            End Date
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
           <input
             type="date"
             value={config.end_date}
@@ -72,9 +68,7 @@ export function BacktestConfigPanel({
 
         {/* Universe */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Universe
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Universe</label>
           <select
             value={config.universe}
             onChange={(e) =>
@@ -90,9 +84,7 @@ export function BacktestConfigPanel({
 
         {/* Benchmark */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Benchmark
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Benchmark</label>
           <select
             value={config.benchmark}
             onChange={(e) => updateConfig({ benchmark: e.target.value })}
@@ -125,15 +117,11 @@ export function BacktestConfigPanel({
 
         {/* Slippage */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Slippage (bps)
-          </label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Slippage (bps)</label>
           <input
             type="number"
             value={config.slippage_bps}
-            onChange={(e) =>
-              updateConfig({ slippage_bps: parseFloat(e.target.value) || 0 })
-            }
+            onChange={(e) => updateConfig({ slippage_bps: parseFloat(e.target.value) || 0 })}
             min="0"
             max="100"
             step="1"

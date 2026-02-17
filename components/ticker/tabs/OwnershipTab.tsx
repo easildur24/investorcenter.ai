@@ -53,7 +53,7 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
         // Fetch both insider trades and institutional holdings
         const [insiderRes, institutionalRes] = await Promise.all([
           fetch(`/api/v1/stocks/${symbol}/insider-trades`).catch(() => null),
-          fetch(`/api/v1/stocks/${symbol}/institutional-holdings`).catch(() => null)
+          fetch(`/api/v1/stocks/${symbol}/institutional-holdings`).catch(() => null),
         ]);
 
         const ownershipData: OwnershipData = {};
@@ -68,9 +68,11 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
         if (institutionalRes?.ok) {
           const institutionalResult = await institutionalRes.json();
           ownershipData.institutional_holders = institutionalResult.data?.holders || [];
-          ownershipData.institutional_ownership_percent = institutionalResult.data?.institutional_ownership_percent;
+          ownershipData.institutional_ownership_percent =
+            institutionalResult.data?.institutional_ownership_percent;
           ownershipData.institutional_net_activity_90d = institutionalResult.data?.net_activity_90d;
-          ownershipData.total_shares_outstanding = institutionalResult.data?.total_shares_outstanding;
+          ownershipData.total_shares_outstanding =
+            institutionalResult.data?.total_shares_outstanding;
         }
 
         setData(ownershipData);
@@ -126,20 +128,28 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
       </div>
       <div className="bg-ic-bg-secondary rounded-lg p-4">
         <div className="text-sm text-ic-text-muted mb-1">Insider Activity (30d)</div>
-        <div className={cn(
-          'text-xl font-semibold',
-          safeParseNumber(data.insider_net_activity_30d) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-        )}>
+        <div
+          className={cn(
+            'text-xl font-semibold',
+            safeParseNumber(data.insider_net_activity_30d) >= 0
+              ? 'text-ic-positive'
+              : 'text-ic-negative'
+          )}
+        >
           {safeParseNumber(data.insider_net_activity_30d) >= 0 ? '+' : ''}
           {safeToFixed(safeParseNumber(data.insider_net_activity_30d) / 1000, 1)}K
         </div>
       </div>
       <div className="bg-ic-bg-secondary rounded-lg p-4">
         <div className="text-sm text-ic-text-muted mb-1">Institutional Activity (90d)</div>
-        <div className={cn(
-          'text-xl font-semibold',
-          safeParseNumber(data.institutional_net_activity_90d) >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-        )}>
+        <div
+          className={cn(
+            'text-xl font-semibold',
+            safeParseNumber(data.institutional_net_activity_90d) >= 0
+              ? 'text-ic-positive'
+              : 'text-ic-negative'
+          )}
+        >
           {safeParseNumber(data.institutional_net_activity_90d) >= 0 ? '+' : ''}
           {formatLargeNumber(data.institutional_net_activity_90d)}
         </div>
@@ -182,12 +192,15 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
                   <div className="text-xs text-ic-text-muted">{trade.insider_title}</div>
                 </td>
                 <td className="py-3">
-                  <span className={cn(
-                    'px-2 py-0.5 rounded-full text-xs font-medium',
-                    trade.transaction_type.toLowerCase().includes('buy') || trade.transaction_type.toLowerCase().includes('acquisition')
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-red-100 text-red-700'
-                  )}>
+                  <span
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-xs font-medium',
+                      trade.transaction_type.toLowerCase().includes('buy') ||
+                        trade.transaction_type.toLowerCase().includes('acquisition')
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    )}
+                  >
                     {trade.transaction_type}
                   </span>
                 </td>
@@ -251,15 +264,18 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
                 </td>
                 <td className="py-3 text-right">
                   {holder.change_shares !== undefined && (
-                    <div className={cn(
-                      'font-medium',
-                      holder.change_shares >= 0 ? 'text-ic-positive' : 'text-ic-negative'
-                    )}>
+                    <div
+                      className={cn(
+                        'font-medium',
+                        holder.change_shares >= 0 ? 'text-ic-positive' : 'text-ic-negative'
+                      )}
+                    >
                       {holder.change_shares >= 0 ? '+' : ''}
                       {holder.change_shares.toLocaleString()}
                       {holder.change_percent !== undefined && (
                         <span className="text-xs ml-1">
-                          ({holder.change_percent >= 0 ? '+' : ''}{safeToFixed(holder.change_percent, 1)}%)
+                          ({holder.change_percent >= 0 ? '+' : ''}
+                          {safeToFixed(holder.change_percent, 1)}%)
                         </span>
                       )}
                     </div>

@@ -14,12 +14,7 @@
 // Lifecycle Types
 // ===================
 
-export type LifecycleStage =
-  | 'hypergrowth'
-  | 'growth'
-  | 'mature'
-  | 'value'
-  | 'turnaround';
+export type LifecycleStage = 'hypergrowth' | 'growth' | 'mature' | 'value' | 'turnaround';
 
 export const LIFECYCLE_LABELS: Record<LifecycleStage, string> = {
   hypergrowth: 'Hypergrowth',
@@ -237,7 +232,7 @@ export const FACTOR_CONFIGS: FactorConfig[] = [
     name: 'financial_health',
     display_name: 'Financial Health',
     category: 'quality',
-    weight: 0.10,
+    weight: 0.1,
     description: 'Debt ratios, liquidity position',
     icon: '🏦',
   },
@@ -262,7 +257,7 @@ export const FACTOR_CONFIGS: FactorConfig[] = [
     name: 'intrinsic_value',
     display_name: 'Intrinsic Value',
     category: 'valuation',
-    weight: 0.10,
+    weight: 0.1,
     description: 'DCF-based fair value estimate',
     icon: '🎯',
   },
@@ -279,7 +274,7 @@ export const FACTOR_CONFIGS: FactorConfig[] = [
     name: 'momentum',
     display_name: 'Momentum',
     category: 'signals',
-    weight: 0.10,
+    weight: 0.1,
     description: 'Price trends, relative strength',
     icon: '🚀',
   },
@@ -287,7 +282,7 @@ export const FACTOR_CONFIGS: FactorConfig[] = [
     name: 'smart_money',
     display_name: 'Smart Money',
     category: 'signals',
-    weight: 0.10,
+    weight: 0.1,
     description: 'Analyst, insider, institutional signals',
     icon: '🧠',
   },

@@ -62,13 +62,9 @@ export default function ErrorState({
         <ExclamationTriangleIcon className="h-8 w-8 text-ic-negative" />
       </div>
 
-      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
-        Something went wrong
-      </h3>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">Something went wrong</h3>
 
-      <p className="text-ic-text-muted mb-6 max-w-md mx-auto">
-        {message}
-      </p>
+      <p className="text-ic-text-muted mb-6 max-w-md mx-auto">{message}</p>
 
       <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
         {onRetry && (
@@ -113,11 +109,7 @@ export function RetryLoadingState({
   return (
     <div className="flex items-center gap-2 text-sm text-ic-text-muted">
       <div className="animate-spin h-4 w-4 border-2 border-ic-blue border-t-transparent rounded-full" />
-      <span>
-        {isRetrying
-          ? `Retrying... (${retryCount}/${maxRetries})`
-          : 'Loading...'}
-      </span>
+      <span>{isRetrying ? `Retrying... (${retryCount}/${maxRetries})` : 'Loading...'}</span>
     </div>
   );
 }

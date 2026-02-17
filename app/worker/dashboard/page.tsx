@@ -64,9 +64,12 @@ export default function WorkerDashboardPage() {
     if (!user?.is_worker) return;
 
     sendHeartbeat().catch(() => {});
-    heartbeatRef.current = setInterval(() => {
-      sendHeartbeat().catch(() => {});
-    }, 2 * 60 * 1000);
+    heartbeatRef.current = setInterval(
+      () => {
+        sendHeartbeat().catch(() => {});
+      },
+      2 * 60 * 1000
+    );
 
     return () => {
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
@@ -154,11 +157,16 @@ export default function WorkerDashboardPage() {
             <Bot className="w-6 h-6 text-purple-500" />
             <div>
               <h1 className="text-lg font-bold text-ic-text-primary">Worker Dashboard</h1>
-              <p className="text-xs text-ic-text-secondary">{user.full_name} &middot; {user.email}</p>
+              <p className="text-xs text-ic-text-secondary">
+                {user.full_name} &middot; {user.email}
+              </p>
             </div>
           </div>
           <button
-            onClick={() => { setLoading(true); fetchTasks().finally(() => setLoading(false)); }}
+            onClick={() => {
+              setLoading(true);
+              fetchTasks().finally(() => setLoading(false));
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-ic-text-secondary hover:text-ic-text-primary border border-ic-border rounded-lg hover:bg-ic-bg-secondary transition"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
@@ -192,7 +200,9 @@ export default function WorkerDashboardPage() {
               >
                 <option value="">All statuses</option>
                 {TASK_STATUSES.map((s) => (
-                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
                 ))}
               </select>
             </div>
@@ -204,7 +214,10 @@ export default function WorkerDashboardPage() {
             ) : tasks.length === 0 ? (
               <div className="text-center py-16">
                 <ListTodo className="w-10 h-10 mx-auto mb-3 text-ic-text-secondary opacity-30" />
-                <p className="text-ic-text-secondary">No tasks assigned to you{statusFilter ? ` with status "${STATUS_LABELS[statusFilter]}"` : ''}.</p>
+                <p className="text-ic-text-secondary">
+                  No tasks assigned to you
+                  {statusFilter ? ` with status "${STATUS_LABELS[statusFilter]}"` : ''}.
+                </p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -217,10 +230,14 @@ export default function WorkerDashboardPage() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded font-medium ${STATUS_COLORS[task.status]}`}
+                          >
                             {STATUS_LABELS[task.status]}
                           </span>
-                          <span className={`text-xs px-2 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}>
+                          <span
+                            className={`text-xs px-2 py-0.5 rounded ${PRIORITY_COLORS[task.priority]}`}
+                          >
                             {PRIORITY_LABELS[task.priority]}
                           </span>
                         </div>
@@ -228,7 +245,9 @@ export default function WorkerDashboardPage() {
                           {task.title}
                         </p>
                         {task.description && (
-                          <p className="text-xs text-ic-text-secondary mt-1 line-clamp-2">{task.description}</p>
+                          <p className="text-xs text-ic-text-secondary mt-1 line-clamp-2">
+                            {task.description}
+                          </p>
                         )}
                       </div>
                       <span className="text-xs text-ic-text-secondary ml-4 flex-shrink-0 flex items-center gap-1">
@@ -245,7 +264,10 @@ export default function WorkerDashboardPage() {
           /* ===== TASK DETAIL VIEW ===== */
           <>
             <button
-              onClick={() => { setSelectedTask(null); setTaskUpdates([]); }}
+              onClick={() => {
+                setSelectedTask(null);
+                setTaskUpdates([]);
+              }}
               className="flex items-center gap-1 text-sm text-ic-text-secondary hover:text-ic-text-primary mb-4 transition"
             >
               <ArrowLeft className="w-4 h-4" />
@@ -254,9 +276,13 @@ export default function WorkerDashboardPage() {
 
             {/* Task header */}
             <div className="bg-ic-surface border border-ic-border rounded-lg p-6 mb-6">
-              <h2 className="text-xl font-semibold text-ic-text-primary mb-2">{selectedTask.title}</h2>
+              <h2 className="text-xl font-semibold text-ic-text-primary mb-2">
+                {selectedTask.title}
+              </h2>
               {selectedTask.description && (
-                <p className="text-sm text-ic-text-secondary whitespace-pre-wrap mb-4">{selectedTask.description}</p>
+                <p className="text-sm text-ic-text-secondary whitespace-pre-wrap mb-4">
+                  {selectedTask.description}
+                </p>
               )}
 
               <div className="flex flex-wrap items-center gap-3">
@@ -264,7 +290,9 @@ export default function WorkerDashboardPage() {
                   <span className="text-xs text-ic-text-secondary">Status:</span>
                   <select
                     value={selectedTask.status}
-                    onChange={(e) => handleStatusChange(selectedTask.id, e.target.value as TaskStatus)}
+                    onChange={(e) =>
+                      handleStatusChange(selectedTask.id, e.target.value as TaskStatus)
+                    }
                     className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[selectedTask.status]}`}
                   >
                     <option value="in_progress">In Progress</option>
@@ -272,7 +300,9 @@ export default function WorkerDashboardPage() {
                     <option value="failed">Failed</option>
                   </select>
                 </div>
-                <span className={`text-xs px-2 py-1 rounded ${PRIORITY_COLORS[selectedTask.priority]}`}>
+                <span
+                  className={`text-xs px-2 py-1 rounded ${PRIORITY_COLORS[selectedTask.priority]}`}
+                >
                   {PRIORITY_LABELS[selectedTask.priority]}
                 </span>
                 <span className="text-xs text-ic-text-secondary flex items-center gap-1">
@@ -307,14 +337,18 @@ export default function WorkerDashboardPage() {
                               {new Date(update.created_at).toLocaleString()}
                             </span>
                           </div>
-                          <p className="text-sm text-ic-text-primary whitespace-pre-wrap">{update.content}</p>
+                          <p className="text-sm text-ic-text-primary whitespace-pre-wrap">
+                            {update.content}
+                          </p>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {taskUpdates.length === 0 && (
-                    <p className="text-sm text-ic-text-secondary text-center py-4 mb-4">No updates yet. Post the first one below.</p>
+                    <p className="text-sm text-ic-text-secondary text-center py-4 mb-4">
+                      No updates yet. Post the first one below.
+                    </p>
                   )}
 
                   {/* Post update input */}
@@ -337,7 +371,11 @@ export default function WorkerDashboardPage() {
                       disabled={sendingUpdate || !newUpdateContent.trim()}
                       className="flex items-center gap-1 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition disabled:opacity-50 self-end"
                     >
-                      {sendingUpdate ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {sendingUpdate ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Send className="w-4 h-4" />
+                      )}
                     </button>
                   </div>
                 </>

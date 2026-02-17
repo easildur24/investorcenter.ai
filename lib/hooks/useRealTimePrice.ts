@@ -33,8 +33,8 @@ function isMarketCurrentlyOpen(): boolean {
   const minutes = estTime.getMinutes();
   const timeInMinutes = hours * 60 + minutes;
 
-  const marketOpenMinutes = 9 * 60 + 30;  // 9:30 AM
-  const marketCloseMinutes = 16 * 60;      // 4:00 PM
+  const marketOpenMinutes = 9 * 60 + 30; // 9:30 AM
+  const marketCloseMinutes = 16 * 60; // 4:00 PM
 
   return timeInMinutes >= marketOpenMinutes && timeInMinutes < marketCloseMinutes;
 }
@@ -63,10 +63,10 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
 
           setPriceData({
             price: String(data.price),
-            change: String(data.price * data.change_24h / 100),
+            change: String((data.price * data.change_24h) / 100),
             changePercent: String(data.change_24h / 100),
             volume: data.volume_24h || 0,
-            lastUpdated: data.last_updated || new Date().toISOString()
+            lastUpdated: data.last_updated || new Date().toISOString(),
           });
 
           setError(null);
@@ -90,7 +90,7 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
           change: result.data.change,
           changePercent: result.data.changePercent,
           volume: result.data.volume,
-          lastUpdated: result.data.lastUpdated
+          lastUpdated: result.data.lastUpdated,
         });
 
         setError(null);
@@ -117,6 +117,6 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
     error,
     isMarketOpen,
     isCrypto,
-    updateInterval
+    updateInterval,
   };
 }

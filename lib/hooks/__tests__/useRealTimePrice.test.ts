@@ -23,9 +23,7 @@ describe('useRealTimePrice', () => {
   it('returns null data initially', () => {
     mockFetch.mockResolvedValue({ ok: false, status: 404 });
 
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: 'AAPL', enabled: false })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: 'AAPL', enabled: false }));
 
     expect(result.current.priceData).toBeNull();
     expect(result.current.error).toBeNull();
@@ -43,9 +41,7 @@ describe('useRealTimePrice', () => {
       }),
     });
 
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: 'X:BTCUSD' })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: 'X:BTCUSD' }));
 
     await waitFor(() => {
       expect(result.current.priceData).not.toBeNull();
@@ -58,28 +54,24 @@ describe('useRealTimePrice', () => {
 
   it('falls back to stock endpoint when crypto fails', async () => {
     // First call (crypto) fails, second call (stock) succeeds
-    mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 404 })
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
-          data: {
-            price: '150.25',
-            change: '2.50',
-            changePercent: '1.69',
-            volume: 50000000,
-            lastUpdated: '2026-02-13T16:00:00Z',
-          },
-          market: {
-            isOpen: true,
-            updateInterval: 15000,
-          },
-        }),
-      });
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 }).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        data: {
+          price: '150.25',
+          change: '2.50',
+          changePercent: '1.69',
+          volume: 50000000,
+          lastUpdated: '2026-02-13T16:00:00Z',
+        },
+        market: {
+          isOpen: true,
+          updateInterval: 15000,
+        },
+      }),
+    });
 
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: 'AAPL' })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: 'AAPL' }));
 
     await waitFor(() => {
       expect(result.current.priceData).not.toBeNull();
@@ -95,9 +87,7 @@ describe('useRealTimePrice', () => {
       .mockResolvedValueOnce({ ok: false, status: 404 }) // crypto
       .mockResolvedValueOnce({ ok: false, status: 500 }); // stock
 
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: 'INVALID' })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: 'INVALID' }));
 
     await waitFor(() => {
       expect(result.current.error).not.toBeNull();
@@ -108,18 +98,14 @@ describe('useRealTimePrice', () => {
   });
 
   it('does not fetch when disabled', () => {
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: 'AAPL', enabled: false })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: 'AAPL', enabled: false }));
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(result.current.priceData).toBeNull();
   });
 
   it('does not fetch for empty symbol', () => {
-    const { result } = renderHook(() =>
-      useRealTimePrice({ symbol: '' })
-    );
+    const { result } = renderHook(() => useRealTimePrice({ symbol: '' }));
 
     expect(mockFetch).not.toHaveBeenCalled();
     expect(result.current.priceData).toBeNull();
@@ -155,9 +141,7 @@ describe('useRealTimePrice', () => {
       }),
     });
 
-    const { unmount } = renderHook(() =>
-      useRealTimePrice({ symbol: 'X:BTCUSD' })
-    );
+    const { unmount } = renderHook(() => useRealTimePrice({ symbol: 'X:BTCUSD' }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();

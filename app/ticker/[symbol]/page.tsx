@@ -33,10 +33,13 @@ export const revalidate = 0;
 async function getTickerData(symbol: string) {
   try {
     // Use internal backend service URL for server-side fetching
-    const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}`, {
-      cache: 'no-store', // Always fetch fresh data
-      next: { revalidate: 0 }, // Disable Next.js caching completely
-    });
+    const response = await fetch(
+      `http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}`,
+      {
+        cache: 'no-store', // Always fetch fresh data
+        next: { revalidate: 0 }, // Disable Next.js caching completely
+      }
+    );
 
     if (!response.ok) {
       console.error(`❌ Failed to fetch ticker data: ${response.status} for ${symbol}`);
@@ -45,7 +48,9 @@ async function getTickerData(symbol: string) {
 
     const result = await response.json();
     const price = result.data?.summary?.price?.price;
-    console.log(`✅ Server-side fetched ${symbol}: $${price || 'no price'} (${result.data?.summary?.stock?.assetType || 'unknown'})`);
+    console.log(
+      `✅ Server-side fetched ${symbol}: $${price || 'no price'} (${result.data?.summary?.stock?.assetType || 'unknown'})`
+    );
     return result.data;
   } catch (error) {
     console.error(`❌ Error fetching ticker data server-side for ${symbol}:`, error);
@@ -56,10 +61,13 @@ async function getTickerData(symbol: string) {
 // Fetch chart data server-side
 async function getChartData(symbol: string, period: string = '1Y') {
   try {
-    const response = await fetch(`http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}/chart?period=${period}`, {
-      cache: 'no-store',
-      next: { revalidate: 0 }, // Disable Next.js caching completely
-    });
+    const response = await fetch(
+      `http://investorcenter-backend-service.investorcenter.svc.cluster.local:8080/api/v1/tickers/${symbol}/chart?period=${period}`,
+      {
+        cache: 'no-store',
+        next: { revalidate: 0 }, // Disable Next.js caching completely
+      }
+    );
 
     if (!response.ok) {
       console.error(`❌ Failed to fetch chart data: ${response.status} for ${symbol}`);
@@ -94,7 +102,7 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
   // Fetch data server-side
   const [tickerData, chartData] = await Promise.all([
     getTickerData(symbol),
-    getChartData(symbol, period)
+    getChartData(symbol, period),
   ]);
 
   if (!tickerData) {
@@ -139,11 +147,7 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               <Suspense fallback={<TabSkeleton />}>
                 <TickerTabs symbol={symbol} tabs={stockTabs} defaultTab="overview">
                   {/* Overview Tab */}
-                  <OverviewTab
-                    symbol={symbol}
-                    chartData={chartData}
-                    currentPrice={currentPrice}
-                  />
+                  <OverviewTab symbol={symbol} chartData={chartData} currentPrice={currentPrice} />
 
                   {/* Technical Tab */}
                   <TechnicalTab symbol={symbol} />

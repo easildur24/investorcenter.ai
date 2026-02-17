@@ -16,10 +16,7 @@ interface SentimentCardProps {
 /**
  * Summary card displaying sentiment analysis for a ticker
  */
-export default function SentimentCard({
-  ticker,
-  variant = 'full',
-}: SentimentCardProps) {
+export default function SentimentCard({ ticker, variant = 'full' }: SentimentCardProps) {
   const [data, setData] = useState<SentimentResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,9 +57,7 @@ export default function SentimentCard({
         <div className="flex items-start justify-between mb-4">
           <div>
             <h3 className="text-lg font-semibold text-ic-text-primary">Social Sentiment</h3>
-            <p className="text-sm text-ic-text-muted">
-              {data.post_count_7d} posts in 7 days
-            </p>
+            <p className="text-sm text-ic-text-muted">{data.post_count_7d} posts in 7 days</p>
           </div>
           <Link
             href={`/sentiment?ticker=${ticker}`}
@@ -78,26 +73,19 @@ export default function SentimentCard({
             className="text-4xl font-bold mb-1"
             style={{ color: getSentimentScoreColor(data.score) }}
           >
-            {data.score >= 0 ? '+' : ''}{(data.score * 100).toFixed(0)}%
+            {data.score >= 0 ? '+' : ''}
+            {(data.score * 100).toFixed(0)}%
           </div>
-          <div className="text-sm font-medium text-ic-text-muted capitalize">
-            {data.label}
-          </div>
+          <div className="text-sm font-medium text-ic-text-muted capitalize">{data.label}</div>
         </div>
 
         {/* Breakdown bar */}
-        <SentimentBreakdownBar
-          breakdown={data.breakdown}
-          showLabels={true}
-          height="sm"
-        />
+        <SentimentBreakdownBar breakdown={data.breakdown} showLabels={true} height="sm" />
 
         {/* Quick stats */}
         <div className="mt-4 grid grid-cols-2 gap-4 text-center">
           <div>
-            <div className="text-lg font-semibold text-ic-text-primary">
-              {data.post_count_24h}
-            </div>
+            <div className="text-lg font-semibold text-ic-text-primary">{data.post_count_24h}</div>
             <div className="text-xs text-ic-text-muted">Posts (24h)</div>
           </div>
           <div>
@@ -153,11 +141,7 @@ export default function SentimentCard({
         </div>
 
         {/* Gauge */}
-        <SentimentGauge
-          score={data.score}
-          label={data.label}
-          size="lg"
-        />
+        <SentimentGauge score={data.score} label={data.label} size="lg" />
 
         {/* Breakdown */}
         <div>
@@ -172,31 +156,18 @@ export default function SentimentCard({
 
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4">
-          <StatBox
-            label="Posts (24h)"
-            value={data.post_count_24h.toString()}
-          />
-          <StatBox
-            label="Posts (7d)"
-            value={data.post_count_7d.toString()}
-          />
+          <StatBox label="Posts (24h)" value={data.post_count_24h.toString()} />
+          <StatBox label="Posts (7d)" value={data.post_count_7d.toString()} />
         </div>
 
         {/* Top subreddits */}
         {data.top_subreddits.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-ic-text-secondary mb-2">
-              Top Subreddits
-            </h4>
+            <h4 className="text-sm font-medium text-ic-text-secondary mb-2">Top Subreddits</h4>
             <div className="space-y-2">
               {data.top_subreddits.slice(0, 5).map((sub) => (
-                <div
-                  key={sub.subreddit}
-                  className="flex items-center justify-between"
-                >
-                  <span className="text-sm text-ic-text-muted">
-                    r/{sub.subreddit}
-                  </span>
+                <div key={sub.subreddit} className="flex items-center justify-between">
+                  <span className="text-sm text-ic-text-muted">r/{sub.subreddit}</span>
                   <span className="text-sm font-medium text-ic-text-primary">
                     {sub.count} posts
                   </span>
@@ -279,9 +250,7 @@ function ErrorState({ ticker, message }: { ticker: string; message: string | nul
   return (
     <div className="bg-ic-surface rounded-lg border border-ic-border p-8 text-center">
       <div className="text-ic-text-dim text-4xl mb-4">📊</div>
-      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
-        Sentiment Not Available
-      </h3>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">Sentiment Not Available</h3>
       <p className="text-ic-text-muted text-sm">
         {message || `Unable to load sentiment data for ${ticker}`}
       </p>
@@ -296,9 +265,7 @@ function NoActivityState({ ticker }: { ticker: string }) {
   return (
     <div className="bg-ic-surface rounded-lg border border-ic-border p-8 text-center">
       <div className="text-ic-text-dim text-4xl mb-4">💬</div>
-      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
-        No Recent Activity
-      </h3>
+      <h3 className="text-lg font-semibold text-ic-text-primary mb-2">No Recent Activity</h3>
       <p className="text-ic-text-muted text-sm">
         No social media posts found for {ticker} in the last 7 days
       </p>

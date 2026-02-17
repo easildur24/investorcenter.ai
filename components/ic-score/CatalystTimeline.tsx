@@ -96,9 +96,7 @@ function CatalystItem({ catalyst }: CatalystItemProps) {
 
       {/* Days until */}
       <div className="flex-shrink-0 text-right">
-        {catalyst.days_until !== null && (
-          <DaysUntilBadge days={catalyst.days_until} />
-        )}
+        {catalyst.days_until !== null && <DaysUntilBadge days={catalyst.days_until} />}
       </div>
     </div>
   );
@@ -167,13 +165,9 @@ export function CatalystCompact({ catalysts }: CatalystCompactProps) {
       <span>{icon}</span>
       <span className="text-gray-600 truncate max-w-[200px]">{nextCatalyst.title}</span>
       {nextCatalyst.days_until !== null && (
-        <span className="text-gray-400">
-          ({formatDaysUntil(nextCatalyst.days_until)})
-        </span>
+        <span className="text-gray-400">({formatDaysUntil(nextCatalyst.days_until)})</span>
       )}
-      {upcoming.length > 1 && (
-        <span className="text-gray-400">+{upcoming.length - 1}</span>
-      )}
+      {upcoming.length > 1 && <span className="text-gray-400">+{upcoming.length - 1}</span>}
     </div>
   );
 }

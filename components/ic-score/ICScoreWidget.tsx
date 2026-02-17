@@ -2,7 +2,16 @@
 
 import { useState } from 'react';
 import { ICScoreData, getScoreColor, getStarRating } from '@/lib/api/ic-score';
-import { ChevronDown, ChevronUp, Star, Info, Clock, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import {
+  ChevronDown,
+  ChevronUp,
+  Star,
+  Info,
+  Clock,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+} from 'lucide-react';
 import { formatRelativeTime } from '@/lib/utils';
 
 interface ScoreChange {
@@ -17,7 +26,11 @@ interface ICScoreWidgetProps {
   scoreChange?: ScoreChange | null;
 }
 
-export default function ICScoreWidget({ icScore, showFactors = false, scoreChange }: ICScoreWidgetProps) {
+export default function ICScoreWidget({
+  icScore,
+  showFactors = false,
+  scoreChange,
+}: ICScoreWidgetProps) {
   const [expanded, setExpanded] = useState(showFactors);
   const score = icScore.overall_score;
   const rating = icScore.rating;
@@ -114,25 +127,30 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
             <Star
               key={i}
               className={`w-6 h-6 ${
-                i < stars
-                  ? `fill-current ${colors.text}`
-                  : 'fill-ic-bg-tertiary text-ic-text-dim'
+                i < stars ? `fill-current ${colors.text}` : 'fill-ic-bg-tertiary text-ic-text-dim'
               }`}
             />
           ))}
         </div>
 
         {/* Rating Label */}
-        <div className={`inline-flex items-center px-4 py-2 rounded-full ${colors.badge} font-semibold text-sm`}>
+        <div
+          className={`inline-flex items-center px-4 py-2 rounded-full ${colors.badge} font-semibold text-sm`}
+        >
           {rating}
         </div>
 
         {/* Score Change Indicator */}
         {scoreChange && scoreChange.change !== 0 && (
-          <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
-            scoreChange.direction === 'up' ? 'bg-green-100 text-green-700' :
-            scoreChange.direction === 'down' ? 'bg-red-100 text-red-700' : 'bg-ic-surface text-ic-text-muted'
-          }`}>
+          <div
+            className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+              scoreChange.direction === 'up'
+                ? 'bg-green-100 text-green-700'
+                : scoreChange.direction === 'down'
+                  ? 'bg-red-100 text-red-700'
+                  : 'bg-ic-surface text-ic-text-muted'
+            }`}
+          >
             {scoreChange.direction === 'up' && <TrendingUp className="w-4 h-4" />}
             {scoreChange.direction === 'down' && <TrendingDown className="w-4 h-4" />}
             {scoreChange.direction === 'unchanged' && <Minus className="w-4 h-4" />}
@@ -174,11 +192,7 @@ export default function ICScoreWidget({ icScore, showFactors = false, scoreChang
           className="w-full flex items-center justify-between text-sm font-medium text-ic-text-secondary hover:text-ic-text-primary transition-colors"
         >
           <span>View Factor Breakdown</span>
-          {expanded ? (
-            <ChevronUp className="w-5 h-5" />
-          ) : (
-            <ChevronDown className="w-5 h-5" />
-          )}
+          {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
         </button>
       </div>
 

@@ -111,10 +111,7 @@ export async function getICScore(ticker: string): Promise<ICScoreData | null> {
  * @param days Number of days of history to fetch (default: 90)
  * @returns Array of historical IC Scores
  */
-export async function getICScoreHistory(
-  ticker: string,
-  days: number = 90
-): Promise<ICScoreData[]> {
+export async function getICScoreHistory(ticker: string, days: number = 90): Promise<ICScoreData[]> {
   try {
     const response = await fetch(
       `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/ic-score/history?days=${days}`,

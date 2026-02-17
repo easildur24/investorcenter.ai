@@ -56,7 +56,9 @@ describe('buildScreenerUrl', () => {
   });
 
   it('omits empty string values', () => {
-    const url = buildScreenerUrl({ sectors: '' } as Record<string, unknown> as Parameters<typeof buildScreenerUrl>[0]);
+    const url = buildScreenerUrl({ sectors: '' } as Record<string, unknown> as Parameters<
+      typeof buildScreenerUrl
+    >[0]);
     expect(url).not.toContain('sectors');
   });
 
@@ -174,9 +176,7 @@ describe('useScreener', () => {
       json: async () => mockScreenerResponse,
     });
 
-    renderHook(() =>
-      useScreener({ page: 1, limit: 25, pe_max: 15, sectors: 'Technology' })
-    );
+    renderHook(() => useScreener({ page: 1, limit: 25, pe_max: 15, sectors: 'Technology' }));
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalled();
@@ -195,9 +195,7 @@ describe('useScreener', () => {
       json: async () => ({ error: 'Internal server error' }),
     });
 
-    const { result } = renderHook(() =>
-      useScreener({ page: 1, limit: 25 })
-    );
+    const { result } = renderHook(() => useScreener({ page: 1, limit: 25 }));
 
     await waitFor(() => {
       expect(result.current.error).toBeDefined();
@@ -211,9 +209,7 @@ describe('useScreener', () => {
   it('handles network failure gracefully', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-    const { result } = renderHook(() =>
-      useScreener({ page: 1, limit: 25 })
-    );
+    const { result } = renderHook(() => useScreener({ page: 1, limit: 25 }));
 
     await waitFor(() => {
       expect(result.current.error).toBeDefined();
@@ -227,12 +223,12 @@ describe('useScreener', () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 502,
-      json: async () => { throw new Error('bad json'); },
+      json: async () => {
+        throw new Error('bad json');
+      },
     });
 
-    const { result } = renderHook(() =>
-      useScreener({ page: 1, limit: 25 })
-    );
+    const { result } = renderHook(() => useScreener({ page: 1, limit: 25 }));
 
     await waitFor(() => {
       expect(result.current.error).toBeDefined();
@@ -244,16 +240,20 @@ describe('useScreener', () => {
   it('returns meta with pagination info', async () => {
     const response = {
       ...mockScreenerResponse,
-      meta: { total: 5600, page: 3, limit: 25, total_pages: 224, timestamp: '2026-02-15T12:00:00Z' },
+      meta: {
+        total: 5600,
+        page: 3,
+        limit: 25,
+        total_pages: 224,
+        timestamp: '2026-02-15T12:00:00Z',
+      },
     };
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => response,
     });
 
-    const { result } = renderHook(() =>
-      useScreener({ page: 3, limit: 25 })
-    );
+    const { result } = renderHook(() => useScreener({ page: 3, limit: 25 }));
 
     await waitFor(() => {
       expect(result.current.meta).not.toBeNull();
@@ -273,9 +273,7 @@ describe('useScreener', () => {
       }),
     });
 
-    const { result } = renderHook(() =>
-      useScreener({ page: 1, limit: 25, pe_max: 1 })
-    );
+    const { result } = renderHook(() => useScreener({ page: 1, limit: 25, pe_max: 1 }));
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);

@@ -5,7 +5,12 @@ import Link from 'next/link';
 import { useQueryStates, parseAsFloat, parseAsInteger, parseAsString } from 'nuqs';
 import { useScreener } from '@/lib/hooks/useScreener';
 import { cn, safeToFixed, formatLargeNumber } from '@/lib/utils';
-import type { ScreenerApiParams, ScreenerSortField, ScreenerPreset, ScreenerStock } from '@/lib/types/screener';
+import type {
+  ScreenerApiParams,
+  ScreenerSortField,
+  ScreenerPreset,
+  ScreenerStock,
+} from '@/lib/types/screener';
 
 // ============================================================================
 // Constants
@@ -98,7 +103,7 @@ const FILTER_DEFS: FilterDef[] = [
     label: 'Sector',
     type: 'multiselect',
     group: 'general',
-    options: SECTORS.map(s => ({ value: s, label: s })),
+    options: SECTORS.map((s) => ({ value: s, label: s })),
   },
   {
     id: 'market_cap',
@@ -362,51 +367,59 @@ const TABLE_COLUMNS: ColumnDef[] = [
     key: 'market_cap',
     label: 'Market Cap',
     align: 'right',
-    format: (s) => s.market_cap != null ? formatLargeNumber(s.market_cap) : '—',
+    format: (s) => (s.market_cap != null ? formatLargeNumber(s.market_cap) : '—'),
   },
   {
     key: 'price',
     label: 'Price',
     align: 'right',
-    format: (s) => s.price != null ? `$${safeToFixed(s.price, 2)}` : '—',
+    format: (s) => (s.price != null ? `$${safeToFixed(s.price, 2)}` : '—'),
   },
   {
     key: 'pe_ratio',
     label: 'P/E',
     align: 'right',
-    format: (s) => s.pe_ratio != null ? safeToFixed(s.pe_ratio, 1) : '—',
+    format: (s) => (s.pe_ratio != null ? safeToFixed(s.pe_ratio, 1) : '—'),
   },
   {
     key: 'roe',
     label: 'ROE',
     align: 'right',
-    format: (s) => s.roe != null ? `${safeToFixed(s.roe, 1)}%` : '—',
-    colorize: (s) => s.roe != null ? (s.roe >= 0 ? 'text-ic-positive' : 'text-ic-negative') : '',
+    format: (s) => (s.roe != null ? `${safeToFixed(s.roe, 1)}%` : '—'),
+    colorize: (s) => (s.roe != null ? (s.roe >= 0 ? 'text-ic-positive' : 'text-ic-negative') : ''),
   },
   {
     key: 'dividend_yield',
     label: 'Div Yield',
     align: 'right',
-    format: (s) => s.dividend_yield != null ? `${safeToFixed(s.dividend_yield, 2)}%` : '—',
+    format: (s) => (s.dividend_yield != null ? `${safeToFixed(s.dividend_yield, 2)}%` : '—'),
   },
   {
     key: 'revenue_growth',
     label: 'Rev Growth',
     align: 'right',
-    format: (s) => s.revenue_growth != null ? `${s.revenue_growth >= 0 ? '+' : ''}${safeToFixed(s.revenue_growth, 1)}%` : '—',
-    colorize: (s) => s.revenue_growth != null ? (s.revenue_growth >= 0 ? 'text-ic-positive' : 'text-ic-negative') : '',
+    format: (s) =>
+      s.revenue_growth != null
+        ? `${s.revenue_growth >= 0 ? '+' : ''}${safeToFixed(s.revenue_growth, 1)}%`
+        : '—',
+    colorize: (s) =>
+      s.revenue_growth != null
+        ? s.revenue_growth >= 0
+          ? 'text-ic-positive'
+          : 'text-ic-negative'
+        : '',
   },
   {
     key: 'beta',
     label: 'Beta',
     align: 'right',
-    format: (s) => s.beta != null ? safeToFixed(s.beta, 2) : '—',
+    format: (s) => (s.beta != null ? safeToFixed(s.beta, 2) : '—'),
   },
   {
     key: 'ic_score',
     label: 'IC Score',
     align: 'right',
-    format: (s) => s.ic_score != null ? String(Math.round(s.ic_score)) : '—',
+    format: (s) => (s.ic_score != null ? String(Math.round(s.ic_score)) : '—'),
   },
 ];
 
@@ -505,10 +518,7 @@ const urlStateConfig = {
 // ============================================================================
 
 // Helper to safely read a numeric value from urlState by key
-function getUrlStateValue(
-  state: Record<string, unknown>,
-  key: string
-): number | null {
+function getUrlStateValue(state: Record<string, unknown>, key: string): number | null {
   const val = state[key];
   return typeof val === 'number' ? val : null;
 }
@@ -517,11 +527,13 @@ function getUrlStateValue(
 // which requires a Suspense boundary in Next.js App Router.
 export default function ScreenerPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue"></div>
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ic-blue"></div>
+        </div>
+      }
+    >
       <ScreenerContent />
     </Suspense>
   );
@@ -648,7 +660,8 @@ function ScreenerContent() {
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-2xl font-bold text-ic-text-primary">Stock Screener</h1>
           <p className="mt-1 text-ic-text-muted">
-            Filter and discover stocks across {total > 0 ? total.toLocaleString() : '5,600+'} US stocks
+            Filter and discover stocks across {total > 0 ? total.toLocaleString() : '5,600+'} US
+            stocks
           </p>
         </div>
       </div>
@@ -658,7 +671,7 @@ function ScreenerContent() {
         <div className="mb-6">
           <h3 className="text-sm font-medium text-ic-text-secondary mb-3">Quick Screens</h3>
           <div className="flex flex-wrap gap-2">
-            {PRESET_SCREENS.map(preset => (
+            {PRESET_SCREENS.map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => applyPreset(preset)}
@@ -695,8 +708,8 @@ function ScreenerContent() {
               </div>
 
               <div className="space-y-5 max-h-[calc(100vh-200px)] overflow-y-auto pr-1">
-                {FILTER_GROUPS.map(group => {
-                  const groupFilters = FILTER_DEFS.filter(f => f.group === group.id);
+                {FILTER_GROUPS.map((group) => {
+                  const groupFilters = FILTER_DEFS.filter((f) => f.group === group.id);
                   if (groupFilters.length === 0) return null;
 
                   return (
@@ -705,7 +718,7 @@ function ScreenerContent() {
                         {group.label}
                       </h4>
                       <div className="space-y-3">
-                        {groupFilters.map(filter => {
+                        {groupFilters.map((filter) => {
                           if (filter.type === 'multiselect' && filter.id === 'sector') {
                             return (
                               <SectorFilter
@@ -767,7 +780,7 @@ function ScreenerContent() {
                   <table className="w-full">
                     <thead className="bg-ic-bg-secondary">
                       <tr>
-                        {TABLE_COLUMNS.map(col => (
+                        {TABLE_COLUMNS.map((col) => (
                           <th
                             key={col.key}
                             className={cn(
@@ -778,18 +791,19 @@ function ScreenerContent() {
                           >
                             {col.label}
                             {urlState.sort === col.key && (
-                              <span className="ml-1">
-                                {urlState.order === 'asc' ? '↑' : '↓'}
-                              </span>
+                              <span className="ml-1">{urlState.order === 'asc' ? '↑' : '↓'}</span>
                             )}
                           </th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-ic-border-subtle">
-                      {stocks.map(stock => (
-                        <tr key={stock.symbol} className="hover:bg-ic-surface-hover transition-colors">
-                          {TABLE_COLUMNS.map(col => {
+                      {stocks.map((stock) => (
+                        <tr
+                          key={stock.symbol}
+                          className="hover:bg-ic-surface-hover transition-colors"
+                        >
+                          {TABLE_COLUMNS.map((col) => {
                             // Special rendering for symbol (link) and name (with sector subtitle)
                             if (col.key === 'symbol') {
                               return (
@@ -821,8 +835,8 @@ function ScreenerContent() {
                                         stock.ic_score >= 70
                                           ? 'bg-ic-positive-bg text-ic-positive'
                                           : stock.ic_score >= 40
-                                          ? 'bg-ic-warning-bg text-ic-warning'
-                                          : 'bg-ic-negative-bg text-ic-negative'
+                                            ? 'bg-ic-warning-bg text-ic-warning'
+                                            : 'bg-ic-negative-bg text-ic-negative'
                                       )}
                                     >
                                       {Math.round(stock.ic_score)}
@@ -871,7 +885,7 @@ function ScreenerContent() {
               {totalPages > 1 && (
                 <div className="px-4 py-3 border-t border-ic-border flex items-center justify-between">
                   <div className="text-sm text-ic-text-muted">
-                    Showing {((currentPage - 1) * (urlState.limit ?? ITEMS_PER_PAGE)) + 1} to{' '}
+                    Showing {(currentPage - 1) * (urlState.limit ?? ITEMS_PER_PAGE) + 1} to{' '}
                     {Math.min(currentPage * (urlState.limit ?? ITEMS_PER_PAGE), total)} of{' '}
                     {total.toLocaleString()} results
                   </div>
@@ -928,7 +942,7 @@ function SectorFilter({
         )}
       </label>
       <div className="space-y-1 max-h-40 overflow-y-auto">
-        {options.map(option => (
+        {options.map((option) => (
           <label key={option.value} className="flex items-center">
             <input
               type="checkbox"
@@ -937,7 +951,7 @@ function SectorFilter({
                 if (e.target.checked) {
                   onChange([...selected, option.value]);
                 } else {
-                  onChange(selected.filter(v => v !== option.value));
+                  onChange(selected.filter((v) => v !== option.value));
                 }
               }}
               className="rounded border-ic-border text-ic-blue focus:ring-ic-blue"
@@ -995,17 +1009,18 @@ function RangeFilter({
     }
   }, [localMin, localMax, minValue, maxValue, onChange]);
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      commit();
-    }
-  }, [commit]);
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        commit();
+      }
+    },
+    [commit]
+  );
 
   return (
     <div>
-      <label className="block text-sm font-medium text-ic-text-secondary mb-1.5">
-        {label}
-      </label>
+      <label className="block text-sm font-medium text-ic-text-secondary mb-1.5">{label}</label>
       <div className="flex gap-2 items-center">
         <input
           type="number"

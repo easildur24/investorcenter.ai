@@ -24,17 +24,14 @@ class ApiClient {
 
   constructor(baseURL: string = API_BASE_URL) {
     this.baseURL = baseURL;
-    
+
     // Get token from localStorage if available
     if (typeof window !== 'undefined') {
       this.token = localStorage.getItem('auth_token');
     }
   }
 
-  async request<T>(
-    endpoint: string,
-    options: RequestInit = {}
-  ): Promise<ApiResponse<T>> {
+  async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
     const url = `${this.baseURL}${endpoint}`;
 
     const headers: Record<string, string> = {
@@ -58,7 +55,7 @@ class ApiClient {
 
     try {
       const response = await fetch(url, config);
-      
+
       if (!response.ok) {
         const errorData: ApiError = await response.json();
         throw new Error(errorData.error || `HTTP ${response.status}`);
@@ -73,23 +70,27 @@ class ApiClient {
 
   // Market data methods
   async getMarketIndices() {
-    return this.request<Array<{
-      symbol: string;
-      name: string;
-      price: number;
-      change: number;
-      changePercent: number;
-      lastUpdated: string;
-    }>>('/markets/indices');
+    return this.request<
+      Array<{
+        symbol: string;
+        name: string;
+        price: number;
+        change: number;
+        changePercent: number;
+        lastUpdated: string;
+      }>
+    >('/markets/indices');
   }
 
   async searchSecurities(query: string) {
-    return this.request<Array<{
-      symbol: string;
-      name: string;
-      type: string;
-      exchange: string;
-    }>>(`/markets/search?q=${encodeURIComponent(query)}`);
+    return this.request<
+      Array<{
+        symbol: string;
+        name: string;
+        type: string;
+        exchange: string;
+      }>
+    >(`/markets/search?q=${encodeURIComponent(query)}`);
   }
 
   async getMarketMovers(limit: number = 5) {
@@ -174,7 +175,6 @@ class ApiClient {
       source: 'database' | 'polygon';
     }>(`/tickers/${symbol}/volume/aggregates?days=${days}`);
   }
-
 }
 
 // Export singleton instance
@@ -231,9 +231,7 @@ export const icScoreApi = {
    * Get top stocks by IC Score
    */
   async getTopStocks(limit: number = 50): Promise<ICScoreTopStocksResponse> {
-    const response = await fetch(
-      `${IC_SCORE_API_BASE}/api/scores/top?limit=${limit}`
-    );
+    const response = await fetch(`${IC_SCORE_API_BASE}/api/scores/top?limit=${limit}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -253,13 +251,15 @@ export const icScoreApi = {
       if (filters.minScore !== undefined) params.append('min_score', filters.minScore.toString());
       if (filters.maxScore !== undefined) params.append('max_score', filters.maxScore.toString());
       if (filters.rating && filters.rating.length > 0) {
-        filters.rating.forEach(r => params.append('rating', r));
+        filters.rating.forEach((r) => params.append('rating', r));
       }
       if (filters.sector && filters.sector.length > 0) {
-        filters.sector.forEach(s => params.append('sector', s));
+        filters.sector.forEach((s) => params.append('sector', s));
       }
-      if (filters.minMarketCap !== undefined) params.append('min_market_cap', filters.minMarketCap.toString());
-      if (filters.maxMarketCap !== undefined) params.append('max_market_cap', filters.maxMarketCap.toString());
+      if (filters.minMarketCap !== undefined)
+        params.append('min_market_cap', filters.minMarketCap.toString());
+      if (filters.maxMarketCap !== undefined)
+        params.append('max_market_cap', filters.maxMarketCap.toString());
       if (filters.sortBy) params.append('sort_by', filters.sortBy);
       if (filters.sortOrder) params.append('sort_order', filters.sortOrder);
       if (filters.limit !== undefined) params.append('limit', filters.limit.toString());

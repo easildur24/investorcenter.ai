@@ -91,10 +91,7 @@ export default function ICScoreGauge({
       {/* Score label below gauge */}
       {showLabel && (
         <div className="mt-2 text-center">
-          <div
-            className="font-bold text-ic-text-primary"
-            style={{ fontSize: config.fontSize }}
-          >
+          <div className="font-bold text-ic-text-primary" style={{ fontSize: config.fontSize }}>
             {Math.round(score)}
           </div>
           <div className="text-sm text-ic-text-dim font-medium">IC Score</div>

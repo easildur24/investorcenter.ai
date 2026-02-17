@@ -77,7 +77,10 @@ export async function createGroup(name: string, notes: string = ''): Promise<Fea
   return res.data;
 }
 
-export async function updateGroup(id: string, data: { name?: string; notes?: string; sort_order?: number }): Promise<FeatureGroup> {
+export async function updateGroup(
+  id: string,
+  data: { name?: string; notes?: string; sort_order?: number }
+): Promise<FeatureGroup> {
   const res = await apiClient.put<ApiResponse<FeatureGroup>>(`${BASE}/groups/${id}`, data);
   return res.data;
 }
@@ -92,12 +95,22 @@ export async function listFeatures(groupId: string): Promise<Feature[]> {
   return res.data;
 }
 
-export async function createFeature(groupId: string, name: string, notes: string = ''): Promise<Feature> {
-  const res = await apiClient.post<ApiResponse<Feature>>(`${BASE}/groups/${groupId}/features`, { name, notes });
+export async function createFeature(
+  groupId: string,
+  name: string,
+  notes: string = ''
+): Promise<Feature> {
+  const res = await apiClient.post<ApiResponse<Feature>>(`${BASE}/groups/${groupId}/features`, {
+    name,
+    notes,
+  });
   return res.data;
 }
 
-export async function updateFeature(id: string, data: { name?: string; notes?: string; sort_order?: number }): Promise<Feature> {
+export async function updateFeature(
+  id: string,
+  data: { name?: string; notes?: string; sort_order?: number }
+): Promise<Feature> {
   const res = await apiClient.put<ApiResponse<Feature>>(`${BASE}/features/${id}`, data);
   return res.data;
 }
@@ -109,16 +122,29 @@ export async function deleteFeature(id: string): Promise<void> {
 // Notes
 export async function listNotes(featureId: string, section?: Section): Promise<FeatureNote[]> {
   const query = section ? `?section=${section}` : '';
-  const res = await apiClient.get<ApiResponse<FeatureNote[]>>(`${BASE}/features/${featureId}/notes${query}`);
+  const res = await apiClient.get<ApiResponse<FeatureNote[]>>(
+    `${BASE}/features/${featureId}/notes${query}`
+  );
   return res.data;
 }
 
-export async function createNote(featureId: string, section: Section, title: string = 'Untitled', content: string = ''): Promise<FeatureNote> {
-  const res = await apiClient.post<ApiResponse<FeatureNote>>(`${BASE}/features/${featureId}/notes`, { section, title, content });
+export async function createNote(
+  featureId: string,
+  section: Section,
+  title: string = 'Untitled',
+  content: string = ''
+): Promise<FeatureNote> {
+  const res = await apiClient.post<ApiResponse<FeatureNote>>(
+    `${BASE}/features/${featureId}/notes`,
+    { section, title, content }
+  );
   return res.data;
 }
 
-export async function updateNote(id: string, data: { title?: string; content?: string; sort_order?: number }): Promise<FeatureNote> {
+export async function updateNote(
+  id: string,
+  data: { title?: string; content?: string; sort_order?: number }
+): Promise<FeatureNote> {
   const res = await apiClient.put<ApiResponse<FeatureNote>>(`${BASE}/notes/${id}`, data);
   return res.data;
 }

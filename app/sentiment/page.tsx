@@ -10,9 +10,7 @@ import PostsList from '@/components/sentiment/PostsList';
 function SentimentDashboardContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [selectedTicker, setSelectedTicker] = useState<string | null>(
-    searchParams.get('ticker')
-  );
+  const [selectedTicker, setSelectedTicker] = useState<string | null>(searchParams.get('ticker'));
   const [searchInput, setSearchInput] = useState('');
 
   // Update URL when ticker changes
@@ -50,7 +48,8 @@ function SentimentDashboardContent() {
             <h1 className="text-3xl font-bold text-ic-text-primary">Social Sentiment</h1>
           </div>
           <p className="text-ic-text-muted mt-2">
-            Track market sentiment from Reddit discussions across r/wallstreetbets, r/stocks, and more
+            Track market sentiment from Reddit discussions across r/wallstreetbets, r/stocks, and
+            more
           </p>
         </div>
       </div>
@@ -121,10 +120,7 @@ function SentimentDashboardContent() {
                 <PostsList ticker={selectedTicker} limit={15} />
               </div>
             ) : (
-              <TrendingTickersList
-                onTickerSelect={handleTickerSelect}
-                limit={25}
-              />
+              <TrendingTickersList onTickerSelect={handleTickerSelect} limit={25} />
             )}
           </div>
 
@@ -133,21 +129,17 @@ function SentimentDashboardContent() {
             {/* Quick search suggestions */}
             {!selectedTicker && (
               <div className="bg-ic-surface rounded-lg border border-ic-border p-6">
-                <h3 className="text-lg font-semibold text-ic-text-primary mb-4">
-                  Popular Tickers
-                </h3>
+                <h3 className="text-lg font-semibold text-ic-text-primary mb-4">Popular Tickers</h3>
                 <div className="flex flex-wrap gap-2">
-                  {['GME', 'AMC', 'AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'PLTR'].map(
-                    (ticker) => (
-                      <button
-                        key={ticker}
-                        onClick={() => setSelectedTicker(ticker)}
-                        className="px-3 py-1.5 text-sm bg-ic-bg-secondary text-ic-text-secondary rounded-lg hover:bg-ic-surface-hover transition-colors"
-                      >
-                        {ticker}
-                      </button>
-                    )
-                  )}
+                  {['GME', 'AMC', 'AAPL', 'TSLA', 'NVDA', 'SPY', 'QQQ', 'PLTR'].map((ticker) => (
+                    <button
+                      key={ticker}
+                      onClick={() => setSelectedTicker(ticker)}
+                      className="px-3 py-1.5 text-sm bg-ic-bg-secondary text-ic-text-secondary rounded-lg hover:bg-ic-surface-hover transition-colors"
+                    >
+                      {ticker}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}
@@ -159,8 +151,8 @@ function SentimentDashboardContent() {
               </h3>
               <div className="space-y-4 text-sm text-ic-text-muted">
                 <p>
-                  Our sentiment analysis tracks discussions across major financial
-                  subreddits to gauge market sentiment for stocks.
+                  Our sentiment analysis tracks discussions across major financial subreddits to
+                  gauge market sentiment for stocks.
                 </p>
                 <div>
                   <h4 className="font-medium text-ic-text-primary mb-2">Sentiment Scale</h4>
@@ -193,10 +185,9 @@ function SentimentDashboardContent() {
 
             {/* Disclaimer */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
-              <strong>Disclaimer:</strong> Social sentiment data is for
-              informational purposes only and should not be considered financial
-              advice. Always do your own research before making investment
-              decisions.
+              <strong>Disclaimer:</strong> Social sentiment data is for informational purposes only
+              and should not be considered financial advice. Always do your own research before
+              making investment decisions.
             </div>
           </div>
         </div>

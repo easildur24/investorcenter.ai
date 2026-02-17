@@ -150,22 +150,12 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
           <ProfitabilitySection profitability={data.data.profitability} />
         )}
         {activeCategory === 'financial_health' && (
-          <FinancialHealthSection
-            liquidity={data.data.liquidity}
-            leverage={data.data.leverage}
-          />
+          <FinancialHealthSection liquidity={data.data.liquidity} leverage={data.data.leverage} />
         )}
-        {activeCategory === 'efficiency' && (
-          <EfficiencySection efficiency={data.data.efficiency} />
-        )}
-        {activeCategory === 'growth' && (
-          <GrowthSection growth={data.data.growth} />
-        )}
+        {activeCategory === 'efficiency' && <EfficiencySection efficiency={data.data.efficiency} />}
+        {activeCategory === 'growth' && <GrowthSection growth={data.data.growth} />}
         {activeCategory === 'dividends' && (
-          <DividendsSection
-            dividends={data.data.dividends}
-            perShare={data.data.per_share}
-          />
+          <DividendsSection dividends={data.data.dividends} perShare={data.data.per_share} />
         )}
         {activeCategory === 'quality' && (
           <QualitySection
@@ -185,9 +175,8 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
       <div className="mt-8 p-4 bg-blue-50 rounded-lg">
         <h4 className="text-sm font-medium text-blue-800 mb-1">About This Data</h4>
         <p className="text-sm text-blue-700">
-          Financial metrics are sourced from Financial Modeling Prep (FMP) API.
-          All values are trailing twelve months (TTM) unless otherwise specified.
-          Data is updated in real-time.
+          Financial metrics are sourced from Financial Modeling Prep (FMP) API. All values are
+          trailing twelve months (TTM) unless otherwise specified. Data is updated in real-time.
         </p>
       </div>
     </div>
@@ -200,7 +189,7 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
 
 function ValuationSection({
   valuation,
-  forwardEstimates
+  forwardEstimates,
 }: {
   valuation: ValuationMetrics;
   forwardEstimates: ForwardEstimates;
@@ -219,8 +208,9 @@ function ValuationSection({
             format="ratio"
             tooltip="Price to Earnings - lower may indicate undervaluation"
             calculationTooltip={{
-              formula: "Share Price / EPS (TTM)",
-              description: "Uses trailing 12-month diluted EPS. Price updates real-time; EPS updates quarterly after earnings. Source: FMP"
+              formula: 'Share Price / EPS (TTM)',
+              description:
+                'Uses trailing 12-month diluted EPS. Price updates real-time; EPS updates quarterly after earnings. Source: FMP',
             }}
           />
           <MetricCard
@@ -229,8 +219,8 @@ function ValuationSection({
             format="ratio"
             tooltip="P/E based on estimated future earnings"
             calculationTooltip={{
-              formula: "Share Price / Forward EPS Estimate",
-              description: "Based on analyst earnings estimates"
+              formula: 'Share Price / Forward EPS Estimate',
+              description: 'Based on analyst earnings estimates',
             }}
           />
           <MetricCard
@@ -239,8 +229,9 @@ function ValuationSection({
             format="ratio"
             tooltip="P/E to Growth - <1 suggests undervalued relative to growth"
             calculationTooltip={{
-              formula: "P/E Ratio / Expected EPS Growth Rate (%)",
-              description: "Growth rate based on 5-year historical EPS CAGR or analyst estimates. <1 suggests undervalued relative to growth. Source: FMP"
+              formula: 'P/E Ratio / Expected EPS Growth Rate (%)',
+              description:
+                'Growth rate based on 5-year historical EPS CAGR or analyst estimates. <1 suggests undervalued relative to growth. Source: FMP',
             }}
             interpretation={valuation.peg_interpretation}
             interpretationColorFn={getPEGColor}
@@ -251,8 +242,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Price to Book value"
             calculationTooltip={{
-              formula: "Share Price / Book Value Per Share",
-              description: "Compares market value to accounting value"
+              formula: 'Share Price / Book Value Per Share',
+              description: 'Compares market value to accounting value',
             }}
           />
         </div>
@@ -270,8 +261,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Price to Sales"
             calculationTooltip={{
-              formula: "Market Cap / Total Revenue",
-              description: "Useful for unprofitable companies"
+              formula: 'Market Cap / Total Revenue',
+              description: 'Useful for unprofitable companies',
             }}
           />
           <MetricCard
@@ -280,8 +271,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Price to Free Cash Flow"
             calculationTooltip={{
-              formula: "Market Cap / Free Cash Flow",
-              description: "FCF = Operating Cash Flow - CapEx"
+              formula: 'Market Cap / Free Cash Flow',
+              description: 'FCF = Operating Cash Flow - CapEx',
             }}
           />
           <MetricCard
@@ -290,8 +281,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Enterprise Value to EBITDA"
             calculationTooltip={{
-              formula: "Enterprise Value / EBITDA",
-              description: "Capital structure-neutral valuation"
+              formula: 'Enterprise Value / EBITDA',
+              description: 'Capital structure-neutral valuation',
             }}
           />
           <MetricCard
@@ -300,8 +291,8 @@ function ValuationSection({
             format="ratio"
             tooltip="Enterprise Value to Sales"
             calculationTooltip={{
-              formula: "Enterprise Value / Total Revenue",
-              description: "Compares total firm value to sales"
+              formula: 'Enterprise Value / Total Revenue',
+              description: 'Compares total firm value to sales',
             }}
           />
         </div>
@@ -319,8 +310,8 @@ function ValuationSection({
             format="percent"
             tooltip="Inverse of P/E - higher is better"
             calculationTooltip={{
-              formula: "EPS / Share Price × 100",
-              description: "Inverse of P/E ratio - higher is better"
+              formula: 'EPS / Share Price × 100',
+              description: 'Inverse of P/E ratio - higher is better',
             }}
           />
           <MetricCard
@@ -329,8 +320,8 @@ function ValuationSection({
             format="percent"
             tooltip="Free Cash Flow Yield - higher is better"
             calculationTooltip={{
-              formula: "Free Cash Flow / Market Cap × 100",
-              description: "Cash return on investment - higher is better"
+              formula: 'Free Cash Flow / Market Cap × 100',
+              description: 'Cash return on investment - higher is better',
             }}
           />
           <MetricCard
@@ -339,8 +330,8 @@ function ValuationSection({
             format="currency"
             tooltip="Total market capitalization"
             calculationTooltip={{
-              formula: "Share Price × Shares Outstanding",
-              description: "Total market value of equity"
+              formula: 'Share Price × Shares Outstanding',
+              description: 'Total market value of equity',
             }}
           />
           <MetricCard
@@ -349,8 +340,8 @@ function ValuationSection({
             format="currency"
             tooltip="Market Cap + Debt - Cash"
             calculationTooltip={{
-              formula: "Market Cap + Total Debt - Cash",
-              description: "Total firm value including debt"
+              formula: 'Market Cap + Total Debt - Cash',
+              description: 'Total firm value including debt',
             }}
           />
         </div>
@@ -370,20 +361,22 @@ function ValuationSection({
               decimals={2}
               tooltip="Average analyst EPS estimate"
               calculationTooltip={{
-                formula: "Average of Analyst EPS Estimates",
-                description: "Consensus estimate for next fiscal year"
+                formula: 'Average of Analyst EPS Estimates',
+                description: 'Consensus estimate for next fiscal year',
               }}
             />
             <MetricCard
               label="EPS Range"
-              value={forwardEstimates.forward_eps_low && forwardEstimates.forward_eps_high
-                ? `$${forwardEstimates.forward_eps_low?.toFixed(2)} - $${forwardEstimates.forward_eps_high?.toFixed(2)}`
-                : null}
+              value={
+                forwardEstimates.forward_eps_low && forwardEstimates.forward_eps_high
+                  ? `$${forwardEstimates.forward_eps_low?.toFixed(2)} - $${forwardEstimates.forward_eps_high?.toFixed(2)}`
+                  : null
+              }
               format="text"
               tooltip="Low to high analyst EPS estimates"
               calculationTooltip={{
-                formula: "Min(Analyst Estimates) - Max(Analyst Estimates)",
-                description: "Range shows analyst disagreement"
+                formula: 'Min(Analyst Estimates) - Max(Analyst Estimates)',
+                description: 'Range shows analyst disagreement',
               }}
             />
             <MetricCard
@@ -393,8 +386,8 @@ function ValuationSection({
               decimals={0}
               tooltip="Number of analysts providing EPS estimates"
               calculationTooltip={{
-                formula: "Count of Analyst Estimates",
-                description: "More analysts = more reliable consensus"
+                formula: 'Count of Analyst Estimates',
+                description: 'More analysts = more reliable consensus',
               }}
             />
             <MetricCard
@@ -403,8 +396,8 @@ function ValuationSection({
               format="currency"
               tooltip="Analyst revenue estimate"
               calculationTooltip={{
-                formula: "Average of Analyst Revenue Estimates",
-                description: "Consensus revenue estimate for next fiscal year"
+                formula: 'Average of Analyst Revenue Estimates',
+                description: 'Consensus revenue estimate for next fiscal year',
               }}
             />
           </div>
@@ -429,8 +422,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Gross Profit / Revenue"
             calculationTooltip={{
-              formula: "(Revenue - COGS) / Revenue × 100",
-              description: "Measures production efficiency"
+              formula: '(Revenue - COGS) / Revenue × 100',
+              description: 'Measures production efficiency',
             }}
             colorByValue
           />
@@ -440,8 +433,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Operating Income / Revenue"
             calculationTooltip={{
-              formula: "Operating Income / Revenue × 100",
-              description: "Profit from core operations"
+              formula: 'Operating Income / Revenue × 100',
+              description: 'Profit from core operations',
             }}
             colorByValue
           />
@@ -451,8 +444,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Net Income / Revenue"
             calculationTooltip={{
-              formula: "Net Income / Revenue × 100",
-              description: "Bottom line profitability"
+              formula: 'Net Income / Revenue × 100',
+              description: 'Bottom line profitability',
             }}
             colorByValue
           />
@@ -462,8 +455,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="EBITDA / Revenue"
             calculationTooltip={{
-              formula: "EBITDA / Revenue × 100",
-              description: "Operating profitability before D&A"
+              formula: 'EBITDA / Revenue × 100',
+              description: 'Operating profitability before D&A',
             }}
             colorByValue
           />
@@ -482,8 +475,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="EBIT / Revenue"
             calculationTooltip={{
-              formula: "EBIT / Revenue × 100",
-              description: "Operating income margin"
+              formula: 'EBIT / Revenue × 100',
+              description: 'Operating income margin',
             }}
             colorByValue
           />
@@ -493,8 +486,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Free Cash Flow / Revenue"
             calculationTooltip={{
-              formula: "Free Cash Flow / Revenue × 100",
-              description: "Cash generation efficiency"
+              formula: 'Free Cash Flow / Revenue × 100',
+              description: 'Cash generation efficiency',
             }}
             colorByValue
           />
@@ -504,8 +497,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Pre-tax Income / Revenue"
             calculationTooltip={{
-              formula: "Pre-tax Income / Revenue × 100",
-              description: "Profitability before taxes"
+              formula: 'Pre-tax Income / Revenue × 100',
+              description: 'Profitability before taxes',
             }}
             colorByValue
           />
@@ -524,8 +517,9 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Return on Equity - Net Income / Shareholders Equity"
             calculationTooltip={{
-              formula: "Net Income (TTM) / Avg Shareholders Equity × 100",
-              description: "Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP"
+              formula: 'Net Income (TTM) / Avg Shareholders Equity × 100',
+              description:
+                'Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP',
             }}
             colorByValue
           />
@@ -535,8 +529,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Return on Assets - Net Income / Total Assets"
             calculationTooltip={{
-              formula: "Net Income / Total Assets × 100",
-              description: "How efficiently assets generate profit"
+              formula: 'Net Income / Total Assets × 100',
+              description: 'How efficiently assets generate profit',
             }}
             colorByValue
           />
@@ -546,8 +540,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Return on Invested Capital"
             calculationTooltip={{
-              formula: "NOPAT / Invested Capital × 100",
-              description: "NOPAT = Net Operating Profit After Tax"
+              formula: 'NOPAT / Invested Capital × 100',
+              description: 'NOPAT = Net Operating Profit After Tax',
             }}
             colorByValue
           />
@@ -557,8 +551,8 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
             format="percent"
             tooltip="Return on Capital Employed"
             calculationTooltip={{
-              formula: "EBIT / Capital Employed × 100",
-              description: "Capital Employed = Total Assets - Current Liabilities"
+              formula: 'EBIT / Capital Employed × 100',
+              description: 'Capital Employed = Total Assets - Current Liabilities',
             }}
             colorByValue
           />
@@ -570,7 +564,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
 
 function FinancialHealthSection({
   liquidity,
-  leverage
+  leverage,
 }: {
   liquidity: LiquidityMetrics;
   leverage: LeverageMetrics;
@@ -589,8 +583,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Current Assets / Current Liabilities - >1 is healthy"
             calculationTooltip={{
-              formula: "Current Assets / Current Liabilities",
-              description: ">1 indicates ability to pay short-term debts"
+              formula: 'Current Assets / Current Liabilities',
+              description: '>1 indicates ability to pay short-term debts',
             }}
           />
           <MetricCard
@@ -599,8 +593,9 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="(Current Assets - Inventory) / Current Liabilities"
             calculationTooltip={{
-              formula: "(Current Assets - Inventory) / Current Liabilities",
-              description: "Also called 'Acid Test'. Excludes inventory as it may not be quickly liquidated. >1.0 indicates strong short-term liquidity. Source: FMP"
+              formula: '(Current Assets - Inventory) / Current Liabilities',
+              description:
+                "Also called 'Acid Test'. Excludes inventory as it may not be quickly liquidated. >1.0 indicates strong short-term liquidity. Source: FMP",
             }}
           />
           <MetricCard
@@ -609,8 +604,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Cash / Current Liabilities"
             calculationTooltip={{
-              formula: "Cash & Equivalents / Current Liabilities",
-              description: "Most conservative liquidity measure"
+              formula: 'Cash & Equivalents / Current Liabilities',
+              description: 'Most conservative liquidity measure',
             }}
           />
           <MetricCard
@@ -619,8 +614,8 @@ function FinancialHealthSection({
             format="currency"
             tooltip="Current Assets - Current Liabilities"
             calculationTooltip={{
-              formula: "Current Assets - Current Liabilities",
-              description: "Short-term financial health buffer"
+              formula: 'Current Assets - Current Liabilities',
+              description: 'Short-term financial health buffer',
             }}
           />
         </div>
@@ -638,8 +633,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Total Debt / Shareholders Equity - lower is less risky"
             calculationTooltip={{
-              formula: "Total Debt / Shareholders Equity",
-              description: "Lower ratio = less financial risk"
+              formula: 'Total Debt / Shareholders Equity',
+              description: 'Lower ratio = less financial risk',
             }}
           />
           <MetricCard
@@ -648,8 +643,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Total Debt / Total Assets"
             calculationTooltip={{
-              formula: "Total Debt / Total Assets",
-              description: "Proportion of assets financed by debt"
+              formula: 'Total Debt / Total Assets',
+              description: 'Proportion of assets financed by debt',
             }}
           />
           <MetricCard
@@ -658,8 +653,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Net Debt / EBITDA - <3 is generally healthy"
             calculationTooltip={{
-              formula: "Total Debt / EBITDA",
-              description: "Years to pay off debt with EBITDA (<3 is healthy)"
+              formula: 'Total Debt / EBITDA',
+              description: 'Years to pay off debt with EBITDA (<3 is healthy)',
             }}
           />
           <MetricCard
@@ -669,8 +664,8 @@ function FinancialHealthSection({
             tooltip="EBIT / Interest Expense - higher means more ability to pay interest"
             nullTooltip="Not applicable - company has net interest income (earns more from interest than it pays)"
             calculationTooltip={{
-              formula: "EBIT / Interest Expense",
-              description: "Ability to pay interest on debt"
+              formula: 'EBIT / Interest Expense',
+              description: 'Ability to pay interest on debt',
             }}
           />
         </div>
@@ -688,8 +683,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Total Debt / Total Capital"
             calculationTooltip={{
-              formula: "Total Debt / (Total Debt + Equity)",
-              description: "Debt as portion of total capitalization"
+              formula: 'Total Debt / (Total Debt + Equity)',
+              description: 'Debt as portion of total capitalization',
             }}
           />
           <MetricCard
@@ -698,8 +693,8 @@ function FinancialHealthSection({
             format="ratio"
             tooltip="Net Debt / EBITDA"
             calculationTooltip={{
-              formula: "(Total Debt - Cash) / EBITDA",
-              description: "Net leverage after cash offset"
+              formula: '(Total Debt - Cash) / EBITDA',
+              description: 'Net leverage after cash offset',
             }}
           />
           <MetricCard
@@ -708,8 +703,8 @@ function FinancialHealthSection({
             format="currency"
             tooltip="Total Debt - Cash & Equivalents"
             calculationTooltip={{
-              formula: "Total Debt - Cash & Equivalents",
-              description: "Debt after subtracting cash on hand"
+              formula: 'Total Debt - Cash & Equivalents',
+              description: 'Debt after subtracting cash on hand',
             }}
           />
         </div>
@@ -733,8 +728,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="ratio"
             tooltip="Revenue / Total Assets - higher is more efficient"
             calculationTooltip={{
-              formula: "Revenue / Average Total Assets",
-              description: "Sales generated per dollar of assets"
+              formula: 'Revenue / Average Total Assets',
+              description: 'Sales generated per dollar of assets',
             }}
           />
           <MetricCard
@@ -743,8 +738,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="ratio"
             tooltip="COGS / Average Inventory - higher is better"
             calculationTooltip={{
-              formula: "Cost of Goods Sold / Average Inventory",
-              description: "How often inventory is sold and replaced"
+              formula: 'Cost of Goods Sold / Average Inventory',
+              description: 'How often inventory is sold and replaced',
             }}
           />
           <MetricCard
@@ -753,8 +748,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="ratio"
             tooltip="Revenue / Average Receivables"
             calculationTooltip={{
-              formula: "Revenue / Average Accounts Receivable",
-              description: "How quickly receivables are collected"
+              formula: 'Revenue / Average Accounts Receivable',
+              description: 'How quickly receivables are collected',
             }}
           />
           <MetricCard
@@ -763,8 +758,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="ratio"
             tooltip="COGS / Average Payables"
             calculationTooltip={{
-              formula: "COGS / Average Accounts Payable",
-              description: "How quickly company pays suppliers"
+              formula: 'COGS / Average Accounts Payable',
+              description: 'How quickly company pays suppliers',
             }}
           />
         </div>
@@ -782,8 +777,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="days"
             tooltip="Days Sales Outstanding - lower is better"
             calculationTooltip={{
-              formula: "(Accounts Receivable / Revenue) × 365",
-              description: "Average days to collect payment"
+              formula: '(Accounts Receivable / Revenue) × 365',
+              description: 'Average days to collect payment',
             }}
           />
           <MetricCard
@@ -792,8 +787,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="days"
             tooltip="Days Inventory Outstanding - lower is better"
             calculationTooltip={{
-              formula: "(Inventory / COGS) × 365",
-              description: "Average days inventory is held"
+              formula: '(Inventory / COGS) × 365',
+              description: 'Average days inventory is held',
             }}
           />
           <MetricCard
@@ -802,8 +797,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="days"
             tooltip="Days Payables Outstanding"
             calculationTooltip={{
-              formula: "(Accounts Payable / COGS) × 365",
-              description: "Average days to pay suppliers"
+              formula: '(Accounts Payable / COGS) × 365',
+              description: 'Average days to pay suppliers',
             }}
           />
           <MetricCard
@@ -812,8 +807,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="days"
             tooltip="DSO + DIO - DPO - lower is better"
             calculationTooltip={{
-              formula: "DSO + DIO - DPO",
-              description: "Days to convert inventory to cash"
+              formula: 'DSO + DIO - DPO',
+              description: 'Days to convert inventory to cash',
             }}
           />
         </div>
@@ -831,8 +826,8 @@ function EfficiencySection({ efficiency }: { efficiency: EfficiencyMetrics }) {
             format="ratio"
             tooltip="Revenue / Fixed Assets"
             calculationTooltip={{
-              formula: "Revenue / Net Property, Plant & Equipment",
-              description: "Efficiency of fixed asset utilization"
+              formula: 'Revenue / Net Property, Plant & Equipment',
+              description: 'Efficiency of fixed asset utilization',
             }}
           />
         </div>
@@ -856,8 +851,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year revenue growth"
             calculationTooltip={{
-              formula: "(Revenue₁ - Revenue₀) / Revenue₀ × 100",
-              description: "Change in revenue vs prior year"
+              formula: '(Revenue₁ - Revenue₀) / Revenue₀ × 100',
+              description: 'Change in revenue vs prior year',
             }}
             colorByValue
           />
@@ -867,8 +862,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year EPS growth"
             calculationTooltip={{
-              formula: "(EPS₁ - EPS₀) / |EPS₀| × 100",
-              description: "Change in earnings per share vs prior year"
+              formula: '(EPS₁ - EPS₀) / |EPS₀| × 100',
+              description: 'Change in earnings per share vs prior year',
             }}
             colorByValue
           />
@@ -878,8 +873,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year net income growth"
             calculationTooltip={{
-              formula: "(Net Income₁ - Net Income₀) / |Net Income₀| × 100",
-              description: "Change in net income vs prior year"
+              formula: '(Net Income₁ - Net Income₀) / |Net Income₀| × 100',
+              description: 'Change in net income vs prior year',
             }}
             colorByValue
           />
@@ -889,8 +884,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year free cash flow growth"
             calculationTooltip={{
-              formula: "(FCF₁ - FCF₀) / |FCF₀| × 100",
-              description: "Change in free cash flow vs prior year"
+              formula: '(FCF₁ - FCF₀) / |FCF₀| × 100',
+              description: 'Change in free cash flow vs prior year',
             }}
             colorByValue
           />
@@ -909,8 +904,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="3-year compound annual revenue growth"
             calculationTooltip={{
-              formula: "(Revenue₃ / Revenue₀)^(1/3) - 1",
-              description: "Annualized revenue growth over 3 years"
+              formula: '(Revenue₃ / Revenue₀)^(1/3) - 1',
+              description: 'Annualized revenue growth over 3 years',
             }}
             colorByValue
           />
@@ -920,8 +915,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="5-year compound annual revenue growth"
             calculationTooltip={{
-              formula: "(Revenue₅ / Revenue₀)^(1/5) - 1",
-              description: "Annualized revenue growth over 5 years"
+              formula: '(Revenue₅ / Revenue₀)^(1/5) - 1',
+              description: 'Annualized revenue growth over 5 years',
             }}
             colorByValue
           />
@@ -931,8 +926,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="3-year compound annual EPS growth"
             calculationTooltip={{
-              formula: "(EPS₃ / EPS₀)^(1/3) - 1",
-              description: "Annualized EPS growth over 3 years"
+              formula: '(EPS₃ / EPS₀)^(1/3) - 1',
+              description: 'Annualized EPS growth over 3 years',
             }}
             colorByValue
           />
@@ -942,8 +937,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="5-year compound annual EPS growth"
             calculationTooltip={{
-              formula: "(EPS₅ / EPS₀)^(1/5) - 1",
-              description: "Annualized EPS growth over 5 years"
+              formula: '(EPS₅ / EPS₀)^(1/5) - 1',
+              description: 'Annualized EPS growth over 5 years',
             }}
             colorByValue
           />
@@ -962,8 +957,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year gross profit growth"
             calculationTooltip={{
-              formula: "(Gross Profit₁ - Gross Profit₀) / Gross Profit₀ × 100",
-              description: "Change in gross profit vs prior year"
+              formula: '(Gross Profit₁ - Gross Profit₀) / Gross Profit₀ × 100',
+              description: 'Change in gross profit vs prior year',
             }}
             colorByValue
           />
@@ -973,8 +968,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year operating income growth"
             calculationTooltip={{
-              formula: "(Op Income₁ - Op Income₀) / |Op Income₀| × 100",
-              description: "Change in operating income vs prior year"
+              formula: '(Op Income₁ - Op Income₀) / |Op Income₀| × 100',
+              description: 'Change in operating income vs prior year',
             }}
             colorByValue
           />
@@ -984,8 +979,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="Year-over-year book value growth"
             calculationTooltip={{
-              formula: "(Book Value₁ - Book Value₀) / Book Value₀ × 100",
-              description: "Change in shareholders equity vs prior year"
+              formula: '(Book Value₁ - Book Value₀) / Book Value₀ × 100',
+              description: 'Change in shareholders equity vs prior year',
             }}
             colorByValue
           />
@@ -995,8 +990,8 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
             format="percent"
             tooltip="5-year compound annual dividend growth"
             calculationTooltip={{
-              formula: "(Dividend₅ / Dividend₀)^(1/5) - 1",
-              description: "Annualized dividend growth over 5 years"
+              formula: '(Dividend₅ / Dividend₀)^(1/5) - 1',
+              description: 'Annualized dividend growth over 5 years',
             }}
             colorByValue
           />
@@ -1008,7 +1003,7 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
 
 function DividendsSection({
   dividends,
-  perShare
+  perShare,
 }: {
   dividends: DividendMetrics;
   perShare: PerShareMetrics;
@@ -1027,8 +1022,8 @@ function DividendsSection({
             format="percent"
             tooltip="Annual Dividend / Share Price"
             calculationTooltip={{
-              formula: "Annual Dividend Per Share / Share Price × 100",
-              description: "Income return on investment"
+              formula: 'Annual Dividend Per Share / Share Price × 100',
+              description: 'Income return on investment',
             }}
           />
           <MetricCard
@@ -1038,8 +1033,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Annual Dividend Per Share"
             calculationTooltip={{
-              formula: "Total Dividends Paid / Shares Outstanding",
-              description: "Annual dividend amount per share"
+              formula: 'Total Dividends Paid / Shares Outstanding',
+              description: 'Annual dividend amount per share',
             }}
           />
           <MetricCard
@@ -1048,8 +1043,8 @@ function DividendsSection({
             format="percent"
             tooltip="Dividends / Net Income"
             calculationTooltip={{
-              formula: "Dividends Paid / Net Income × 100",
-              description: "Proportion of earnings paid as dividends"
+              formula: 'Dividends Paid / Net Income × 100',
+              description: 'Proportion of earnings paid as dividends',
             }}
             interpretation={dividends.payout_interpretation}
             interpretationColorFn={getPayoutColor}
@@ -1060,8 +1055,8 @@ function DividendsSection({
             format="years"
             tooltip="Years of consecutive dividend payments"
             calculationTooltip={{
-              formula: "Count of Consecutive Years with Dividends",
-              description: "Track record of dividend payments"
+              formula: 'Count of Consecutive Years with Dividends',
+              description: 'Track record of dividend payments',
             }}
           />
         </div>
@@ -1079,8 +1074,8 @@ function DividendsSection({
             format="text"
             tooltip="How often dividends are paid"
             calculationTooltip={{
-              formula: "Quarterly / Monthly / Annual / Semi-Annual",
-              description: "How frequently dividends are distributed"
+              formula: 'Quarterly / Monthly / Annual / Semi-Annual',
+              description: 'How frequently dividends are distributed',
             }}
           />
           <MetricCard
@@ -1089,8 +1084,8 @@ function DividendsSection({
             format="date"
             tooltip="Last ex-dividend date"
             calculationTooltip={{
-              formula: "Date (from company announcement)",
-              description: "Must own before this date to receive dividend"
+              formula: 'Date (from company announcement)',
+              description: 'Must own before this date to receive dividend',
             }}
           />
           <MetricCard
@@ -1099,8 +1094,8 @@ function DividendsSection({
             format="date"
             tooltip="Last payment date"
             calculationTooltip={{
-              formula: "Date (from company announcement)",
-              description: "When dividend is actually paid"
+              formula: 'Date (from company announcement)',
+              description: 'When dividend is actually paid',
             }}
           />
         </div>
@@ -1119,8 +1114,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Diluted Earnings Per Share"
             calculationTooltip={{
-              formula: "Net Income / Diluted Shares Outstanding",
-              description: "Earnings per share including stock options"
+              formula: 'Net Income / Diluted Shares Outstanding',
+              description: 'Earnings per share including stock options',
             }}
           />
           <MetricCard
@@ -1130,8 +1125,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Book Value Per Share"
             calculationTooltip={{
-              formula: "Shareholders Equity / Shares Outstanding",
-              description: "Net asset value per share"
+              formula: 'Shareholders Equity / Shares Outstanding',
+              description: 'Net asset value per share',
             }}
           />
           <MetricCard
@@ -1141,8 +1136,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Free Cash Flow Per Share"
             calculationTooltip={{
-              formula: "Free Cash Flow / Shares Outstanding",
-              description: "Cash generated per share"
+              formula: 'Free Cash Flow / Shares Outstanding',
+              description: 'Cash generated per share',
             }}
           />
           <MetricCard
@@ -1152,8 +1147,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Revenue Per Share"
             calculationTooltip={{
-              formula: "Total Revenue / Shares Outstanding",
-              description: "Sales per share"
+              formula: 'Total Revenue / Shares Outstanding',
+              description: 'Sales per share',
             }}
           />
         </div>
@@ -1172,8 +1167,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Fair value estimate based on Ben Graham formula"
             calculationTooltip={{
-              formula: "√(22.5 × EPS × Book Value Per Share)",
-              description: "Ben Graham's intrinsic value estimate"
+              formula: '√(22.5 × EPS × Book Value Per Share)',
+              description: "Ben Graham's intrinsic value estimate",
             }}
           />
           <MetricCard
@@ -1183,8 +1178,8 @@ function DividendsSection({
             decimals={2}
             tooltip="Book Value excluding intangibles"
             calculationTooltip={{
-              formula: "(Total Equity - Intangible Assets) / Shares",
-              description: "Physical asset value per share"
+              formula: '(Total Equity - Intangible Assets) / Shares',
+              description: 'Physical asset value per share',
             }}
           />
           <MetricCard
@@ -1194,8 +1189,9 @@ function DividendsSection({
             decimals={2}
             tooltip="Cash Per Share"
             calculationTooltip={{
-              formula: "Total Cash & Equivalents / Shares Outstanding",
-              description: "Uses total cash (not net cash after debt). For net cash position, subtract debt per share. Source: FMP"
+              formula: 'Total Cash & Equivalents / Shares Outstanding',
+              description:
+                'Uses total cash (not net cash after debt). For net cash position, subtract debt per share. Source: FMP',
             }}
           />
         </div>
@@ -1206,7 +1202,7 @@ function DividendsSection({
 
 function QualitySection({
   qualityScores,
-  valuation
+  valuation,
 }: {
   qualityScores: QualityScores;
   valuation: ValuationMetrics;
@@ -1221,10 +1217,12 @@ function QualitySection({
             <p className="text-sm text-ic-text-muted">Bankruptcy risk indicator</p>
           </div>
           {qualityScores.altman_z_interpretation && (
-            <span className={cn(
-              'px-3 py-1 rounded-full text-sm font-medium',
-              getZScoreColor(qualityScores.altman_z_interpretation)
-            )}>
+            <span
+              className={cn(
+                'px-3 py-1 rounded-full text-sm font-medium',
+                getZScoreColor(qualityScores.altman_z_interpretation)
+              )}
+            >
               {qualityScores.altman_z_interpretation.toUpperCase()}
             </span>
           )}
@@ -1239,7 +1237,8 @@ function QualitySection({
           </div>
         </CalculationTooltip>
         <p className="text-sm text-ic-text-muted">
-          {qualityScores.altman_z_description || 'Z-Score helps predict bankruptcy probability within 2 years'}
+          {qualityScores.altman_z_description ||
+            'Z-Score helps predict bankruptcy probability within 2 years'}
         </p>
         <div className="mt-4 pt-4 border-t border-ic-border">
           <div className="text-xs text-ic-text-dim space-y-1">
@@ -1258,10 +1257,12 @@ function QualitySection({
             <p className="text-sm text-ic-text-muted">Financial strength score (0-9)</p>
           </div>
           {qualityScores.piotroski_f_interpretation && (
-            <span className={cn(
-              'px-3 py-1 rounded-full text-sm font-medium',
-              getFScoreColor(qualityScores.piotroski_f_interpretation)
-            )}>
+            <span
+              className={cn(
+                'px-3 py-1 rounded-full text-sm font-medium',
+                getFScoreColor(qualityScores.piotroski_f_interpretation)
+              )}
+            >
               {qualityScores.piotroski_f_interpretation.toUpperCase()}
             </span>
           )}
@@ -1272,7 +1273,8 @@ function QualitySection({
           description="Profitability (4), Leverage/Liquidity (3), Operating Efficiency (2)"
         >
           <div className="text-4xl font-bold text-ic-text-primary mb-2 cursor-help inline-block">
-            {qualityScores.piotroski_f_score ?? '—'} <span className="text-lg text-ic-text-muted">/ 9</span>
+            {qualityScores.piotroski_f_score ?? '—'}{' '}
+            <span className="text-lg text-ic-text-muted">/ 9</span>
           </div>
         </CalculationTooltip>
         <p className="text-sm text-ic-text-muted">
@@ -1280,28 +1282,33 @@ function QualitySection({
         </p>
 
         {/* F-Score Visual Bar */}
-        {qualityScores.piotroski_f_score !== null && qualityScores.piotroski_f_score !== undefined && (
-          <div className="mt-4">
-            <div className="flex gap-1">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
-                <div
-                  key={n}
-                  className={cn(
-                    'h-3 flex-1 rounded-sm',
-                    n <= (qualityScores.piotroski_f_score ?? 0)
-                      ? n <= 4 ? 'bg-red-400' : n <= 7 ? 'bg-yellow-400' : 'bg-green-400'
-                      : 'bg-ic-border'
-                  )}
-                />
-              ))}
+        {qualityScores.piotroski_f_score !== null &&
+          qualityScores.piotroski_f_score !== undefined && (
+            <div className="mt-4">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                  <div
+                    key={n}
+                    className={cn(
+                      'h-3 flex-1 rounded-sm',
+                      n <= (qualityScores.piotroski_f_score ?? 0)
+                        ? n <= 4
+                          ? 'bg-red-400'
+                          : n <= 7
+                            ? 'bg-yellow-400'
+                            : 'bg-green-400'
+                        : 'bg-ic-border'
+                    )}
+                  />
+                ))}
+              </div>
+              <div className="flex justify-between text-xs text-ic-text-dim mt-1">
+                <span>Weak</span>
+                <span>Average</span>
+                <span>Strong</span>
+              </div>
             </div>
-            <div className="flex justify-between text-xs text-ic-text-dim mt-1">
-              <span>Weak</span>
-              <span>Average</span>
-              <span>Strong</span>
-            </div>
-          </div>
-        )}
+          )}
 
         <div className="mt-4 pt-4 border-t border-ic-border">
           <div className="text-xs text-ic-text-dim space-y-1">
@@ -1321,11 +1328,13 @@ function QualitySection({
               <p className="text-sm text-ic-text-muted">Price/Earnings to Growth</p>
             </div>
             {valuation.peg_interpretation && (
-              <span className={cn(
-                'px-3 py-1 rounded-full text-sm font-medium',
-                getPEGColor(valuation.peg_interpretation),
-                'bg-ic-bg-tertiary'
-              )}>
+              <span
+                className={cn(
+                  'px-3 py-1 rounded-full text-sm font-medium',
+                  getPEGColor(valuation.peg_interpretation),
+                  'bg-ic-bg-tertiary'
+                )}
+              >
                 {valuation.peg_interpretation.toUpperCase()}
               </span>
             )}
@@ -1355,7 +1364,7 @@ function QualitySection({
 
 function AnalystRatingsSection({
   analystRatings,
-  currentPrice
+  currentPrice,
 }: {
   analystRatings: AnalystRatings;
   currentPrice: number;
@@ -1399,11 +1408,13 @@ function AnalystRatingsSection({
               <p className="text-sm text-ic-text-muted">Based on {totalRatings} analyst ratings</p>
             </div>
             {analystRatings.analyst_consensus && (
-              <span className={cn(
-                'px-4 py-2 rounded-full text-sm font-semibold',
-                getConsensusColor(analystRatings.analyst_consensus),
-                getConsensusBgColor(analystRatings.analyst_consensus)
-              )}>
+              <span
+                className={cn(
+                  'px-4 py-2 rounded-full text-sm font-semibold',
+                  getConsensusColor(analystRatings.analyst_consensus),
+                  getConsensusBgColor(analystRatings.analyst_consensus)
+                )}
+              >
                 {analystRatings.analyst_consensus.toUpperCase()}
               </span>
             )}
@@ -1412,51 +1423,66 @@ function AnalystRatingsSection({
           {/* Rating Distribution Bar */}
           <div className="mt-4">
             <div className="flex h-8 rounded-lg overflow-hidden">
-              {analystRatings.analyst_rating_strong_buy !== null && analystRatings.analyst_rating_strong_buy > 0 && (
-                <div
-                  className="bg-green-600 flex items-center justify-center text-white text-xs font-medium"
-                  style={{ width: `${(analystRatings.analyst_rating_strong_buy / totalRatings) * 100}%` }}
-                  title={`Strong Buy: ${analystRatings.analyst_rating_strong_buy}`}
-                >
-                  {analystRatings.analyst_rating_strong_buy}
-                </div>
-              )}
-              {analystRatings.analyst_rating_buy !== null && analystRatings.analyst_rating_buy > 0 && (
-                <div
-                  className="bg-green-400 flex items-center justify-center text-white text-xs font-medium"
-                  style={{ width: `${(analystRatings.analyst_rating_buy / totalRatings) * 100}%` }}
-                  title={`Buy: ${analystRatings.analyst_rating_buy}`}
-                >
-                  {analystRatings.analyst_rating_buy}
-                </div>
-              )}
-              {analystRatings.analyst_rating_hold !== null && analystRatings.analyst_rating_hold > 0 && (
-                <div
-                  className="bg-yellow-400 flex items-center justify-center text-gray-800 text-xs font-medium"
-                  style={{ width: `${(analystRatings.analyst_rating_hold / totalRatings) * 100}%` }}
-                  title={`Hold: ${analystRatings.analyst_rating_hold}`}
-                >
-                  {analystRatings.analyst_rating_hold}
-                </div>
-              )}
-              {analystRatings.analyst_rating_sell !== null && analystRatings.analyst_rating_sell > 0 && (
-                <div
-                  className="bg-red-400 flex items-center justify-center text-white text-xs font-medium"
-                  style={{ width: `${(analystRatings.analyst_rating_sell / totalRatings) * 100}%` }}
-                  title={`Sell: ${analystRatings.analyst_rating_sell}`}
-                >
-                  {analystRatings.analyst_rating_sell}
-                </div>
-              )}
-              {analystRatings.analyst_rating_strong_sell !== null && analystRatings.analyst_rating_strong_sell > 0 && (
-                <div
-                  className="bg-red-600 flex items-center justify-center text-white text-xs font-medium"
-                  style={{ width: `${(analystRatings.analyst_rating_strong_sell / totalRatings) * 100}%` }}
-                  title={`Strong Sell: ${analystRatings.analyst_rating_strong_sell}`}
-                >
-                  {analystRatings.analyst_rating_strong_sell}
-                </div>
-              )}
+              {analystRatings.analyst_rating_strong_buy !== null &&
+                analystRatings.analyst_rating_strong_buy > 0 && (
+                  <div
+                    className="bg-green-600 flex items-center justify-center text-white text-xs font-medium"
+                    style={{
+                      width: `${(analystRatings.analyst_rating_strong_buy / totalRatings) * 100}%`,
+                    }}
+                    title={`Strong Buy: ${analystRatings.analyst_rating_strong_buy}`}
+                  >
+                    {analystRatings.analyst_rating_strong_buy}
+                  </div>
+                )}
+              {analystRatings.analyst_rating_buy !== null &&
+                analystRatings.analyst_rating_buy > 0 && (
+                  <div
+                    className="bg-green-400 flex items-center justify-center text-white text-xs font-medium"
+                    style={{
+                      width: `${(analystRatings.analyst_rating_buy / totalRatings) * 100}%`,
+                    }}
+                    title={`Buy: ${analystRatings.analyst_rating_buy}`}
+                  >
+                    {analystRatings.analyst_rating_buy}
+                  </div>
+                )}
+              {analystRatings.analyst_rating_hold !== null &&
+                analystRatings.analyst_rating_hold > 0 && (
+                  <div
+                    className="bg-yellow-400 flex items-center justify-center text-gray-800 text-xs font-medium"
+                    style={{
+                      width: `${(analystRatings.analyst_rating_hold / totalRatings) * 100}%`,
+                    }}
+                    title={`Hold: ${analystRatings.analyst_rating_hold}`}
+                  >
+                    {analystRatings.analyst_rating_hold}
+                  </div>
+                )}
+              {analystRatings.analyst_rating_sell !== null &&
+                analystRatings.analyst_rating_sell > 0 && (
+                  <div
+                    className="bg-red-400 flex items-center justify-center text-white text-xs font-medium"
+                    style={{
+                      width: `${(analystRatings.analyst_rating_sell / totalRatings) * 100}%`,
+                    }}
+                    title={`Sell: ${analystRatings.analyst_rating_sell}`}
+                  >
+                    {analystRatings.analyst_rating_sell}
+                  </div>
+                )}
+              {analystRatings.analyst_rating_strong_sell !== null &&
+                analystRatings.analyst_rating_strong_sell > 0 && (
+                  <div
+                    className="bg-red-600 flex items-center justify-center text-white text-xs font-medium"
+                    style={{
+                      width: `${(analystRatings.analyst_rating_strong_sell / totalRatings) * 100}%`,
+                    }}
+                    title={`Strong Sell: ${analystRatings.analyst_rating_strong_sell}`}
+                  >
+                    {analystRatings.analyst_rating_strong_sell}
+                  </div>
+                )}
             </div>
             <div className="flex justify-between text-xs text-ic-text-dim mt-2">
               <span>Strong Buy</span>
@@ -1540,7 +1566,7 @@ function AnalystRatingsSection({
                           className="absolute h-4 top-4 bg-blue-200 rounded"
                           style={{
                             left: `${lowPos}%`,
-                            width: `${highPos - lowPos}%`
+                            width: `${highPos - lowPos}%`,
                           }}
                         />
                         {/* Low target marker */}
@@ -1577,7 +1603,9 @@ function AnalystRatingsSection({
             </div>
             <div className="flex justify-between text-xs text-ic-text-dim mt-2">
               <span>${analystRatings.target_low?.toFixed(2) ?? '—'} (Low)</span>
-              <span className="font-medium">${analystRatings.target_consensus?.toFixed(2) ?? '—'} (Consensus)</span>
+              <span className="font-medium">
+                ${analystRatings.target_consensus?.toFixed(2) ?? '—'} (Consensus)
+              </span>
               <span>${analystRatings.target_high?.toFixed(2) ?? '—'} (High)</span>
             </div>
           </div>
@@ -1591,18 +1619,22 @@ function AnalystRatingsSection({
               decimals={2}
               tooltip="Average analyst price target"
               calculationTooltip={{
-                formula: "Average of Analyst Price Targets",
-                description: "Mean price target from all analysts"
+                formula: 'Average of Analyst Price Targets',
+                description: 'Mean price target from all analysts',
               }}
             />
             <MetricCard
               label="Upside/Downside"
-              value={consensusUpside !== null ? `${consensusUpside >= 0 ? '+' : ''}${consensusUpside.toFixed(1)}%` : null}
+              value={
+                consensusUpside !== null
+                  ? `${consensusUpside >= 0 ? '+' : ''}${consensusUpside.toFixed(1)}%`
+                  : null
+              }
               format="text"
               tooltip="Potential return to consensus target"
               calculationTooltip={{
-                formula: "(Target - Current Price) / Current Price × 100",
-                description: "Potential gain/loss to reach consensus"
+                formula: '(Target - Current Price) / Current Price × 100',
+                description: 'Potential gain/loss to reach consensus',
               }}
             />
             <MetricCard
@@ -1612,8 +1644,8 @@ function AnalystRatingsSection({
               decimals={2}
               tooltip="Highest analyst price target"
               calculationTooltip={{
-                formula: "Max(Analyst Price Targets)",
-                description: `Upside: ${highUpside !== null ? `${highUpside >= 0 ? '+' : ''}${highUpside.toFixed(1)}%` : '—'}`
+                formula: 'Max(Analyst Price Targets)',
+                description: `Upside: ${highUpside !== null ? `${highUpside >= 0 ? '+' : ''}${highUpside.toFixed(1)}%` : '—'}`,
               }}
             />
             <MetricCard
@@ -1623,8 +1655,8 @@ function AnalystRatingsSection({
               decimals={2}
               tooltip="Lowest analyst price target"
               calculationTooltip={{
-                formula: "Min(Analyst Price Targets)",
-                description: `Downside: ${lowUpside !== null ? `${lowUpside >= 0 ? '+' : ''}${lowUpside.toFixed(1)}%` : '—'}`
+                formula: 'Min(Analyst Price Targets)',
+                description: `Downside: ${lowUpside !== null ? `${lowUpside >= 0 ? '+' : ''}${lowUpside.toFixed(1)}%` : '—'}`,
               }}
             />
           </div>
@@ -1639,8 +1671,8 @@ function AnalystRatingsSection({
                 decimals={2}
                 tooltip="Median analyst price target"
                 calculationTooltip={{
-                  formula: "Median(Analyst Price Targets)",
-                  description: "Middle value of all price targets"
+                  formula: 'Median(Analyst Price Targets)',
+                  description: 'Middle value of all price targets',
                 }}
               />
             </div>
@@ -1651,9 +1683,10 @@ function AnalystRatingsSection({
       {/* Disclaimer */}
       <div className="text-xs text-ic-text-dim p-4 bg-ic-bg-tertiary rounded-lg">
         <p>
-          <strong>Note:</strong> Analyst ratings and price targets are sourced from Financial Modeling Prep (FMP).
-          These represent consensus views from multiple analysts and should not be considered investment advice.
-          Past analyst performance does not guarantee future accuracy.
+          <strong>Note:</strong> Analyst ratings and price targets are sourced from Financial
+          Modeling Prep (FMP). These represent consensus views from multiple analysts and should not
+          be considered investment advice. Past analyst performance does not guarantee future
+          accuracy.
         </p>
       </div>
     </div>
@@ -1733,24 +1766,28 @@ function MetricCard({
   };
 
   // Use nullTooltip when value is NULL, otherwise use regular tooltip
-  const displayTooltip = (value === null || value === undefined) && nullTooltip ? nullTooltip : tooltip;
+  const displayTooltip =
+    (value === null || value === undefined) && nullTooltip ? nullTooltip : tooltip;
 
   const valueContent = (
-    <div className={cn('text-xl font-semibold', getValueColor())}>
-      {formatValue()}
-    </div>
+    <div className={cn('text-xl font-semibold', getValueColor())}>{formatValue()}</div>
   );
 
   return (
-    <div className="bg-ic-bg-secondary rounded-lg p-4" title={!calculationTooltip ? displayTooltip : undefined}>
+    <div
+      className="bg-ic-bg-secondary rounded-lg p-4"
+      title={!calculationTooltip ? displayTooltip : undefined}
+    >
       <div className="flex items-center justify-between mb-2">
         <span className="text-sm text-ic-text-muted">{label}</span>
         {interpretation && interpretationColorFn && (
-          <span className={cn(
-            'text-xs px-2 py-0.5 rounded-full',
-            interpretationColorFn(interpretation),
-            'bg-opacity-20'
-          )}>
+          <span
+            className={cn(
+              'text-xs px-2 py-0.5 rounded-full',
+              interpretationColorFn(interpretation),
+              'bg-opacity-20'
+            )}
+          >
             {interpretation}
           </span>
         )}
@@ -1761,9 +1798,7 @@ function MetricCard({
           formula={calculationTooltip.formula}
           description={calculationTooltip.description || displayTooltip}
         >
-          <div className="cursor-help inline-block">
-            {valueContent}
-          </div>
+          <div className="cursor-help inline-block">{valueContent}</div>
         </CalculationTooltip>
       ) : (
         valueContent

@@ -54,7 +54,9 @@ export default function ForgotPasswordPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-ic-bg-secondary">
       <div className="w-full max-w-md p-8 bg-ic-surface rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold mb-2 text-center text-ic-text-primary">Forgot Password</h1>
+        <h1 className="text-2xl font-bold mb-2 text-center text-ic-text-primary">
+          Forgot Password
+        </h1>
         <p className="text-sm text-ic-text-muted text-center mb-6">
           Enter your email address and we'll send you instructions to reset your password.
         </p>
@@ -67,7 +69,8 @@ export default function ForgotPasswordPage() {
 
         {success && !resetInfo && (
           <div className="mb-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
-            <strong>Success!</strong> If an account exists with this email, you will receive password reset instructions.
+            <strong>Success!</strong> If an account exists with this email, you will receive
+            password reset instructions.
           </div>
         )}
 
@@ -85,7 +88,8 @@ export default function ForgotPasswordPage() {
               </a>
             </div>
             <p className="text-xs text-ic-text-muted mt-2">
-              Link expires at: {resetInfo.expires_at ? new Date(resetInfo.expires_at).toLocaleString() : 'N/A'}
+              Link expires at:{' '}
+              {resetInfo.expires_at ? new Date(resetInfo.expires_at).toLocaleString() : 'N/A'}
             </p>
           </div>
         )}
@@ -93,7 +97,10 @@ export default function ForgotPasswordPage() {
         {!success && (
           <form onSubmit={handleSubmit}>
             <div className="mb-6">
-              <label className="block text-sm font-medium text-ic-text-secondary mb-2" htmlFor="email">
+              <label
+                className="block text-sm font-medium text-ic-text-secondary mb-2"
+                htmlFor="email"
+              >
                 Email Address
               </label>
               <input

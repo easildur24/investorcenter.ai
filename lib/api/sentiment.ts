@@ -48,9 +48,7 @@ export async function getTrendingSentiment(
   period: TrendingPeriod = '24h',
   limit: number = 20
 ): Promise<TrendingResponse> {
-  return apiClient.get<TrendingResponse>(
-    `/sentiment/trending?period=${period}&limit=${limit}`
-  );
+  return apiClient.get<TrendingResponse>(`/sentiment/trending?period=${period}&limit=${limit}`);
 }
 
 /**

@@ -21,7 +21,10 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
     e.preventDefault();
     setLoading(true);
     try {
-      const tagArray = tags.split(',').map(t => t.trim()).filter(t => t);
+      const tagArray = tags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t);
       await onUpdate(symbol, {
         notes: notes || undefined,
         tags: tagArray,

@@ -117,7 +117,8 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
         <div>
           <h2 className="text-2xl font-bold">IC Score Backtest Results</h2>
           <p className="text-gray-600">
-            {summary.start_date} to {summary.end_date} | {summary.universe.toUpperCase()} Universe | {summary.rebalance_frequency} Rebalancing
+            {summary.start_date} to {summary.end_date} | {summary.universe.toUpperCase()} Universe |{' '}
+            {summary.rebalance_frequency} Rebalancing
           </p>
         </div>
         <button
@@ -181,7 +182,9 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
           <div>
             <p className="text-sm text-gray-600">Information Ratio</p>
             <p className="text-2xl font-bold">{summary.information_ratio.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">{getRatingFromSharpe(summary.information_ratio)}</p>
+            <p className="text-xs text-gray-500">
+              {getRatingFromSharpe(summary.information_ratio)}
+            </p>
           </div>
         </div>
       </div>
@@ -193,7 +196,9 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
           <div>
             <p className="text-sm text-gray-600">Top Decile Sharpe</p>
             <p className="text-2xl font-bold">{summary.top_decile_sharpe.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">{getRatingFromSharpe(summary.top_decile_sharpe)}</p>
+            <p className="text-xs text-gray-500">
+              {getRatingFromSharpe(summary.top_decile_sharpe)}
+            </p>
           </div>
           <div>
             <p className="text-sm text-gray-600">Top Decile Max DD</p>
@@ -204,7 +209,9 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
           <div>
             <p className="text-sm text-gray-600">Bottom Decile Sharpe</p>
             <p className="text-2xl font-bold">{summary.bottom_decile_sharpe.toFixed(2)}</p>
-            <p className="text-xs text-gray-500">{getRatingFromSharpe(summary.bottom_decile_sharpe)}</p>
+            <p className="text-xs text-gray-500">
+              {getRatingFromSharpe(summary.bottom_decile_sharpe)}
+            </p>
           </div>
         </div>
       </div>
@@ -255,9 +262,7 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
                 <td className="px-4 py-3 text-right font-mono text-gray-600">
                   {formatPercent(dp.volatility)}
                 </td>
-                <td className="px-4 py-3 text-right font-mono">
-                  {dp.sharpe_ratio.toFixed(2)}
-                </td>
+                <td className="px-4 py-3 text-right font-mono">{dp.sharpe_ratio.toFixed(2)}</td>
                 <td className="px-4 py-3 text-right font-mono text-red-600">
                   -{formatPercent(dp.max_drawdown)}
                 </td>
@@ -276,12 +281,12 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
       {/* Footer */}
       <div className="text-sm text-gray-500 text-center">
         <p>
-          Backtest period: {summary.num_periods} {summary.rebalance_frequency} periods |
-          Universe: {summary.universe.toUpperCase()} |
-          Benchmark: {summary.benchmark}
+          Backtest period: {summary.num_periods} {summary.rebalance_frequency} periods | Universe:{' '}
+          {summary.universe.toUpperCase()} | Benchmark: {summary.benchmark}
         </p>
         <p className="mt-1">
-          Past performance does not guarantee future results. Backtest results do not reflect actual trading.
+          Past performance does not guarantee future results. Backtest results do not reflect actual
+          trading.
         </p>
       </div>
     </div>
