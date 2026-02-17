@@ -231,6 +231,81 @@ async def _apply_migrations(engine):
                     )
                 )
 
+        # Create sector_percentiles table + materialized view
+        # (from Alembic migration 006, not in *.sql files)
+        _alembic_stmts = [
+            (
+                "CREATE TABLE IF NOT EXISTS"
+                " sector_percentiles ("
+                " id UUID PRIMARY KEY"
+                " DEFAULT gen_random_uuid(),"
+                " sector VARCHAR(50) NOT NULL,"
+                " metric_name VARCHAR(50) NOT NULL,"
+                " calculated_at DATE NOT NULL"
+                " DEFAULT CURRENT_DATE,"
+                " min_value NUMERIC(20,4),"
+                " p10_value NUMERIC(20,4),"
+                " p25_value NUMERIC(20,4),"
+                " p50_value NUMERIC(20,4),"
+                " p75_value NUMERIC(20,4),"
+                " p90_value NUMERIC(20,4),"
+                " max_value NUMERIC(20,4),"
+                " mean_value NUMERIC(20,4),"
+                " std_dev NUMERIC(20,4),"
+                " sample_count INTEGER,"
+                " created_at TIMESTAMPTZ DEFAULT NOW(),"
+                " UNIQUE (sector, metric_name,"
+                " calculated_at))"
+            ),
+            (
+                "CREATE INDEX IF NOT EXISTS"
+                " idx_sector_percentiles_lookup"
+                " ON sector_percentiles"
+                "(sector, metric_name,"
+                " calculated_at DESC)"
+            ),
+            (
+                "CREATE MATERIALIZED VIEW"
+                " IF NOT EXISTS"
+                " mv_latest_sector_percentiles AS"
+                " SELECT DISTINCT ON"
+                " (sector, metric_name)"
+                " id, sector, metric_name,"
+                " calculated_at,"
+                " min_value, p10_value,"
+                " p25_value, p50_value,"
+                " p75_value, p90_value,"
+                " max_value, mean_value,"
+                " std_dev, sample_count"
+                " FROM sector_percentiles"
+                " ORDER BY sector, metric_name,"
+                " calculated_at DESC"
+            ),
+            (
+                "CREATE UNIQUE INDEX"
+                " IF NOT EXISTS"
+                " idx_mv_sector_percentiles"
+                " ON mv_latest_sector_percentiles"
+                "(sector, metric_name)"
+            ),
+        ]
+        for stmt in _alembic_stmts:
+            try:
+                await conn.execute(
+                    text("SAVEPOINT alembic_stmt")
+                )
+                await conn.execute(text(stmt))
+                await conn.execute(
+                    text("RELEASE SAVEPOINT alembic_stmt")
+                )
+            except Exception:
+                await conn.execute(
+                    text(
+                        "ROLLBACK TO SAVEPOINT"
+                        " alembic_stmt"
+                    )
+                )
+
 
 @pytest_asyncio.fixture(scope="session")
 async def db():
@@ -258,6 +333,21 @@ async def db():
 
     yield database
 
+    # Drop materialized views first — they block DROP TABLE
+    # on tables they depend on (e.g. fundamental_metrics_extended).
+    async with database.engine.begin() as conn:
+        for mv in (
+            "mv_latest_sector_percentiles",
+            "sector_metric_averages",
+            "industry_metric_averages",
+            "screener_data",
+        ):
+            await conn.execute(
+                text(
+                    f"DROP MATERIALIZED VIEW"
+                    f" IF EXISTS {mv} CASCADE"
+                )
+            )
     await database.drop_all_tables()
     await database.close()
 

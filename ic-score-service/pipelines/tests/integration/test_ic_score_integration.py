@@ -16,7 +16,7 @@ It writes to: ic_scores
 """
 
 import os
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 import pytest_asyncio
@@ -148,7 +148,7 @@ async def _seed_technical_indicators(session, ticker):
     Seeds recent data (within 14-day window the calculator
     uses) with standard indicator names.
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     indicators = {
         "rsi_14": 55.0,
         "macd": 1.2,
