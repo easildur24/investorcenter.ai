@@ -1,0 +1,122 @@
+name: Canary Tests
+
+on:
+  schedule:
+    - cron: '0 8 * * *'  # Daily at 8 AM UTC (1 hour after freshness report)
+  workflow_dispatch:  # Manual trigger
+
+jobs:
+  canary-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Install dependencies
+      run: pip install pytest requests
+
+    - name: Run canary tests
+      id: canary
+      env:
+        API_BASE_URL: ${{ secrets.PROD_API_URL }}
+      run: |
+        python -m pytest scripts/canary_tests.py \
+          -v --tb=short --no-header \
+          --junitxml=canary-results.xml \
+          2>&1 | tee canary-output.txt
+      continue-on-error: true
+
+    - name: Write results to job summary
+      if: always()
+      run: |
+        echo '## Canary Test Results' >> "$GITHUB_STEP_SUMMARY"
+        echo '' >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+        cat canary-output.txt >> "$GITHUB_STEP_SUMMARY"
+        echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Create or update GitHub issue on failure
+      if: steps.canary.outcome == 'failure'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const output = fs.readFileSync('canary-output.txt', 'utf8');
+          const date = new Date().toISOString().split('T')[0];
+          const title = `Canary tests failed (${date})`;
+
+          const body = [
+            '## Canary Test Failure',
+            '',
+            `**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            `**Date:** ${new Date().toISOString()}`,
+            `**Trigger:** ${context.eventName === 'schedule' ? 'Daily scheduled run' : 'Manual trigger'}`,
+            '',
+            'Production API canary tests detected issues with user-facing data.',
+            '',
+            '<details>',
+            '<summary>Test Output</summary>',
+            '',
+            '```',
+            output,
+            '```',
+            '',
+            '</details>',
+          ].join('\n');
+
+          const existing = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: 'canary-failure',
+            state: 'open',
+          });
+
+          if (existing.data.length === 0) {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['canary-failure', 'bug'],
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existing.data[0].number,
+              body: `Still failing as of ${new Date().toISOString()}.\n\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n<details>\n<summary>Test Output</summary>\n\n\`\`\`\n${output}\n\`\`\`\n\n</details>`,
+            });
+          }
+
+    - name: Auto-close issue when passing
+      if: steps.canary.outcome == 'success'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const existing = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: 'canary-failure',
+            state: 'open',
+          });
+
+          for (const issue of existing.data) {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: `Resolved. All canary tests passing as of ${new Date().toISOString()}.\n\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+            await github.rest.issues.update({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              state: 'closed',
+            });
+          }
