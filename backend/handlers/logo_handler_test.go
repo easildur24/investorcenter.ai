@@ -48,9 +48,31 @@ func ensureTestDB(t *testing.T) {
 		t.Fatalf("failed to connect to test DB: %v", err)
 	}
 
+	// Create tickers table if it doesn't exist (the database package
+	// tests run their own schema, but handlers tests need it too).
+	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS tickers (
+		id SERIAL PRIMARY KEY,
+		symbol VARCHAR(10) NOT NULL,
+		name VARCHAR(255) NOT NULL,
+		exchange VARCHAR(50),
+		sector VARCHAR(100),
+		industry VARCHAR(100),
+		asset_type VARCHAR(20) DEFAULT 'stock',
+		logo_url VARCHAR(255),
+		active BOOLEAN DEFAULT TRUE,
+		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+		UNIQUE(symbol)
+	)`)
+	if err != nil {
+		db.Close()
+		t.Fatalf("failed to create tickers table: %v", err)
+	}
+
 	origDB := database.DB
 	database.DB = db
 	t.Cleanup(func() {
+		db.Exec("DROP TABLE IF EXISTS tickers CASCADE")
 		db.Close()
 		database.DB = origDB
 	})
