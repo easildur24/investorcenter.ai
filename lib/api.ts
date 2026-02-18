@@ -1,6 +1,17 @@
 // API client for communicating with Go backend
 
 import type { ScreenerApiParams, ScreenerResponse } from '@/lib/types/screener';
+import { validateResponse } from '@/lib/api/validate';
+import {
+  ICScoreSchema,
+  ICScoreScreenerResponseSchema,
+  ICScoreTopStocksResponseSchema,
+  ICScoreHistorySchema,
+  ICScoreStatisticsSchema,
+  MarketIndicesSchema,
+  MarketMoversSchema,
+  ScreenerResponseSchema,
+} from '@/lib/api/schemas';
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 const IC_SCORE_API_BASE = process.env.NEXT_PUBLIC_IC_SCORE_API_URL || 'http://localhost:8001';
@@ -70,7 +81,7 @@ class ApiClient {
 
   // Market data methods
   async getMarketIndices() {
-    return this.request<
+    const result = await this.request<
       Array<{
         symbol: string;
         name: string;
@@ -80,6 +91,8 @@ class ApiClient {
         lastUpdated: string;
       }>
     >('/markets/indices');
+    result.data = validateResponse(MarketIndicesSchema, result.data, '/markets/indices');
+    return result;
   }
 
   async searchSecurities(query: string) {
@@ -94,7 +107,7 @@ class ApiClient {
   }
 
   async getMarketMovers(limit: number = 5) {
-    return this.request<{
+    const result = await this.request<{
       gainers: Array<{
         symbol: string;
         name?: string;
@@ -120,6 +133,8 @@ class ApiClient {
         volume: number;
       }>;
     }>(`/markets/movers?limit=${limit}`);
+    result.data = validateResponse(MarketMoversSchema, result.data, '/markets/movers');
+    return result;
   }
 
   // Screener methods
@@ -205,7 +220,8 @@ export const icScoreApi = {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return validateResponse(ICScoreSchema, data, `/api/scores/${ticker}`);
   },
 
   /**
@@ -224,7 +240,8 @@ export const icScoreApi = {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return validateResponse(ICScoreHistorySchema, data, `/api/scores/${ticker}/history`);
   },
 
   /**
@@ -238,7 +255,8 @@ export const icScoreApi = {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return validateResponse(ICScoreTopStocksResponseSchema, data, '/api/scores/top');
   },
 
   /**
@@ -276,7 +294,8 @@ export const icScoreApi = {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return validateResponse(ICScoreScreenerResponseSchema, data, '/api/scores/screener');
   },
 
   /**
@@ -290,7 +309,8 @@ export const icScoreApi = {
       throw new Error(error.error || `HTTP ${response.status}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return validateResponse(ICScoreStatisticsSchema, data, '/api/scores/statistics');
   },
 
   /**
