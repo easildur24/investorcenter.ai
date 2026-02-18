@@ -1,18 +1,28 @@
 package handlers
 
 import (
-	"investorcenter-api/services"
+	"investorcenter-api/models"
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
-type CronjobHandler struct {
-	cronjobService *services.CronjobService
+// CronjobServicer defines the interface for cronjob service operations.
+// The concrete *services.CronjobService satisfies this interface implicitly.
+type CronjobServicer interface {
+	GetOverview() (*models.CronjobOverviewResponse, error)
+	GetJobHistory(jobName string, limit, offset int) (*models.CronjobHistoryResponse, error)
+	GetJobDetails(executionID string) (*models.CronjobExecutionLog, error)
+	GetMetrics(period int) (*models.CronjobMetricsResponse, error)
+	GetAllSchedules() ([]models.CronjobSchedule, error)
 }
 
-func NewCronjobHandler(cronjobService *services.CronjobService) *CronjobHandler {
+type CronjobHandler struct {
+	cronjobService CronjobServicer
+}
+
+func NewCronjobHandler(cronjobService CronjobServicer) *CronjobHandler {
 	return &CronjobHandler{cronjobService: cronjobService}
 }
 
