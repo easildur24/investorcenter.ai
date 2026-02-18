@@ -29,7 +29,13 @@ from scripts.freshness_report import (
 # Helpers
 # ==================================================================
 
-NOW = datetime.now(tz=timezone.utc).replace(microsecond=0)
+def _now() -> datetime:
+    """Return a stable 'now' for the current test run."""
+    return datetime.now(tz=timezone.utc).replace(microsecond=0)
+
+
+# Computed once per test run — stable within a single execution.
+NOW = _now()
 
 
 def _fresh_dt(hours_ago: float) -> datetime:
@@ -447,15 +453,19 @@ class TestCheckDataFreshness:
         conn.cursor.return_value.__exit__ = MagicMock(return_value=False)
 
         def _execute(query, *args):
-            # Extract table name from "FROM <table>"
+            # Extract table name from SQL query (handles both
+            # plain strings and psycopg2 sql.Composed objects)
+            # For sql.Composed, str() gives a readable repr
+            # containing the identifier names.
+            query_str = str(query)
             cur._current_table = None
             for tbl in table_data:
-                if f"FROM {tbl}" in query:
+                if tbl in query_str:
                     cur._current_table = tbl
                     return
             # Table not in our data — simulate missing table
             # by raising (which triggers rollback in the code)
-            raise Exception(f"relation does not exist")
+            raise Exception("relation does not exist")
 
         cur.execute = _execute
         cur.connection = conn
@@ -593,8 +603,10 @@ class TestMarkdownToHtml:
 
     def test_bullet_list(self):
         html = markdown_to_html("- item one\n- item two")
+        assert "<ul>" in html
         assert "<li>item one</li>" in html
         assert "<li>item two</li>" in html
+        assert "</ul>" in html
 
 
 # ==================================================================

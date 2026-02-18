@@ -63,10 +63,12 @@ class TestTickerData:
         resp = _get("/api/v1/tickers/AAPL")
         assert resp.status_code == 200
         data = resp.json()
-        # The ticker endpoint returns price data directly
-        # or nested -- check common field names
-        price = data.get("last_price") or data.get("price")
-        assert price is not None, "AAPL price is missing"
+        # Ticker endpoint nests price data under "price" key
+        price_data = data.get("price", {})
+        price = price_data.get("price") if isinstance(price_data, dict) else None
+        assert price is not None, (
+            f"AAPL price is missing. Keys: {list(data.keys())}"
+        )
         assert float(price) > 0, "AAPL price should be > 0"
 
     def test_aapl_has_ic_score(self):
@@ -74,9 +76,13 @@ class TestTickerData:
         resp = _get("/api/v1/stocks/AAPL/ic-score")
         assert resp.status_code == 200
         data = resp.json()
-        score = data.get("ic_score") or data.get("score")
-        if score is not None:
-            assert 1 <= float(score) <= 100, f"IC Score {score} out of range"
+        # IC score endpoint returns {data: {overall_score: ...}}
+        score_data = data.get("data", {})
+        score = score_data.get("overall_score") if isinstance(score_data, dict) else None
+        assert score is not None, (
+            f"AAPL IC Score is missing. Keys: {list(data.keys())}"
+        )
+        assert 1 <= float(score) <= 100, f"IC Score {score} out of range"
 
     def test_etf_data_exists(self):
         """SPY should return with ETF asset type."""
@@ -157,10 +163,12 @@ class TestCrypto:
     def test_crypto_btc_price(self):
         """BTC price should be available and positive."""
         resp = _get("/api/v1/crypto/BTC/price")
-        # Crypto may not be available in all environments
-        if resp.status_code == 200:
-            data = resp.json()
-            price = data.get("current_price") or data.get("price") or 0
-            assert float(price) > 0, "BTC price should be > 0"
-        else:
-            pytest.skip(f"Crypto endpoint returned {resp.status_code}")
+        # 404 is acceptable (crypto not configured), 5xx is not
+        if resp.status_code == 404:
+            pytest.skip("Crypto endpoint not configured (404)")
+        assert resp.status_code == 200, (
+            f"Crypto endpoint returned {resp.status_code}"
+        )
+        data = resp.json()
+        price = data.get("current_price", 0)
+        assert float(price) > 0, "BTC price should be > 0"

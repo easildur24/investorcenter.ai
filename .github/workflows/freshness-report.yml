@@ -1,9 +1,21 @@
+# =============================================================
+# Data Freshness Report
+# =============================================================
+#
+# NOTE: The production database is only reachable from within
+# the Kubernetes cluster (ClusterIP).  This workflow is kept
+# as a template for future use once a bastion / tunnel is
+# available.  The primary deployment runs as a K8s CronJob
+# (see ic-score-service/k8s/freshness-report-cronjob.yaml).
+#
+# To enable, add a publicly-reachable DB endpoint and set
+# the PROD_DB_* GitHub secrets.
+# =============================================================
+
 name: Data Freshness Report
 
 on:
-  schedule:
-    - cron: '0 7 * * *'  # Daily at 7 AM UTC (after nightly pipelines)
-  workflow_dispatch:  # Manual trigger
+  workflow_dispatch:  # Manual trigger only — disabled from schedule
 
 jobs:
   freshness-report:
@@ -31,8 +43,9 @@ jobs:
         DB_NAME: ${{ secrets.PROD_DB_NAME }}
         DB_SSLMODE: require
       run: |
-        python scripts/freshness_report.py | tee report.md
-        echo "exit_code=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+        python scripts/freshness_report.py > report.md 2>&1; ec=$?
+        cat report.md
+        echo "exit_code=${ec}" >> "$GITHUB_OUTPUT"
       continue-on-error: true
 
     - name: Write report to job summary

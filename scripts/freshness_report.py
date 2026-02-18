@@ -27,6 +27,7 @@ from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
+from psycopg2 import sql
 from psycopg2.extras import RealDictCursor
 
 # ============================================================
@@ -416,7 +417,11 @@ def _query_max_timestamp(
 ) -> Optional[datetime]:
     """Run ``SELECT MAX(column) FROM table`` safely."""
     try:
-        cur.execute(f"SELECT MAX({column}) AS latest FROM {table}")  # nosec
+        cur.execute(
+            sql.SQL("SELECT MAX({}) AS latest FROM {}").format(
+                sql.Identifier(column), sql.Identifier(table)
+            )
+        )
         row = cur.fetchone()
         if row and row["latest"] is not None:
             val = row["latest"]
@@ -477,12 +482,6 @@ def determine_severity(
 # Report formatting
 # ============================================================
 
-_STATUS_BADGE = {
-    "HEALTHY": "HEALTHY",
-    "WARNING": "WARNING",
-    "CRITICAL": "CRITICAL",
-}
-
 _HEALTH_ICON = {
     "healthy": "OK",
     "warning": "WARN",
@@ -521,7 +520,7 @@ def format_report(
     lines.append("")
     lines.append(f"**Generated:** {now.strftime('%Y-%m-%d %H:%M:%S UTC')}")
     lines.append("")
-    lines.append(f"**Overall Status:** {_STATUS_BADGE[status_label]}")
+    lines.append(f"**Overall Status:** {status_label}")
     lines.append("")
 
     # ----------------------------------------------------------
@@ -654,6 +653,7 @@ def markdown_to_html(md: str) -> str:
     lines = md.split("\n")
     html_lines: List[str] = []
     in_table = False
+    in_list = False
 
     for line in lines:
         stripped = line.strip()
@@ -662,6 +662,11 @@ def markdown_to_html(md: str) -> str:
         if in_table and not stripped.startswith("|"):
             html_lines.append("</table>")
             in_table = False
+
+        # Close list if we leave bullet items
+        if in_list and not stripped.startswith("- "):
+            html_lines.append("</ul>")
+            in_list = False
 
         if stripped.startswith("## "):
             html_lines.append(f"<h2>{stripped[3:]}</h2>")
@@ -687,6 +692,9 @@ def markdown_to_html(md: str) -> str:
                 row = "".join(f"<td>{c}</td>" for c in cells)
                 html_lines.append(f"<tr>{row}</tr>")
         elif stripped.startswith("- "):
+            if not in_list:
+                html_lines.append("<ul>")
+                in_list = True
             html_lines.append(f"<li>{stripped[2:]}</li>")
         elif stripped == "":
             html_lines.append("<br>")
@@ -695,6 +703,8 @@ def markdown_to_html(md: str) -> str:
 
     if in_table:
         html_lines.append("</table>")
+    if in_list:
+        html_lines.append("</ul>")
 
     body = "\n".join(html_lines)
     # Convert **bold** to <strong>
