@@ -212,6 +212,12 @@ coverage-ic-score:
 		--rootdir=. \
 		-v -o "addopts="
 
+test-integration-ic-score:
+	@echo "Running IC Score pipeline integration tests..."
+	@echo "Requires: INTEGRATION_TEST_DB=true + PostgreSQL with TimescaleDB"
+	cd ic-score-service && INTEGRATION_TEST_DB=true ./venv/bin/python -m pytest \
+		pipelines/tests/integration/ -v -o "addopts="
+
 coverage-task-service:
 	@echo "Running task service (Go) coverage..."
 	@mkdir -p task-service/coverage

@@ -1,0 +1,122 @@
+name: Pipeline Integration Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'ic-score-service/pipelines/**'
+      - 'ic-score-service/models.py'
+      - 'ic-score-service/database/**'
+      - 'ic-score-service/migrations/**'
+      - '.github/workflows/pipeline-integration.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'ic-score-service/pipelines/**'
+      - 'ic-score-service/models.py'
+      - 'ic-score-service/database/**'
+      - 'ic-score-service/migrations/**'
+      - '.github/workflows/pipeline-integration.yml'
+  schedule:
+    - cron: '0 6 * * *'  # Nightly at 6 AM UTC
+
+jobs:
+  pipeline-integration:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: timescale/timescaledb:latest-pg15
+        env:
+          POSTGRES_USER: testuser
+          POSTGRES_PASSWORD: testpass
+          POSTGRES_DB: investorcenter_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      INTEGRATION_TEST_DB: "true"
+      DB_HOST: localhost
+      DB_PORT: "5432"
+      DB_USER: testuser
+      DB_PASSWORD: testpass
+      DB_NAME: investorcenter_test
+      DB_SSLMODE: disable
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - name: Cache pip dependencies
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-ic-score-integration-${{ hashFiles('ic-score-service/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-ic-score-integration-
+          ${{ runner.os }}-pip-ic-score-
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Same deps as ic-score-test (no TA-Lib / torch)
+        pip install \
+          "sqlalchemy[asyncio]>=2.0.0" \
+          "asyncpg>=0.29.0" \
+          "psycopg2-binary>=2.9.9" \
+          "alembic>=1.12.0" \
+          "python-dateutil>=2.8.2" \
+          "python-dotenv>=1.0.0" \
+          "requests>=2.31.0" \
+          "aiohttp>=3.9.0" \
+          "httpx>=0.25.0" \
+          "pandas>=2.1.0" \
+          "numpy>=1.26.0" \
+          "scipy>=1.11.0" \
+          "fastapi>=0.104.0" \
+          "uvicorn[standard]>=0.24.0" \
+          "pydantic>=2.5.0" \
+          "pydantic-settings>=2.1.0" \
+          "tqdm>=4.66.0" \
+          "colorlog>=6.7.0" \
+          "pytest>=7.4.0" \
+          "pytest-asyncio>=0.21.0" \
+          "pytest-cov>=4.1.0"
+
+    - name: Run integration tests
+      run: |
+        cd ic-score-service
+        python -m pytest pipelines/tests/integration/ \
+          -v -o "addopts=" \
+          --tb=short
+
+    - name: Notify on failure (Slack)
+      if: failure() && github.event_name == 'schedule'
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        if [ -n "$SLACK_WEBHOOK_URL" ]; then
+          curl -s -X POST "$SLACK_WEBHOOK_URL" \
+            -H 'Content-Type: application/json' \
+            -d "{
+              \"text\": \":red_circle: Pipeline integration tests failed (nightly run)\",
+              \"blocks\": [
+                {
+                  \"type\": \"section\",
+                  \"text\": {
+                    \"type\": \"mrkdwn\",
+                    \"text\": \":red_circle: *Pipeline Integration Tests Failed*\nNightly run: <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|View Run>\"
+                  }
+                }
+              ]
+            }"
+        fi

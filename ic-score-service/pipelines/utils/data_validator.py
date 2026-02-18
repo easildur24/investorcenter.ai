@@ -284,3 +284,154 @@ def validate_eps_consistency(
                     )
 
     return result
+
+
+# ================================================================
+# Post-run data quality validators
+# ================================================================
+
+VALID_IC_RATINGS = frozenset(
+    {
+        "Strong Buy",
+        "Buy",
+        "Hold",
+        "Sell",
+        "Strong Sell",
+    }
+)
+
+VALID_CONFIDENCE_LEVELS = frozenset(
+    {
+        "Very High",
+        "High",
+        "Medium",
+        "Low",
+        "Very Low",
+    }
+)
+
+
+def validate_risk_metrics_output(data: Dict) -> ValidationResult:
+    """Validate risk metrics pipeline output.
+
+    Checks:
+    - Beta in [-2, 5]
+    - Sharpe ratio in [-5, 10]
+    - Max drawdown in [-1, 0]
+    - Volatility in [0, 2]
+    - VaR95 <= 0
+    """
+    result = ValidationResult()
+
+    for field_name, lo, hi in [
+        ("beta", -2.0, 5.0),
+        ("sharpe_ratio", -5.0, 10.0),
+        ("max_drawdown", -1.0, 0.0),
+        ("volatility", 0.0, 2.0),
+    ]:
+        val = data.get(field_name)
+        if val is not None:
+            err = validate_range(val, field_name, lo, hi)
+            if err:
+                result.add_error(err)
+
+    var95 = data.get("var_95")
+    if var95 is not None and var95 > 0:
+        result.add_error(f"var_95={var95} should be <= 0")
+
+    return result
+
+
+def validate_ic_score_output(data: Dict) -> ValidationResult:
+    """Validate IC Score pipeline output.
+
+    Checks:
+    - overall_score in [1, 100]
+    - Factor scores in [0, 100] if present
+    - Rating is a valid string
+    - Confidence level is valid
+    """
+    result = ValidationResult()
+
+    # Overall score bounds
+    score = data.get("overall_score")
+    if score is not None:
+        err = validate_range(score, "overall_score", 1.0, 100.0)
+        if err:
+            result.add_error(err)
+    else:
+        result.add_error("Missing required field: overall_score")
+
+    # Factor scores
+    factor_fields = [
+        "value_score",
+        "growth_score",
+        "profitability_score",
+        "momentum_score",
+        "stability_score",
+    ]
+    for field_name in factor_fields:
+        val = data.get(field_name)
+        if val is not None:
+            err = validate_range(val, field_name, 0.0, 100.0)
+            if err:
+                result.add_error(err)
+
+    # Rating validation
+    rating = data.get("rating")
+    if rating is not None and rating not in VALID_IC_RATINGS:
+        result.add_error(
+            f"rating='{rating}' not in {sorted(VALID_IC_RATINGS)}"
+        )
+
+    # Confidence level
+    conf = data.get("confidence_level")
+    if conf is not None and conf not in VALID_CONFIDENCE_LEVELS:
+        result.add_error(
+            f"confidence_level='{conf}' not in "
+            f"{sorted(VALID_CONFIDENCE_LEVELS)}"
+        )
+
+    return result
+
+
+def validate_pipeline_coverage(
+    pipeline_name: str,
+    expected_count: int,
+    actual_count: int,
+    min_coverage_pct: float = 70.0,
+) -> ValidationResult:
+    """Validate that a pipeline produced output for enough tickers.
+
+    Args:
+        pipeline_name: Name of the pipeline (for error messages).
+        expected_count: Number of tickers that should have output.
+        actual_count: Number of tickers that actually got output.
+        min_coverage_pct: Minimum acceptable coverage percentage.
+
+    Returns:
+        ValidationResult with error if coverage is too low.
+    """
+    result = ValidationResult()
+
+    if expected_count <= 0:
+        result.add_warning(
+            f"{pipeline_name}: expected_count={expected_count}"
+        )
+        return result
+
+    coverage = (actual_count / expected_count) * 100.0
+
+    if coverage < min_coverage_pct:
+        result.add_error(
+            f"{pipeline_name} coverage {coverage:.1f}% "
+            f"({actual_count}/{expected_count}) is below "
+            f"minimum {min_coverage_pct}%"
+        )
+    else:
+        result.add_warning(
+            f"{pipeline_name} coverage: {coverage:.1f}% "
+            f"({actual_count}/{expected_count})"
+        )
+
+    return result

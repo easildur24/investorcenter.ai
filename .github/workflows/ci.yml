@@ -293,6 +293,7 @@ jobs:
       run: |
         cd ic-score-service
         python -m pytest tests/ pipelines/tests/ \
+          --ignore=pipelines/tests/integration/ \
           --cov=api --cov=pipelines --cov=. \
           --cov-report=term-missing \
           --cov-report=xml:coverage.xml \
