@@ -18,8 +18,12 @@ Exit codes:
 """
 
 import os
+import re
+import smtplib
 import sys
 from datetime import datetime, timedelta, timezone
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from typing import Any, Dict, List, Optional, Tuple
 
 import psycopg2
@@ -635,12 +639,144 @@ def format_report(
 
 
 # ============================================================
+# Email delivery
+# ============================================================
+
+
+def markdown_to_html(md: str) -> str:
+    """Convert a simple Markdown report to HTML.
+
+    Handles headings (``#``/``##``), bold (``**``), bullet lists
+    (``- ``), and pipe-delimited tables.  Not a full parser —
+    just enough for the report format produced by
+    :func:`format_report`.
+    """
+    lines = md.split("\n")
+    html_lines: List[str] = []
+    in_table = False
+
+    for line in lines:
+        stripped = line.strip()
+
+        # Close table if we leave pipe-delimited rows
+        if in_table and not stripped.startswith("|"):
+            html_lines.append("</table>")
+            in_table = False
+
+        if stripped.startswith("## "):
+            html_lines.append(f"<h2>{stripped[3:]}</h2>")
+        elif stripped.startswith("# "):
+            html_lines.append(f"<h1>{stripped[2:]}</h1>")
+        elif stripped.startswith("| ---"):
+            # Separator row — skip (already handled by <th>)
+            continue
+        elif stripped.startswith("|"):
+            cells = [c.strip() for c in stripped.strip("|").split("|")]
+            if not in_table:
+                html_lines.append(
+                    '<table border="1" cellpadding="6" '
+                    'cellspacing="0" '
+                    'style="border-collapse:collapse;'
+                    'font-size:14px;">'
+                )
+                # First row is header
+                row = "".join(f"<th>{c}</th>" for c in cells)
+                html_lines.append(f"<tr>{row}</tr>")
+                in_table = True
+            else:
+                row = "".join(f"<td>{c}</td>" for c in cells)
+                html_lines.append(f"<tr>{row}</tr>")
+        elif stripped.startswith("- "):
+            html_lines.append(f"<li>{stripped[2:]}</li>")
+        elif stripped == "":
+            html_lines.append("<br>")
+        else:
+            html_lines.append(f"<p>{stripped}</p>")
+
+    if in_table:
+        html_lines.append("</table>")
+
+    body = "\n".join(html_lines)
+    # Convert **bold** to <strong>
+    body = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", body)
+    return body
+
+
+def send_email_report(
+    report_md: str,
+    severity_label: str,
+    to_email: str,
+) -> bool:
+    """Send the report via SMTP.
+
+    Reads ``SMTP_HOST``, ``SMTP_PORT``, ``SMTP_USERNAME``,
+    ``SMTP_PASSWORD``, and ``SMTP_FROM_EMAIL`` from the
+    environment.  Returns ``True`` on success, ``False`` on
+    failure (never raises).
+
+    Args:
+        report_md: Markdown report string.
+        severity_label: One of ``HEALTHY``, ``WARNING``,
+            ``CRITICAL``.
+        to_email: Recipient email address.
+    """
+    smtp_host = os.environ.get("SMTP_HOST", "")
+    smtp_port = int(os.environ.get("SMTP_PORT", "587"))
+    smtp_user = os.environ.get("SMTP_USERNAME", "")
+    smtp_pass = os.environ.get("SMTP_PASSWORD", "")
+    from_email = os.environ.get("SMTP_FROM_EMAIL", "noreply@investorcenter.ai")
+    from_name = os.environ.get("SMTP_FROM_NAME", "InvestorCenter.ai")
+
+    if not smtp_host or not smtp_pass:
+        print(
+            "SMTP not configured — skipping email.",
+            file=sys.stderr,
+        )
+        return False
+
+    subject = f"[InvestorCenter] Data Freshness Report" f" — {severity_label}"
+
+    html_body = markdown_to_html(report_md)
+    html_body = (
+        '<div style="font-family:Arial,sans-serif;">' f"{html_body}</div>"
+    )
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"{from_name} <{from_email}>"
+    msg["To"] = to_email
+
+    # Attach both plain text and HTML
+    msg.attach(MIMEText(report_md, "plain"))
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(from_email, [to_email], msg.as_string())
+        print(f"Report emailed to {to_email}")
+        return True
+    except Exception as exc:
+        print(
+            f"Failed to send email: {exc}",
+            file=sys.stderr,
+        )
+        return False
+
+
+# ============================================================
 # Main
 # ============================================================
 
 
 def main() -> int:
     """Run the freshness report and print to stdout.
+
+    If ``SMTP_HOST`` is set, also emails the report to the
+    address in ``REPORT_EMAIL_TO``.
 
     Returns:
         Exit code (0 = healthy, 1 = critical, 2 = warnings).
@@ -652,6 +788,12 @@ def main() -> int:
         severity = determine_severity(job_health, freshness)
         report = format_report(job_health, freshness, severity)
         print(report)
+
+        # Email if configured
+        to_email = os.environ.get("REPORT_EMAIL_TO", "")
+        if to_email and os.environ.get("SMTP_HOST"):
+            send_email_report(report, severity[1], to_email)
+
         return severity[0]
     finally:
         conn.close()

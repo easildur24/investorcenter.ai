@@ -21,6 +21,8 @@ from scripts.freshness_report import (
     determine_severity,
     format_report,
     main,
+    markdown_to_html,
+    send_email_report,
 )
 
 # ==================================================================
@@ -565,3 +567,104 @@ class TestMain:
 
         code = main()
         assert code == 2
+
+
+# ==================================================================
+# markdown_to_html
+# ==================================================================
+
+
+class TestMarkdownToHtml:
+    def test_heading_conversion(self):
+        html = markdown_to_html("# Title\n\n## Section")
+        assert "<h1>Title</h1>" in html
+        assert "<h2>Section</h2>" in html
+
+    def test_bold_conversion(self):
+        html = markdown_to_html("**bold text**")
+        assert "<strong>bold text</strong>" in html
+
+    def test_table_conversion(self):
+        md = "| A | B |\n" "| --- | --- |\n" "| 1 | 2 |"
+        html = markdown_to_html(md)
+        assert "<table" in html
+        assert "<th>A</th>" in html
+        assert "<td>1</td>" in html
+
+    def test_bullet_list(self):
+        html = markdown_to_html("- item one\n- item two")
+        assert "<li>item one</li>" in html
+        assert "<li>item two</li>" in html
+
+
+# ==================================================================
+# send_email_report
+# ==================================================================
+
+
+class TestSendEmailReport:
+    @patch("scripts.freshness_report.smtplib.SMTP")
+    def test_email_sent_when_smtp_configured(self, mock_smtp):
+        """Email is sent when SMTP env vars are set."""
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__ = MagicMock(return_value=mock_server)
+        mock_smtp.return_value.__exit__ = MagicMock(return_value=False)
+
+        env = {
+            "SMTP_HOST": "smtp.test.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "user",
+            "SMTP_PASSWORD": "pass",
+            "SMTP_FROM_EMAIL": "test@test.com",
+        }
+        with patch.dict(os.environ, env):
+            result = send_email_report("# Report", "HEALTHY", "to@test.com")
+
+        assert result is True
+        mock_smtp.assert_called_once_with("smtp.test.com", 587)
+        mock_server.sendmail.assert_called_once()
+
+    def test_email_skipped_when_no_smtp(self):
+        """Email is skipped when SMTP_HOST is not set."""
+        env = {"SMTP_HOST": "", "SMTP_PASSWORD": ""}
+        with patch.dict(os.environ, env, clear=False):
+            result = send_email_report("# Report", "HEALTHY", "to@test.com")
+
+        assert result is False
+
+    @patch("scripts.freshness_report.smtplib.SMTP")
+    def test_email_subject_contains_severity(self, mock_smtp):
+        """Email subject includes the severity label."""
+        mock_server = MagicMock()
+        mock_smtp.return_value.__enter__ = MagicMock(return_value=mock_server)
+        mock_smtp.return_value.__exit__ = MagicMock(return_value=False)
+
+        env = {
+            "SMTP_HOST": "smtp.test.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "user",
+            "SMTP_PASSWORD": "pass",
+        }
+        with patch.dict(os.environ, env):
+            send_email_report("# Report", "CRITICAL", "to@test.com")
+
+        # Extract the sent message
+        call_args = mock_server.sendmail.call_args
+        msg_str = call_args[0][2]  # third arg is the message
+        assert "CRITICAL" in msg_str
+
+    @patch("scripts.freshness_report.smtplib.SMTP")
+    def test_email_failure_returns_false(self, mock_smtp):
+        """SMTP errors return False, don't raise."""
+        mock_smtp.side_effect = Exception("connection refused")
+
+        env = {
+            "SMTP_HOST": "smtp.test.com",
+            "SMTP_PORT": "587",
+            "SMTP_USERNAME": "user",
+            "SMTP_PASSWORD": "pass",
+        }
+        with patch.dict(os.environ, env):
+            result = send_email_report("# Report", "HEALTHY", "to@test.com")
+
+        assert result is False
