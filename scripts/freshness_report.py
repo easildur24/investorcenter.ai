@@ -718,7 +718,7 @@ def send_email_report(
         report_md: Markdown report string.
         severity_label: One of ``HEALTHY``, ``WARNING``,
             ``CRITICAL``.
-        to_email: Recipient email address.
+        to_email: Comma-separated recipient email addresses.
     """
     smtp_host = os.environ.get("SMTP_HOST", "")
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
@@ -734,6 +734,12 @@ def send_email_report(
         )
         return False
 
+    # Support comma-separated recipients
+    recipients = [e.strip() for e in to_email.split(",") if e.strip()]
+    if not recipients:
+        print("No recipients specified — skipping email.", file=sys.stderr)
+        return False
+
     subject = f"[InvestorCenter] Data Freshness Report" f" — {severity_label}"
 
     html_body = markdown_to_html(report_md)
@@ -744,7 +750,7 @@ def send_email_report(
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
     msg["From"] = f"{from_name} <{from_email}>"
-    msg["To"] = to_email
+    msg["To"] = ", ".join(recipients)
 
     # Attach both plain text and HTML
     msg.attach(MIMEText(report_md, "plain"))
@@ -756,7 +762,7 @@ def send_email_report(
             server.starttls()
             server.ehlo()
             server.login(smtp_user, smtp_pass)
-            server.sendmail(from_email, [to_email], msg.as_string())
+            server.sendmail(from_email, recipients, msg.as_string())
         print(f"Report emailed to {to_email}")
         return True
     except Exception as exc:

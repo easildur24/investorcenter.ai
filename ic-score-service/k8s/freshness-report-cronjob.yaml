@@ -58,7 +58,7 @@ spec:
                   name: postgres-secret
                   key: password
 
-            # SMTP (SendGrid) from existing app-secrets
+            # SMTP (Amazon SES) from existing app-secrets
             - name: SMTP_HOST
               valueFrom:
                 secretKeyRef:
@@ -86,7 +86,7 @@ spec:
 
             # Report recipient
             - name: REPORT_EMAIL_TO
-              value: "sunxu.edward@gmail.com"
+              value: "sunxu.edward@gmail.com,easildur24@gmail.com"
 
             resources:
               requests:
