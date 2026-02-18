@@ -608,22 +608,25 @@ func TestIntegration_GetEPSEstimates(t *testing.T) {
 	setupTestDB(t)
 	cleanTables(t)
 
-	// Seed EPS estimates directly
+	// Seed EPS estimates directly — use current/future years so
+	// GetEPSEstimate (which filters fiscal_year >= CURRENT_YEAR) works.
+	currentYear := time.Now().Year()
+	nextYear := currentYear + 1
 	DB.MustExec(`INSERT INTO eps_estimates (ticker, fiscal_year, fiscal_quarter, consensus_eps, num_analysts)
-		VALUES ('AAPL', 2025, NULL, 7.50, 35)`)
+		VALUES ('AAPL', $1, NULL, 7.50, 35)`, nextYear)
 	DB.MustExec(`INSERT INTO eps_estimates (ticker, fiscal_year, fiscal_quarter, consensus_eps, num_analysts)
-		VALUES ('AAPL', 2025, 1, 1.80, 30)`)
+		VALUES ('AAPL', $1, 1, 1.80, 30)`, nextYear)
 	DB.MustExec(`INSERT INTO eps_estimates (ticker, fiscal_year, fiscal_quarter, consensus_eps, num_analysts)
-		VALUES ('AAPL', 2024, NULL, 6.90, 35)`)
+		VALUES ('AAPL', $1, NULL, 6.90, 35)`, currentYear)
 
 	// Get all for ticker
 	estimates, err := GetEPSEstimates("AAPL", 10)
 	require.NoError(t, err)
 	assert.Len(t, estimates, 3)
 	// Ordered by fiscal_year DESC, fiscal_quarter DESC NULLS FIRST
-	assert.Equal(t, 2025, estimates[0].FiscalYear)
+	assert.Equal(t, nextYear, estimates[0].FiscalYear)
 
-	// Get current annual estimate
+	// Get current annual estimate (fiscal_year >= current year, quarter IS NULL)
 	current, err := GetEPSEstimate("AAPL")
 	require.NoError(t, err)
 	assert.NotNil(t, current)
@@ -873,12 +876,13 @@ func TestIntegration_InAppNotifications(t *testing.T) {
 	user := &models.User{Email: "inapp@test.com", PasswordHash: &pwHash, FullName: "InApp User", Timezone: "UTC"}
 	require.NoError(t, CreateUser(user))
 
-	// Create notifications
+	// Create notifications (Metadata must be valid JSON for JSONB column)
 	n1 := &models.InAppNotification{
-		UserID:  user.ID,
-		Type:    "alert",
-		Title:   "Price Alert",
-		Message: "AAPL crossed $200",
+		UserID:   user.ID,
+		Type:     "alert",
+		Title:    "Price Alert",
+		Message:  "AAPL crossed $200",
+		Metadata: json.RawMessage(`{}`),
 	}
 	err := CreateInAppNotification(n1)
 	require.NoError(t, err)
@@ -886,10 +890,11 @@ func TestIntegration_InAppNotifications(t *testing.T) {
 	assert.False(t, n1.IsRead)
 
 	n2 := &models.InAppNotification{
-		UserID:  user.ID,
-		Type:    "system",
-		Title:   "Welcome",
-		Message: "Welcome to InvestorCenter",
+		UserID:   user.ID,
+		Type:     "system",
+		Title:    "Welcome",
+		Message:  "Welcome to InvestorCenter",
+		Metadata: json.RawMessage(`{}`),
 	}
 	require.NoError(t, CreateInAppNotification(n2))
 

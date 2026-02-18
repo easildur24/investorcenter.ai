@@ -17,21 +17,40 @@ import pytest
 
 # -------------------------------------------------------------------
 # Create fake torch and transformers modules BEFORE pipeline import.
+# Save originals so we can restore after this module is done.
 # -------------------------------------------------------------------
+_orig_torch = sys.modules.get("torch")
+_orig_transformers = sys.modules.get("transformers")
+
 _mock_torch = ModuleType("torch")
 _mock_torch.no_grad = lambda: MagicMock(
     __enter__=MagicMock(), __exit__=MagicMock()
 )
 _mock_torch.device = MagicMock
+_mock_torch.Tensor = MagicMock
 _mock_torch.cuda = MagicMock()
 _mock_torch.cuda.is_available = MagicMock(return_value=False)
 _mock_torch.nn = MagicMock()
-sys.modules.setdefault("torch", _mock_torch)
+_mock_torch.float32 = "float32"
+_mock_torch.float64 = "float64"
+sys.modules["torch"] = _mock_torch
 
 _mock_transformers = ModuleType("transformers")
 _mock_transformers.AutoTokenizer = MagicMock()
 _mock_transformers.AutoModelForSequenceClassification = MagicMock()
-sys.modules.setdefault("transformers", _mock_transformers)
+sys.modules["transformers"] = _mock_transformers
+
+
+def teardown_module(module):
+    """Restore original sys.modules to avoid leaking fakes."""
+    if _orig_torch is None:
+        sys.modules.pop("torch", None)
+    else:
+        sys.modules["torch"] = _orig_torch
+    if _orig_transformers is None:
+        sys.modules.pop("transformers", None)
+    else:
+        sys.modules["transformers"] = _orig_transformers
 
 # Now import with mocked dependencies
 with patch(
