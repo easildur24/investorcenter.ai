@@ -48,8 +48,9 @@ func ensureTestDB(t *testing.T) {
 		t.Fatalf("failed to connect to test DB: %v", err)
 	}
 
-	// Create tickers table if it doesn't exist (the database package
-	// tests run their own schema, but handlers tests need it too).
+	// Create tickers table with all columns needed by GetStockBySymbol.
+	// Uses IF NOT EXISTS so it won't conflict with the database package
+	// tests that may create the same table concurrently.
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS tickers (
 		id SERIAL PRIMARY KEY,
 		symbol VARCHAR(10) NOT NULL,
@@ -57,7 +58,13 @@ func ensureTestDB(t *testing.T) {
 		exchange VARCHAR(50),
 		sector VARCHAR(100),
 		industry VARCHAR(100),
+		country VARCHAR(50) DEFAULT 'US',
+		currency VARCHAR(3) DEFAULT 'USD',
+		market_cap DECIMAL(20,2),
+		description TEXT,
+		website VARCHAR(255),
 		asset_type VARCHAR(20) DEFAULT 'stock',
+		cik VARCHAR(10),
 		logo_url VARCHAR(255),
 		active BOOLEAN DEFAULT TRUE,
 		created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
