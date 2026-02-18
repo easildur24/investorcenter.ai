@@ -29,7 +29,7 @@ from scripts.freshness_report import (
 # Helpers
 # ==================================================================
 
-NOW = datetime(2026, 2, 18, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime.now(tz=timezone.utc).replace(microsecond=0)
 
 
 def _fresh_dt(hours_ago: float) -> datetime:
