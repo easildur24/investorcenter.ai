@@ -60,29 +60,18 @@ func setupTestDB(t *testing.T) {
 	DB = db
 
 	t.Cleanup(func() {
-		// Drop tables in reverse dependency order
-		db.MustExec("DROP TABLE IF EXISTS user_subscriptions CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS subscription_plans CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS heatmap_configs CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS reddit_heatmap_daily CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS social_posts CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS sentiment_lexicon CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS notification_queue CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS notification_preferences CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS password_reset_tokens CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS sessions CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS alert_logs CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS alert_rules CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS mv_latest_sector_percentiles CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS fundamental_metrics_extended CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS valuation_ratios CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS eps_estimates CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS financial_statements CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS watch_list_items CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS watch_lists CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS screener_data CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS users CASCADE")
-		db.MustExec("DROP TABLE IF EXISTS tickers CASCADE")
+		// Truncate all tables instead of dropping — other test
+		// packages (e.g. handlers) may run concurrently against
+		// the same database, and DROP TABLE would cause races.
+		// Schema uses CREATE TABLE IF NOT EXISTS, so tables
+		// persist across tests without issue.
+		db.Exec(`TRUNCATE
+			tickers, users, watch_lists, watch_list_items, screener_data,
+			financial_statements, eps_estimates, valuation_ratios, fundamental_metrics_extended,
+			mv_latest_sector_percentiles, alert_rules, alert_logs, sessions, password_reset_tokens,
+			notification_preferences, notification_queue, sentiment_lexicon, social_posts,
+			reddit_heatmap_daily, heatmap_configs, subscription_plans, user_subscriptions
+			CASCADE`)
 		db.Close()
 		DB = origDB
 	})

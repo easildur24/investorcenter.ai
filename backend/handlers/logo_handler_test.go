@@ -72,7 +72,10 @@ func ensureTestDB(t *testing.T) {
 	origDB := database.DB
 	database.DB = db
 	t.Cleanup(func() {
-		db.Exec("DROP TABLE IF EXISTS tickers CASCADE")
+		// Only delete test rows — don't DROP the table, as the
+		// database package tests may run concurrently and share
+		// the same DB.
+		db.Exec("DELETE FROM tickers WHERE symbol IN ('NOLOG','KEYTEST','LOGOTEST','ERRLOGO')")
 		db.Close()
 		database.DB = origDB
 	})
