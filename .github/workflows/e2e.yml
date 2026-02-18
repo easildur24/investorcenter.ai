@@ -1,0 +1,96 @@
+name: E2E Tests
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    branches: [main, develop]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'public/**'
+      - 'e2e/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/e2e.yml'
+  schedule:
+    - cron: '0 8 * * 0'  # Weekly Sunday 8 AM UTC
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install Playwright browsers
+      run: npx playwright install --with-deps chromium
+
+    - name: Run E2E tests
+      run: npx playwright test
+
+    - name: Upload Playwright report
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 14
+
+    - name: Create GitHub issue on weekly failure
+      if: failure() && github.event_name == 'schedule'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const title = `E2E tests failed (${new Date().toISOString().split('T')[0]})`;
+          const body = [
+            '## E2E Test Failure',
+            '',
+            `**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            `**Date:** ${new Date().toISOString()}`,
+            `**Trigger:** Weekly scheduled run`,
+            '',
+            'The weekly E2E tests failed. Please investigate the Playwright report artifact.',
+          ].join('\n');
+
+          const existing = await github.rest.issues.listForRepo({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            labels: 'e2e-failure',
+            state: 'open',
+          });
+
+          if (existing.data.length === 0) {
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+              labels: ['e2e-failure', 'bug'],
+            });
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: existing.data[0].number,
+              body: `Still failing as of ${new Date().toISOString()}.\n\n**Run:** ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
+          }

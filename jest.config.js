@@ -8,7 +8,7 @@ module.exports = {
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
+      tsconfig: 'tsconfig.jest.json',
     }],
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
@@ -20,12 +20,14 @@ module.exports = {
     '<rootDir>/ic-score-service/',
     '<rootDir>/data-ingestion-service/',
     '<rootDir>/task-service/',
+    '<rootDir>/e2e/',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   collectCoverageFrom: [
     'lib/**/*.{ts,tsx}',
-    'components/**/*.{ts,tsx}',
-    'app/**/*.{ts,tsx}',
+    '!lib/types/**',
+    '!lib/auth/**',
+    '!lib/contexts/**',
     '!**/*.d.ts',
     '!**/node_modules/**',
     '!**/.next/**',
