@@ -1187,7 +1187,8 @@ func TestGetWatchListWithScreenerData(t *testing.T) {
 	err = database.AddTickerToWatchList(item)
 	assert.NoError(t, err)
 
-	// Insert screener_data for AAPL
+	// Insert screener_data for AAPL (DELETE + INSERT avoids partial-update ON CONFLICT bugs)
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'AAPL'")
 	_, err = database.DB.Exec(`
 		INSERT INTO screener_data (
 			symbol, name, sector, industry, market_cap, price,
@@ -1209,12 +1210,7 @@ func TestGetWatchListWithScreenerData(t *testing.T) {
 			35.2, 18.7, 72.1, 54.3, 48.9,
 			0.41, 4.17, 22.4, 18.1,
 			0.55, 15.2
-		) ON CONFLICT (symbol) DO UPDATE SET
-			ic_score = EXCLUDED.ic_score,
-			ic_rating = EXCLUDED.ic_rating,
-			value_score = EXCLUDED.value_score,
-			pe_ratio = EXCLUDED.pe_ratio,
-			dividend_yield = EXCLUDED.dividend_yield
+		)
 	`)
 	require.NoError(t, err, "Screener data insertion must succeed")
 
@@ -1327,6 +1323,82 @@ func TestGetWatchListWithAlertCount(t *testing.T) {
 	assert.Equal(t, 2, aaplItem.AlertCount, "Should count only active alerts")
 }
 
+// Test: Alert count is scoped to the queried watchlist — alerts for the same
+// symbol in a different watchlist must NOT leak into the result. A regression
+// here would expose another watchlist's (or user's) alert data.
+func TestGetWatchListAlertCountCrossWatchlistIsolation(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	// Create two watchlists, both containing AAPL
+	wlA := &models.WatchList{UserID: userID, Name: "Watchlist A"}
+	err := database.CreateWatchList(wlA)
+	assert.NoError(t, err)
+	wlB := &models.WatchList{UserID: userID, Name: "Watchlist B"}
+	err = database.CreateWatchList(wlB)
+	assert.NoError(t, err)
+
+	for _, wlID := range []string{wlA.ID, wlB.ID} {
+		item := &models.WatchListItem{
+			WatchListID: wlID,
+			Symbol:      "AAPL",
+			Tags:        []string{},
+		}
+		err = database.AddTickerToWatchList(item)
+		assert.NoError(t, err)
+	}
+
+	// Insert 2 active alerts for AAPL scoped to Watchlist A
+	for i := 0; i < 2; i++ {
+		_, err = database.DB.Exec(`
+			INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+			VALUES ($1, $2, 'AAPL', 'price_above', '{"threshold": 200}', true, $3)
+		`, userID, wlA.ID, fmt.Sprintf("WL-A Alert %d", i+1))
+		require.NoError(t, err)
+	}
+
+	// Insert 3 active alerts for AAPL scoped to Watchlist B
+	for i := 0; i < 3; i++ {
+		_, err = database.DB.Exec(`
+			INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+			VALUES ($1, $2, 'AAPL', 'price_below', '{"threshold": 100}', true, $3)
+		`, userID, wlB.ID, fmt.Sprintf("WL-B Alert %d", i+1))
+		require.NoError(t, err)
+	}
+
+	defer database.DB.Exec("DELETE FROM alert_rules WHERE user_id = $1", userID)
+
+	// Fetch Watchlist A — expect 2, not 5
+	wA := httptest.NewRecorder()
+	reqA, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", wlA.ID), nil)
+	router.ServeHTTP(wA, reqA)
+	assert.Equal(t, http.StatusOK, wA.Code)
+
+	var resultA models.WatchListWithItems
+	err = json.Unmarshal(wA.Body.Bytes(), &resultA)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resultA.Items))
+	assert.Equal(t, 2, resultA.Items[0].AlertCount,
+		"Watchlist A should only see its own 2 alerts for AAPL, not Watchlist B's 3")
+
+	// Fetch Watchlist B — expect 3, not 5
+	wB := httptest.NewRecorder()
+	reqB, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", wlB.ID), nil)
+	router.ServeHTTP(wB, reqB)
+	assert.Equal(t, http.StatusOK, wB.Code)
+
+	var resultB models.WatchListWithItems
+	err = json.Unmarshal(wB.Body.Bytes(), &resultB)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resultB.Items))
+	assert.Equal(t, 3, resultB.Items[0].AlertCount,
+		"Watchlist B should only see its own 3 alerts for AAPL, not Watchlist A's 2")
+}
+
 // Test: Summary metrics with multiple items and mixed data
 func TestGetWatchListSummaryMetrics(t *testing.T) {
 	router := setupTestRouter()
@@ -1355,17 +1427,17 @@ func TestGetWatchListSummaryMetrics(t *testing.T) {
 	}
 
 	// Insert screener data for AAPL and MSFT (not GOOGL — test partial data)
+	// DELETE + INSERT avoids partial-update ON CONFLICT bugs
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol IN ('AAPL', 'MSFT')")
 	_, err = database.DB.Exec(`
 		INSERT INTO screener_data (symbol, name, ic_score, ic_rating, dividend_yield)
 		VALUES ('AAPL', 'Apple Inc.', 78.5, 'Strong Buy', 0.55)
-		ON CONFLICT (symbol) DO UPDATE SET ic_score = EXCLUDED.ic_score, dividend_yield = EXCLUDED.dividend_yield
 	`)
 	require.NoError(t, err)
 
 	_, err = database.DB.Exec(`
 		INSERT INTO screener_data (symbol, name, ic_score, ic_rating, dividend_yield)
 		VALUES ('MSFT', 'Microsoft Corp.', 82.0, 'Buy', 0.80)
-		ON CONFLICT (symbol) DO UPDATE SET ic_score = EXCLUDED.ic_score, dividend_yield = EXCLUDED.dividend_yield
 	`)
 	require.NoError(t, err)
 
@@ -1444,10 +1516,11 @@ func TestGetWatchListScreenerWithoutReddit(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Insert only screener data (no reddit data)
+	// DELETE + INSERT avoids partial-update ON CONFLICT bugs
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'TSLA'")
 	_, err = database.DB.Exec(`
 		INSERT INTO screener_data (symbol, name, ic_score, pe_ratio, roe)
 		VALUES ('TSLA', 'Tesla Inc.', 65.0, 45.2, 25.3)
-		ON CONFLICT (symbol) DO UPDATE SET ic_score = EXCLUDED.ic_score
 	`)
 	require.NoError(t, err)
 	defer database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'TSLA'")

@@ -6,6 +6,7 @@ import (
 	"investorcenter-api/models"
 	"log"
 	"strings"
+	"sync"
 )
 
 // WatchListService handles business logic for watch lists
@@ -88,41 +89,58 @@ func computeSummaryMetrics(items []models.WatchListItemDetail) *models.WatchList
 	return summary
 }
 
-// fetchRealTimePrices populates price fields on WatchListItemWithData using Polygon API.
+// maxConcurrentQuotes limits parallel Polygon API calls to avoid rate-limiting.
+const maxConcurrentQuotes = 5
+
+// fetchRealTimePrices populates price fields using Polygon API with bounded concurrency.
 // Failures are logged but do not prevent items from being returned (graceful degradation).
 func fetchRealTimePrices(items []models.WatchListItemDetail, contextLabel string) {
+	if len(items) == 0 {
+		return
+	}
+
 	polygonClient := NewPolygonClient()
+	sem := make(chan struct{}, maxConcurrentQuotes)
+	var wg sync.WaitGroup
 
 	for i := range items {
-		item := &items[i]
+		wg.Add(1)
+		go func(idx int) {
+			defer wg.Done()
+			sem <- struct{}{}        // acquire
+			defer func() { <-sem }() // release
 
-		price, err := polygonClient.GetQuote(item.Symbol)
-		if err != nil {
-			log.Printf("Warning: Polygon price fetch failed for %s (%s): %v", item.Symbol, contextLabel, err)
-			continue
-		}
-		if price == nil {
-			continue
-		}
+			item := &items[idx]
+			price, err := polygonClient.GetQuote(item.Symbol)
+			if err != nil {
+				log.Printf("Warning: Polygon price fetch failed for %s (%s): %v", item.Symbol, contextLabel, err)
+				return
+			}
+			if price == nil {
+				return
+			}
 
-		currentPrice := price.Price.InexactFloat64()
-		item.CurrentPrice = &currentPrice
+			currentPrice := price.Price.InexactFloat64()
+			item.CurrentPrice = &currentPrice
 
-		if price.Change.IsPositive() || price.Change.IsNegative() {
-			change := price.Change.InexactFloat64()
-			changePercent := price.ChangePercent.InexactFloat64()
-			item.PriceChange = &change
-			item.PriceChangePct = &changePercent
+			if price.Change.IsPositive() || price.Change.IsNegative() {
+				change := price.Change.InexactFloat64()
+				changePercent := price.ChangePercent.InexactFloat64()
+				item.PriceChange = &change
+				item.PriceChangePct = &changePercent
 
-			prevClose := price.Price.Sub(price.Change).InexactFloat64()
-			item.PrevClose = &prevClose
-		}
+				prevClose := price.Price.Sub(price.Change).InexactFloat64()
+				item.PrevClose = &prevClose
+			}
 
-		if price.Volume > 0 {
-			volume := int64(price.Volume)
-			item.Volume = &volume
-		}
+			if price.Volume > 0 {
+				volume := int64(price.Volume)
+				item.Volume = &volume
+			}
+		}(i)
 	}
+
+	wg.Wait()
 }
 
 // average returns the mean of a float64 slice.
