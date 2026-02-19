@@ -54,13 +54,6 @@ type WatchListItemWithData struct {
 	RedditRankChange *int     `json:"reddit_rank_change,omitempty"` // Rank change vs 24h ago
 }
 
-// WatchListWithItems includes the watch list and all its items with data
-type WatchListWithItems struct {
-	WatchList
-	ItemCount int                     `json:"item_count"`
-	Items     []WatchListItemWithData `json:"items"`
-}
-
 // WatchListItemEnriched extends WatchListItemWithData with screener_data fields
 // (IC Score, fundamentals, valuation ratios, and alert count).
 type WatchListItemEnriched struct {

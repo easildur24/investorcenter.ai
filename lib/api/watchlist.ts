@@ -33,6 +33,52 @@ export interface WatchListItem {
   volume?: number;
   market_cap?: number;
   prev_close?: number;
+  // Reddit data
+  reddit_rank?: number;
+  reddit_mentions?: number;
+  reddit_popularity?: number;
+  reddit_trend?: string;
+  reddit_rank_change?: number;
+  // IC Score (from screener_data)
+  ic_score?: number;
+  ic_rating?: string;
+  value_score?: number;
+  growth_score?: number;
+  profitability_score?: number;
+  financial_health_score?: number;
+  momentum_score?: number;
+  analyst_consensus_score?: number;
+  insider_activity_score?: number;
+  institutional_score?: number;
+  news_sentiment_score?: number;
+  technical_score?: number;
+  sector_percentile?: number;
+  lifecycle_stage?: string;
+  // Fundamentals (from screener_data)
+  pe_ratio?: number;
+  pb_ratio?: number;
+  ps_ratio?: number;
+  roe?: number;
+  roa?: number;
+  gross_margin?: number;
+  operating_margin?: number;
+  net_margin?: number;
+  debt_to_equity?: number;
+  current_ratio?: number;
+  revenue_growth?: number;
+  eps_growth?: number;
+  dividend_yield?: number;
+  payout_ratio?: number;
+  // Alert metadata
+  alert_count: number;
+}
+
+export interface WatchListSummaryMetrics {
+  total_tickers: number;
+  avg_ic_score?: number;
+  avg_day_change_pct?: number;
+  avg_dividend_yield?: number;
+  reddit_trending_count: number;
 }
 
 export interface WatchListWithItems {
@@ -42,6 +88,7 @@ export interface WatchListWithItems {
   is_default: boolean;
   item_count: number;
   items: WatchListItem[];
+  summary?: WatchListSummaryMetrics;
   created_at: string;
   updated_at: string;
 }

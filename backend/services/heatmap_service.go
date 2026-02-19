@@ -29,8 +29,8 @@ func (s *HeatmapService) GenerateHeatmapData(
 		return nil, err
 	}
 
-	// Get items with ticker data
-	items, err := database.GetWatchListItemsWithData(watchListID)
+	// Get items with enriched data (ticker data, Reddit, screener, alerts)
+	items, err := database.GetWatchListItemsWithEnrichedData(watchListID)
 	if err != nil {
 		return nil, err
 	}
@@ -106,8 +106,9 @@ func (s *HeatmapService) GenerateHeatmapData(
 	var minColorValue, maxColorValue float64 = math.MaxFloat64, -math.MaxFloat64
 
 	for _, item := range items {
-		// Apply filters
-		if !s.passesFilters(&item, config.FiltersJSON) {
+		// Apply filters (use embedded WatchListItemWithData for backward-compatible helpers)
+		baseItem := &item.WatchListItemWithData
+		if !s.passesFilters(baseItem, config.FiltersJSON) {
 			continue
 		}
 
@@ -142,12 +143,12 @@ func (s *HeatmapService) GenerateHeatmapData(
 		tile.PrevClose = item.PrevClose
 
 		// Calculate size value based on size metric
-		sizeValue, sizeLabel := s.calculateSizeValue(&item, config.SizeMetric)
+		sizeValue, sizeLabel := s.calculateSizeValue(baseItem, config.SizeMetric)
 		tile.SizeValue = sizeValue
 		tile.SizeLabel = sizeLabel
 
 		// Calculate color value based on color metric
-		colorValue, colorLabel := s.calculateColorValue(&item, config.ColorMetric, config.TimePeriod)
+		colorValue, colorLabel := s.calculateColorValue(baseItem, config.ColorMetric, config.TimePeriod)
 		tile.ColorValue = colorValue
 		tile.ColorLabel = colorLabel
 

@@ -45,6 +45,7 @@ const makeItem = (overrides: Partial<WatchListItem> = {}): WatchListItem => ({
   price_change_pct: 1.25,
   target_buy_price: undefined,
   target_sell_price: undefined,
+  alert_count: 0,
   ...overrides,
 });
 
