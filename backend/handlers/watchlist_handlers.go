@@ -70,7 +70,9 @@ func CreateWatchList(c *gin.Context) {
 	c.JSON(http.StatusCreated, watchList)
 }
 
-// GetWatchList retrieves a single watch list with all items and real-time prices
+// GetWatchList retrieves a single watch list with all items and real-time prices.
+// Uses the enriched data query (Phase 2) that includes IC Score, fundamentals,
+// valuation ratios, Reddit data, and alert counts alongside real-time prices.
 func GetWatchList(c *gin.Context) {
 	userID, exists := auth.GetUserIDFromContext(c)
 	if !exists {
@@ -80,8 +82,8 @@ func GetWatchList(c *gin.Context) {
 
 	watchListID := c.Param("id")
 
-	// Get watch list with items and prices
-	result, err := watchListService.GetWatchListWithItems(watchListID, userID)
+	// Get watch list with enriched items and summary metrics
+	result, err := watchListService.GetWatchListWithEnrichedItems(watchListID, userID)
 	if err != nil {
 		if errors.Is(err, database.ErrWatchListNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Watch list not found"})

@@ -97,8 +97,9 @@ CREATE TABLE IF NOT EXISTS watch_list_items (
 );
 
 -- screener_data (regular table; prod uses materialized view)
+-- Used by GetWatchListItemsWithEnrichedData LEFT JOIN for IC Score, fundamentals, etc.
 CREATE TABLE IF NOT EXISTS screener_data (
-    symbol VARCHAR(10) NOT NULL,
+    symbol VARCHAR(10) NOT NULL UNIQUE,
     name VARCHAR(255),
     sector VARCHAR(100),
     industry VARCHAR(100),

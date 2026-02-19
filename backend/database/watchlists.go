@@ -337,6 +337,246 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 	return items, nil
 }
 
+// GetWatchListItemsWithEnrichedData retrieves items with ticker data, Reddit metrics,
+// screener_data (IC Score, fundamentals, valuation), and active alert counts.
+// This is the Phase 2 enriched query; the older GetWatchListItemsWithData is preserved
+// for backward compatibility until the frontend migrates.
+func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListItemEnriched, error) {
+	query := `
+		SELECT
+			-- watch_list_items (9 cols)
+			wli.id, wli.watch_list_id, wli.symbol, wli.notes, wli.tags,
+			wli.target_buy_price, wli.target_sell_price, wli.added_at, wli.display_order,
+
+			-- tickers (4 cols)
+			t.name, t.exchange, t.asset_type, t.logo_url,
+
+			-- reddit_heatmap_daily via LATERAL (4 cols)
+			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,
+
+			-- reddit_ticker_rankings via LATERAL (1 col)
+			rtr.rank_change,
+
+			-- screener_data (28 cols)
+			sd.ic_score, sd.ic_rating,
+			sd.value_score, sd.growth_score, sd.profitability_score,
+			sd.financial_health_score, sd.momentum_score,
+			sd.analyst_consensus_score, sd.insider_activity_score,
+			sd.institutional_score, sd.news_sentiment_score, sd.technical_score,
+			sd.ic_sector_percentile, sd.lifecycle_stage,
+			sd.pe_ratio, sd.pb_ratio, sd.ps_ratio,
+			sd.roe, sd.roa, sd.gross_margin, sd.operating_margin, sd.net_margin,
+			sd.debt_to_equity, sd.current_ratio,
+			sd.revenue_growth, sd.eps_growth_yoy,
+			sd.dividend_yield, sd.payout_ratio,
+
+			-- alert count (1 col)
+			COALESCE(ac.alert_count, 0)
+		FROM watch_list_items wli
+		JOIN tickers t ON wli.symbol = t.symbol
+		LEFT JOIN LATERAL (
+			SELECT avg_rank, total_mentions, popularity_score, trend_direction
+			FROM reddit_heatmap_daily
+			WHERE ticker_symbol = wli.symbol
+			ORDER BY date DESC
+			LIMIT 1
+		) rhd ON true
+		LEFT JOIN LATERAL (
+			SELECT CASE WHEN rank_24h_ago IS NOT NULL
+				THEN rank - rank_24h_ago
+				ELSE NULL
+			END as rank_change
+			FROM reddit_ticker_rankings
+			WHERE ticker_symbol = wli.symbol
+			ORDER BY snapshot_time DESC
+			LIMIT 1
+		) rtr ON true
+		LEFT JOIN screener_data sd ON wli.symbol = sd.symbol
+		LEFT JOIN LATERAL (
+			SELECT COUNT(*) as alert_count
+			FROM alert_rules
+			WHERE watch_list_id = wli.watch_list_id
+			  AND symbol = wli.symbol
+			  AND is_active = true
+		) ac ON true
+		WHERE wli.watch_list_id = $1
+		ORDER BY wli.display_order ASC, wli.added_at DESC
+	`
+	rows, err := DB.Query(query, watchListID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get enriched watch list items: %w", err)
+	}
+	defer rows.Close()
+
+	items := []models.WatchListItemEnriched{}
+	for rows.Next() {
+		var item models.WatchListItemEnriched
+
+		// Reddit fields (nullable)
+		var redditRank sql.NullFloat64
+		var redditMentions sql.NullInt32
+		var redditPopularity sql.NullFloat64
+		var redditTrend sql.NullString
+		var redditRankChange sql.NullFloat64
+
+		// Screener fields (nullable)
+		var icScore, valueScore, growthScore, profitabilityScore sql.NullFloat64
+		var financialHealthScore, momentumScore sql.NullFloat64
+		var analystConsensusScore, insiderActivityScore sql.NullFloat64
+		var institutionalScore, newsSentimentScore, technicalScore sql.NullFloat64
+		var sectorPercentile sql.NullFloat64
+		var icRating, lifecycleStage sql.NullString
+		var peRatio, pbRatio, psRatio sql.NullFloat64
+		var roe, roa, grossMargin, operatingMargin, netMargin sql.NullFloat64
+		var debtToEquity, currentRatio sql.NullFloat64
+		var revenueGrowth, epsGrowth sql.NullFloat64
+		var dividendYield, payoutRatio sql.NullFloat64
+
+		err := rows.Scan(
+			// watch_list_items
+			&item.ID, &item.WatchListID, &item.Symbol, &item.Notes,
+			pq.Array(&item.Tags),
+			&item.TargetBuyPrice, &item.TargetSellPrice, &item.AddedAt, &item.DisplayOrder,
+
+			// tickers
+			&item.Name, &item.Exchange, &item.AssetType, &item.LogoURL,
+
+			// reddit
+			&redditRank, &redditMentions, &redditPopularity, &redditTrend,
+			&redditRankChange,
+
+			// screener_data
+			&icScore, &icRating,
+			&valueScore, &growthScore, &profitabilityScore,
+			&financialHealthScore, &momentumScore,
+			&analystConsensusScore, &insiderActivityScore,
+			&institutionalScore, &newsSentimentScore, &technicalScore,
+			&sectorPercentile, &lifecycleStage,
+			&peRatio, &pbRatio, &psRatio,
+			&roe, &roa, &grossMargin, &operatingMargin, &netMargin,
+			&debtToEquity, &currentRatio,
+			&revenueGrowth, &epsGrowth,
+			&dividendYield, &payoutRatio,
+
+			// alert count
+			&item.AlertCount,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan enriched watch list item: %w", err)
+		}
+
+		// Convert Reddit nullable fields
+		if redditRank.Valid {
+			rank := int(redditRank.Float64)
+			item.RedditRank = &rank
+		}
+		if redditMentions.Valid {
+			mentions := int(redditMentions.Int32)
+			item.RedditMentions = &mentions
+		}
+		if redditPopularity.Valid {
+			item.RedditPopularity = &redditPopularity.Float64
+		}
+		if redditTrend.Valid {
+			item.RedditTrend = &redditTrend.String
+		}
+		if redditRankChange.Valid {
+			change := int(redditRankChange.Float64)
+			item.RedditRankChange = &change
+		}
+
+		// Convert screener nullable fields
+		if icScore.Valid {
+			item.ICScore = &icScore.Float64
+		}
+		if icRating.Valid {
+			item.ICRating = &icRating.String
+		}
+		if valueScore.Valid {
+			item.ValueScore = &valueScore.Float64
+		}
+		if growthScore.Valid {
+			item.GrowthScore = &growthScore.Float64
+		}
+		if profitabilityScore.Valid {
+			item.ProfitabilityScore = &profitabilityScore.Float64
+		}
+		if financialHealthScore.Valid {
+			item.FinancialHealthScore = &financialHealthScore.Float64
+		}
+		if momentumScore.Valid {
+			item.MomentumScore = &momentumScore.Float64
+		}
+		if analystConsensusScore.Valid {
+			item.AnalystConsensusScore = &analystConsensusScore.Float64
+		}
+		if insiderActivityScore.Valid {
+			item.InsiderActivityScore = &insiderActivityScore.Float64
+		}
+		if institutionalScore.Valid {
+			item.InstitutionalScore = &institutionalScore.Float64
+		}
+		if newsSentimentScore.Valid {
+			item.NewsSentimentScore = &newsSentimentScore.Float64
+		}
+		if technicalScore.Valid {
+			item.TechnicalScore = &technicalScore.Float64
+		}
+		if sectorPercentile.Valid {
+			item.SectorPercentile = &sectorPercentile.Float64
+		}
+		if lifecycleStage.Valid {
+			item.LifecycleStage = &lifecycleStage.String
+		}
+		if peRatio.Valid {
+			item.PERatio = &peRatio.Float64
+		}
+		if pbRatio.Valid {
+			item.PBRatio = &pbRatio.Float64
+		}
+		if psRatio.Valid {
+			item.PSRatio = &psRatio.Float64
+		}
+		if roe.Valid {
+			item.ROE = &roe.Float64
+		}
+		if roa.Valid {
+			item.ROA = &roa.Float64
+		}
+		if grossMargin.Valid {
+			item.GrossMargin = &grossMargin.Float64
+		}
+		if operatingMargin.Valid {
+			item.OperatingMargin = &operatingMargin.Float64
+		}
+		if netMargin.Valid {
+			item.NetMargin = &netMargin.Float64
+		}
+		if debtToEquity.Valid {
+			item.DebtToEquity = &debtToEquity.Float64
+		}
+		if currentRatio.Valid {
+			item.CurrentRatio = &currentRatio.Float64
+		}
+		if revenueGrowth.Valid {
+			item.RevenueGrowth = &revenueGrowth.Float64
+		}
+		if epsGrowth.Valid {
+			item.EPSGrowth = &epsGrowth.Float64
+		}
+		if dividendYield.Valid {
+			item.DividendYield = &dividendYield.Float64
+		}
+		if payoutRatio.Valid {
+			item.PayoutRatio = &payoutRatio.Float64
+		}
+
+		items = append(items, item)
+	}
+
+	return items, nil
+}
+
 // UpdateWatchListItem updates ticker metadata
 func UpdateWatchListItem(item *models.WatchListItem) error {
 	query := `
