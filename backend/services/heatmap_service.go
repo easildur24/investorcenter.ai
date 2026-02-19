@@ -29,7 +29,7 @@ func (s *HeatmapService) GenerateHeatmapData(
 		return nil, err
 	}
 
-	// Get items with ticker data
+	// Get items with data (ticker info, Reddit, screener, alerts)
 	items, err := database.GetWatchListItemsWithData(watchListID)
 	if err != nil {
 		return nil, err
@@ -63,51 +63,15 @@ func (s *HeatmapService) GenerateHeatmapData(
 	}
 
 	// Fetch real-time prices for all tickers
-	polygonClient := NewPolygonClient()
-
-	for i := range items {
-		item := &items[i]
-
-		// Use GetQuote which handles both stocks and crypto with caching
-		price, err := polygonClient.GetQuote(item.Symbol)
-		if err == nil && price != nil {
-			currentPrice := float64(price.Price.InexactFloat64())
-			item.CurrentPrice = &currentPrice
-
-			// Set change and change percentage
-			if price.Change.IsPositive() || price.Change.IsNegative() {
-				change := price.Change.InexactFloat64()
-				changePercent := price.ChangePercent.InexactFloat64()
-
-				item.PriceChange = &change
-				item.PriceChangePct = &changePercent
-			}
-
-			// Set volume if available
-			if price.Volume > 0 {
-				volume := int64(price.Volume)
-				item.Volume = &volume
-			}
-
-			// Calculate previous close
-			if price.Change.IsPositive() || price.Change.IsNegative() {
-				prevClose := price.Price.Sub(price.Change).InexactFloat64()
-				item.PrevClose = &prevClose
-			}
-
-			// Calculate market cap if we have shares outstanding
-			// Note: This would require ticker details from Polygon API
-			// For now, we'll use what's in the database
-		}
-	}
+	fetchRealTimePrices(items, fmt.Sprintf("heatmap %s", watchListID))
 
 	// Generate tiles from items
 	tiles := make([]models.HeatmapTile, 0, len(items))
 	var minColorValue, maxColorValue float64 = math.MaxFloat64, -math.MaxFloat64
 
-	for _, item := range items {
-		// Apply filters
-		if !s.passesFilters(&item, config.FiltersJSON) {
+	for i := range items {
+		item := &items[i]
+		if !s.passesFilters(item, config.FiltersJSON) {
 			continue
 		}
 
@@ -142,12 +106,12 @@ func (s *HeatmapService) GenerateHeatmapData(
 		tile.PrevClose = item.PrevClose
 
 		// Calculate size value based on size metric
-		sizeValue, sizeLabel := s.calculateSizeValue(&item, config.SizeMetric)
+		sizeValue, sizeLabel := s.calculateSizeValue(item, config.SizeMetric)
 		tile.SizeValue = sizeValue
 		tile.SizeLabel = sizeLabel
 
 		// Calculate color value based on color metric
-		colorValue, colorLabel := s.calculateColorValue(&item, config.ColorMetric, config.TimePeriod)
+		colorValue, colorLabel := s.calculateColorValue(item, config.ColorMetric, config.TimePeriod)
 		tile.ColorValue = colorValue
 		tile.ColorLabel = colorLabel
 
@@ -189,7 +153,7 @@ func (s *HeatmapService) GenerateHeatmapData(
 
 // calculateSizeValue determines tile size based on metric
 func (s *HeatmapService) calculateSizeValue(
-	item *models.WatchListItemWithData,
+	item *models.WatchListItemDetail,
 	metric string,
 ) (float64, string) {
 	switch metric {
@@ -233,7 +197,7 @@ func (s *HeatmapService) calculateSizeValue(
 
 // calculateColorValue determines tile color based on metric
 func (s *HeatmapService) calculateColorValue(
-	item *models.WatchListItemWithData,
+	item *models.WatchListItemDetail,
 	metric string,
 	timePeriod string,
 ) (float64, string) {
@@ -278,7 +242,7 @@ func (s *HeatmapService) calculateColorValue(
 
 // passesFilters checks if item passes filter criteria
 func (s *HeatmapService) passesFilters(
-	item *models.WatchListItemWithData,
+	item *models.WatchListItemDetail,
 	filters map[string]interface{},
 ) bool {
 	if filters == nil {

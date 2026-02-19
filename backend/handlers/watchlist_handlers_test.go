@@ -213,6 +213,10 @@ func TestGetWatchList(t *testing.T) {
 	assert.Equal(t, 1, result.ItemCount)
 	assert.Equal(t, 1, len(result.Items))
 	assert.Equal(t, "AAPL", result.Items[0].Symbol)
+
+	// Summary metrics should be present
+	require.NotNil(t, result.Summary, "Summary metrics should always be returned")
+	assert.Equal(t, 1, result.Summary.TotalTickers)
 }
 
 func TestUpdateWatchList(t *testing.T) {
@@ -755,8 +759,8 @@ func TestGetWatchListNotFound(t *testing.T) {
 	assert.Contains(t, errResponse["error"].(string), "not found")
 }
 
-// Test: GetWatchList with items works correctly (enriched data query)
-func TestGetWatchListWithEnrichedData(t *testing.T) {
+// Test: GetWatchList returns items with full data (screener, reddit, alerts)
+func TestGetWatchListWithDetailData(t *testing.T) {
 	router := setupTestRouter()
 	router.GET("/watchlists/:id", GetWatchList)
 
@@ -767,7 +771,7 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 	// Create a watch list and add items
 	watchList := &models.WatchList{
 		UserID: userID,
-		Name:   "Enriched Test",
+		Name:   "Detail Test",
 	}
 	err := database.CreateWatchList(watchList)
 	assert.NoError(t, err)
@@ -782,7 +786,7 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Test: Fetch enriched data — should succeed even without reddit data
+	// Test: Fetch data — should succeed even without reddit/screener data
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
@@ -810,9 +814,27 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 		assert.Nil(t, item.RedditTrend, "Reddit trend should be nil when no data")
 		assert.Nil(t, item.RedditRankChange, "Reddit rank change should be nil when no data")
 	}
+
+	// Screener fields should be nil when no screener data exists
+	for _, item := range result.Items {
+		assert.Nil(t, item.ICScore, "IC Score should be nil when no screener data")
+		assert.Nil(t, item.PERatio, "PE ratio should be nil when no screener data")
+		assert.Nil(t, item.DividendYield, "Dividend yield should be nil when no screener data")
+	}
+
+	// Alert count should be 0 (no alert rules exist)
+	for _, item := range result.Items {
+		assert.Equal(t, 0, item.AlertCount, "Alert count should be 0 when no alert rules exist")
+	}
+
+	// Summary should be present with basic counts
+	require.NotNil(t, result.Summary)
+	assert.Equal(t, 2, result.Summary.TotalTickers)
+	assert.Nil(t, result.Summary.AvgICScore, "AvgICScore should be nil when no screener data")
+	assert.Equal(t, 0, result.Summary.RedditTrendingCount)
 }
 
-// Test: GetWatchList enriched data with Reddit data present
+// Test: GetWatchList with Reddit data present
 func TestGetWatchListWithRedditData(t *testing.T) {
 	router := setupTestRouter()
 	router.GET("/watchlists/:id", GetWatchList)
@@ -857,7 +879,7 @@ func TestGetWatchListWithRedditData(t *testing.T) {
 		database.DB.Exec("DELETE FROM reddit_heatmap_daily WHERE ticker_symbol = 'AAPL'")
 	}()
 
-	// Test: Fetch enriched data — should include reddit data
+	// Test: Fetch data — should include reddit data
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
@@ -882,6 +904,10 @@ func TestGetWatchListWithRedditData(t *testing.T) {
 	// Rank change: rank(5) - rank_24h_ago(8) = -3
 	require.NotNil(t, aaplItem.RedditRankChange, "RedditRankChange should not be nil when rank_24h_ago was provided")
 	assert.Equal(t, -3, *aaplItem.RedditRankChange)
+
+	// Summary should count Reddit trending
+	require.NotNil(t, result.Summary)
+	assert.Equal(t, 1, result.Summary.RedditTrendingCount, "AAPL with trend='rising' should count as trending")
 }
 
 // Test: Rank change is nil (not 0) when rank_24h_ago is NULL
@@ -1080,6 +1106,12 @@ func TestGetEmptyWatchList(t *testing.T) {
 	assert.Equal(t, 0, result.ItemCount)
 	assert.NotNil(t, result.Items, "Items should be empty array, not null")
 	assert.Equal(t, 0, len(result.Items))
+
+	// Summary should still be present with zero counts
+	require.NotNil(t, result.Summary, "Summary should be returned even for empty watchlist")
+	assert.Equal(t, 0, result.Summary.TotalTickers)
+	assert.Nil(t, result.Summary.AvgICScore)
+	assert.Nil(t, result.Summary.AvgDayChangePct)
 }
 
 // Test: Update watch list item that doesn't exist returns 404
@@ -1124,6 +1156,402 @@ func TestCreateWatchListInvalidJSON(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2: Full data layer tests (screener, alerts, summary metrics)
+// ---------------------------------------------------------------------------
+
+// Test: GetWatchList returns IC Score and fundamentals from screener_data
+func TestGetWatchListWithScreenerData(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	// Create watch list and add AAPL
+	watchList := &models.WatchList{
+		UserID: userID,
+		Name:   "Screener Data Test",
+	}
+	err := database.CreateWatchList(watchList)
+	assert.NoError(t, err)
+
+	item := &models.WatchListItem{
+		WatchListID: watchList.ID,
+		Symbol:      "AAPL",
+		Tags:        []string{},
+	}
+	err = database.AddTickerToWatchList(item)
+	assert.NoError(t, err)
+
+	// Insert screener_data for AAPL (DELETE + INSERT avoids partial-update ON CONFLICT bugs)
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'AAPL'")
+	_, err = database.DB.Exec(`
+		INSERT INTO screener_data (
+			symbol, name, sector, industry, market_cap, price,
+			ic_score, ic_rating, value_score, growth_score, profitability_score,
+			financial_health_score, momentum_score, analyst_consensus_score,
+			insider_activity_score, institutional_score, news_sentiment_score, technical_score,
+			ic_sector_percentile, lifecycle_stage,
+			pe_ratio, pb_ratio, ps_ratio,
+			roe, roa, gross_margin, operating_margin, net_margin,
+			debt_to_equity, current_ratio, revenue_growth, eps_growth_yoy,
+			dividend_yield, payout_ratio
+		) VALUES (
+			'AAPL', 'Apple Inc.', 'Technology', 'Consumer Electronics', 3000000000000, 195.50,
+			78.5, 'Strong Buy', 65.0, 82.0, 71.0,
+			55.0, 90.0, 73.0,
+			40.0, 68.0, 60.0, 85.0,
+			88.5, 'growth',
+			32.5, 18.2, 28.1,
+			35.2, 18.7, 72.1, 54.3, 48.9,
+			0.41, 4.17, 22.4, 18.1,
+			0.55, 15.2
+		)
+	`)
+	require.NoError(t, err, "Screener data insertion must succeed")
+
+	defer database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'AAPL'")
+
+	// Test: Fetch data with screener fields
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var result models.WatchListWithItems
+	err = json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, result.ItemCount)
+
+	aaplItem := result.Items[0]
+	assert.Equal(t, "AAPL", aaplItem.Symbol)
+
+	// IC Score fields
+	require.NotNil(t, aaplItem.ICScore, "ICScore should not be nil when screener data exists")
+	assert.InDelta(t, 78.5, *aaplItem.ICScore, 0.01)
+	require.NotNil(t, aaplItem.ICRating)
+	assert.Equal(t, "Strong Buy", *aaplItem.ICRating)
+	require.NotNil(t, aaplItem.ValueScore)
+	assert.InDelta(t, 65.0, *aaplItem.ValueScore, 0.01)
+	require.NotNil(t, aaplItem.GrowthScore)
+	assert.InDelta(t, 82.0, *aaplItem.GrowthScore, 0.01)
+	require.NotNil(t, aaplItem.MomentumScore)
+	assert.InDelta(t, 90.0, *aaplItem.MomentumScore, 0.01)
+	require.NotNil(t, aaplItem.SectorPercentile)
+	assert.InDelta(t, 88.5, *aaplItem.SectorPercentile, 0.01)
+	require.NotNil(t, aaplItem.LifecycleStage)
+	assert.Equal(t, "growth", *aaplItem.LifecycleStage)
+
+	// Fundamentals
+	require.NotNil(t, aaplItem.PERatio)
+	assert.InDelta(t, 32.5, *aaplItem.PERatio, 0.01)
+	require.NotNil(t, aaplItem.GrossMargin)
+	assert.InDelta(t, 72.1, *aaplItem.GrossMargin, 0.01)
+	require.NotNil(t, aaplItem.DebtToEquity)
+	assert.InDelta(t, 0.41, *aaplItem.DebtToEquity, 0.01)
+	require.NotNil(t, aaplItem.DividendYield)
+	assert.InDelta(t, 0.55, *aaplItem.DividendYield, 0.01)
+
+	// Summary should include IC Score average
+	require.NotNil(t, result.Summary)
+	require.NotNil(t, result.Summary.AvgICScore)
+	assert.InDelta(t, 78.5, *result.Summary.AvgICScore, 0.01)
+	require.NotNil(t, result.Summary.AvgDividendYield)
+	assert.InDelta(t, 0.55, *result.Summary.AvgDividendYield, 0.01)
+}
+
+// Test: GetWatchList returns alert count per ticker
+func TestGetWatchListWithAlertCount(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	// Create watch list and add AAPL
+	watchList := &models.WatchList{
+		UserID: userID,
+		Name:   "Alert Count Test",
+	}
+	err := database.CreateWatchList(watchList)
+	assert.NoError(t, err)
+
+	item := &models.WatchListItem{
+		WatchListID: watchList.ID,
+		Symbol:      "AAPL",
+		Tags:        []string{},
+	}
+	err = database.AddTickerToWatchList(item)
+	assert.NoError(t, err)
+
+	// Insert 2 active alert rules for AAPL in this watchlist
+	for i := 0; i < 2; i++ {
+		_, err = database.DB.Exec(`
+			INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+			VALUES ($1, $2, 'AAPL', 'price_above', '{"threshold": 200}', true, $3)
+		`, userID, watchList.ID, fmt.Sprintf("Alert %d", i+1))
+		require.NoError(t, err)
+	}
+	// Insert 1 inactive alert (should NOT be counted)
+	_, err = database.DB.Exec(`
+		INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+		VALUES ($1, $2, 'AAPL', 'price_below', '{"threshold": 100}', false, 'Inactive Alert')
+	`, userID, watchList.ID)
+	require.NoError(t, err)
+
+	defer database.DB.Exec("DELETE FROM alert_rules WHERE user_id = $1", userID)
+
+	// Test: Fetch watchlist
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var result models.WatchListWithItems
+	err = json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+
+	aaplItem := result.Items[0]
+	// Only active alerts should be counted (2 active, 1 inactive)
+	assert.Equal(t, 2, aaplItem.AlertCount, "Should count only active alerts")
+}
+
+// Test: Alert count is scoped to the queried watchlist — alerts for the same
+// symbol in a different watchlist must NOT leak into the result. A regression
+// here would expose another watchlist's (or user's) alert data.
+func TestGetWatchListAlertCountCrossWatchlistIsolation(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	// Create two watchlists, both containing AAPL
+	wlA := &models.WatchList{UserID: userID, Name: "Watchlist A"}
+	err := database.CreateWatchList(wlA)
+	assert.NoError(t, err)
+	wlB := &models.WatchList{UserID: userID, Name: "Watchlist B"}
+	err = database.CreateWatchList(wlB)
+	assert.NoError(t, err)
+
+	for _, wlID := range []string{wlA.ID, wlB.ID} {
+		item := &models.WatchListItem{
+			WatchListID: wlID,
+			Symbol:      "AAPL",
+			Tags:        []string{},
+		}
+		err = database.AddTickerToWatchList(item)
+		assert.NoError(t, err)
+	}
+
+	// Insert 2 active alerts for AAPL scoped to Watchlist A
+	for i := 0; i < 2; i++ {
+		_, err = database.DB.Exec(`
+			INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+			VALUES ($1, $2, 'AAPL', 'price_above', '{"threshold": 200}', true, $3)
+		`, userID, wlA.ID, fmt.Sprintf("WL-A Alert %d", i+1))
+		require.NoError(t, err)
+	}
+
+	// Insert 3 active alerts for AAPL scoped to Watchlist B
+	for i := 0; i < 3; i++ {
+		_, err = database.DB.Exec(`
+			INSERT INTO alert_rules (user_id, watch_list_id, symbol, alert_type, conditions, is_active, name)
+			VALUES ($1, $2, 'AAPL', 'price_below', '{"threshold": 100}', true, $3)
+		`, userID, wlB.ID, fmt.Sprintf("WL-B Alert %d", i+1))
+		require.NoError(t, err)
+	}
+
+	defer database.DB.Exec("DELETE FROM alert_rules WHERE user_id = $1", userID)
+
+	// Fetch Watchlist A — expect 2, not 5
+	wA := httptest.NewRecorder()
+	reqA, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", wlA.ID), nil)
+	router.ServeHTTP(wA, reqA)
+	assert.Equal(t, http.StatusOK, wA.Code)
+
+	var resultA models.WatchListWithItems
+	err = json.Unmarshal(wA.Body.Bytes(), &resultA)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resultA.Items))
+	assert.Equal(t, 2, resultA.Items[0].AlertCount,
+		"Watchlist A should only see its own 2 alerts for AAPL, not Watchlist B's 3")
+
+	// Fetch Watchlist B — expect 3, not 5
+	wB := httptest.NewRecorder()
+	reqB, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", wlB.ID), nil)
+	router.ServeHTTP(wB, reqB)
+	assert.Equal(t, http.StatusOK, wB.Code)
+
+	var resultB models.WatchListWithItems
+	err = json.Unmarshal(wB.Body.Bytes(), &resultB)
+	assert.NoError(t, err)
+	require.Equal(t, 1, len(resultB.Items))
+	assert.Equal(t, 3, resultB.Items[0].AlertCount,
+		"Watchlist B should only see its own 3 alerts for AAPL, not Watchlist A's 2")
+}
+
+// Test: Summary metrics with multiple items and mixed data
+func TestGetWatchListSummaryMetrics(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	// Create watch list with multiple tickers
+	watchList := &models.WatchList{
+		UserID: userID,
+		Name:   "Summary Test",
+	}
+	err := database.CreateWatchList(watchList)
+	assert.NoError(t, err)
+
+	for _, symbol := range []string{"AAPL", "MSFT", "GOOGL"} {
+		item := &models.WatchListItem{
+			WatchListID: watchList.ID,
+			Symbol:      symbol,
+			Tags:        []string{},
+		}
+		err = database.AddTickerToWatchList(item)
+		assert.NoError(t, err)
+	}
+
+	// Insert screener data for AAPL and MSFT (not GOOGL — test partial data)
+	// DELETE + INSERT avoids partial-update ON CONFLICT bugs
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol IN ('AAPL', 'MSFT')")
+	_, err = database.DB.Exec(`
+		INSERT INTO screener_data (symbol, name, ic_score, ic_rating, dividend_yield)
+		VALUES ('AAPL', 'Apple Inc.', 78.5, 'Strong Buy', 0.55)
+	`)
+	require.NoError(t, err)
+
+	_, err = database.DB.Exec(`
+		INSERT INTO screener_data (symbol, name, ic_score, ic_rating, dividend_yield)
+		VALUES ('MSFT', 'Microsoft Corp.', 82.0, 'Buy', 0.80)
+	`)
+	require.NoError(t, err)
+
+	// Insert Reddit rising trend for AAPL only
+	_, err = database.DB.Exec(`
+		INSERT INTO reddit_heatmap_daily (ticker_symbol, date, avg_rank, total_mentions, popularity_score, trend_direction)
+		VALUES ('AAPL', CURRENT_DATE, 3.0, 200, 90.0, 'rising')
+	`)
+	require.NoError(t, err)
+
+	defer func() {
+		database.DB.Exec("DELETE FROM screener_data WHERE symbol IN ('AAPL', 'MSFT')")
+		database.DB.Exec("DELETE FROM reddit_heatmap_daily WHERE ticker_symbol = 'AAPL'")
+	}()
+
+	// Fetch
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var result models.WatchListWithItems
+	err = json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+
+	require.NotNil(t, result.Summary)
+	assert.Equal(t, 3, result.Summary.TotalTickers)
+
+	// IC Score average: (78.5 + 82.0) / 2 = 80.25 (GOOGL has no screener data)
+	require.NotNil(t, result.Summary.AvgICScore)
+	assert.InDelta(t, 80.25, *result.Summary.AvgICScore, 0.01)
+
+	// Dividend yield average: (0.55 + 0.80) / 2 = 0.675
+	require.NotNil(t, result.Summary.AvgDividendYield)
+	assert.InDelta(t, 0.675, *result.Summary.AvgDividendYield, 0.01)
+
+	// Only AAPL has trend_direction='rising'
+	assert.Equal(t, 1, result.Summary.RedditTrendingCount)
+
+	// Verify GOOGL has nil screener fields (no screener data inserted)
+	var googlItem *models.WatchListItemDetail
+	for i := range result.Items {
+		if result.Items[i].Symbol == "GOOGL" {
+			googlItem = &result.Items[i]
+			break
+		}
+	}
+	require.NotNil(t, googlItem, "GOOGL should be in the result")
+	assert.Nil(t, googlItem.ICScore, "GOOGL IC Score should be nil (no screener data)")
+	assert.Nil(t, googlItem.PERatio, "GOOGL PE ratio should be nil (no screener data)")
+}
+
+// Test: GetWatchList with screener data but no reddit data — no cross-contamination
+func TestGetWatchListScreenerWithoutReddit(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	watchList := &models.WatchList{
+		UserID: userID,
+		Name:   "Screener Only Test",
+	}
+	err := database.CreateWatchList(watchList)
+	assert.NoError(t, err)
+
+	item := &models.WatchListItem{
+		WatchListID: watchList.ID,
+		Symbol:      "TSLA",
+		Tags:        []string{},
+	}
+	err = database.AddTickerToWatchList(item)
+	assert.NoError(t, err)
+
+	// Insert only screener data (no reddit data)
+	// DELETE + INSERT avoids partial-update ON CONFLICT bugs
+	_, _ = database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'TSLA'")
+	_, err = database.DB.Exec(`
+		INSERT INTO screener_data (symbol, name, ic_score, pe_ratio, roe)
+		VALUES ('TSLA', 'Tesla Inc.', 65.0, 45.2, 25.3)
+	`)
+	require.NoError(t, err)
+	defer database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'TSLA'")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var result models.WatchListWithItems
+	err = json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+
+	tslaItem := result.Items[0]
+
+	// Screener data should be present
+	require.NotNil(t, tslaItem.ICScore)
+	assert.InDelta(t, 65.0, *tslaItem.ICScore, 0.01)
+	require.NotNil(t, tslaItem.PERatio)
+	assert.InDelta(t, 45.2, *tslaItem.PERatio, 0.01)
+	require.NotNil(t, tslaItem.ROE)
+	assert.InDelta(t, 25.3, *tslaItem.ROE, 0.01)
+
+	// Reddit data should be nil (no cross-contamination)
+	assert.Nil(t, tslaItem.RedditRank)
+	assert.Nil(t, tslaItem.RedditMentions)
+	assert.Nil(t, tslaItem.RedditTrend)
+
+	// Alert count should be 0
+	assert.Equal(t, 0, tslaItem.AlertCount)
 }
 
 // Helper functions

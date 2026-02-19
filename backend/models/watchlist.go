@@ -54,11 +54,63 @@ type WatchListItemWithData struct {
 	RedditRankChange *int     `json:"reddit_rank_change,omitempty"` // Rank change vs 24h ago
 }
 
-// WatchListWithItems includes the watch list and all its items with data
+// WatchListItemDetail extends WatchListItemWithData with screener_data fields
+// (IC Score, fundamentals, valuation ratios, and alert count).
+// Pointer fields serialize as null (not omitted) so the frontend gets a stable schema.
+type WatchListItemDetail struct {
+	WatchListItemWithData
+
+	// IC Score (from screener_data materialized view)
+	ICScore               *float64 `json:"ic_score"`
+	ICRating              *string  `json:"ic_rating"`
+	ValueScore            *float64 `json:"value_score"`
+	GrowthScore           *float64 `json:"growth_score"`
+	ProfitabilityScore    *float64 `json:"profitability_score"`
+	FinancialHealthScore  *float64 `json:"financial_health_score"`
+	MomentumScore         *float64 `json:"momentum_score"`
+	AnalystConsensusScore *float64 `json:"analyst_consensus_score"`
+	InsiderActivityScore  *float64 `json:"insider_activity_score"`
+	InstitutionalScore    *float64 `json:"institutional_score"`
+	NewsSentimentScore    *float64 `json:"news_sentiment_score"`
+	TechnicalScore        *float64 `json:"technical_score"`
+	SectorPercentile      *float64 `json:"sector_percentile"`
+	LifecycleStage        *string  `json:"lifecycle_stage"`
+
+	// Fundamentals (from screener_data)
+	PERatio         *float64 `json:"pe_ratio"`
+	PBRatio         *float64 `json:"pb_ratio"`
+	PSRatio         *float64 `json:"ps_ratio"`
+	ROE             *float64 `json:"roe"`
+	ROA             *float64 `json:"roa"`
+	GrossMargin     *float64 `json:"gross_margin"`
+	OperatingMargin *float64 `json:"operating_margin"`
+	NetMargin       *float64 `json:"net_margin"`
+	DebtToEquity    *float64 `json:"debt_to_equity"`
+	CurrentRatio    *float64 `json:"current_ratio"`
+	RevenueGrowth   *float64 `json:"revenue_growth"`
+	EPSGrowth       *float64 `json:"eps_growth"`
+	DividendYield   *float64 `json:"dividend_yield"`
+	PayoutRatio     *float64 `json:"payout_ratio"`
+
+	// Alert metadata
+	AlertCount int `json:"alert_count"`
+}
+
+// WatchListWithItems includes the watch list, all items with detail, and summary metrics
 type WatchListWithItems struct {
 	WatchList
-	ItemCount int                     `json:"item_count"`
-	Items     []WatchListItemWithData `json:"items"`
+	ItemCount int                      `json:"item_count"`
+	Items     []WatchListItemDetail    `json:"items"`
+	Summary   *WatchListSummaryMetrics `json:"summary,omitempty"`
+}
+
+// WatchListSummaryMetrics provides aggregate stats across all items in a watchlist
+type WatchListSummaryMetrics struct {
+	TotalTickers        int      `json:"total_tickers"`
+	AvgICScore          *float64 `json:"avg_ic_score,omitempty"`
+	AvgDayChangePct     *float64 `json:"avg_day_change_pct,omitempty"`
+	AvgDividendYield    *float64 `json:"avg_dividend_yield,omitempty"`
+	RedditTrendingCount int      `json:"reddit_trending_count"`
 }
 
 // WatchListSummary is a lightweight version for listing watch lists

@@ -97,8 +97,13 @@ CREATE TABLE IF NOT EXISTS watch_list_items (
 );
 
 -- screener_data (regular table; prod uses materialized view)
+-- Used by GetWatchListItemsWithData LEFT JOIN for IC Score, fundamentals, etc.
+-- NOTE: prod screener_data is a materialized view refreshed daily at 23:45 UTC.
+-- The UNIQUE constraint on symbol exists here for test ON CONFLICT usage, but
+-- prod relies on the view definition to guarantee one row per symbol. If the
+-- refresh query ever produces duplicates, the LEFT JOIN could multiply rows.
 CREATE TABLE IF NOT EXISTS screener_data (
-    symbol VARCHAR(10) NOT NULL,
+    symbol VARCHAR(10) NOT NULL UNIQUE,
     name VARCHAR(255),
     sector VARCHAR(100),
     industry VARCHAR(100),
