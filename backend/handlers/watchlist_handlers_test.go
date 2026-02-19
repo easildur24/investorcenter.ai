@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
 )
@@ -841,18 +842,14 @@ func TestGetWatchListWithRedditData(t *testing.T) {
 		INSERT INTO reddit_heatmap_daily (ticker_symbol, date, avg_rank, total_mentions, popularity_score, trend_direction)
 		VALUES ('AAPL', CURRENT_DATE, 5.0, 120, 85.5, 'rising')
 	`)
-	if err != nil {
-		t.Logf("Warning: Failed to insert reddit heatmap data: %v (may lack FK constraints in test DB)", err)
-	}
+	require.NoError(t, err, "Reddit heatmap data insertion must succeed for this test")
 
 	// Insert Reddit ticker ranking data for AAPL
 	_, err = database.DB.Exec(`
 		INSERT INTO reddit_ticker_rankings (ticker_symbol, rank, mentions, rank_24h_ago, snapshot_date, snapshot_time)
 		VALUES ('AAPL', 5, 120, 8, CURRENT_DATE, NOW())
 	`)
-	if err != nil {
-		t.Logf("Warning: Failed to insert reddit ranking data: %v", err)
-	}
+	require.NoError(t, err, "Reddit ranking data insertion must succeed for this test")
 
 	// Cleanup reddit data after test
 	defer func() {
@@ -875,20 +872,64 @@ func TestGetWatchListWithRedditData(t *testing.T) {
 	aaplItem := result.Items[0]
 	assert.Equal(t, "AAPL", aaplItem.Symbol)
 
-	// Reddit heatmap data should be present
-	if aaplItem.RedditRank != nil {
-		assert.Equal(t, 5, *aaplItem.RedditRank)
-	}
-	if aaplItem.RedditMentions != nil {
-		assert.Equal(t, 120, *aaplItem.RedditMentions)
-	}
-	if aaplItem.RedditTrend != nil {
-		assert.Equal(t, "rising", *aaplItem.RedditTrend)
-	}
+	// Reddit heatmap data must be present — use require to fail fast if nil
+	require.NotNil(t, aaplItem.RedditRank, "RedditRank should not be nil when data was inserted")
+	assert.Equal(t, 5, *aaplItem.RedditRank)
+	require.NotNil(t, aaplItem.RedditMentions, "RedditMentions should not be nil when data was inserted")
+	assert.Equal(t, 120, *aaplItem.RedditMentions)
+	require.NotNil(t, aaplItem.RedditTrend, "RedditTrend should not be nil when data was inserted")
+	assert.Equal(t, "rising", *aaplItem.RedditTrend)
 	// Rank change: rank(5) - rank_24h_ago(8) = -3
-	if aaplItem.RedditRankChange != nil {
-		assert.Equal(t, -3, *aaplItem.RedditRankChange)
+	require.NotNil(t, aaplItem.RedditRankChange, "RedditRankChange should not be nil when rank_24h_ago was provided")
+	assert.Equal(t, -3, *aaplItem.RedditRankChange)
+}
+
+// Test: Rank change is nil (not 0) when rank_24h_ago is NULL
+func TestGetWatchListWithRedditDataNullRank24h(t *testing.T) {
+	router := setupTestRouter()
+	router.GET("/watchlists/:id", GetWatchList)
+
+	userID := createTestUser(t)
+	defer cleanupTestData(t, userID)
+	addTestTickers(t)
+
+	watchList := &models.WatchList{
+		UserID: userID,
+		Name:   "Null Rank Test",
 	}
+	err := database.CreateWatchList(watchList)
+	assert.NoError(t, err)
+
+	item := &models.WatchListItem{
+		WatchListID: watchList.ID,
+		Symbol:      "MSFT",
+		Tags:        []string{},
+	}
+	err = database.AddTickerToWatchList(item)
+	assert.NoError(t, err)
+
+	// Insert ranking with NULL rank_24h_ago
+	_, err = database.DB.Exec(`
+		INSERT INTO reddit_ticker_rankings (ticker_symbol, rank, mentions, rank_24h_ago, snapshot_date, snapshot_time)
+		VALUES ('MSFT', 3, 50, NULL, CURRENT_DATE, NOW())
+	`)
+	require.NoError(t, err)
+	defer database.DB.Exec("DELETE FROM reddit_ticker_rankings WHERE ticker_symbol = 'MSFT'")
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var result models.WatchListWithItems
+	err = json.Unmarshal(w.Body.Bytes(), &result)
+	assert.NoError(t, err)
+	assert.Equal(t, 1, result.ItemCount)
+
+	msftItem := result.Items[0]
+	// When rank_24h_ago is NULL, RedditRankChange should be nil (not 0)
+	assert.Nil(t, msftItem.RedditRankChange, "RedditRankChange should be nil when rank_24h_ago is NULL, not 0")
 }
 
 // Test: Add ticker to watch list owned by another user fails

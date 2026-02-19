@@ -10,6 +10,21 @@ import (
 	"github.com/lib/pq"
 )
 
+// Sentinel errors for watchlist operations
+var (
+	ErrWatchListNotFound         = errors.New("watch list not found")
+	ErrWatchListItemNotFound     = errors.New("watch list item not found")
+	ErrTickerNotFound            = errors.New("ticker not found in database")
+	ErrTickerAlreadyExists       = errors.New("ticker already exists in this watch list")
+	ErrWatchListItemLimitReached = errors.New("watch list item limit reached")
+)
+
+// Watchlist limits (keep in sync with DB trigger check_watch_list_item_limit)
+const (
+	MaxWatchListsPerUser = 3
+	MaxItemsPerWatchList = 10 // enforced by DB trigger for free tier
+)
+
 // Watch List Operations
 
 // CreateWatchList creates a new watch list
@@ -94,7 +109,7 @@ func GetWatchListByID(watchListID string, userID string) (*models.WatchList, err
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errors.New("watch list not found")
+		return nil, ErrWatchListNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get watch list: %w", err)
@@ -119,7 +134,7 @@ func UpdateWatchList(watchList *models.WatchList) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("watch list not found or unauthorized")
+		return ErrWatchListNotFound
 	}
 	return nil
 }
@@ -137,7 +152,7 @@ func DeleteWatchList(watchListID string, userID string) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("watch list not found or unauthorized")
+		return ErrWatchListNotFound
 	}
 	return nil
 }
@@ -153,7 +168,7 @@ func AddTickerToWatchList(item *models.WatchListItem) error {
 		return fmt.Errorf("failed to verify ticker: %w", err)
 	}
 	if !exists {
-		return errors.New("ticker not found in database")
+		return ErrTickerNotFound
 	}
 
 	query := `
@@ -174,11 +189,11 @@ func AddTickerToWatchList(item *models.WatchListItem) error {
 	if err != nil {
 		// Check for unique constraint violation
 		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
-			return errors.New("ticker already exists in this watch list")
+			return ErrTickerAlreadyExists
 		}
-		// Check for limit trigger
+		// Check for limit trigger (fired by check_watch_list_item_limit)
 		if strings.Contains(err.Error(), "Watch list limit reached") {
-			return errors.New("watch list limit reached. Free tier allows maximum 10 tickers per watch list")
+			return ErrWatchListItemLimitReached
 		}
 		return fmt.Errorf("failed to add ticker to watch list: %w", err)
 	}
@@ -243,7 +258,10 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 			LIMIT 1
 		) rhd ON true
 		LEFT JOIN LATERAL (
-			SELECT (rank - COALESCE(rank_24h_ago, rank)) as rank_change
+			SELECT CASE WHEN rank_24h_ago IS NOT NULL
+				THEN rank - rank_24h_ago
+				ELSE NULL
+			END as rank_change
 			FROM reddit_ticker_rankings
 			WHERE ticker_symbol = wli.symbol
 			ORDER BY snapshot_time DESC
@@ -343,7 +361,7 @@ func UpdateWatchListItem(item *models.WatchListItem) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("watch list item not found")
+		return ErrWatchListItemNotFound
 	}
 	return nil
 }
@@ -361,7 +379,7 @@ func RemoveTickerFromWatchList(watchListID string, symbol string) error {
 		return err
 	}
 	if rowsAffected == 0 {
-		return errors.New("ticker not found in watch list")
+		return ErrWatchListItemNotFound
 	}
 	return nil
 }
@@ -409,12 +427,71 @@ func GetWatchListItemByID(itemID string) (*models.WatchListItem, error) {
 	)
 
 	if err == sql.ErrNoRows {
-		return nil, errors.New("watch list item not found")
+		return nil, ErrWatchListItemNotFound
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to get watch list item: %w", err)
 	}
 	return item, nil
+}
+
+// ValidateItemsBelongToWatchList checks that all given item IDs belong to the specified watchlist.
+// Returns an error if any item ID is not found in the watchlist.
+func ValidateItemsBelongToWatchList(watchListID string, itemIDs []string) error {
+	if len(itemIDs) == 0 {
+		return nil
+	}
+
+	// Build parameterized query for the item IDs
+	placeholders := make([]string, len(itemIDs))
+	args := make([]interface{}, 0, len(itemIDs)+1)
+	args = append(args, watchListID)
+	for i, id := range itemIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args = append(args, id)
+	}
+
+	query := fmt.Sprintf(`
+		SELECT COUNT(*) FROM watch_list_items
+		WHERE watch_list_id = $1 AND id IN (%s)
+	`, strings.Join(placeholders, ", "))
+
+	var count int
+	err := DB.QueryRow(query, args...).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("failed to validate item ownership: %w", err)
+	}
+	if count != len(itemIDs) {
+		return errors.New("one or more items do not belong to this watch list")
+	}
+	return nil
+}
+
+// CreateWatchListAtomic creates a new watch list with an atomic count check to prevent TOCTOU races.
+// Returns ErrWatchListNotFound (repurposed as limit error) if the user already has maxLists.
+func CreateWatchListAtomic(watchList *models.WatchList, maxLists int) error {
+	query := `
+		INSERT INTO watch_lists (user_id, name, description, is_default, display_order)
+		SELECT $1, $2, $3, $4, COALESCE((SELECT MAX(display_order) + 1 FROM watch_lists WHERE user_id = $1), 0)
+		WHERE (SELECT COUNT(*) FROM watch_lists WHERE user_id = $1) < $5
+		RETURNING id, created_at, updated_at, display_order
+	`
+	err := DB.QueryRow(
+		query,
+		watchList.UserID,
+		watchList.Name,
+		watchList.Description,
+		watchList.IsDefault,
+		maxLists,
+	).Scan(&watchList.ID, &watchList.CreatedAt, &watchList.UpdatedAt, &watchList.DisplayOrder)
+
+	if err == sql.ErrNoRows {
+		return fmt.Errorf("watch list limit reached: maximum %d allowed", maxLists)
+	}
+	if err != nil {
+		return fmt.Errorf("failed to create watch list: %w", err)
+	}
+	return nil
 }
 
 // UpdateItemDisplayOrder updates display order for items
