@@ -34,7 +34,7 @@ type WatchListItem struct {
 // WatchListItemWithData includes ticker data and real-time price
 type WatchListItemWithData struct {
 	WatchListItem
-	// Ticker info from stocks table
+	// Ticker info from tickers table
 	Name      string  `json:"name"`
 	Exchange  string  `json:"exchange"`
 	AssetType string  `json:"asset_type"`

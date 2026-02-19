@@ -236,6 +236,19 @@ func GetUserByPasswordResetToken(token string) (*models.User, error) {
 	return user, nil
 }
 
+// IsUserPremium checks if a user has premium subscription status
+func IsUserPremium(userID string) (bool, error) {
+	var isPremium bool
+	err := DB.QueryRow("SELECT COALESCE(is_premium, FALSE) FROM users WHERE id = $1", userID).Scan(&isPremium)
+	if err == sql.ErrNoRows {
+		return false, errors.New("user not found")
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to check premium status: %w", err)
+	}
+	return isPremium, nil
+}
+
 // SoftDeleteUser marks user as inactive (soft delete)
 func SoftDeleteUser(userID string) error {
 	query := `UPDATE users SET is_active = FALSE WHERE id = $1`

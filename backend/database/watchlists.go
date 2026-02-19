@@ -222,7 +222,9 @@ func GetWatchListItems(watchListID string) ([]models.WatchListItem, error) {
 	return items, nil
 }
 
-// GetWatchListItemsWithData retrieves items with ticker data and real-time prices
+// GetWatchListItemsWithData retrieves items with ticker data and real-time prices.
+// Uses reddit_heatmap_daily for daily aggregated Reddit metrics and
+// reddit_ticker_rankings for rank change data (rank_24h_ago lives there).
 func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithData, error) {
 	query := `
 		SELECT
@@ -230,22 +232,29 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemWithDa
 			wli.target_buy_price, wli.target_sell_price, wli.added_at, wli.display_order,
 			s.name, s.exchange, s.asset_type, s.logo_url,
 			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,
-			(rhd.avg_rank - rhd.rank_24h_ago) as reddit_rank_change
+			rtr.rank_change
 		FROM watch_list_items wli
 		JOIN tickers s ON wli.symbol = s.symbol
 		LEFT JOIN LATERAL (
-			SELECT avg_rank, total_mentions, popularity_score, trend_direction, rank_24h_ago
+			SELECT avg_rank, total_mentions, popularity_score, trend_direction
 			FROM reddit_heatmap_daily
 			WHERE ticker_symbol = wli.symbol
 			ORDER BY date DESC
 			LIMIT 1
 		) rhd ON true
+		LEFT JOIN LATERAL (
+			SELECT (rank - COALESCE(rank_24h_ago, rank)) as rank_change
+			FROM reddit_ticker_rankings
+			WHERE ticker_symbol = wli.symbol
+			ORDER BY snapshot_time DESC
+			LIMIT 1
+		) rtr ON true
 		WHERE wli.watch_list_id = $1
 		ORDER BY wli.display_order ASC, wli.added_at DESC
 	`
 	rows, err := DB.Query(query, watchListID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get watch list items: %w", err)
+		return nil, fmt.Errorf("failed to get watch list items with data: %w", err)
 	}
 	defer rows.Close()
 
