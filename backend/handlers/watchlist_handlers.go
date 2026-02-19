@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"errors"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -22,6 +24,7 @@ func ListWatchLists(c *gin.Context) {
 
 	watchLists, err := database.GetWatchListsByUserID(userID)
 	if err != nil {
+		log.Printf("Error fetching watch lists for user %s: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch watch lists"})
 		return
 	}
@@ -50,8 +53,16 @@ func CreateWatchList(c *gin.Context) {
 		IsDefault:   false,
 	}
 
-	err := database.CreateWatchList(watchList)
+	// Atomic insert with count check to prevent TOCTOU race
+	err := database.CreateWatchListAtomic(watchList, database.MaxWatchListsPerUser)
 	if err != nil {
+		if isWatchListLimitError(err) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error": "Watch list limit reached. Maximum 3 watch lists allowed",
+			})
+			return
+		}
+		log.Printf("Error creating watch list for user %s: %v", userID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create watch list"})
 		return
 	}
@@ -72,7 +83,12 @@ func GetWatchList(c *gin.Context) {
 	// Get watch list with items and prices
 	result, err := watchListService.GetWatchListWithItems(watchListID, userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, database.ErrWatchListNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Watch list not found"})
+		} else {
+			log.Printf("Error fetching watch list %s for user %s: %v", watchListID, userID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch watch list"})
+		}
 		return
 	}
 
@@ -104,14 +120,19 @@ func UpdateWatchList(c *gin.Context) {
 
 	err := database.UpdateWatchList(watchList)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, database.ErrWatchListNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Watch list not found"})
+		} else {
+			log.Printf("Error updating watch list %s for user %s: %v", watchListID, userID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update watch list"})
+		}
 		return
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Watch list updated successfully"})
 }
 
-// DeleteWatchList deletes a watch list
+// DeleteWatchList deletes a watch list (protects default watch lists from deletion)
 func DeleteWatchList(c *gin.Context) {
 	userID, exists := auth.GetUserIDFromContext(c)
 	if !exists {
@@ -121,9 +142,27 @@ func DeleteWatchList(c *gin.Context) {
 
 	watchListID := c.Param("id")
 
-	err := database.DeleteWatchList(watchListID, userID)
+	// Protect default watchlist from deletion
+	watchList, err := database.GetWatchListByID(watchListID, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if errors.Is(err, database.ErrWatchListNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Watch list not found"})
+		} else {
+			log.Printf("Error fetching watch list %s for deletion: %v", watchListID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete watch list"})
+		}
+		return
+	}
+
+	if watchList.IsDefault {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Cannot delete the default watch list"})
+		return
+	}
+
+	err = database.DeleteWatchList(watchListID, userID)
+	if err != nil {
+		log.Printf("Error deleting watch list %s for user %s: %v", watchListID, userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete watch list"})
 		return
 	}
 
@@ -163,12 +202,16 @@ func AddTickerToWatchList(c *gin.Context) {
 
 	err := database.AddTickerToWatchList(item)
 	if err != nil {
-		if err.Error() == "ticker already exists in this watch list" {
+		switch {
+		case errors.Is(err, database.ErrTickerAlreadyExists):
 			c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
-		} else if err.Error() == "watch list limit reached. Free tier allows maximum 10 tickers per watch list" {
-			c.JSON(http.StatusForbidden, gin.H{"error": err.Error()})
-		} else {
+		case errors.Is(err, database.ErrWatchListItemLimitReached):
+			c.JSON(http.StatusForbidden, gin.H{"error": "Watch list item limit reached. Maximum 10 tickers per watch list"})
+		case errors.Is(err, database.ErrTickerNotFound):
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		default:
+			log.Printf("Error adding ticker %s to watch list %s: %v", req.Symbol, watchListID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to add ticker to watch list"})
 		}
 		return
 	}
@@ -195,7 +238,12 @@ func RemoveTickerFromWatchList(c *gin.Context) {
 
 	err := database.RemoveTickerFromWatchList(watchListID, symbol)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+		if errors.Is(err, database.ErrWatchListItemNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "Ticker not found in watch list"})
+		} else {
+			log.Printf("Error removing ticker %s from watch list %s: %v", symbol, watchListID, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to remove ticker"})
+		}
 		return
 	}
 
@@ -228,6 +276,7 @@ func UpdateWatchListItem(c *gin.Context) {
 	// Get existing item to update
 	items, err := database.GetWatchListItems(watchListID)
 	if err != nil {
+		log.Printf("Error fetching watch list items for update (list=%s, symbol=%s): %v", watchListID, symbol, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch watch list items"})
 		return
 	}
@@ -253,6 +302,7 @@ func UpdateWatchListItem(c *gin.Context) {
 
 	err = database.UpdateWatchListItem(targetItem)
 	if err != nil {
+		log.Printf("Error updating watch list item (list=%s, symbol=%s): %v", watchListID, symbol, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update ticker"})
 		return
 	}
@@ -284,6 +334,7 @@ func BulkAddTickers(c *gin.Context) {
 
 	added, failed, err := database.BulkAddTickers(watchListID, req.Symbols)
 	if err != nil {
+		log.Printf("Error bulk adding tickers to watch list %s: %v", watchListID, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to bulk add tickers"})
 		return
 	}
@@ -317,14 +368,35 @@ func ReorderWatchListItems(c *gin.Context) {
 		return
 	}
 
+	// Validate all submitted item IDs belong to this watchlist (prevent cross-list manipulation)
+	itemIDs := make([]string, len(req.ItemOrders))
+	for i, order := range req.ItemOrders {
+		itemIDs[i] = order.ItemID
+	}
+	if err := database.ValidateItemsBelongToWatchList(watchListID, itemIDs); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "One or more items do not belong to this watch list"})
+		return
+	}
+
 	// Update each item's display order
 	for _, itemOrder := range req.ItemOrders {
 		err := database.UpdateItemDisplayOrder(itemOrder.ItemID, itemOrder.DisplayOrder)
 		if err != nil {
+			log.Printf("Error reordering watch list item %s in list %s: %v", itemOrder.ItemID, watchListID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update item order"})
 			return
 		}
 	}
 
 	c.JSON(http.StatusOK, gin.H{"message": "Items reordered successfully"})
+}
+
+// isWatchListLimitError checks if an error indicates the watchlist count limit was reached.
+// This catches the error from CreateWatchListAtomic when the INSERT...WHERE count < limit returns no rows.
+func isWatchListLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return len(msg) >= 25 && msg[:25] == "watch list limit reached:"
 }

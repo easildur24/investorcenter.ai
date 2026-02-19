@@ -389,6 +389,22 @@ CREATE TABLE IF NOT EXISTS social_posts (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- reddit_ticker_rankings (Batch 3: hourly reddit ranking snapshots)
+-- Required by GetWatchListItemsWithData LATERAL JOIN for rank_24h_ago data
+CREATE TABLE IF NOT EXISTS reddit_ticker_rankings (
+    id BIGSERIAL PRIMARY KEY,
+    ticker_symbol VARCHAR(10),
+    rank INT NOT NULL,
+    mentions INT NOT NULL,
+    upvotes INT DEFAULT 0,
+    rank_24h_ago INT,
+    mentions_24h_ago INT,
+    snapshot_date DATE NOT NULL,
+    snapshot_time TIMESTAMP NOT NULL,
+    data_source VARCHAR(20) DEFAULT 'apewisdom',
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 -- reddit_heatmap_daily (Batch 3: reddit heatmap)
 CREATE TABLE IF NOT EXISTS reddit_heatmap_daily (
     id SERIAL PRIMARY KEY,

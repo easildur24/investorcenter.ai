@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
+	"log"
 	"strings"
 )
 
@@ -25,7 +26,8 @@ func (s *WatchListService) GetWatchListWithItems(watchListID string, userID stri
 	// Get items with ticker data
 	items, err := database.GetWatchListItemsWithData(watchListID)
 	if err != nil {
-		return nil, err
+		log.Printf("Error fetching enriched watch list items for list %s: %v", watchListID, err)
+		return nil, fmt.Errorf("failed to fetch watch list items: %w", err)
 	}
 
 	// Fetch real-time prices for all tickers
@@ -35,7 +37,11 @@ func (s *WatchListService) GetWatchListWithItems(watchListID string, userID stri
 		item := &items[i]
 
 		// Use GetQuote which handles both stocks and crypto with caching
+		// Graceful degradation: log Polygon failures but still return items without prices
 		price, err := polygonClient.GetQuote(item.Symbol)
+		if err != nil {
+			log.Printf("Warning: Polygon price fetch failed for %s in watch list %s: %v", item.Symbol, watchListID, err)
+		}
 		if err == nil && price != nil {
 			currentPrice := float64(price.Price.InexactFloat64())
 			item.CurrentPrice = &currentPrice
