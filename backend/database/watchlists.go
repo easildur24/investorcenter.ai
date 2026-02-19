@@ -83,6 +83,9 @@ func GetWatchListsByUserID(userID string) ([]models.WatchListSummary, error) {
 		}
 		watchLists = append(watchLists, wl)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating watch lists: %w", err)
+	}
 
 	return watchLists, nil
 }
@@ -233,13 +236,22 @@ func GetWatchListItems(watchListID string) ([]models.WatchListItem, error) {
 		}
 		items = append(items, item)
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating watch list items: %w", err)
+	}
 
 	return items, nil
 }
 
-// GetWatchListItemsWithEnrichedData retrieves items with ticker data, Reddit metrics,
+// GetWatchListItemsWithData retrieves items with ticker data, Reddit metrics,
 // screener_data (IC Score, fundamentals, valuation), and active alert counts.
-func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListItemEnriched, error) {
+//
+// Performance: the LATERAL JOINs execute per-row and require these indexes:
+//   - reddit_heatmap_daily(ticker_symbol, date DESC)
+//   - reddit_ticker_rankings(ticker_symbol, snapshot_time DESC)
+//   - alert_rules(watch_list_id, symbol, is_active)
+//   - screener_data(symbol) — unique in prod materialized view
+func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemDetail, error) {
 	query := `
 		SELECT
 			-- watch_list_items (9 cols)
@@ -302,13 +314,13 @@ func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListIt
 	`
 	rows, err := DB.Query(query, watchListID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get enriched watch list items: %w", err)
+		return nil, fmt.Errorf("failed to get watch list items with data: %w", err)
 	}
 	defer rows.Close()
 
-	items := []models.WatchListItemEnriched{}
+	items := []models.WatchListItemDetail{}
 	for rows.Next() {
-		var item models.WatchListItemEnriched
+		var item models.WatchListItemDetail
 
 		// Reddit fields (nullable)
 		var redditRank sql.NullFloat64
@@ -330,20 +342,22 @@ func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListIt
 		var revenueGrowth, epsGrowth sql.NullFloat64
 		var dividendYield, payoutRatio sql.NullFloat64
 
+		// Scan order must match SELECT column order exactly (47 columns total).
+		// Group counts: items=9, tickers=4, reddit=5, screener=28, alerts=1.
 		err := rows.Scan(
-			// watch_list_items
+			// watch_list_items (9 cols)
 			&item.ID, &item.WatchListID, &item.Symbol, &item.Notes,
 			pq.Array(&item.Tags),
 			&item.TargetBuyPrice, &item.TargetSellPrice, &item.AddedAt, &item.DisplayOrder,
 
-			// tickers
+			// tickers (4 cols)
 			&item.Name, &item.Exchange, &item.AssetType, &item.LogoURL,
 
-			// reddit
+			// reddit_heatmap_daily + reddit_ticker_rankings (5 cols)
 			&redditRank, &redditMentions, &redditPopularity, &redditTrend,
 			&redditRankChange,
 
-			// screener_data
+			// screener_data (28 cols)
 			&icScore, &icRating,
 			&valueScore, &growthScore, &profitabilityScore,
 			&financialHealthScore, &momentumScore,
@@ -356,11 +370,11 @@ func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListIt
 			&revenueGrowth, &epsGrowth,
 			&dividendYield, &payoutRatio,
 
-			// alert count
+			// alert_rules COUNT (1 col)
 			&item.AlertCount,
 		)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan enriched watch list item: %w", err)
+			return nil, fmt.Errorf("failed to scan watch list item: %w", err)
 		}
 
 		// Convert Reddit nullable fields
@@ -470,6 +484,9 @@ func GetWatchListItemsWithEnrichedData(watchListID string) ([]models.WatchListIt
 		}
 
 		items = append(items, item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating watch list items: %w", err)
 	}
 
 	return items, nil

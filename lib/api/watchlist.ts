@@ -39,36 +39,36 @@ export interface WatchListItem {
   reddit_popularity?: number;
   reddit_trend?: string;
   reddit_rank_change?: number;
-  // IC Score (from screener_data)
-  ic_score?: number;
-  ic_rating?: string;
-  value_score?: number;
-  growth_score?: number;
-  profitability_score?: number;
-  financial_health_score?: number;
-  momentum_score?: number;
-  analyst_consensus_score?: number;
-  insider_activity_score?: number;
-  institutional_score?: number;
-  news_sentiment_score?: number;
-  technical_score?: number;
-  sector_percentile?: number;
-  lifecycle_stage?: string;
-  // Fundamentals (from screener_data)
-  pe_ratio?: number;
-  pb_ratio?: number;
-  ps_ratio?: number;
-  roe?: number;
-  roa?: number;
-  gross_margin?: number;
-  operating_margin?: number;
-  net_margin?: number;
-  debt_to_equity?: number;
-  current_ratio?: number;
-  revenue_growth?: number;
-  eps_growth?: number;
-  dividend_yield?: number;
-  payout_ratio?: number;
+  // IC Score (from screener_data — always present, null when unavailable)
+  ic_score: number | null;
+  ic_rating: string | null;
+  value_score: number | null;
+  growth_score: number | null;
+  profitability_score: number | null;
+  financial_health_score: number | null;
+  momentum_score: number | null;
+  analyst_consensus_score: number | null;
+  insider_activity_score: number | null;
+  institutional_score: number | null;
+  news_sentiment_score: number | null;
+  technical_score: number | null;
+  sector_percentile: number | null;
+  lifecycle_stage: string | null;
+  // Fundamentals (from screener_data — always present, null when unavailable)
+  pe_ratio: number | null;
+  pb_ratio: number | null;
+  ps_ratio: number | null;
+  roe: number | null;
+  roa: number | null;
+  gross_margin: number | null;
+  operating_margin: number | null;
+  net_margin: number | null;
+  debt_to_equity: number | null;
+  current_ratio: number | null;
+  revenue_growth: number | null;
+  eps_growth: number | null;
+  dividend_yield: number | null;
+  payout_ratio: number | null;
   // Alert metadata
   alert_count: number;
 }

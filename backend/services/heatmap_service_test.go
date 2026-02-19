@@ -84,8 +84,10 @@ func TestFormatVolume(t *testing.T) {
 func TestPassesFilters_NilFilters(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+		},
 	}
 	assert.True(t, svc.passesFilters(item, nil), "nil filters should pass everything")
 }
@@ -93,8 +95,10 @@ func TestPassesFilters_NilFilters(t *testing.T) {
 func TestPassesFilters_EmptyFilters(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+		},
 	}
 	filters := map[string]interface{}{}
 	assert.True(t, svc.passesFilters(item, filters), "empty filters should pass everything")
@@ -103,9 +107,11 @@ func TestPassesFilters_EmptyFilters(t *testing.T) {
 func TestPassesFilters_AssetTypeFilter_Pass(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "AAPL"},
-		AssetType:     "CS",
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+			AssetType:     "CS",
+		},
 	}
 	filters := map[string]interface{}{
 		"asset_types": []interface{}{"CS", "ETF"},
@@ -117,9 +123,11 @@ func TestPassesFilters_AssetTypeFilter_Pass(t *testing.T) {
 func TestPassesFilters_AssetTypeFilter_Fail(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "BTC"},
-		AssetType:     "crypto",
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "BTC"},
+			AssetType:     "crypto",
+		},
 	}
 	filters := map[string]interface{}{
 		"asset_types": []interface{}{"CS", "ETF"},
@@ -132,9 +140,11 @@ func TestPassesFilters_PriceRange_Pass(t *testing.T) {
 	svc := NewHeatmapService()
 
 	price := 150.0
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "AAPL"},
-		CurrentPrice:  &price,
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+			CurrentPrice:  &price,
+		},
 	}
 	filters := map[string]interface{}{
 		"min_price": 100.0,
@@ -148,9 +158,11 @@ func TestPassesFilters_PriceRange_BelowMin(t *testing.T) {
 	svc := NewHeatmapService()
 
 	price := 50.0
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "PENNY"},
-		CurrentPrice:  &price,
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "PENNY"},
+			CurrentPrice:  &price,
+		},
 	}
 	filters := map[string]interface{}{
 		"min_price": 100.0,
@@ -163,9 +175,11 @@ func TestPassesFilters_PriceRange_AboveMax(t *testing.T) {
 	svc := NewHeatmapService()
 
 	price := 500.0
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "EXPENSIVE"},
-		CurrentPrice:  &price,
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "EXPENSIVE"},
+			CurrentPrice:  &price,
+		},
 	}
 	filters := map[string]interface{}{
 		"max_price": 200.0,
@@ -178,9 +192,11 @@ func TestPassesFilters_MarketCapRange_Pass(t *testing.T) {
 	svc := NewHeatmapService()
 
 	marketCap := 500e9
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "AAPL"},
-		MarketCap:     &marketCap,
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "AAPL"},
+			MarketCap:     &marketCap,
+		},
 	}
 	filters := map[string]interface{}{
 		"min_market_cap": 100e9,
@@ -194,9 +210,11 @@ func TestPassesFilters_MarketCapRange_BelowMin(t *testing.T) {
 	svc := NewHeatmapService()
 
 	marketCap := 50e6
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "SMALL"},
-		MarketCap:     &marketCap,
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "SMALL"},
+			MarketCap:     &marketCap,
+		},
 	}
 	filters := map[string]interface{}{
 		"min_market_cap": 1e9,
@@ -208,9 +226,11 @@ func TestPassesFilters_MarketCapRange_BelowMin(t *testing.T) {
 func TestPassesFilters_NilPrice_SkipsFilter(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{
-		WatchListItem: models.WatchListItem{Symbol: "NODATA"},
-		// CurrentPrice is nil
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{
+			WatchListItem: models.WatchListItem{Symbol: "NODATA"},
+			// CurrentPrice is nil
+		},
 	}
 	filters := map[string]interface{}{
 		"min_price": 100.0,
@@ -229,7 +249,9 @@ func TestCalculateSizeValue_MarketCap(t *testing.T) {
 	svc := NewHeatmapService()
 
 	marketCap := 2.5e12
-	item := &models.WatchListItemWithData{MarketCap: &marketCap}
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{MarketCap: &marketCap},
+	}
 
 	value, label := svc.calculateSizeValue(item, "market_cap")
 	assert.Equal(t, 2.5e12, value)
@@ -239,7 +261,7 @@ func TestCalculateSizeValue_MarketCap(t *testing.T) {
 func TestCalculateSizeValue_MarketCapNil(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{}
+	item := &models.WatchListItemDetail{}
 	value, label := svc.calculateSizeValue(item, "market_cap")
 	assert.Equal(t, float64(1000000000), value) // default
 	assert.Equal(t, "N/A", label)
@@ -249,7 +271,9 @@ func TestCalculateSizeValue_Volume(t *testing.T) {
 	svc := NewHeatmapService()
 
 	volume := int64(50000000)
-	item := &models.WatchListItemWithData{Volume: &volume}
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{Volume: &volume},
+	}
 
 	value, label := svc.calculateSizeValue(item, "volume")
 	assert.Equal(t, float64(50000000), value)
@@ -260,7 +284,9 @@ func TestCalculateSizeValue_RedditMentions(t *testing.T) {
 	svc := NewHeatmapService()
 
 	mentions := 42
-	item := &models.WatchListItemWithData{RedditMentions: &mentions}
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{RedditMentions: &mentions},
+	}
 
 	value, label := svc.calculateSizeValue(item, "reddit_mentions")
 	assert.Equal(t, float64(42), value)
@@ -270,7 +296,7 @@ func TestCalculateSizeValue_RedditMentions(t *testing.T) {
 func TestCalculateSizeValue_UnknownMetric(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{}
+	item := &models.WatchListItemDetail{}
 	value, label := svc.calculateSizeValue(item, "unknown_metric")
 	assert.Equal(t, float64(1000000000), value) // defaults to market cap
 	assert.Equal(t, "N/A", label)
@@ -284,7 +310,9 @@ func TestCalculateColorValue_PriceChangePct(t *testing.T) {
 	svc := NewHeatmapService()
 
 	changePct := 5.25
-	item := &models.WatchListItemWithData{PriceChangePct: &changePct}
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{PriceChangePct: &changePct},
+	}
 
 	value, label := svc.calculateColorValue(item, "price_change_pct", "1D")
 	assert.Equal(t, 5.25, value)
@@ -294,7 +322,7 @@ func TestCalculateColorValue_PriceChangePct(t *testing.T) {
 func TestCalculateColorValue_PriceChangePctNil(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{}
+	item := &models.WatchListItemDetail{}
 	value, label := svc.calculateColorValue(item, "price_change_pct", "1D")
 	assert.Equal(t, float64(0), value)
 	assert.Equal(t, "N/A", label)
@@ -304,7 +332,9 @@ func TestCalculateColorValue_RedditRank(t *testing.T) {
 	svc := NewHeatmapService()
 
 	rank := 5
-	item := &models.WatchListItemWithData{RedditRank: &rank}
+	item := &models.WatchListItemDetail{
+		WatchListItemWithData: models.WatchListItemWithData{RedditRank: &rank},
+	}
 
 	value, label := svc.calculateColorValue(item, "reddit_rank", "1D")
 	assert.Equal(t, float64(96), value) // 101 - 5 = 96
@@ -327,7 +357,9 @@ func TestCalculateColorValue_RedditTrend(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.trend, func(t *testing.T) {
 			trend := tt.trend
-			item := &models.WatchListItemWithData{RedditTrend: &trend}
+			item := &models.WatchListItemDetail{
+				WatchListItemWithData: models.WatchListItemWithData{RedditTrend: &trend},
+			}
 			value, label := svc.calculateColorValue(item, "reddit_trend", "1D")
 			assert.Equal(t, tt.wantValue, value)
 			assert.Equal(t, tt.wantLabel, label)
@@ -338,7 +370,7 @@ func TestCalculateColorValue_RedditTrend(t *testing.T) {
 func TestCalculateColorValue_UnknownMetric(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemWithData{}
+	item := &models.WatchListItemDetail{}
 	value, label := svc.calculateColorValue(item, "unknown", "1D")
 	assert.Equal(t, float64(0), value)
 	assert.Equal(t, "N/A", label)

@@ -199,14 +199,14 @@ func TestGetWatchList(t *testing.T) {
 	err = database.AddTickerToWatchList(item)
 	assert.NoError(t, err)
 
-	// Test: Get watch list with items (now returns enriched response)
+	// Test: Get watch list with items
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, "Test Portfolio", result.Name)
@@ -759,8 +759,8 @@ func TestGetWatchListNotFound(t *testing.T) {
 	assert.Contains(t, errResponse["error"].(string), "not found")
 }
 
-// Test: GetWatchList with items works correctly (enriched data query)
-func TestGetWatchListWithEnrichedData(t *testing.T) {
+// Test: GetWatchList returns items with full data (screener, reddit, alerts)
+func TestGetWatchListWithDetailData(t *testing.T) {
 	router := setupTestRouter()
 	router.GET("/watchlists/:id", GetWatchList)
 
@@ -771,7 +771,7 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 	// Create a watch list and add items
 	watchList := &models.WatchList{
 		UserID: userID,
-		Name:   "Enriched Test",
+		Name:   "Detail Test",
 	}
 	err := database.CreateWatchList(watchList)
 	assert.NoError(t, err)
@@ -786,14 +786,14 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 		assert.NoError(t, err)
 	}
 
-	// Test: Fetch enriched data — should succeed even without reddit/screener data
+	// Test: Fetch data — should succeed even without reddit/screener data
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, 2, result.ItemCount)
@@ -834,7 +834,7 @@ func TestGetWatchListWithEnrichedData(t *testing.T) {
 	assert.Equal(t, 0, result.Summary.RedditTrendingCount)
 }
 
-// Test: GetWatchList enriched data with Reddit data present
+// Test: GetWatchList with Reddit data present
 func TestGetWatchListWithRedditData(t *testing.T) {
 	router := setupTestRouter()
 	router.GET("/watchlists/:id", GetWatchList)
@@ -879,14 +879,14 @@ func TestGetWatchListWithRedditData(t *testing.T) {
 		database.DB.Exec("DELETE FROM reddit_heatmap_daily WHERE ticker_symbol = 'AAPL'")
 	}()
 
-	// Test: Fetch enriched data — should include reddit data
+	// Test: Fetch data — should include reddit data
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, result.ItemCount)
@@ -948,7 +948,7 @@ func TestGetWatchListWithRedditDataNullRank24h(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, result.ItemCount)
@@ -1100,7 +1100,7 @@ func TestGetEmptyWatchList(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, 0, result.ItemCount)
@@ -1159,7 +1159,7 @@ func TestCreateWatchListInvalidJSON(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2: Enriched data layer tests
+// Phase 2: Full data layer tests (screener, alerts, summary metrics)
 // ---------------------------------------------------------------------------
 
 // Test: GetWatchList returns IC Score and fundamentals from screener_data
@@ -1220,14 +1220,14 @@ func TestGetWatchListWithScreenerData(t *testing.T) {
 
 	defer database.DB.Exec("DELETE FROM screener_data WHERE symbol = 'AAPL'")
 
-	// Test: Fetch enriched data
+	// Test: Fetch data with screener fields
 	w := httptest.NewRecorder()
 	req, _ := http.NewRequest("GET", fmt.Sprintf("/watchlists/%s", watchList.ID), nil)
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 	assert.Equal(t, 1, result.ItemCount)
@@ -1318,7 +1318,7 @@ func TestGetWatchListWithAlertCount(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 
@@ -1388,7 +1388,7 @@ func TestGetWatchListSummaryMetrics(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 
@@ -1407,7 +1407,7 @@ func TestGetWatchListSummaryMetrics(t *testing.T) {
 	assert.Equal(t, 1, result.Summary.RedditTrendingCount)
 
 	// Verify GOOGL has nil screener fields (no screener data inserted)
-	var googlItem *models.WatchListItemEnriched
+	var googlItem *models.WatchListItemDetail
 	for i := range result.Items {
 		if result.Items[i].Symbol == "GOOGL" {
 			googlItem = &result.Items[i]
@@ -1458,7 +1458,7 @@ func TestGetWatchListScreenerWithoutReddit(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var result models.WatchListWithItemsEnriched
+	var result models.WatchListWithItems
 	err = json.Unmarshal(w.Body.Bytes(), &result)
 	assert.NoError(t, err)
 

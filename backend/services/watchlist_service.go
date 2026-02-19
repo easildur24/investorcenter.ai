@@ -15,58 +15,29 @@ func NewWatchListService() *WatchListService {
 	return &WatchListService{}
 }
 
-// GetWatchListWithItems retrieves a watch list with enriched items
-// (IC Score, fundamentals, Reddit data, alert counts) and real-time prices.
-func (s *WatchListService) GetWatchListWithItems(watchListID string, userID string) (*models.WatchListWithItemsEnriched, error) {
+// GetWatchListWithItems retrieves a watch list with all items, real-time prices,
+// IC Score, fundamentals, Reddit data, alert counts, and summary metrics.
+func (s *WatchListService) GetWatchListWithItems(watchListID string, userID string) (*models.WatchListWithItems, error) {
 	// Get watch list metadata
 	watchList, err := database.GetWatchListByID(watchListID, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get items with enriched data (screener_data + reddit + alerts)
-	items, err := database.GetWatchListItemsWithEnrichedData(watchListID)
+	// Get items with data (ticker info, screener_data, reddit, alerts)
+	items, err := database.GetWatchListItemsWithData(watchListID)
 	if err != nil {
-		log.Printf("Error fetching enriched watch list items for list %s: %v", watchListID, err)
+		log.Printf("Error fetching watch list items for list %s: %v", watchListID, err)
 		return nil, fmt.Errorf("failed to fetch watch list items: %w", err)
 	}
 
 	// Fetch real-time prices for all tickers
-	polygonClient := NewPolygonClient()
+	fetchRealTimePrices(items, fmt.Sprintf("watchlist %s", watchListID))
 
-	for i := range items {
-		item := &items[i]
-
-		// Graceful degradation: log Polygon failures but still return items without prices
-		price, err := polygonClient.GetQuote(item.Symbol)
-		if err != nil {
-			log.Printf("Warning: Polygon price fetch failed for %s in watch list %s: %v", item.Symbol, watchListID, err)
-		}
-		if err == nil && price != nil {
-			currentPrice := price.Price.InexactFloat64()
-			item.CurrentPrice = &currentPrice
-
-			if price.Change.IsPositive() || price.Change.IsNegative() {
-				change := price.Change.InexactFloat64()
-				changePercent := price.ChangePercent.InexactFloat64()
-				item.PriceChange = &change
-				item.PriceChangePct = &changePercent
-
-				prevClose := price.Price.Sub(price.Change).InexactFloat64()
-				item.PrevClose = &prevClose
-			}
-
-			if price.Volume > 0 {
-				volume := int64(price.Volume)
-				item.Volume = &volume
-			}
-		}
-	}
-
-	// Compute summary metrics from enriched items
+	// Compute summary metrics
 	summary := computeSummaryMetrics(items)
 
-	return &models.WatchListWithItemsEnriched{
+	return &models.WatchListWithItems{
 		WatchList: *watchList,
 		ItemCount: len(items),
 		Items:     items,
@@ -74,8 +45,8 @@ func (s *WatchListService) GetWatchListWithItems(watchListID string, userID stri
 	}, nil
 }
 
-// computeSummaryMetrics calculates aggregate statistics from a set of enriched watchlist items.
-func computeSummaryMetrics(items []models.WatchListItemEnriched) *models.WatchListSummaryMetrics {
+// computeSummaryMetrics calculates aggregate statistics from watchlist items.
+func computeSummaryMetrics(items []models.WatchListItemDetail) *models.WatchListSummaryMetrics {
 	summary := &models.WatchListSummaryMetrics{
 		TotalTickers: len(items),
 	}
@@ -115,6 +86,43 @@ func computeSummaryMetrics(items []models.WatchListItemEnriched) *models.WatchLi
 	}
 
 	return summary
+}
+
+// fetchRealTimePrices populates price fields on WatchListItemWithData using Polygon API.
+// Failures are logged but do not prevent items from being returned (graceful degradation).
+func fetchRealTimePrices(items []models.WatchListItemDetail, contextLabel string) {
+	polygonClient := NewPolygonClient()
+
+	for i := range items {
+		item := &items[i]
+
+		price, err := polygonClient.GetQuote(item.Symbol)
+		if err != nil {
+			log.Printf("Warning: Polygon price fetch failed for %s (%s): %v", item.Symbol, contextLabel, err)
+			continue
+		}
+		if price == nil {
+			continue
+		}
+
+		currentPrice := price.Price.InexactFloat64()
+		item.CurrentPrice = &currentPrice
+
+		if price.Change.IsPositive() || price.Change.IsNegative() {
+			change := price.Change.InexactFloat64()
+			changePercent := price.ChangePercent.InexactFloat64()
+			item.PriceChange = &change
+			item.PriceChangePct = &changePercent
+
+			prevClose := price.Price.Sub(price.Change).InexactFloat64()
+			item.PrevClose = &prevClose
+		}
+
+		if price.Volume > 0 {
+			volume := int64(price.Volume)
+			item.Volume = &volume
+		}
+	}
 }
 
 // average returns the mean of a float64 slice.
