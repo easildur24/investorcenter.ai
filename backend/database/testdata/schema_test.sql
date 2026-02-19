@@ -390,6 +390,7 @@ CREATE TABLE IF NOT EXISTS social_posts (
 );
 
 -- reddit_ticker_rankings (Batch 3: hourly reddit ranking snapshots)
+-- Required by GetWatchListItemsWithData LATERAL JOIN for rank_24h_ago data
 CREATE TABLE IF NOT EXISTS reddit_ticker_rankings (
     id BIGSERIAL PRIMARY KEY,
     ticker_symbol VARCHAR(10),

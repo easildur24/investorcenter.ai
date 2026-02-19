@@ -731,7 +731,7 @@ func TestCreateWatchListCountLimit(t *testing.T) {
 	err = json.Unmarshal(w.Body.Bytes(), &errResponse)
 	assert.NoError(t, err)
 	assert.Contains(t, errResponse["error"].(string), "limit")
-	assert.Contains(t, errResponse["error"].(string), "Free tier")
+	assert.Contains(t, errResponse["error"].(string), "Maximum 3")
 }
 
 // Test: GetWatchList returns proper error for not found
@@ -954,26 +954,6 @@ func TestRemoveNonExistentTicker(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-// Test: IsUserPremium returns correct values
-func TestIsUserPremium(t *testing.T) {
-	if database.DB == nil {
-		t.Skip("Skipping: no database connection")
-	}
-
-	userID := createTestUser(t)
-	defer cleanupTestData(t, userID)
-
-	// Free user by default
-	isPremium, err := database.IsUserPremium(userID)
-	assert.NoError(t, err)
-	assert.False(t, isPremium)
-
-	// Non-existent user
-	_, err = database.IsUserPremium("non-existent-user-xyz")
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "not found")
 }
 
 // Test: Reorder items with valid data

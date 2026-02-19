@@ -54,20 +54,11 @@ func CreateWatchList(c *gin.Context) {
 		return
 	}
 
-	// Free tier: max 3 watchlists, Premium: max 20
-	maxWatchLists := 3
-	isPremium, _ := database.IsUserPremium(userID)
-	if isPremium {
-		maxWatchLists = 20
-	}
+	// Max 3 watch lists per user (increase when premium tier is implemented)
+	const maxWatchLists = 3
 	if len(existingLists) >= maxWatchLists {
 		c.JSON(http.StatusForbidden, gin.H{
-			"error": "Watch list limit reached. " + func() string {
-				if isPremium {
-					return "Premium tier allows maximum 20 watch lists"
-				}
-				return "Free tier allows maximum 3 watch lists. Upgrade to Premium for up to 20"
-			}(),
+			"error": "Watch list limit reached. Maximum 3 watch lists allowed",
 		})
 		return
 	}
