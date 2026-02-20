@@ -45,6 +45,31 @@ repos:
         pass_filenames: false
         always_run: true
 
+  # Frontend formatting, linting, and tests
+  - repo: local
+    hooks:
+      - id: prettier-check
+        name: Check frontend formatting (Prettier)
+        entry: bash -c 'npx prettier --check "app/**/*.{ts,tsx}" "components/**/*.{ts,tsx}" "lib/**/*.{ts,tsx}"'
+        language: system
+        files: \.(ts|tsx)$
+        exclude: ^(backend|scripts|ic-score-service|data-ingestion-service)/
+        pass_filenames: false
+      - id: eslint-check
+        name: Lint frontend (ESLint)
+        entry: bash -c 'npx next lint --quiet'
+        language: system
+        files: \.(ts|tsx)$
+        exclude: ^(backend|scripts|ic-score-service|data-ingestion-service)/
+        pass_filenames: false
+      - id: frontend-jest
+        name: Run frontend tests (Jest)
+        entry: bash -c 'npx jest --silent'
+        language: system
+        files: \.(ts|tsx)$
+        exclude: ^(backend|scripts|ic-score-service|data-ingestion-service)/
+        pass_filenames: false
+
   # Go formatting and linting (uses Docker if go not installed locally)
   - repo: local
     hooks:
