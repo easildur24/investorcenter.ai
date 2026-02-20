@@ -2,15 +2,20 @@
 
 import { useState } from 'react';
 import { WatchListItem } from '@/lib/api/watchlist';
+import { useModal } from '@/lib/hooks/useModal';
 
 interface EditTickerModalProps {
   symbol: string;
   item: WatchListItem;
   onClose: () => void;
-  onUpdate: (symbol: string, data: any) => Promise<void>;
+  onUpdate: (
+    symbol: string,
+    data: { notes?: string; tags?: string[]; target_buy_price?: number; target_sell_price?: number }
+  ) => Promise<void>;
 }
 
 export default function EditTickerModal({ symbol, item, onClose, onUpdate }: EditTickerModalProps) {
+  const modalRef = useModal(onClose);
   const [notes, setNotes] = useState(item.notes || '');
   const [tags, setTags] = useState(item.tags.join(', '));
   const [targetBuy, setTargetBuy] = useState(item.target_buy_price?.toString() || '');
@@ -38,8 +43,14 @@ export default function EditTickerModal({ symbol, item, onClose, onUpdate }: Edi
 
   return (
     <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4">Edit {symbol}</h2>
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${symbol}`}
+        className="bg-ic-surface rounded-lg p-6 w-full max-w-md"
+      >
+        <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Edit {symbol}</h2>
 
         <form onSubmit={handleSubmit}>
           <div className="mb-4">

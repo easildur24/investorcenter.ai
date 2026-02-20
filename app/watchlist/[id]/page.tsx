@@ -74,7 +74,10 @@ export default function WatchListDetailPage() {
     }
   };
 
-  const handleUpdateTicker = async (symbol: string, data: any) => {
+  const handleUpdateTicker = async (
+    symbol: string,
+    data: { notes?: string; tags?: string[]; target_buy_price?: number; target_sell_price?: number }
+  ) => {
     try {
       await watchListAPI.updateTicker(watchListId, symbol, data);
       await loadWatchList();
@@ -143,7 +146,7 @@ export default function WatchListDetailPage() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-ic-negative rounded">
             {error}
           </div>
         )}

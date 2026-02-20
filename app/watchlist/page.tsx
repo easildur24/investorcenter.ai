@@ -67,7 +67,7 @@ export default function WatchListDashboard() {
         </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-ic-negative rounded">
+          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-ic-negative rounded">
             {error}
           </div>
         )}
@@ -86,9 +86,11 @@ export default function WatchListDashboard() {
           </div>
         ) : (
           <>
-            <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="text-lg font-semibold text-blue-900 mb-2">How to use Watch Lists</h3>
-              <ul className="text-blue-800 text-sm space-y-1">
+            <div className="mb-6 bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+              <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
+                How to use Watch Lists
+              </h3>
+              <ul className="text-ic-text-secondary text-sm space-y-1">
                 <li>
                   • Click <strong>View</strong> on a watch list to see details and manage tickers
                 </li>
@@ -109,7 +111,7 @@ export default function WatchListDashboard() {
                   <div className="flex justify-between items-start mb-3">
                     <h3 className="text-xl font-semibold text-ic-text-primary">{watchList.name}</h3>
                     {watchList.is_default && (
-                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      <span className="text-xs bg-blue-500/20 text-ic-blue px-2 py-1 rounded">
                         Default
                       </span>
                     )}

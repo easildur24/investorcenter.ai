@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import * as d3 from 'd3';
 import { HeatmapTile, HeatmapData } from '@/lib/api/heatmap';
 import { useRouter } from 'next/navigation';
@@ -136,6 +136,7 @@ export default function WatchListHeatmap({
         .style('pointer-events', 'none')
         .text((d: any) => d.data.color_label);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     data,
     width,
@@ -148,115 +149,104 @@ export default function WatchListHeatmap({
     neutralColor,
   ]);
 
+  // Helper to safely create a DOM element with text content (prevents XSS)
+  // Defined before showTooltip so it can be used inside useCallback
+  const el = (
+    tag: string,
+    className: string,
+    text?: string | number,
+    children?: HTMLElement[]
+  ): HTMLElement => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = String(text);
+    if (children) children.forEach((c) => node.appendChild(c));
+    return node;
+  };
+
   const showTooltip = (event: any, tile: HeatmapTile) => {
     const tooltip = tooltipRef.current;
     if (!tooltip) return;
 
-    tooltip.innerHTML = `
-      <div class="font-bold text-lg mb-2">${tile.symbol} - ${tile.name}</div>
-      <div class="grid grid-cols-2 gap-2 text-sm">
-        <div class="text-ic-text-muted">Price:</div>
-        <div class="font-medium">$${tile.current_price.toFixed(2)}</div>
+    // Clear previous content safely
+    tooltip.textContent = '';
 
-        <div class="text-ic-text-muted">Change:</div>
-        <div class="font-medium ${tile.price_change >= 0 ? 'text-ic-positive' : 'text-ic-negative'}">
-          ${tile.price_change >= 0 ? '+' : ''}${tile.price_change.toFixed(2)} (${tile.price_change_pct.toFixed(2)}%)
-        </div>
+    // Header
+    tooltip.appendChild(el('div', 'font-bold text-lg mb-2', `${tile.symbol} - ${tile.name}`));
 
-        ${
-          tile.market_cap
-            ? `
-          <div class="text-ic-text-muted">Market Cap:</div>
-          <div class="font-medium">${tile.size_label}</div>
-        `
-            : ''
-        }
+    // Grid of key-value pairs
+    const grid = el('div', 'grid grid-cols-2 gap-2 text-sm');
 
-        ${
-          tile.volume
-            ? `
-          <div class="text-ic-text-muted">Volume:</div>
-          <div class="font-medium">${formatVolume(tile.volume)}</div>
-        `
-            : ''
-        }
+    const addRow = (label: string, value: string, valueClass = 'font-medium') => {
+      grid.appendChild(el('div', 'text-ic-text-muted', label));
+      grid.appendChild(el('div', valueClass, value));
+    };
 
-        ${
-          tile.reddit_rank
-            ? `
-          <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
-          <div class="text-ic-text-muted">Reddit Rank:</div>
-          <div class="font-medium text-purple-600">#${tile.reddit_rank}</div>
-        `
-            : ''
-        }
+    const addDivider = () => {
+      grid.appendChild(el('div', 'col-span-2 border-t border-ic-border mt-1 pt-1'));
+    };
 
-        ${
-          tile.reddit_mentions
-            ? `
-          <div class="text-ic-text-muted">Reddit Mentions:</div>
-          <div class="font-medium">${tile.reddit_mentions.toLocaleString()}</div>
-        `
-            : ''
-        }
+    addRow('Price:', `$${tile.current_price.toFixed(2)}`);
 
-        ${
-          tile.reddit_popularity
-            ? `
-          <div class="text-ic-text-muted">Reddit Score:</div>
-          <div class="font-medium">${tile.reddit_popularity.toFixed(1)}/100</div>
-        `
-            : ''
-        }
+    const changeSign = tile.price_change >= 0 ? '+' : '';
+    const changeColor =
+      tile.price_change >= 0 ? 'font-medium text-ic-positive' : 'font-medium text-ic-negative';
+    addRow(
+      'Change:',
+      `${changeSign}${tile.price_change.toFixed(2)} (${tile.price_change_pct.toFixed(2)}%)`,
+      changeColor
+    );
 
-        ${
-          tile.reddit_trend
-            ? `
-          <div class="text-ic-text-muted">Reddit Trend:</div>
-          <div class="font-medium ${
-            tile.reddit_trend === 'rising'
-              ? 'text-ic-positive'
-              : tile.reddit_trend === 'falling'
-                ? 'text-ic-negative'
-                : 'text-ic-text-muted'
-          }">
-            ${tile.reddit_trend === 'rising' ? '↑' : tile.reddit_trend === 'falling' ? '↓' : '→'} ${tile.reddit_trend}
-            ${tile.reddit_rank_change ? ` (${tile.reddit_rank_change > 0 ? '+' : ''}${tile.reddit_rank_change})` : ''}
-          </div>
-        `
-            : ''
-        }
+    if (tile.market_cap) addRow('Market Cap:', tile.size_label);
+    if (tile.volume) addRow('Volume:', formatVolume(tile.volume));
 
-        ${
-          tile.target_buy_price
-            ? `
-          <div class="col-span-2 border-t border-ic-border mt-1 pt-1"></div>
-          <div class="text-ic-text-muted">Target Buy:</div>
-          <div class="font-medium text-ic-blue">$${tile.target_buy_price.toFixed(2)}</div>
-        `
-            : ''
-        }
+    if (tile.reddit_rank) {
+      addDivider();
+      addRow('Reddit Rank:', `#${tile.reddit_rank}`, 'font-medium text-purple-400');
+    }
+    if (tile.reddit_mentions) addRow('Reddit Mentions:', tile.reddit_mentions.toLocaleString());
+    if (tile.reddit_popularity) addRow('Reddit Score:', `${tile.reddit_popularity.toFixed(1)}/100`);
+    if (tile.reddit_trend) {
+      const trendArrow =
+        tile.reddit_trend === 'rising' ? '↑' : tile.reddit_trend === 'falling' ? '↓' : '→';
+      const trendColor =
+        tile.reddit_trend === 'rising'
+          ? 'font-medium text-ic-positive'
+          : tile.reddit_trend === 'falling'
+            ? 'font-medium text-ic-negative'
+            : 'font-medium text-ic-text-muted';
+      const rankChange = tile.reddit_rank_change
+        ? ` (${tile.reddit_rank_change > 0 ? '+' : ''}${tile.reddit_rank_change})`
+        : '';
+      addRow('Reddit Trend:', `${trendArrow} ${tile.reddit_trend}${rankChange}`, trendColor);
+    }
 
-        ${
-          tile.target_sell_price
-            ? `
-          <div class="text-ic-text-muted">Target Sell:</div>
-          <div class="font-medium text-orange-600">$${tile.target_sell_price.toFixed(2)}</div>
-        `
-            : ''
-        }
-      </div>
-      ${tile.notes ? `<div class="mt-2 text-sm text-ic-text-muted italic">${tile.notes}</div>` : ''}
-      ${
-        tile.tags.length > 0
-          ? `
-        <div class="mt-2 flex flex-wrap gap-1">
-          ${tile.tags.map((tag) => `<span class="text-xs bg-ic-bg-secondary px-2 py-1 rounded">${tag}</span>`).join('')}
-        </div>
-      `
-          : ''
-      }
-    `;
+    if (tile.target_buy_price) {
+      addDivider();
+      addRow('Target Buy:', `$${tile.target_buy_price.toFixed(2)}`, 'font-medium text-ic-blue');
+    }
+    if (tile.target_sell_price)
+      addRow(
+        'Target Sell:',
+        `$${tile.target_sell_price.toFixed(2)}`,
+        'font-medium text-orange-400'
+      );
+
+    tooltip.appendChild(grid);
+
+    // Notes (safely escaped)
+    if (tile.notes) {
+      tooltip.appendChild(el('div', 'mt-2 text-sm text-ic-text-muted italic', tile.notes));
+    }
+
+    // Tags (safely escaped)
+    if (tile.tags.length > 0) {
+      const tagContainer = el('div', 'mt-2 flex flex-wrap gap-1');
+      tile.tags.forEach((tag) => {
+        tagContainer.appendChild(el('span', 'text-xs bg-ic-bg-secondary px-2 py-1 rounded', tag));
+      });
+      tooltip.appendChild(tagContainer);
+    }
 
     tooltip.style.display = 'block';
     tooltip.style.left = `${event.pageX + 10}px`;
