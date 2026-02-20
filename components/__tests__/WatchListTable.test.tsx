@@ -440,11 +440,11 @@ describe('WatchListTable — Filtering', () => {
     render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
 
     const count = screen.getByTestId('result-count');
-    expect(count).toHaveTextContent('3 of 3');
+    expect(count).toHaveTextContent('3 of 3 tickers');
 
     // Filter to etf
     fireEvent.click(screen.getByText('ETF'));
-    expect(count).toHaveTextContent('1 of 3');
+    expect(count).toHaveTextContent('1 of 3 tickers');
   });
 
   it('combines search and asset type filter', () => {
@@ -620,8 +620,8 @@ describe('WatchListTable — Cell rendering', () => {
 
     // Score >= 70 gets green pill
     const pill = screen.getByText('78.5');
-    expect(pill).toHaveClass('bg-green-100');
-    expect(pill).toHaveClass('text-green-800');
+    expect(pill).toHaveClass('bg-green-500/20');
+    expect(pill).toHaveClass('text-ic-positive');
   });
 
   it('renders low IC Score with red pill', () => {
@@ -629,8 +629,8 @@ describe('WatchListTable — Cell rendering', () => {
     render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
 
     const pill = screen.getByText('25.0');
-    expect(pill).toHaveClass('bg-red-100');
-    expect(pill).toHaveClass('text-red-800');
+    expect(pill).toHaveClass('bg-red-500/20');
+    expect(pill).toHaveClass('text-ic-negative');
   });
 
   it('renders medium IC Score with yellow pill', () => {
@@ -638,8 +638,8 @@ describe('WatchListTable — Cell rendering', () => {
     render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
 
     const pill = screen.getByText('55.0');
-    expect(pill).toHaveClass('bg-yellow-100');
-    expect(pill).toHaveClass('text-yellow-800');
+    expect(pill).toHaveClass('bg-yellow-500/20');
+    expect(pill).toHaveClass('text-yellow-400');
   });
 
   it('renders positive change in green', () => {
@@ -673,8 +673,10 @@ describe('WatchListTable — Cell rendering', () => {
     const item = makeItem({ reddit_trend: 'rising' });
     render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
 
-    const trendCell = screen.getByText(/↑ rising/);
+    const trendCell = screen.getByLabelText('Trend: rising');
     expect(trendCell).toHaveClass('text-ic-positive');
+    expect(trendCell).toHaveTextContent('↑');
+    expect(trendCell).toHaveTextContent('rising');
   });
 
   it('renders falling trend with down arrow', () => {
@@ -682,8 +684,10 @@ describe('WatchListTable — Cell rendering', () => {
     const item = makeItem({ reddit_trend: 'falling' });
     render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
 
-    const trendCell = screen.getByText(/↓ falling/);
+    const trendCell = screen.getByLabelText('Trend: falling');
     expect(trendCell).toHaveClass('text-ic-negative');
+    expect(trendCell).toHaveTextContent('↓');
+    expect(trendCell).toHaveTextContent('falling');
   });
 
   it('buy alert highlights target buy price in bold green', () => {
@@ -696,7 +700,7 @@ describe('WatchListTable — Cell rendering', () => {
     // Target buy price should be bold green
     const buyPrice = screen.getByText('$155.00');
     expect(buyPrice).toHaveClass('font-bold');
-    expect(buyPrice).toHaveClass('text-green-700');
+    expect(buyPrice).toHaveClass('text-ic-positive');
   });
 
   it('sell alert highlights target sell price in bold blue', () => {
@@ -708,7 +712,7 @@ describe('WatchListTable — Cell rendering', () => {
 
     const sellPrice = screen.getByText('$195.00');
     expect(sellPrice).toHaveClass('font-bold');
-    expect(sellPrice).toHaveClass('text-blue-700');
+    expect(sellPrice).toHaveClass('text-ic-blue');
   });
 });
 
@@ -727,9 +731,10 @@ describe('WatchListTable — Edge cases', () => {
   it('renders empty table when no items', () => {
     render(<WatchListTable items={[]} onRemove={onRemove} onEdit={onEdit} />);
 
-    // Should have headers but no data rows
+    // Should have header row + empty message row
     const rows = screen.getAllByRole('row');
-    expect(rows).toHaveLength(1); // Only header row
+    expect(rows).toHaveLength(2);
+    expect(screen.getByText('No tickers in this watchlist')).toBeInTheDocument();
   });
 
   it('handles items with all null scores gracefully', () => {
@@ -762,8 +767,9 @@ describe('WatchListTable — Edge cases', () => {
     const count = screen.getByTestId('result-count');
     expect(count).toHaveTextContent('0 of 1');
 
-    // Only header row, no data rows
+    // Header row + empty message row
     const rows = screen.getAllByRole('row');
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
+    expect(screen.getByText('No results found for "ZZZZZ"')).toBeInTheDocument();
   });
 });

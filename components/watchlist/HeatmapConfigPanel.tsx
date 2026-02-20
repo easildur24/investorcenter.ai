@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useModal } from '@/lib/hooks/useModal';
 
 export interface HeatmapSettings {
   size_metric: string;
@@ -16,22 +17,79 @@ interface HeatmapConfigPanelProps {
   onSave?: (name: string) => void;
 }
 
+// Extracted so useModal only runs when the modal is mounted
+function SaveConfigModal({
+  onClose,
+  onSave,
+}: {
+  onClose: () => void;
+  onSave: (name: string) => void;
+}) {
+  const modalRef = useModal(onClose);
+  const [configName, setConfigName] = useState('');
+
+  const handleSave = () => {
+    if (configName) {
+      onSave(configName);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50"
+      onClick={onClose}
+    >
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Save Heatmap Configuration"
+        className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="text-xl font-bold mb-4 text-ic-text-primary">Save Heatmap Configuration</h3>
+        <p className="text-sm text-ic-text-muted mb-4">Give your configuration a memorable name</p>
+        <input
+          type="text"
+          value={configName}
+          onChange={(e) => setConfigName(e.target.value)}
+          placeholder="e.g., Reddit Momentum Strategy"
+          className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue mb-4 text-ic-text-primary"
+        />
+        <div className="flex gap-2 justify-end">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 border border-ic-border rounded-md hover:bg-ic-surface-hover text-ic-text-secondary font-medium transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!configName}
+            className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed font-medium transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HeatmapConfigPanel({
   settings,
   onChange,
   onSave,
 }: HeatmapConfigPanelProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
-  const [configName, setConfigName] = useState('');
 
   const handleChange = (field: keyof HeatmapSettings, value: string) => {
     onChange({ ...settings, [field]: value });
   };
 
-  const handleSave = () => {
-    if (onSave && configName) {
-      onSave(configName);
-      setConfigName('');
+  const handleSave = (name: string) => {
+    if (onSave) {
+      onSave(name);
       setShowSaveModal(false);
     }
   };
@@ -43,7 +101,7 @@ export default function HeatmapConfigPanel({
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-ic-blue"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -62,11 +120,11 @@ export default function HeatmapConfigPanel({
             onChange={(e) => handleChange('size_metric', e.target.value)}
             className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
-            <option value="market_cap">📊 Market Cap</option>
-            <option value="volume">📈 Volume</option>
-            <option value="avg_volume">📉 Avg Volume</option>
-            <option value="reddit_mentions">💬 Reddit Mentions</option>
-            <option value="reddit_popularity">🔥 Reddit Popularity</option>
+            <option value="market_cap">Market Cap</option>
+            <option value="volume">Volume</option>
+            <option value="avg_volume">Avg Volume</option>
+            <option value="reddit_mentions">Reddit Mentions</option>
+            <option value="reddit_popularity">Reddit Popularity</option>
           </select>
         </div>
 
@@ -74,7 +132,7 @@ export default function HeatmapConfigPanel({
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg
-              className="w-4 h-4 text-purple-600"
+              className="w-4 h-4 text-purple-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -93,10 +151,10 @@ export default function HeatmapConfigPanel({
             onChange={(e) => handleChange('color_metric', e.target.value)}
             className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
-            <option value="price_change_pct">💲 Price Change %</option>
-            <option value="volume_change_pct">📊 Volume Change %</option>
-            <option value="reddit_rank">🏆 Reddit Rank</option>
-            <option value="reddit_trend">📈 Reddit Trend</option>
+            <option value="price_change_pct">Price Change %</option>
+            <option value="volume_change_pct">Volume Change %</option>
+            <option value="reddit_rank">Reddit Rank</option>
+            <option value="reddit_trend">Reddit Trend</option>
           </select>
         </div>
 
@@ -104,7 +162,7 @@ export default function HeatmapConfigPanel({
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg
-              className="w-4 h-4 text-green-600"
+              className="w-4 h-4 text-ic-positive"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -138,7 +196,7 @@ export default function HeatmapConfigPanel({
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
             <svg
-              className="w-4 h-4 text-pink-600"
+              className="w-4 h-4 text-pink-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -157,9 +215,9 @@ export default function HeatmapConfigPanel({
             onChange={(e) => handleChange('color_scheme', e.target.value)}
             className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
           >
-            <option value="red_green">🔴 Red-Green</option>
-            <option value="blue_red">🔵 Blue-Red</option>
-            <option value="heatmap">🌈 Heatmap</option>
+            <option value="red_green">Red-Green</option>
+            <option value="blue_red">Blue-Red</option>
+            <option value="heatmap">Heatmap</option>
           </select>
         </div>
 
@@ -170,7 +228,7 @@ export default function HeatmapConfigPanel({
               onClick={() => setShowSaveModal(true)}
               className="w-full px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover focus:outline-none focus:ring-2 focus:ring-ic-blue focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
             >
-              💾 Save Config
+              Save Config
             </button>
           </div>
         )}
@@ -178,45 +236,7 @@ export default function HeatmapConfigPanel({
 
       {/* Save Config Modal */}
       {showSaveModal && (
-        <div
-          className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50"
-          onClick={() => setShowSaveModal(false)}
-        >
-          <div
-            className="bg-ic-surface rounded-lg p-6 w-full max-w-md shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="text-xl font-bold mb-4 text-ic-text-primary">
-              💾 Save Heatmap Configuration
-            </h3>
-            <p className="text-sm text-ic-text-muted mb-4">
-              Give your configuration a memorable name
-            </p>
-            <input
-              type="text"
-              value={configName}
-              onChange={(e) => setConfigName(e.target.value)}
-              placeholder="e.g., Reddit Momentum Strategy"
-              className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue mb-4 text-ic-text-primary"
-              autoFocus
-            />
-            <div className="flex gap-2 justify-end">
-              <button
-                onClick={() => setShowSaveModal(false)}
-                className="px-4 py-2 border border-ic-border rounded-md hover:bg-ic-surface-hover text-ic-text-secondary font-medium transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={!configName}
-                className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded-md hover:bg-ic-blue-hover disabled:bg-ic-bg-tertiary disabled:cursor-not-allowed font-medium transition-colors"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        </div>
+        <SaveConfigModal onClose={() => setShowSaveModal(false)} onSave={handleSave} />
       )}
     </div>
   );
