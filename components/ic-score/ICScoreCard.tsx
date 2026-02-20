@@ -215,9 +215,11 @@ function ErrorState({ message, ticker }: { message: string; ticker: string }) {
     <div className="bg-ic-surface rounded-lg shadow border border-ic-border p-8 text-center">
       <div className="text-ic-text-dim text-5xl mb-4">📊</div>
       <h3 className="text-lg font-semibold text-ic-text-primary mb-2">IC Score Not Available</h3>
-      <p className="text-ic-text-muted mb-4">IC Score for {ticker} hasn't been calculated yet.</p>
+      <p className="text-ic-text-muted mb-4">
+        IC Score for {ticker} hasn&apos;t been calculated yet.
+      </p>
       <p className="text-sm text-ic-text-muted">
-        We're working on expanding coverage. Check back soon!
+        We&apos;re working on expanding coverage. Check back soon!
       </p>
     </div>
   );

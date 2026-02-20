@@ -76,7 +76,7 @@ export default function WatchListDashboard() {
           <div className="text-center py-12">Loading...</div>
         ) : watchLists.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-ic-text-muted mb-4">You don't have any watch lists yet.</p>
+            <p className="text-ic-text-muted mb-4">You don&apos;t have any watch lists yet.</p>
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-6 py-3 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
