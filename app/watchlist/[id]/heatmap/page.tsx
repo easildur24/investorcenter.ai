@@ -63,7 +63,7 @@ export default function WatchListHeatmapPage() {
     return (
       <ProtectedRoute>
         <div className="flex flex-col items-center justify-center min-h-screen">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-ic-blue mb-4"></div>
           <div className="text-xl text-ic-text-secondary font-medium">Loading heatmap...</div>
           <div className="text-sm text-ic-text-dim mt-2">
             Fetching ticker data and calculating metrics
@@ -150,10 +150,10 @@ export default function WatchListHeatmapPage() {
         </div>
 
         {error && (
-          <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 rounded-md shadow-sm">
+          <div className="mb-6 p-4 bg-red-500/10 border-l-4 border-red-500 rounded-md shadow-sm">
             <div className="flex items-start">
               <svg
-                className="w-5 h-5 text-red-500 mt-0.5 mr-3"
+                className="w-5 h-5 text-ic-negative mt-0.5 mr-3"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -166,8 +166,8 @@ export default function WatchListHeatmapPage() {
                 />
               </svg>
               <div>
-                <h3 className="text-sm font-medium text-red-800">Error loading heatmap</h3>
-                <p className="text-sm text-red-700 mt-1">{error}</p>
+                <h3 className="text-sm font-medium text-ic-negative">Error loading heatmap</h3>
+                <p className="text-sm text-ic-text-secondary mt-1">{error}</p>
               </div>
             </div>
           </div>
@@ -176,7 +176,7 @@ export default function WatchListHeatmapPage() {
         <HeatmapConfigPanel settings={settings} onChange={setSettings} onSave={handleSaveConfig} />
 
         {!heatmapData || heatmapData.tiles.length === 0 ? (
-          <div className="text-center py-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg border-2 border-dashed border-ic-border">
+          <div className="text-center py-16 bg-ic-bg-secondary rounded-lg border-2 border-dashed border-ic-border">
             <svg
               className="mx-auto h-16 w-16 text-ic-text-muted mb-4"
               fill="none"

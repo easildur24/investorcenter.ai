@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
+import { useModal } from '@/lib/hooks/useModal';
 
 interface SearchResult {
   symbol: string;
@@ -22,6 +23,7 @@ interface AddTickerModalProps {
 }
 
 export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) {
+  const modalRef = useModal(onClose);
   const [symbol, setSymbol] = useState('');
   const [notes, setNotes] = useState('');
   const [tags, setTags] = useState('');
@@ -31,6 +33,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [validationError, setValidationError] = useState('');
 
   // Debounced search effect
   useEffect(() => {
@@ -65,6 +68,16 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationError('');
+
+    const buyPrice = targetBuy ? parseFloat(targetBuy) : undefined;
+    const sellPrice = targetSell ? parseFloat(targetSell) : undefined;
+
+    if (buyPrice != null && sellPrice != null && buyPrice >= sellPrice) {
+      setValidationError('Target buy price must be less than target sell price');
+      return;
+    }
+
     setLoading(true);
     try {
       const tagArray = tags
@@ -75,8 +88,8 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
         symbol.toUpperCase(),
         notes || undefined,
         tagArray.length > 0 ? tagArray : undefined,
-        targetBuy ? parseFloat(targetBuy) : undefined,
-        targetSell ? parseFloat(targetSell) : undefined
+        buyPrice,
+        sellPrice
       );
     } finally {
       setLoading(false);
@@ -85,7 +98,13 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
   return (
     <div className="fixed inset-0 bg-ic-bg-primary bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-ic-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Add Ticker"
+        className="bg-ic-surface rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+      >
         <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Add Ticker</h2>
 
         <form onSubmit={handleSubmit}>
@@ -215,6 +234,12 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               />
             </div>
           </div>
+
+          {validationError && (
+            <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded text-sm text-ic-negative">
+              {validationError}
+            </div>
+          )}
 
           <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-400">
             <strong>💡 Tip:</strong> Set target prices to get visual alerts when the price reaches
