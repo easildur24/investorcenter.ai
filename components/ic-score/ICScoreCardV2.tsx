@@ -349,8 +349,10 @@ function ErrorState({ message, ticker }: { message: string; ticker: string }) {
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
       <div className="text-gray-400 text-5xl mb-4">📊</div>
       <h3 className="text-lg font-semibold text-gray-900 mb-2">IC Score Not Available</h3>
-      <p className="text-gray-500 mb-4">IC Score for {ticker} hasn't been calculated yet.</p>
-      <p className="text-sm text-gray-400">We're working on expanding coverage. Check back soon!</p>
+      <p className="text-gray-500 mb-4">IC Score for {ticker} hasn&apos;t been calculated yet.</p>
+      <p className="text-sm text-gray-400">
+        We&apos;re working on expanding coverage. Check back soon!
+      </p>
     </div>
   );
 }

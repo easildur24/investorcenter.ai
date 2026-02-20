@@ -140,7 +140,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                   ))
                 ) : symbol && !isSearching ? (
                   <div className="px-4 py-3 text-ic-text-muted text-sm">
-                    No results found for "{symbol}"
+                    No results found for &quot;{symbol}&quot;
                   </div>
                 ) : null}
               </div>
