@@ -577,7 +577,15 @@ export const VIEW_PRESETS: ViewPreset[] = [
     label: 'Performance',
     description: 'Price, volume, market cap',
     // TODO: Add perf_1w, perf_1m, perf_3m, perf_6m, perf_ytd, perf_1y when backend supports them
-    columnIds: ['symbol', 'name', 'current_price', 'price_change', 'volume', 'market_cap', 'actions'],
+    columnIds: [
+      'symbol',
+      'name',
+      'current_price',
+      'price_change',
+      'volume',
+      'market_cap',
+      'actions',
+    ],
     premium: false,
   },
   {

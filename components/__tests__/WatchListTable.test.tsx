@@ -214,11 +214,7 @@ describe('WatchListTable', () => {
 
   it('calls onRemove when Remove button clicked', () => {
     render(
-      <WatchListTable
-        items={[makeItem({ symbol: 'AAPL' })]}
-        onRemove={onRemove}
-        onEdit={onEdit}
-      />
+      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
     );
 
     fireEvent.click(screen.getByText('Remove'));
@@ -228,11 +224,7 @@ describe('WatchListTable', () => {
 
   it('calls onEdit when Edit button clicked', () => {
     render(
-      <WatchListTable
-        items={[makeItem({ symbol: 'AAPL' })]}
-        onRemove={onRemove}
-        onEdit={onEdit}
-      />
+      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
     );
 
     fireEvent.click(screen.getByText('Edit'));
@@ -547,10 +539,7 @@ describe('WatchListTable — View Switching', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: /Fundamentals/i }));
 
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'watchlist-view-preset',
-      'fundamentals'
-    );
+    expect(localStorageMock.setItem).toHaveBeenCalledWith('watchlist-view-preset', 'fundamentals');
   });
 
   it('restores view from localStorage on mount', () => {
@@ -590,18 +579,14 @@ describe('WatchListTable — ViewSwitcher rendering', () => {
   });
 
   it('renders all 7 view preset tabs', () => {
-    render(
-      <WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />
-    );
+    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
 
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(7);
   });
 
   it('General tab is active (blue) by default', () => {
-    render(
-      <WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />
-    );
+    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
 
     const generalTab = screen.getByRole('tab', { name: /General/i });
     expect(generalTab).toHaveClass('bg-ic-blue');
@@ -609,9 +594,7 @@ describe('WatchListTable — ViewSwitcher rendering', () => {
   });
 
   it('inactive tabs have surface background', () => {
-    render(
-      <WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />
-    );
+    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
 
     const compactTab = screen.getByRole('tab', { name: /Compact/i });
     expect(compactTab).toHaveClass('bg-ic-surface');
@@ -676,7 +659,9 @@ describe('WatchListTable — Cell rendering', () => {
   });
 
   it('renders symbol as link to ticker page', () => {
-    render(<WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
+    );
 
     const link = screen.getByRole('link', { name: 'AAPL' });
     expect(link).toHaveAttribute('href', '/ticker/AAPL');

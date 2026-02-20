@@ -79,19 +79,14 @@ function renderCell(
     // ── Symbol link ───────────────────────────────────────────────────
     case 'symbol':
       return (
-        <Link
-          href={`/ticker/${item.symbol}`}
-          className="text-ic-blue hover:underline font-medium"
-        >
+        <Link href={`/ticker/${item.symbol}`} className="text-ic-blue hover:underline font-medium">
           {item.symbol}
         </Link>
       );
 
     // ── Plain text ────────────────────────────────────────────────────
     case 'text':
-      return (
-        <span className="text-ic-text-primary truncate">{raw ?? '—'}</span>
-      );
+      return <span className="text-ic-text-primary truncate">{raw ?? '—'}</span>;
 
     // ── Currency ($XX.XX) ─────────────────────────────────────────────
     case 'currency': {
@@ -107,11 +102,7 @@ function renderCell(
         return <span className="font-bold text-blue-700">${safeToFixed(num, dec)}</span>;
       }
 
-      return (
-        <span className="font-medium text-ic-text-primary">
-          ${safeToFixed(num, dec)}
-        </span>
-      );
+      return <span className="font-medium text-ic-text-primary">${safeToFixed(num, dec)}</span>;
     }
 
     // ── Percent (XX.X%) ───────────────────────────────────────────────
@@ -181,9 +172,7 @@ function renderCell(
 
     // ── IC Rating text ────────────────────────────────────────────────
     case 'rating':
-      return (
-        <span className="text-sm text-ic-text-primary">{raw ?? '—'}</span>
-      );
+      return <span className="text-sm text-ic-text-primary">{raw ?? '—'}</span>;
 
     // ── Reddit trend arrow ────────────────────────────────────────────
     case 'trend': {
@@ -211,9 +200,7 @@ function renderCell(
       return (
         <span
           className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-            alert.type === 'buy'
-              ? 'bg-green-100 text-green-800'
-              : 'bg-blue-100 text-blue-800'
+            alert.type === 'buy' ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'
           }`}
         >
           {alert.message}
@@ -306,9 +293,7 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       result = result.filter(
-        (item) =>
-          item.symbol.toLowerCase().includes(q) ||
-          item.name.toLowerCase().includes(q)
+        (item) => item.symbol.toLowerCase().includes(q) || item.name.toLowerCase().includes(q)
       );
     }
 
@@ -433,9 +418,7 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
                     }
                   >
                     {col.label}
-                    {col.sortable && isSorted && (
-                      <SortIndicator direction={sortDirection} />
-                    )}
+                    {col.sortable && isSorted && <SortIndicator direction={sortDirection} />}
                   </th>
                 );
               })}
@@ -447,10 +430,7 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
               return (
                 <tr
                   key={item.symbol}
-                  className={cn(
-                    'hover:bg-ic-surface-hover',
-                    alert ? alert.bgClass : ''
-                  )}
+                  className={cn('hover:bg-ic-surface-hover', alert ? alert.bgClass : '')}
                 >
                   {columns.map((col) => (
                     <td
