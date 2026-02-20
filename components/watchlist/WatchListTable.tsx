@@ -3,16 +3,32 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { WatchListItem } from '@/lib/api/watchlist';
-import { cn } from '@/lib/utils';
-import { safeToFixed, formatLargeNumber } from '@/lib/utils';
+import { cn, safeToFixed, formatLargeNumber } from '@/lib/utils';
 import {
   getColumnsForView,
   ColumnDefinition,
   ViewPresetId,
+  VIEW_PRESETS,
   DEFAULT_VIEW,
   VIEW_STORAGE_KEY,
 } from '@/lib/watchlist/columns';
 import ViewSwitcher from './ViewSwitcher';
+
+// ---------------------------------------------------------------------------
+// Display label for asset type filter chips (uppercase abbreviations).
+// ---------------------------------------------------------------------------
+
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  etf: 'ETF',
+  etn: 'ETN',
+  reit: 'REIT',
+  spac: 'SPAC',
+  adr: 'ADR',
+};
+
+function formatAssetTypeLabel(type: string): string {
+  return ASSET_TYPE_LABELS[type.toLowerCase()] ?? type.charAt(0).toUpperCase() + type.slice(1);
+}
 
 // ---------------------------------------------------------------------------
 // Props — unchanged from original, no parent changes needed.
@@ -113,6 +129,14 @@ function renderCell(
       const color =
         num > 0 ? 'text-ic-positive' : num < 0 ? 'text-ic-negative' : 'text-ic-text-primary';
       return <span className={color}>{safeToFixed(num, dec)}%</span>;
+    }
+
+    // ── Percentile (neutral color, always positive rank metric) ────────
+    case 'percentile': {
+      if (raw == null) return <span className="text-ic-text-secondary">—</span>;
+      const num = Number(raw);
+      const dec = col.decimals ?? 0;
+      return <span>{safeToFixed(num, dec)}%</span>;
     }
 
     // ── Number (configurable decimals) ────────────────────────────────
@@ -253,7 +277,9 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
   // ── View preset (persisted to localStorage) ───────────────────────
   const [activeView, setActiveView] = useState<ViewPresetId>(() => {
     if (typeof window === 'undefined') return DEFAULT_VIEW;
-    return (localStorage.getItem(VIEW_STORAGE_KEY) as ViewPresetId) ?? DEFAULT_VIEW;
+    const stored = localStorage.getItem(VIEW_STORAGE_KEY);
+    const validIds = VIEW_PRESETS.map((p) => p.id) as string[];
+    return stored && validIds.includes(stored) ? (stored as ViewPresetId) : DEFAULT_VIEW;
   });
 
   const handleViewChange = (view: ViewPresetId) => {
@@ -371,13 +397,13 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
               key={type}
               onClick={() => setAssetTypeFilter(assetTypeFilter === type ? null : type)}
               className={cn(
-                'px-2.5 py-1 text-xs rounded-lg transition-colors capitalize',
+                'px-2.5 py-1 text-xs rounded-lg transition-colors',
                 assetTypeFilter === type
                   ? 'bg-ic-blue text-white'
                   : 'bg-ic-surface border border-ic-border text-ic-text-secondary hover:bg-ic-surface-hover'
               )}
             >
-              {type}
+              {formatAssetTypeLabel(type)}
             </button>
           ))}
         </div>
@@ -389,7 +415,12 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div
+        className="overflow-x-auto"
+        role="tabpanel"
+        id="watchlist-tabpanel"
+        aria-labelledby={`watchlist-tab-${activeView}`}
+      >
         <table className="w-full bg-ic-surface rounded-lg border border-ic-border">
           <thead className="bg-ic-bg-secondary">
             <tr>

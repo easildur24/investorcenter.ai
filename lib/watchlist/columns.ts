@@ -9,6 +9,7 @@ export type ColumnType =
   | 'text' // Plain text
   | 'currency' // $XX.XX
   | 'percent' // XX.X%  (with positive/negative coloring)
+  | 'percentile' // XX% neutral (no green/red — rank-style metric)
   | 'number' // Numeric with configurable decimals
   | 'integer' // Whole number
   | 'change' // +X.XX (+Y.YY%) with green/red color
@@ -105,6 +106,9 @@ export const ALL_COLUMNS: ColumnDefinition[] = [
     align: 'right',
     sortable: true,
     premium: false,
+    // Sorting by percent change (not dollar change) — more meaningful across
+    // different price ranges. The cell renderer reads both price_change and
+    // price_change_pct directly from the item to display "$X.XX (Y.YY%)".
     getValue: (i) => i.price_change_pct,
   },
   {
@@ -289,7 +293,7 @@ export const ALL_COLUMNS: ColumnDefinition[] = [
   {
     id: 'sector_percentile',
     label: 'Sector %ile',
-    type: 'percent',
+    type: 'percentile',
     align: 'right',
     sortable: true,
     premium: true,

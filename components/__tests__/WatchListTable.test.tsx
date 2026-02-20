@@ -408,7 +408,7 @@ describe('WatchListTable — Filtering', () => {
   it('filters by asset type chip', () => {
     render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
 
-    fireEvent.click(screen.getByText('etf'));
+    fireEvent.click(screen.getByText('ETF'));
 
     expect(screen.getByText('SPY')).toBeInTheDocument();
     expect(screen.queryByText('AAPL')).not.toBeInTheDocument();
@@ -426,11 +426,11 @@ describe('WatchListTable — Filtering', () => {
     render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
 
     // Click etf to filter
-    fireEvent.click(screen.getByText('etf'));
+    fireEvent.click(screen.getByText('ETF'));
     expect(screen.queryByText('AAPL')).not.toBeInTheDocument();
 
     // Click etf again to clear filter
-    fireEvent.click(screen.getByText('etf'));
+    fireEvent.click(screen.getByText('ETF'));
     expect(screen.getByText('AAPL')).toBeInTheDocument();
     expect(screen.getByText('MSFT')).toBeInTheDocument();
     expect(screen.getByText('SPY')).toBeInTheDocument();
@@ -443,7 +443,7 @@ describe('WatchListTable — Filtering', () => {
     expect(count).toHaveTextContent('3 of 3');
 
     // Filter to etf
-    fireEvent.click(screen.getByText('etf'));
+    fireEvent.click(screen.getByText('ETF'));
     expect(count).toHaveTextContent('1 of 3');
   });
 
@@ -451,7 +451,7 @@ describe('WatchListTable — Filtering', () => {
     render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
 
     // Filter by stock type first
-    fireEvent.click(screen.getByText('stock'));
+    fireEvent.click(screen.getByText('Stock'));
 
     // Then search for Apple
     const searchInput = screen.getByPlaceholderText('Search by symbol or name...');

@@ -16,8 +16,10 @@ export default function ViewSwitcher({ activeView, onViewChange }: ViewSwitcherP
         return (
           <button
             key={preset.id}
+            id={`watchlist-tab-${preset.id}`}
             role="tab"
             aria-selected={isActive}
+            aria-controls="watchlist-tabpanel"
             onClick={() => onViewChange(preset.id)}
             className={cn(
               'px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors',
