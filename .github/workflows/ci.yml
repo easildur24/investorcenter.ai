@@ -337,7 +337,7 @@ jobs:
       run: npx prettier --check "app/**/*.{ts,tsx}" "components/**/*.{ts,tsx}" "lib/**/*.{ts,tsx}"
 
     - name: Lint (ESLint + jsx-a11y + no-explicit-any)
-      run: npx next lint --quiet
+      run: npx next lint --max-warnings 999
 
     - name: Check hardcoded Tailwind colors (dark mode)
       run: bash scripts/check-hardcoded-colors.sh --warn-only
