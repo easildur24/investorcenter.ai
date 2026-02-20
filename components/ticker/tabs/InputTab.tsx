@@ -271,8 +271,8 @@ export default function InputTab({ symbol }: InputTabProps) {
         <ol className="list-decimal list-inside space-y-1 text-sm text-ic-text-muted">
           <li>Calculate your fundamental metrics externally (Excel, Python, etc.)</li>
           <li>Format them as JSON with any field names you want</li>
-          <li>Click "Load Sample Template" to see an example structure</li>
-          <li>Paste your JSON data and click "Save"</li>
+          <li>Click &quot;Load Sample Template&quot; to see an example structure</li>
+          <li>Paste your JSON data and click &quot;Save&quot;</li>
           <li>The data will be stored and displayed in the Key Metrics section</li>
           <li>You can update the data anytime by submitting new JSON</li>
         </ol>

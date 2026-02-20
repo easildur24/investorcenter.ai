@@ -151,29 +151,19 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       document.body.style.overflow = '';
     };
   }, [isFullscreen]);
-  if (!chartData?.dataPoints || chartData.dataPoints.length === 0) {
-    return (
-      <div className="p-6">
-        <h3 className="text-lg font-semibold text-ic-text-primary mb-6">Price Chart</h3>
-        <div className="h-80 bg-ic-bg-secondary rounded-lg flex items-center justify-center">
-          <div className="text-ic-text-muted">
-            {isLoading ? 'Loading chart data...' : 'No chart data available'}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
-  const dataPoints: ChartDataPoint[] = chartData.dataPoints;
-  const prices = dataPoints.map((d) => parseFloat(d.close));
+  const hasData = chartData?.dataPoints && chartData.dataPoints.length > 0;
+  const dataPoints: ChartDataPoint[] = chartData?.dataPoints || [];
+  const prices = useMemo(() => dataPoints.map((d) => parseFloat(d.close)), [dataPoints]);
   const volumes = dataPoints.map((d) => d.volume);
-  const rawHigh = Math.max(...prices);
-  const rawLow = Math.min(...prices);
-  const maxVolume = Math.max(...volumes);
+  const rawHigh = hasData ? Math.max(...prices) : 0;
+  const rawLow = hasData ? Math.min(...prices) : 0;
+  const maxVolume = hasData ? Math.max(...volumes) : 0;
 
   // Calculate nice Y-axis ticks (round numbers like 250, 300, 350...)
   const calculateNiceTicks = (min: number, max: number, tickCount: number = 5) => {
     const range = max - min;
+    if (range === 0) return { ticks: [min], min, max: max || 1 };
     const roughStep = range / (tickCount - 1);
 
     // Find a nice round step size
@@ -201,11 +191,11 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const priceRange = high - low || 1;
 
   // Use real current price, not chart data
-  const firstPrice = prices[0];
+  const firstPrice = prices[0] || 0;
   const priceChange = currentPrice - firstPrice;
   const priceChangePercent = firstPrice > 0 ? (priceChange / firstPrice) * 100 : 0;
 
-  // Calculate moving averages
+  // Calculate moving averages (must be called unconditionally — hooks cannot be after early return)
   const ma50 = useMemo(() => calculateSMA(prices, 50), [prices]);
   const ma200 = useMemo(() => calculateSMA(prices, 200), [prices]);
 
@@ -225,7 +215,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   const plotWidth = chartWidth - paddingLeft - paddingRight;
   const plotHeight = priceChartHeight - paddingTop - paddingBottom;
   const priceScale = plotHeight / priceRange;
-  const volumeScale = volumeChartHeight / maxVolume;
+  const volumeScale = maxVolume > 0 ? volumeChartHeight / maxVolume : 0;
 
   // Generate X-axis date labels
   const getDateLabels = () => {
@@ -430,6 +420,20 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
       chart.removeEventListener('mouseleave', handleMouseLeave);
     };
   }, [dataPoints, chartWidth, paddingLeft, plotWidth]);
+
+  // Early return for empty data — placed after ALL hooks to satisfy rules-of-hooks
+  if (!hasData) {
+    return (
+      <div className="p-6">
+        <h3 className="text-lg font-semibold text-ic-text-primary mb-6">Price Chart</h3>
+        <div className="h-80 bg-ic-bg-secondary rounded-lg flex items-center justify-center">
+          <div className="text-ic-text-muted">
+            {isLoading ? 'Loading chart data...' : 'No chart data available'}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const chartContent = (
     <>

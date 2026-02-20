@@ -120,8 +120,8 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
               Who Are the Founders of {cryptoName}?
             </h3>
             <p className="text-ic-text-secondary leading-relaxed">
-              {cryptoName}'s original inventor is known under a pseudonym, Satoshi Nakamoto. As of
-              2021, the true identity of the person — or organization — that is behind the alias
+              {cryptoName}&apos;s original inventor is known under a pseudonym, Satoshi Nakamoto. As
+              of 2021, the true identity of the person — or organization — that is behind the alias
               remains unknown.
             </p>
           </div>
@@ -131,8 +131,8 @@ export default function CryptoMainContent({ symbol, cryptoName }: CryptoMainCont
               What Makes {cryptoName} Unique?
             </h3>
             <p className="text-ic-text-secondary leading-relaxed">
-              {cryptoName}'s most unique advantage comes from the fact that it was the very first
-              cryptocurrency to appear on the market.
+              {cryptoName}&apos;s most unique advantage comes from the fact that it was the very
+              first cryptocurrency to appear on the market.
             </p>
           </div>
         </div>
