@@ -89,7 +89,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
         <h2 className="text-2xl font-bold mb-4 text-ic-text-primary">Add Ticker</h2>
 
         <form onSubmit={handleSubmit}>
-          <div className="mb-4 relative">
+          <div className="mb-4 relative z-10">
             <label
               className="block text-sm font-medium mb-2 text-ic-text-secondary"
               htmlFor="symbol"
@@ -104,7 +104,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
               onFocus={() => symbol && setShowResults(true)}
               onBlur={() => setTimeout(() => setShowResults(false), 200)}
               placeholder="e.g., AAPL, TSLA, X:BTCUSD"
-              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary"
+              className="w-full px-3 py-2 border border-ic-border rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-ic-text-primary bg-transparent"
               required
               autoComplete="off"
             />
@@ -114,7 +114,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
 
             {/* Autocomplete Dropdown */}
             {showResults && (
-              <div className="absolute z-50 mt-1 w-full bg-ic-surface border border-ic-border max-h-60 rounded-lg py-1 text-base ring-1 ring-black ring-opacity-5 overflow-auto focus:outline-none">
+              <div className="absolute z-50 mt-1 w-full bg-ic-bg-primary border border-ic-border max-h-60 rounded-lg py-1 text-base shadow-lg shadow-black/50 overflow-auto focus:outline-none">
                 {isSearching ? (
                   <div className="px-4 py-2 text-ic-text-muted text-sm">Searching...</div>
                 ) : searchResults.length > 0 ? (
@@ -123,7 +123,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
                       key={result.symbol}
                       type="button"
                       onClick={() => handleSelectTicker(result.symbol)}
-                      className="w-full text-left px-4 py-3 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none transition-colors border-b border-ic-border last:border-b-0"
+                      className="w-full text-left px-4 py-3 hover:bg-ic-surface-hover focus:bg-ic-surface-hover focus:outline-none transition-colors border-b border-ic-border last:border-b-0"
                     >
                       <div className="flex justify-between items-center">
                         <div className="flex-1 min-w-0">
@@ -147,7 +147,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             )}
           </div>
 
-          <div className="mb-4">
+          <div className="relative z-0 mb-4">
             <label
               className="block text-sm font-medium mb-2 text-ic-text-secondary"
               htmlFor="notes"
@@ -164,7 +164,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             />
           </div>
 
-          <div className="mb-4">
+          <div className="relative z-0 mb-4">
             <label className="block text-sm font-medium mb-2 text-ic-text-secondary" htmlFor="tags">
               Tags (optional)
             </label>
@@ -179,7 +179,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             <p className="text-xs text-ic-text-muted mt-1">Separate multiple tags with commas</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="relative z-0 grid grid-cols-2 gap-4 mb-6">
             <div>
               <label
                 className="block text-sm font-medium mb-2 text-ic-text-secondary"
@@ -216,7 +216,7 @@ export default function AddTickerModal({ onClose, onAdd }: AddTickerModalProps) 
             </div>
           </div>
 
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded text-sm text-blue-800">
+          <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded text-sm text-blue-400">
             <strong>💡 Tip:</strong> Set target prices to get visual alerts when the price reaches
             your buy or sell targets.
           </div>
