@@ -2,8 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MagnifyingGlassIcon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  MagnifyingGlassIcon,
+  ClockIcon,
+  XMarkIcon,
+  PlusIcon,
+  CheckIcon,
+} from '@heroicons/react/24/outline';
 import { apiClient } from '@/lib/api';
+import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
+import { isFeatureEnabled, FF_INLINE_WATCHLIST_ADD } from '@/lib/featureFlags';
 
 interface SearchResult {
   symbol: string;
@@ -64,7 +72,17 @@ export default function TickerSearch() {
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [addingSymbol, setAddingSymbol] = useState<string | null>(null);
   const router = useRouter();
+
+  // Zustand store for watchlist page integration
+  const activeWatchlistId = useWatchlistPageStore((s) => s.activeWatchlistId);
+  const activeWatchlistName = useWatchlistPageStore((s) => s.activeWatchlistName);
+  const existingSymbols = useWatchlistPageStore((s) => s.existingSymbols);
+  const addTickerFn = useWatchlistPageStore((s) => s.addTickerFn);
+
+  const showAddButtons =
+    isFeatureEnabled(FF_INLINE_WATCHLIST_ADD) && !!activeWatchlistId && !!addTickerFn;
 
   // Load recent searches on mount
   useEffect(() => {
@@ -159,25 +177,73 @@ export default function TickerSearch() {
           {isLoading ? (
             <div className="px-4 py-2 text-ic-text-muted">Searching...</div>
           ) : results.length > 0 ? (
-            results.map((result) => (
-              <button
-                key={result.symbol}
-                onClick={() => handleSelectTicker(result.symbol, result.name)}
-                className="w-full text-left px-4 py-3 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors border-b border-ic-border-subtle last:border-b-0"
-              >
-                <div className="flex justify-between items-center">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-ic-text-primary text-sm">
-                      {result.symbol}
+            results.map((result) => {
+              const isInWatchlist = showAddButtons && existingSymbols.has(result.symbol);
+              const isAdding = addingSymbol === result.symbol;
+
+              return (
+                <button
+                  key={result.symbol}
+                  onClick={() => handleSelectTicker(result.symbol, result.name)}
+                  className="w-full text-left px-4 py-3 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors border-b border-ic-border-subtle last:border-b-0"
+                >
+                  <div className="flex justify-between items-center">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-ic-text-primary text-sm">
+                        {result.symbol}
+                      </div>
+                      <div className="text-sm text-ic-text-secondary truncate">{result.name}</div>
                     </div>
-                    <div className="text-sm text-ic-text-secondary truncate">{result.name}</div>
+                    <div className="flex items-center gap-2">
+                      <div className="text-xs text-ic-text-dim bg-ic-bg-tertiary px-2 py-1 rounded">
+                        {result.exchange}
+                      </div>
+                      {showAddButtons &&
+                        (isInWatchlist ? (
+                          <span
+                            className="flex items-center gap-1 text-xs text-ic-positive px-2 py-1"
+                            title={`Already in ${activeWatchlistName}`}
+                          >
+                            <CheckIcon className="h-3.5 w-3.5" />
+                            Added
+                          </span>
+                        ) : (
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (isAdding || !addTickerFn) return;
+                              setAddingSymbol(result.symbol);
+                              addTickerFn(result.symbol).finally(() => setAddingSymbol(null));
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (isAdding || !addTickerFn) return;
+                                setAddingSymbol(result.symbol);
+                                addTickerFn(result.symbol).finally(() => setAddingSymbol(null));
+                              }
+                            }}
+                            className={`flex items-center gap-1 text-xs px-2 py-1 rounded
+                              transition-colors cursor-pointer
+                              ${
+                                isAdding
+                                  ? 'text-ic-text-dim cursor-wait'
+                                  : 'text-ic-blue hover:bg-ic-blue hover:text-white'
+                              }`}
+                            title={`Add to ${activeWatchlistName}`}
+                          >
+                            <PlusIcon className="h-3.5 w-3.5" />
+                            {isAdding ? 'Adding...' : 'Add'}
+                          </span>
+                        ))}
+                    </div>
                   </div>
-                  <div className="ml-2 text-xs text-ic-text-dim bg-ic-bg-tertiary px-2 py-1 rounded">
-                    {result.exchange}
-                  </div>
-                </div>
-              </button>
-            ))
+                </button>
+              );
+            })
           ) : query && !isLoading ? (
             <div className="px-4 py-3 text-ic-text-muted">
               No results found. Press Enter to view &quot;{query.toUpperCase()}&quot;
