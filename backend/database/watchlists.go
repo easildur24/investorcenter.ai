@@ -658,6 +658,36 @@ func CreateWatchListAtomic(watchList *models.WatchList, maxLists int) error {
 	return nil
 }
 
+// GetUserTags returns all distinct tags used across a user's watchlist items, sorted alphabetically.
+func GetUserTags(userID string) ([]string, error) {
+	query := `
+		SELECT DISTINCT unnest(wli.tags) AS tag
+		FROM watch_list_items wli
+		JOIN watch_lists wl ON wli.watch_list_id = wl.id
+		WHERE wl.user_id = $1
+		ORDER BY tag
+	`
+	rows, err := DB.Query(query, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user tags: %w", err)
+	}
+	defer rows.Close()
+
+	tags := []string{}
+	for rows.Next() {
+		var tag string
+		if err := rows.Scan(&tag); err != nil {
+			return nil, fmt.Errorf("failed to scan tag: %w", err)
+		}
+		tags = append(tags, tag)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating tags: %w", err)
+	}
+
+	return tags, nil
+}
+
 // UpdateItemDisplayOrder updates display order for items
 func UpdateItemDisplayOrder(itemID string, displayOrder int) error {
 	query := `UPDATE watch_list_items SET display_order = $1 WHERE id = $2`
