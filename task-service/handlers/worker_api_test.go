@@ -32,9 +32,9 @@ func expectVerifyWorker(mock sqlmock.Sqlmock, userID string, isWorker bool) {
 	}
 }
 
-// ==================== WorkerGetMyTasks Tests ====================
+// ==================== WorkerNextTask Tests ====================
 
-func TestWorkerGetMyTasks_Success(t *testing.T) {
+func TestWorkerNextTask_Success(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
 
@@ -47,20 +47,20 @@ func TestWorkerGetMyTasks_Success(t *testing.T) {
 		"created_by", "created_at", "updated_at", "started_at", "completed_at",
 		"tt_id", "tt_name", "tt_label", "tt_sop",
 	}).
-		AddRow("task-1", "Test Task", "Desc", "worker-1", "pending", "high",
+		AddRow("task-1", "Test Task", "Desc", "worker-1", "in_progress", "high",
 			1, nil, nil, 0,
-			"admin-1", now, now, nil, nil,
+			"admin-1", now, now, &now, nil,
 			1, "reddit_crawl", "Reddit Crawl", "SOP text here")
 
-	mock.ExpectQuery("SELECT t.id, t.title").
+	mock.ExpectQuery("WITH claimed AS").
 		WithArgs("worker-1").
 		WillReturnRows(rows)
 
 	r := setupWorkerRouter()
-	r.GET("/worker/tasks", WorkerGetMyTasks)
+	r.POST("/worker/next-task", WorkerNextTask)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/tasks", nil)
+	req := httptest.NewRequest("POST", "/worker/next-task", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -68,12 +68,13 @@ func TestWorkerGetMyTasks_Success(t *testing.T) {
 	var resp map[string]interface{}
 	json.Unmarshal(w.Body.Bytes(), &resp)
 	assert.True(t, resp["success"].(bool))
-	data := resp["data"].([]interface{})
-	assert.Len(t, data, 1)
+	data := resp["data"].(map[string]interface{})
+	assert.Equal(t, "task-1", data["id"])
+	assert.Equal(t, "in_progress", data["status"])
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestWorkerGetMyTasks_WithStatusFilter(t *testing.T) {
+func TestWorkerNextTask_NoPendingTasks(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
 
@@ -86,46 +87,52 @@ func TestWorkerGetMyTasks_WithStatusFilter(t *testing.T) {
 		"tt_id", "tt_name", "tt_label", "tt_sop",
 	})
 
-	mock.ExpectQuery("SELECT t.id, t.title").
-		WithArgs("worker-1", "pending").
+	mock.ExpectQuery("WITH claimed AS").
+		WithArgs("worker-1").
 		WillReturnRows(rows)
 
 	r := setupWorkerRouter()
-	r.GET("/worker/tasks", WorkerGetMyTasks)
+	r.POST("/worker/next-task", WorkerNextTask)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/tasks?status=pending", nil)
+	req := httptest.NewRequest("POST", "/worker/next-task", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp map[string]interface{}
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.True(t, resp["success"].(bool))
+	assert.Nil(t, resp["data"])
+	assert.Equal(t, "No pending tasks available", resp["message"])
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestWorkerGetMyTasks_NotAWorker(t *testing.T) {
+func TestWorkerNextTask_NotAWorker(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
 
 	expectVerifyWorker(mock, "worker-1", false)
 
 	r := setupWorkerRouter()
-	r.GET("/worker/tasks", WorkerGetMyTasks)
+	r.POST("/worker/next-task", WorkerNextTask)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/tasks", nil)
+	req := httptest.NewRequest("POST", "/worker/next-task", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-func TestWorkerGetMyTasks_DBUnavailable(t *testing.T) {
+func TestWorkerNextTask_DBUnavailable(t *testing.T) {
 	database.DB = nil
 
 	r := setupWorkerRouter()
-	r.GET("/worker/tasks", WorkerGetMyTasks)
+	r.POST("/worker/next-task", WorkerNextTask)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/tasks", nil)
+	req := httptest.NewRequest("POST", "/worker/next-task", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusServiceUnavailable, w.Code)
@@ -191,85 +198,6 @@ func TestWorkerGetTask_NotFound(t *testing.T) {
 
 // ==================== WorkerUpdateTaskStatus Tests ====================
 
-func TestWorkerUpdateTaskStatus_Success(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	now := time.Now()
-	expectVerifyWorker(mock, "worker-1", true)
-
-	mock.ExpectQuery("UPDATE worker_tasks SET status").
-		WithArgs("in_progress", "task-1", "worker-1").
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "title", "description", "assigned_to", "status", "priority",
-			"task_type_id", "params", "result", "retry_count",
-			"created_by", "created_at", "updated_at", "started_at", "completed_at",
-		}).AddRow("task-1", "Task", "Desc", "worker-1", "in_progress", "high",
-			1, nil, nil, 0,
-			"admin-1", now, now, &now, nil))
-
-	r := setupWorkerRouter()
-	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"status": "in_progress",
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestWorkerUpdateTaskStatus_InvalidStatus(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	expectVerifyWorker(mock, "worker-1", true)
-
-	r := setupWorkerRouter()
-	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"status": "invalid_status",
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-
-	var resp map[string]string
-	json.Unmarshal(w.Body.Bytes(), &resp)
-	assert.Contains(t, resp["error"], "Invalid status")
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestWorkerUpdateTaskStatus_MissingStatus(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	expectVerifyWorker(mock, "worker-1", true)
-
-	r := setupWorkerRouter()
-	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
-
-	body, _ := json.Marshal(map[string]interface{}{})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
 func TestWorkerUpdateTaskStatus_Completed(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
@@ -278,7 +206,7 @@ func TestWorkerUpdateTaskStatus_Completed(t *testing.T) {
 	expectVerifyWorker(mock, "worker-1", true)
 
 	mock.ExpectQuery("UPDATE worker_tasks SET status").
-		WithArgs("completed", "task-1", "worker-1").
+		WithArgs("task-1", "worker-1").
 		WillReturnRows(sqlmock.NewRows([]string{
 			"id", "title", "description", "assigned_to", "status", "priority",
 			"task_type_id", "params", "result", "retry_count",
@@ -300,6 +228,85 @@ func TestWorkerUpdateTaskStatus_Completed(t *testing.T) {
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestWorkerUpdateTaskStatus_BackToPending(t *testing.T) {
+	mock, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	now := time.Now()
+	expectVerifyWorker(mock, "worker-1", true)
+
+	mock.ExpectQuery("UPDATE worker_tasks SET status").
+		WithArgs("task-1", "worker-1").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "title", "description", "assigned_to", "status", "priority",
+			"task_type_id", "params", "result", "retry_count",
+			"created_by", "created_at", "updated_at", "started_at", "completed_at",
+		}).AddRow("task-1", "Task", "Desc", "worker-1", "pending", "high",
+			1, nil, nil, 1,
+			"admin-1", now, now, nil, nil))
+
+	r := setupWorkerRouter()
+	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"status": "pending",
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestWorkerUpdateTaskStatus_InvalidStatus(t *testing.T) {
+	mock, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	expectVerifyWorker(mock, "worker-1", true)
+
+	r := setupWorkerRouter()
+	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"status": "in_progress",
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var resp map[string]string
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Contains(t, resp["error"], "pending, completed")
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestWorkerUpdateTaskStatus_MissingStatus(t *testing.T) {
+	mock, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	expectVerifyWorker(mock, "worker-1", true)
+
+	r := setupWorkerRouter()
+	r.PUT("/worker/tasks/:id/status", WorkerUpdateTaskStatus)
+
+	body, _ := json.Marshal(map[string]interface{}{})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest("PUT", "/worker/tasks/task-1/status", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 

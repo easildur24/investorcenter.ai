@@ -39,67 +39,73 @@ func verifyWorker(c *gin.Context) (string, bool) {
 	return userID, true
 }
 
-// WorkerGetMyTasks handles GET /worker/tasks
-func WorkerGetMyTasks(c *gin.Context) {
+// WorkerNextTask handles POST /worker/next-task
+// Atomically claims the next pending task assigned to this worker.
+// Uses SELECT FOR UPDATE SKIP LOCKED to prevent race conditions.
+func WorkerNextTask(c *gin.Context) {
 	userID, ok := verifyWorker(c)
 	if !ok {
 		return
 	}
 
-	status := c.Query("status")
-
 	query := `
-		SELECT t.id, t.title, t.description, t.assigned_to, t.status, t.priority,
-		       t.task_type_id, t.params, t.result, t.retry_count,
-		       t.created_by, t.created_at, t.updated_at, t.started_at, t.completed_at,
+		WITH claimed AS (
+			UPDATE worker_tasks SET status = 'in_progress', started_at = NOW()
+			WHERE id = (
+				SELECT id FROM worker_tasks
+				WHERE assigned_to = $1 AND status = 'pending'
+				ORDER BY CASE priority
+					WHEN 'urgent' THEN 0
+					WHEN 'high' THEN 1
+					WHEN 'medium' THEN 2
+					WHEN 'low' THEN 3
+				END, created_at ASC
+				LIMIT 1
+				FOR UPDATE SKIP LOCKED
+			)
+			RETURNING *
+		)
+		SELECT c.id, c.title, c.description, c.assigned_to, c.status, c.priority,
+		       c.task_type_id, c.params, c.result, c.retry_count,
+		       c.created_by, c.created_at, c.updated_at, c.started_at, c.completed_at,
 		       tt.id, tt.name, tt.label, tt.sop
-		FROM worker_tasks t
-		LEFT JOIN task_types tt ON t.task_type_id = tt.id
-		WHERE t.assigned_to = $1
+		FROM claimed c
+		LEFT JOIN task_types tt ON c.task_type_id = tt.id
 	`
-	args := []interface{}{userID}
 
-	if status != "" {
-		query += " AND t.status = $2"
-		args = append(args, status)
-	}
-
-	query += " ORDER BY CASE t.priority WHEN 'urgent' THEN 0 WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'low' THEN 3 END, t.created_at DESC"
-
-	rows, err := database.DB.Query(query, args...)
+	var t WorkerTask
+	var ttID *int
+	var ttName, ttLabel, ttSOP *string
+	err := database.DB.QueryRow(query, userID).Scan(
+		&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
+		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
+		&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
+		&ttID, &ttName, &ttLabel, &ttSOP)
 	if err != nil {
-		log.Printf("Error fetching worker tasks: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tasks"})
+		if err == sql.ErrNoRows {
+			c.JSON(http.StatusOK, gin.H{
+				"success": true,
+				"data":    nil,
+				"message": "No pending tasks available",
+			})
+			return
+		}
+		log.Printf("Error claiming next task: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to claim next task"})
 		return
 	}
-	defer rows.Close()
 
-	tasks := []WorkerTask{}
-	for rows.Next() {
-		var t WorkerTask
-		var ttID *int
-		var ttName, ttLabel, ttSOP *string
-		err := rows.Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
-			&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount,
-			&t.CreatedBy, &t.CreatedAt, &t.UpdatedAt, &t.StartedAt, &t.CompletedAt,
-			&ttID, &ttName, &ttLabel, &ttSOP)
-		if err != nil {
-			log.Printf("Error scanning task: %v", err)
-			continue
+	if ttID != nil {
+		tt := &TaskType{ID: *ttID, Name: *ttName, Label: *ttLabel}
+		if ttSOP != nil {
+			tt.SOP = *ttSOP
 		}
-		if ttID != nil {
-			tt := &TaskType{ID: *ttID, Name: *ttName, Label: *ttLabel}
-			if ttSOP != nil {
-				tt.SOP = *ttSOP
-			}
-			t.TaskType = tt
-		}
-		tasks = append(tasks, t)
+		t.TaskType = tt
 	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"data":    tasks,
+		"data":    t,
 	})
 }
 
@@ -152,6 +158,9 @@ func WorkerGetTask(c *gin.Context) {
 }
 
 // WorkerUpdateTaskStatus handles PUT /worker/tasks/:id/status
+// Workers can only set status to "pending" (release back to queue) or "completed" (finished).
+// Setting to "pending" auto-increments retry_count and clears timestamps.
+// Setting to "completed" sets completed_at.
 func WorkerUpdateTaskStatus(c *gin.Context) {
 	userID, ok := verifyWorker(c)
 	if !ok {
@@ -161,54 +170,30 @@ func WorkerUpdateTaskStatus(c *gin.Context) {
 	taskID := c.Param("id")
 
 	var req struct {
-		Status    string `json:"status" binding:"required"`
-		IncrRetry bool   `json:"increment_retry"`
+		Status string `json:"status" binding:"required"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// Validate status
-	validStatuses := map[string]bool{"pending": true, "in_progress": true, "completed": true, "failed": true}
-	if !validStatuses[req.Status] {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Must be one of: pending, in_progress, completed, failed"})
+	var query string
+	switch req.Status {
+	case "pending":
+		query = `UPDATE worker_tasks SET status = 'pending', retry_count = retry_count + 1, started_at = NULL, completed_at = NULL
+			 WHERE id = $1 AND assigned_to = $2
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
+	case "completed":
+		query = `UPDATE worker_tasks SET status = 'completed', completed_at = NOW()
+			 WHERE id = $1 AND assigned_to = $2
+			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid status. Workers can only set status to: pending, completed"})
 		return
 	}
 
-	// Build query with timestamp updates based on status
-	// Note: retry_count increment uses static SQL expressions (no user input),
-	// avoiding fmt.Sprintf to prevent any future injection risk.
-	var query string
-	switch {
-	case req.Status == "pending" && req.IncrRetry:
-		query = `UPDATE worker_tasks SET status = $1, retry_count = retry_count + 1, started_at = NULL, completed_at = NULL
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	case req.Status == "pending":
-		query = `UPDATE worker_tasks SET status = $1, retry_count = retry_count, started_at = NULL, completed_at = NULL
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	case req.Status == "in_progress":
-		query = `UPDATE worker_tasks SET status = $1, started_at = NOW()
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	case (req.Status == "completed" || req.Status == "failed") && req.IncrRetry:
-		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW(), retry_count = retry_count + 1
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	case req.Status == "completed" || req.Status == "failed":
-		query = `UPDATE worker_tasks SET status = $1, completed_at = NOW()
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	default:
-		query = `UPDATE worker_tasks SET status = $1
-			 WHERE id = $2 AND assigned_to = $3
-			 RETURNING id, title, description, assigned_to, status, priority, task_type_id, params, result, retry_count, created_by, created_at, updated_at, started_at, completed_at`
-	}
-
 	var t WorkerTask
-	err := database.DB.QueryRow(query, req.Status, taskID, userID).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
+	err := database.DB.QueryRow(query, taskID, userID).Scan(&t.ID, &t.Title, &t.Description, &t.AssignedTo, &t.Status, &t.Priority,
 		&t.TaskTypeID, &t.Params, &t.Result, &t.RetryCount, &t.CreatedBy, &t.CreatedAt, &t.UpdatedAt,
 		&t.StartedAt, &t.CompletedAt)
 	if err != nil {

@@ -90,7 +90,7 @@ func main() {
 	{
 		workerRoutes.GET("/task-types", handlers.ListTaskTypes)
 		workerRoutes.GET("/task-types/:id", handlers.WorkerGetTaskType)
-		workerRoutes.GET("/tasks", handlers.WorkerGetMyTasks)
+		workerRoutes.POST("/next-task", handlers.WorkerNextTask)
 		workerRoutes.GET("/tasks/:id", handlers.WorkerGetTask)
 		workerRoutes.PUT("/tasks/:id/status", handlers.WorkerUpdateTaskStatus)
 		workerRoutes.POST("/tasks/:id/result", handlers.WorkerPostResult)
