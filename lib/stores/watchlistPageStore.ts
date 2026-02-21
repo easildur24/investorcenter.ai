@@ -54,7 +54,7 @@ export const useWatchlistPageStore = create<WatchlistPageState>((set) => ({
 
   addSymbolToSet: (symbol) =>
     set((state) => {
-      const updated = new Set(Array.from(state.existingSymbols));
+      const updated = new Set(state.existingSymbols);
       updated.add(symbol);
       return { existingSymbols: updated };
     }),

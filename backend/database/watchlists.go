@@ -658,33 +658,24 @@ func CreateWatchListAtomic(watchList *models.WatchList, maxLists int) error {
 	return nil
 }
 
-// GetUserTags returns all distinct tags used across a user's watchlist items, sorted alphabetically.
-func GetUserTags(userID string) ([]string, error) {
+// GetUserTags returns all tags used across a user's watchlist items with counts,
+// ordered by usage count descending (most popular first).
+func GetUserTags(userID string) ([]models.TagWithCount, error) {
 	query := `
-		SELECT DISTINCT unnest(wli.tags) AS tag
+		SELECT unnest(wli.tags) AS name, COUNT(*) AS count
 		FROM watch_list_items wli
 		JOIN watch_lists wl ON wli.watch_list_id = wl.id
 		WHERE wl.user_id = $1
-		ORDER BY tag
+		GROUP BY name
+		ORDER BY count DESC, name
 	`
-	rows, err := DB.Query(query, userID)
-	if err != nil {
+	var tags []models.TagWithCount
+	if err := DB.Select(&tags, query, userID); err != nil {
 		return nil, fmt.Errorf("failed to get user tags: %w", err)
 	}
-	defer rows.Close()
-
-	tags := []string{}
-	for rows.Next() {
-		var tag string
-		if err := rows.Scan(&tag); err != nil {
-			return nil, fmt.Errorf("failed to scan tag: %w", err)
-		}
-		tags = append(tags, tag)
+	if tags == nil {
+		tags = []models.TagWithCount{}
 	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating tags: %w", err)
-	}
-
 	return tags, nil
 }
 
