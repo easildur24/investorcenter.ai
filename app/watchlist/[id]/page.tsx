@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { watchListAPI, WatchListWithItems, WatchListItem } from '@/lib/api/watchlist';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
@@ -75,53 +75,21 @@ export default function WatchListDetailPage() {
     async (symbol: string) => {
       if (!watchListRef.current) return;
 
-      // Optimistic update: add a placeholder item to the table immediately
-      const optimisticItem: WatchListItem = {
+      // Optimistic update: add a placeholder item to the table immediately.
+      // Uses `as WatchListItem` — the placeholder is replaced by the full server
+      // response within milliseconds via loadWatchList().
+      const optimisticItem = {
         id: `optimistic-${symbol}`,
         watch_list_id: watchListId,
         symbol,
-        tags: [],
-        added_at: new Date().toISOString(),
-        display_order: (watchListRef.current.items.length ?? 0) + 1,
         name: symbol,
         exchange: '',
         asset_type: '',
-        current_price: undefined,
-        price_change: undefined,
-        price_change_pct: undefined,
-        volume: undefined,
-        market_cap: undefined,
-        prev_close: undefined,
-        ic_score: null,
-        ic_rating: null,
-        value_score: null,
-        growth_score: null,
-        profitability_score: null,
-        financial_health_score: null,
-        momentum_score: null,
-        analyst_consensus_score: null,
-        insider_activity_score: null,
-        institutional_score: null,
-        news_sentiment_score: null,
-        technical_score: null,
-        sector_percentile: null,
-        lifecycle_stage: null,
-        pe_ratio: null,
-        pb_ratio: null,
-        ps_ratio: null,
-        roe: null,
-        roa: null,
-        gross_margin: null,
-        operating_margin: null,
-        net_margin: null,
-        debt_to_equity: null,
-        current_ratio: null,
-        revenue_growth: null,
-        eps_growth: null,
-        dividend_yield: null,
-        payout_ratio: null,
+        tags: [],
+        added_at: new Date().toISOString(),
+        display_order: (watchListRef.current.items.length ?? 0) + 1,
         alert_count: 0,
-      };
+      } as unknown as WatchListItem;
 
       // Apply optimistic update
       setWatchList((prev) => {
@@ -230,7 +198,10 @@ export default function WatchListDetailPage() {
 
   // ── Existing symbols set (for search input "already added" display) ─
 
-  const existingSymbols = new Set(watchList?.items.map((i) => i.symbol) ?? []);
+  const existingSymbols = useMemo(
+    () => new Set(watchList?.items.map((i) => i.symbol) ?? []),
+    [watchList?.items]
+  );
 
   // ── Loading state ───────────────────────────────────────────────────
 

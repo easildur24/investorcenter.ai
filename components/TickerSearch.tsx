@@ -173,7 +173,10 @@ export default function TickerSearch() {
 
       {/* Search Results Dropdown */}
       {showResults && (
-        <div className="absolute z-50 mt-1 w-full bg-ic-bg-primary shadow-xl max-h-80 rounded-lg py-1 text-base ring-1 ring-ic-border overflow-auto focus:outline-none border border-ic-border">
+        <div
+          role="listbox"
+          className="absolute z-50 mt-1 w-full bg-ic-bg-primary shadow-xl max-h-80 rounded-lg py-1 text-base ring-1 ring-ic-border overflow-auto focus:outline-none border border-ic-border"
+        >
           {isLoading ? (
             <div className="px-4 py-2 text-ic-text-muted">Searching...</div>
           ) : results.length > 0 ? (
@@ -182,10 +185,19 @@ export default function TickerSearch() {
               const isAdding = addingSymbol === result.symbol;
 
               return (
-                <button
+                <div
                   key={result.symbol}
+                  role="option"
+                  tabIndex={0}
+                  aria-selected={false}
                   onClick={() => handleSelectTicker(result.symbol, result.name)}
-                  className="w-full text-left px-4 py-3 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors border-b border-ic-border-subtle last:border-b-0"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSelectTicker(result.symbol, result.name);
+                    }
+                  }}
+                  className="w-full text-left px-4 py-3 hover:bg-ic-surface focus:bg-ic-surface focus:outline-none transition-colors border-b border-ic-border-subtle last:border-b-0 cursor-pointer"
                 >
                   <div className="flex justify-between items-center">
                     <div className="flex-1 min-w-0">
@@ -208,26 +220,17 @@ export default function TickerSearch() {
                             Added
                           </span>
                         ) : (
-                          <span
-                            role="button"
-                            tabIndex={0}
+                          <button
+                            type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (isAdding || !addTickerFn) return;
                               setAddingSymbol(result.symbol);
                               addTickerFn(result.symbol).finally(() => setAddingSymbol(null));
                             }}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                if (isAdding || !addTickerFn) return;
-                                setAddingSymbol(result.symbol);
-                                addTickerFn(result.symbol).finally(() => setAddingSymbol(null));
-                              }
-                            }}
+                            disabled={isAdding}
                             className={`flex items-center gap-1 text-xs px-2 py-1 rounded
-                              transition-colors cursor-pointer
+                              transition-colors
                               ${
                                 isAdding
                                   ? 'text-ic-text-dim cursor-wait'
@@ -237,11 +240,11 @@ export default function TickerSearch() {
                           >
                             <PlusIcon className="h-3.5 w-3.5" />
                             {isAdding ? 'Adding...' : 'Add'}
-                          </span>
+                          </button>
                         ))}
                     </div>
                   </div>
-                </button>
+                </div>
               );
             })
           ) : query && !isLoading ? (

@@ -84,8 +84,8 @@ export default function TagChipInput({
       {/* Chip container with inline input */}
       <div
         className="flex flex-wrap items-center gap-1.5 p-2 border rounded-lg
-          bg-white dark:bg-gray-900 border-gray-300 dark:border-gray-600
-          focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-blue-500
+          bg-ic-input-bg border-ic-input-border
+          focus-within:ring-2 focus-within:ring-ic-blue focus-within:border-ic-blue
           transition-colors min-h-[38px]"
         onClick={() => inputRef.current?.focus()}
       >
@@ -93,8 +93,7 @@ export default function TagChipInput({
           <span
             key={tag}
             className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full
-              text-xs font-medium bg-blue-100 text-blue-800
-              dark:bg-blue-900/50 dark:text-blue-200"
+              text-xs font-medium bg-ic-blue/10 text-ic-blue"
           >
             {tag}
             <button
@@ -103,8 +102,8 @@ export default function TagChipInput({
                 e.stopPropagation();
                 removeTag(tag);
               }}
-              className="hover:text-blue-600 dark:hover:text-blue-100
-                focus:outline-none focus:text-blue-600 ml-0.5"
+              className="hover:text-ic-blue-hover
+                focus:outline-none focus:text-ic-blue-hover ml-0.5"
               aria-label={`Remove tag: ${tag}`}
             >
               &times;
@@ -128,8 +127,7 @@ export default function TagChipInput({
           }}
           placeholder={tags.length === 0 ? placeholder : ''}
           className="flex-1 min-w-[80px] outline-none bg-transparent text-sm
-            text-gray-900 dark:text-gray-100 placeholder-gray-400
-            dark:placeholder-gray-500"
+            text-ic-text-primary placeholder-ic-text-dim"
           aria-label="Add a tag. Type and press Enter to create."
           disabled={tags.length >= maxTags}
         />
@@ -138,8 +136,8 @@ export default function TagChipInput({
       {/* Tag suggestions dropdown */}
       {showSuggestions && filteredSuggestions.length > 0 && (
         <ul
-          className="absolute z-50 mt-1 w-full bg-white dark:bg-gray-800
-            border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg
+          className="absolute z-50 mt-1 w-full bg-ic-bg-primary
+            border border-ic-border rounded-lg shadow-lg shadow-black/20
             max-h-48 overflow-y-auto"
           role="listbox"
         >
@@ -151,8 +149,8 @@ export default function TagChipInput({
               className={`px-3 py-2 text-sm cursor-pointer transition-colors
                 ${
                   index === highlightedIndex
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200'
-                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    ? 'bg-ic-surface text-ic-blue'
+                    : 'text-ic-text-secondary hover:bg-ic-surface/50'
                 }`}
               onMouseDown={(e) => {
                 e.preventDefault(); // Prevent blur
@@ -168,7 +166,7 @@ export default function TagChipInput({
 
       {/* Hint text */}
       {tags.length >= maxTags && (
-        <p className="mt-1 text-xs text-gray-400">Maximum {maxTags} tags reached.</p>
+        <p className="mt-1 text-xs text-ic-text-dim">Maximum {maxTags} tags reached.</p>
       )}
     </div>
   );

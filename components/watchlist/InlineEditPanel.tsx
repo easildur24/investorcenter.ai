@@ -36,12 +36,17 @@ export default function InlineEditPanel({
   const [saving, setSaving] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
+  // Detect Mac for keyboard shortcut hint (avoids SSR hydration mismatch)
+  const [modKey, setModKey] = useState('Ctrl');
   const panelRef = useRef<HTMLDivElement>(null);
   const firstInputRef = useRef<HTMLInputElement>(null);
 
-  // Focus first field on mount
+  // Focus first field on mount + detect platform
   useEffect(() => {
     firstInputRef.current?.focus();
+    if (/Mac/.test(navigator.userAgent)) {
+      setModKey('⌘');
+    }
   }, []);
 
   // Escape to cancel
@@ -238,7 +243,7 @@ export default function InlineEditPanel({
         </button>
         <span className="ml-auto text-xs text-ic-text-dim hidden sm:inline">
           <kbd className="border border-ic-border rounded px-1 py-0.5 font-mono bg-ic-bg-tertiary text-[10px]">
-            {typeof navigator !== 'undefined' && /Mac/.test(navigator.userAgent) ? '⌘' : 'Ctrl'}
+            {modKey}
           </kbd>{' '}
           +{' '}
           <kbd className="border border-ic-border rounded px-1 py-0.5 font-mono bg-ic-bg-tertiary text-[10px]">
