@@ -102,6 +102,7 @@ class ApiClient {
         name: string;
         type: string;
         exchange: string;
+        logo_url?: string;
       }>
     >(`/markets/search?q=${encodeURIComponent(query)}`);
   }

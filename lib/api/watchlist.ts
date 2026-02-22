@@ -164,6 +164,11 @@ export const watchListAPI = {
     return apiClient.post(`/watchlists/${watchListId}/bulk`, { symbols });
   },
 
+  // Get all tags used across user's watchlists with usage counts, ordered by popularity
+  async getUserTags(): Promise<{ tags: { name: string; count: number }[] }> {
+    return apiClient.get('/watchlists/tags');
+  },
+
   // Reorder items
   async reorderItems(
     watchListId: string,

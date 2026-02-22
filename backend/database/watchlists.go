@@ -658,6 +658,27 @@ func CreateWatchListAtomic(watchList *models.WatchList, maxLists int) error {
 	return nil
 }
 
+// GetUserTags returns all tags used across a user's watchlist items with counts,
+// ordered by usage count descending (most popular first).
+func GetUserTags(userID string) ([]models.TagWithCount, error) {
+	query := `
+		SELECT unnest(wli.tags) AS name, COUNT(*) AS count
+		FROM watch_list_items wli
+		JOIN watch_lists wl ON wli.watch_list_id = wl.id
+		WHERE wl.user_id = $1
+		GROUP BY name
+		ORDER BY count DESC, name
+	`
+	var tags []models.TagWithCount
+	if err := DB.Select(&tags, query, userID); err != nil {
+		return nil, fmt.Errorf("failed to get user tags: %w", err)
+	}
+	if tags == nil {
+		tags = []models.TagWithCount{}
+	}
+	return tags, nil
+}
+
 // UpdateItemDisplayOrder updates display order for items
 func UpdateItemDisplayOrder(itemID string, displayOrder int) error {
 	query := `UPDATE watch_list_items SET display_order = $1 WHERE id = $2`

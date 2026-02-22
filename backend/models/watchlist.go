@@ -169,3 +169,9 @@ type ItemOrder struct {
 	ItemID       string `json:"item_id" binding:"required,max=100"`
 	DisplayOrder int    `json:"display_order" binding:"min=0,max=10000"`
 }
+
+// TagWithCount represents a tag name and the number of watchlist items using it.
+type TagWithCount struct {
+	Name  string `json:"name" db:"name"`
+	Count int    `json:"count" db:"count"`
+}

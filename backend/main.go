@@ -217,6 +217,7 @@ func main() {
 	{
 		watchListRoutes.GET("", handlers.ListWatchLists)         // GET /api/v1/watchlists
 		watchListRoutes.POST("", handlers.CreateWatchList)       // POST /api/v1/watchlists
+		watchListRoutes.GET("/tags", handlers.GetUserTags)       // GET /api/v1/watchlists/tags (must be before /:id)
 		watchListRoutes.GET("/:id", handlers.GetWatchList)       // GET /api/v1/watchlists/:id
 		watchListRoutes.PUT("/:id", handlers.UpdateWatchList)    // PUT /api/v1/watchlists/:id
 		watchListRoutes.DELETE("/:id", handlers.DeleteWatchList) // DELETE /api/v1/watchlists/:id
@@ -416,6 +417,7 @@ func searchSecurities(c *gin.Context) {
 			"name":     stock.Name,
 			"type":     stock.AssetType,
 			"exchange": stock.Exchange,
+			"logo_url": stock.LogoURL,
 		}
 	}
 

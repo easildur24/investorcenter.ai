@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { WatchListItem } from '@/lib/api/watchlist';
 import { cn, safeToFixed, formatLargeNumber } from '@/lib/utils';
@@ -38,6 +38,10 @@ interface WatchListTableProps {
   items: WatchListItem[];
   onRemove: (symbol: string) => void;
   onEdit: (symbol: string) => void;
+  /** When set, the row for this symbol will show an expanded panel below it. */
+  expandedSymbol?: string | null;
+  /** Render function for the expanded row content (e.g. InlineEditPanel). */
+  renderExpandedRow?: (item: WatchListItem) => React.ReactNode;
 }
 
 // ---------------------------------------------------------------------------
@@ -277,7 +281,13 @@ function SortIndicator({ direction }: { direction: SortDirection }) {
 // Main component
 // ---------------------------------------------------------------------------
 
-export default function WatchListTable({ items, onRemove, onEdit }: WatchListTableProps) {
+export default function WatchListTable({
+  items,
+  onRemove,
+  onEdit,
+  expandedSymbol,
+  renderExpandedRow,
+}: WatchListTableProps) {
   // ── View preset (persisted to localStorage) ───────────────────────
   const [activeView, setActiveView] = useState<ViewPresetId>(() => {
     if (typeof window === 'undefined') return DEFAULT_VIEW;
@@ -481,28 +491,35 @@ export default function WatchListTable({ items, onRemove, onEdit }: WatchListTab
             ) : (
               processedItems.map((item) => {
                 const alert = checkTargetAlert(item);
+                const isExpanded = expandedSymbol === item.symbol;
                 return (
-                  <tr
-                    key={item.symbol}
-                    className={cn('hover:bg-ic-surface-hover', alert ? alert.bgClass : '')}
-                  >
-                    {columns.map((col) => (
-                      <td
-                        key={col.id}
-                        className={cn(
-                          'px-4 py-3 text-sm',
-                          col.align === 'left'
-                            ? 'text-left'
-                            : col.align === 'right'
-                              ? 'text-right'
-                              : 'text-center',
-                          col.width
-                        )}
-                      >
-                        {renderCell(col, item, alert, onRemove, onEdit)}
-                      </td>
-                    ))}
-                  </tr>
+                  <React.Fragment key={item.symbol}>
+                    <tr className={cn('hover:bg-ic-surface-hover', alert ? alert.bgClass : '')}>
+                      {columns.map((col) => (
+                        <td
+                          key={col.id}
+                          className={cn(
+                            'px-4 py-3 text-sm',
+                            col.align === 'left'
+                              ? 'text-left'
+                              : col.align === 'right'
+                                ? 'text-right'
+                                : 'text-center',
+                            col.width
+                          )}
+                        >
+                          {renderCell(col, item, alert, onRemove, onEdit)}
+                        </td>
+                      ))}
+                    </tr>
+                    {isExpanded && renderExpandedRow && (
+                      <tr>
+                        <td colSpan={columns.length} className="p-0">
+                          {renderExpandedRow(item)}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 );
               })
             )}

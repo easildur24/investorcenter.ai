@@ -61,15 +61,19 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 		       COALESCE(description, '') as description,
 		       COALESCE(website, '') as website,
 		       COALESCE(asset_type, 'stock') as asset_type,
+		       COALESCE(logo_url, '') as logo_url,
 		       created_at, updated_at
 		FROM tickers
 		WHERE UPPER(symbol) LIKE UPPER($1)
 		   OR UPPER(name) LIKE UPPER($2)
+		   OR UPPER(REPLACE(symbol, 'X:', '')) LIKE UPPER($4)
 		ORDER BY
 		  -- First priority: match type (exact > starts with > contains)
 		  CASE
 		    WHEN UPPER(symbol) = UPPER($3) THEN 1
+		    WHEN UPPER(REPLACE(symbol, 'X:', '')) = UPPER($3) THEN 1
 		    WHEN UPPER(symbol) LIKE UPPER($4) THEN 2
+		    WHEN UPPER(REPLACE(symbol, 'X:', '')) LIKE UPPER($4) THEN 2
 		    WHEN UPPER(name) LIKE UPPER($5) THEN 3
 		    ELSE 4
 		  END,
@@ -88,12 +92,12 @@ func SearchStocks(query string, limit int) ([]models.Stock, error) {
 	searchTerm := "%" + query + "%"
 
 	err := DB.Select(&stocks, searchQuery,
-		searchTerm, // symbol LIKE
-		searchTerm, // name LIKE
-		query,      // exact symbol match
-		query+"%",  // symbol starts with
-		searchTerm, // name LIKE
-		limit)
+		searchTerm, // $1: symbol LIKE
+		searchTerm, // $2: name LIKE
+		query,      // $3: exact symbol match (also checks stripped X: prefix)
+		query+"%",  // $4: symbol starts with (also matches stripped crypto prefix)
+		searchTerm, // $5: name LIKE
+		limit)      // $6: limit
 
 	if err != nil {
 		return nil, fmt.Errorf("search failed: %w", err)

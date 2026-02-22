@@ -393,6 +393,24 @@ func ReorderWatchListItems(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Items reordered successfully"})
 }
 
+// GetUserTags returns all distinct tags used across the authenticated user's watchlist items.
+func GetUserTags(c *gin.Context) {
+	userID, exists := auth.GetUserIDFromContext(c)
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+
+	tags, err := database.GetUserTags(userID)
+	if err != nil {
+		log.Printf("Error fetching tags for user %s: %v", userID, err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch tags"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"tags": tags})
+}
+
 // isWatchListLimitError checks if an error indicates the watchlist count limit was reached.
 // This catches the error from CreateWatchListAtomic when the INSERT...WHERE count < limit returns no rows.
 func isWatchListLimitError(err error) bool {
