@@ -51,6 +51,9 @@ func ensureTestDB(t *testing.T) {
 	// Create tickers table with all columns needed by GetStockBySymbol.
 	// Uses IF NOT EXISTS so it won't conflict with the database package
 	// tests that may create the same table concurrently.
+	// NOTE: In CI, migrations may have already created the table with a
+	// UNIQUE(symbol, asset_type) constraint instead of UNIQUE(symbol).
+	// Both variants work fine for these tests.
 	_, err = db.Exec(`CREATE TABLE IF NOT EXISTS tickers (
 		id SERIAL PRIMARY KEY,
 		symbol VARCHAR(10) NOT NULL,
@@ -120,8 +123,10 @@ func TestProxyLogo_NoLogoURL(t *testing.T) {
 	ensureTestDB(t)
 	router := setupLogoRouter()
 
-	// Insert a ticker with no logo URL
-	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('NOLOG', 'No Logo Corp', 'stock', '') ON CONFLICT (symbol) DO NOTHING`)
+	// Insert a ticker with no logo URL (delete first to handle both
+	// UNIQUE(symbol) and UNIQUE(symbol, asset_type) constraint variants)
+	database.DB.Exec("DELETE FROM tickers WHERE symbol = 'NOLOG'")
+	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('NOLOG', 'No Logo Corp', 'stock', '')`)
 	t.Cleanup(func() {
 		database.DB.Exec("DELETE FROM tickers WHERE symbol = 'NOLOG'")
 	})
@@ -138,8 +143,10 @@ func TestProxyLogo_NoAPIKey(t *testing.T) {
 	ensureTestDB(t)
 	router := setupLogoRouter()
 
-	// Insert a ticker with a logo URL
-	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('KEYTEST', 'Key Test Corp', 'stock', 'https://example.com/logo.png') ON CONFLICT (symbol) DO NOTHING`)
+	// Insert a ticker with a logo URL (delete first to handle both
+	// UNIQUE(symbol) and UNIQUE(symbol, asset_type) constraint variants)
+	database.DB.Exec("DELETE FROM tickers WHERE symbol = 'KEYTEST'")
+	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('KEYTEST', 'Key Test Corp', 'stock', 'https://example.com/logo.png')`)
 	t.Cleanup(func() {
 		database.DB.Exec("DELETE FROM tickers WHERE symbol = 'KEYTEST'")
 	})
@@ -174,8 +181,10 @@ func TestProxyLogo_Success(t *testing.T) {
 	}))
 	defer fakePolygon.Close()
 
-	// Insert ticker pointing to our fake server
-	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('LOGOTEST', 'Logo Test Corp', 'stock', $1) ON CONFLICT (symbol) DO UPDATE SET logo_url = $1`, fakePolygon.URL+"/logo.png")
+	// Insert ticker pointing to our fake server (delete first to handle both
+	// UNIQUE(symbol) and UNIQUE(symbol, asset_type) constraint variants)
+	database.DB.Exec("DELETE FROM tickers WHERE symbol = 'LOGOTEST'")
+	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('LOGOTEST', 'Logo Test Corp', 'stock', $1)`, fakePolygon.URL+"/logo.png")
 	t.Cleanup(func() {
 		database.DB.Exec("DELETE FROM tickers WHERE symbol = 'LOGOTEST'")
 	})
@@ -212,8 +221,10 @@ func TestProxyLogo_UpstreamError(t *testing.T) {
 	}))
 	defer fakePolygon.Close()
 
-	// Insert ticker pointing to our fake server
-	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('ERRLOGO', 'Error Logo Corp', 'stock', $1) ON CONFLICT (symbol) DO UPDATE SET logo_url = $1`, fakePolygon.URL+"/logo.png")
+	// Insert ticker pointing to our fake server (delete first to handle both
+	// UNIQUE(symbol) and UNIQUE(symbol, asset_type) constraint variants)
+	database.DB.Exec("DELETE FROM tickers WHERE symbol = 'ERRLOGO'")
+	database.DB.MustExec(`INSERT INTO tickers (symbol, name, asset_type, logo_url) VALUES ('ERRLOGO', 'Error Logo Corp', 'stock', $1)`, fakePolygon.URL+"/logo.png")
 	t.Cleanup(func() {
 		database.DB.Exec("DELETE FROM tickers WHERE symbol = 'ERRLOGO'")
 	})

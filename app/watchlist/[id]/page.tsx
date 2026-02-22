@@ -13,9 +13,10 @@ import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
 import WatchlistSearchInput from '@/components/watchlist/WatchlistSearchInput';
 import InlineEditPanel from '@/components/watchlist/InlineEditPanel';
 
-const useInlineAdd = isFeatureEnabled(FF_INLINE_WATCHLIST_ADD);
-
 export default function WatchListDetailPage() {
+  // Feature flag: safe to evaluate at the top of the component body because
+  // NEXT_PUBLIC_* env vars are inlined at build time (constant across renders).
+  const useInlineAdd = isFeatureEnabled(FF_INLINE_WATCHLIST_ADD);
   const params = useParams();
   const router = useRouter();
   const watchListId = params.id as string;
@@ -76,9 +77,10 @@ export default function WatchListDetailPage() {
       if (!watchListRef.current) return;
 
       // Optimistic update: add a placeholder item to the table immediately.
-      // Uses `as WatchListItem` — the placeholder is replaced by the full server
-      // response within milliseconds via loadWatchList().
-      const optimisticItem = {
+      // Explicitly sets all required WatchListItem fields to null/defaults so
+      // downstream rendering handles missing data gracefully. Replaced by the
+      // full server response within milliseconds via loadWatchList().
+      const optimisticItem: WatchListItem = {
         id: `optimistic-${symbol}`,
         watch_list_id: watchListId,
         symbol,
@@ -89,7 +91,44 @@ export default function WatchListDetailPage() {
         added_at: new Date().toISOString(),
         display_order: (watchListRef.current.items.length ?? 0) + 1,
         alert_count: 0,
-      } as unknown as WatchListItem;
+        // Price and market data — populated after server round-trip
+        current_price: undefined,
+        price_change: undefined,
+        price_change_pct: undefined,
+        volume: undefined,
+        market_cap: undefined,
+        prev_close: undefined,
+        // IC Score fields
+        ic_score: null,
+        ic_rating: null,
+        value_score: null,
+        growth_score: null,
+        profitability_score: null,
+        financial_health_score: null,
+        momentum_score: null,
+        analyst_consensus_score: null,
+        insider_activity_score: null,
+        institutional_score: null,
+        news_sentiment_score: null,
+        technical_score: null,
+        sector_percentile: null,
+        lifecycle_stage: null,
+        // Fundamental fields
+        pe_ratio: null,
+        pb_ratio: null,
+        ps_ratio: null,
+        roe: null,
+        roa: null,
+        gross_margin: null,
+        operating_margin: null,
+        net_margin: null,
+        debt_to_equity: null,
+        current_ratio: null,
+        revenue_growth: null,
+        eps_growth: null,
+        dividend_yield: null,
+        payout_ratio: null,
+      };
 
       // Apply optimistic update
       setWatchList((prev) => {
@@ -110,13 +149,15 @@ export default function WatchListDetailPage() {
         await loadWatchList();
         toast.success(`${symbol} added to watch list`);
       } catch (err: any) {
-        // Rollback optimistic update
+        // Rollback optimistic update — filter by the optimistic ID rather than
+        // symbol to avoid accidentally removing a pre-existing real item.
+        const optimisticId = `optimistic-${symbol}`;
         setWatchList((prev) => {
           if (!prev) return prev;
           return {
             ...prev,
             item_count: prev.item_count - 1,
-            items: prev.items.filter((i) => i.symbol !== symbol),
+            items: prev.items.filter((i) => i.id !== optimisticId),
           };
         });
         toast.error(err.message || `Failed to add ${symbol}`);
@@ -126,6 +167,11 @@ export default function WatchListDetailPage() {
   );
 
   // ── Register with Zustand store (for header search integration) ─────
+  // NOTE on deps: watchList?.items.length triggers re-registration when items
+  // are added/removed, which creates a new Set in the store. This is intentional
+  // (keeps the "already added" badge in sync) but can cause downstream
+  // re-renders at small scale. handleQuickAdd is a stable useCallback, so the
+  // closure stored in Zustand stays current.
 
   useEffect(() => {
     if (!useInlineAdd || !watchList) return;
@@ -197,6 +243,9 @@ export default function WatchListDetailPage() {
   };
 
   // ── Existing symbols set (for search input "already added" display) ─
+  // NOTE: watchList?.items is a new array reference on every setWatchList
+  // (including 30s polling), so this memo recalculates on each refresh.
+  // The cost is negligible (small array → Set), kept as useMemo for clarity.
 
   const existingSymbols = useMemo(
     () => new Set(watchList?.items.map((i) => i.symbol) ?? []),

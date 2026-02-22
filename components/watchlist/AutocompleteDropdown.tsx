@@ -138,7 +138,10 @@ export default function AutocompleteDropdown({
           aria-selected={index === highlightedIndex}
           className={`flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-colors
             ${index === highlightedIndex ? 'bg-ic-surface' : 'hover:bg-ic-surface/50'}`}
-          onClick={() => onSelect(result)}
+          onMouseDown={(e) => {
+            e.preventDefault(); // Prevent input blur so onClick fires reliably
+            onSelect(result);
+          }}
           onMouseEnter={() => onHighlightChange(index)}
         >
           <TickerLogo result={result} />
@@ -154,7 +157,11 @@ export default function AutocompleteDropdown({
 
       {alreadyAdded.length > 0 && (
         <>
-          <li className="px-4 py-1.5 text-xs text-ic-text-dim uppercase tracking-wide border-t border-ic-border mt-1 pt-2">
+          <li
+            role="separator"
+            aria-label="Already in watchlist"
+            className="px-4 py-1.5 text-xs text-ic-text-dim uppercase tracking-wide border-t border-ic-border mt-1 pt-2"
+          >
             Already in watchlist
           </li>
           {alreadyAdded.map((result) => (

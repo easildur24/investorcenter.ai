@@ -52,6 +52,8 @@ export default function Header() {
               </Link>
               {user && (
                 <>
+                  {/* When inline-add is enabled the top-nav link moves to the
+                      profile dropdown ("My Watch Lists") to reduce nav clutter. */}
                   {!isFeatureEnabled(FF_INLINE_WATCHLIST_ADD) && (
                     <Link
                       href="/watchlist"

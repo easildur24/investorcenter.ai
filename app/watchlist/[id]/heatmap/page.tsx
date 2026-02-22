@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { heatmapAPI, HeatmapData } from '@/lib/api/heatmap';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import WatchListHeatmap from '@/components/watchlist/WatchListHeatmap';
 import HeatmapConfigPanel, { HeatmapSettings } from '@/components/watchlist/HeatmapConfigPanel';
@@ -10,6 +11,7 @@ import HeatmapConfigPanel, { HeatmapSettings } from '@/components/watchlist/Heat
 export default function WatchListHeatmapPage() {
   const params = useParams();
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
   const watchListId = params.id as string;
 
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
@@ -23,14 +25,7 @@ export default function WatchListHeatmapPage() {
     label_display: 'symbol_change',
   });
 
-  useEffect(() => {
-    loadHeatmap();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadHeatmap, 30000);
-    return () => clearInterval(interval);
-  }, [watchListId, settings.size_metric, settings.color_metric, settings.time_period]);
-
-  const loadHeatmap = async () => {
+  const loadHeatmap = useCallback(async () => {
     try {
       setLoading(true);
       const data = await heatmapAPI.getHeatmapData(watchListId, undefined, {
@@ -45,7 +40,17 @@ export default function WatchListHeatmapPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [watchListId, settings.size_metric, settings.color_metric, settings.time_period]);
+
+  useEffect(() => {
+    // Wait for auth to be ready before making API calls
+    if (authLoading || !user) return;
+
+    loadHeatmap();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadHeatmap, 30000);
+    return () => clearInterval(interval);
+  }, [loadHeatmap, authLoading, user]);
 
   const handleSaveConfig = async (name: string) => {
     try {

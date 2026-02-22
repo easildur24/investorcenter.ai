@@ -67,7 +67,8 @@ func ListHeatmapConfigs(c *gin.Context) {
 
 	configs, err := database.GetHeatmapConfigsByWatchListID(watchListID, userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch heatmap configs"})
+		// Return empty list if table doesn't exist yet
+		c.JSON(http.StatusOK, gin.H{"configs": []models.HeatmapConfig{}})
 		return
 	}
 

@@ -175,8 +175,9 @@ export default function WatchlistSearchInput({
             }
           }}
           onBlur={() => {
-            // Delay to allow clicking dropdown items
-            setTimeout(() => setIsOpen(false), 200);
+            // Dropdown items use onMouseDown + e.preventDefault() to keep focus,
+            // so closing here is safe — no timeout needed.
+            setIsOpen(false);
           }}
           onKeyDown={handleKeyDown}
           disabled={isAtLimit}
