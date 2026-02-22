@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { heatmapAPI, HeatmapData } from '@/lib/api/heatmap';
 import { useAuth } from '@/lib/auth/AuthContext';
@@ -25,24 +25,7 @@ export default function WatchListHeatmapPage() {
     label_display: 'symbol_change',
   });
 
-  useEffect(() => {
-    // Wait for auth to be ready before making API calls
-    if (authLoading || !user) return;
-
-    loadHeatmap();
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(loadHeatmap, 30000);
-    return () => clearInterval(interval);
-  }, [
-    watchListId,
-    settings.size_metric,
-    settings.color_metric,
-    settings.time_period,
-    authLoading,
-    user,
-  ]);
-
-  const loadHeatmap = async () => {
+  const loadHeatmap = useCallback(async () => {
     try {
       setLoading(true);
       const data = await heatmapAPI.getHeatmapData(watchListId, undefined, {
@@ -57,7 +40,17 @@ export default function WatchListHeatmapPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [watchListId, settings.size_metric, settings.color_metric, settings.time_period]);
+
+  useEffect(() => {
+    // Wait for auth to be ready before making API calls
+    if (authLoading || !user) return;
+
+    loadHeatmap();
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(loadHeatmap, 30000);
+    return () => clearInterval(interval);
+  }, [loadHeatmap, authLoading, user]);
 
   const handleSaveConfig = async (name: string) => {
     try {
