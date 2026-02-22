@@ -6,17 +6,11 @@ import { watchListAPI, WatchListWithItems, WatchListItem } from '@/lib/api/watch
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/lib/hooks/useToast';
 import WatchListTable from '@/components/watchlist/WatchListTable';
-import AddTickerModal from '@/components/watchlist/AddTickerModal';
-import EditTickerModal from '@/components/watchlist/EditTickerModal';
-import { isFeatureEnabled, FF_INLINE_WATCHLIST_ADD } from '@/lib/featureFlags';
 import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
 import WatchlistSearchInput from '@/components/watchlist/WatchlistSearchInput';
 import InlineEditPanel from '@/components/watchlist/InlineEditPanel';
 
 export default function WatchListDetailPage() {
-  // Feature flag: safe to evaluate at the top of the component body because
-  // NEXT_PUBLIC_* env vars are inlined at build time (constant across renders).
-  const useInlineAdd = isFeatureEnabled(FF_INLINE_WATCHLIST_ADD);
   const params = useParams();
   const router = useRouter();
   const watchListId = params.id as string;
@@ -25,7 +19,6 @@ export default function WatchListDetailPage() {
   const [watchList, setWatchList] = useState<WatchListWithItems | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
   const [editingSymbol, setEditingSymbol] = useState<string | null>(null);
   const [tagSuggestions, setTagSuggestions] = useState<string[]>([]);
 
@@ -61,7 +54,6 @@ export default function WatchListDetailPage() {
   // ── Load tag suggestions (for inline edit autocomplete) ─────────────
 
   useEffect(() => {
-    if (!useInlineAdd) return;
     watchListAPI
       .getUserTags()
       .then((res) => setTagSuggestions((res.tags ?? []).map((t) => t.name)))
@@ -167,14 +159,9 @@ export default function WatchListDetailPage() {
   );
 
   // ── Register with Zustand store (for header search integration) ─────
-  // NOTE on deps: watchList?.items.length triggers re-registration when items
-  // are added/removed, which creates a new Set in the store. This is intentional
-  // (keeps the "already added" badge in sync) but can cause downstream
-  // re-renders at small scale. handleQuickAdd is a stable useCallback, so the
-  // closure stored in Zustand stays current.
 
   useEffect(() => {
-    if (!useInlineAdd || !watchList) return;
+    if (!watchList) return;
 
     const symbols = watchList.items.map((i) => i.symbol);
     setActiveWatchlist(watchListId, watchList.name, symbols, handleQuickAdd);
@@ -190,31 +177,6 @@ export default function WatchListDetailPage() {
     setActiveWatchlist,
     clearActiveWatchlist,
   ]);
-
-  // ── Legacy add handler (modal) ──────────────────────────────────────
-
-  const handleAddTicker = async (
-    symbol: string,
-    notes?: string,
-    tags?: string[],
-    targetBuy?: number,
-    targetSell?: number
-  ) => {
-    try {
-      await watchListAPI.addTicker(watchListId, {
-        symbol,
-        notes,
-        tags,
-        target_buy_price: targetBuy,
-        target_sell_price: targetSell,
-      });
-      await loadWatchList();
-      setShowAddModal(false);
-      toast.success(`${symbol} added to watch list`);
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to add ticker');
-    }
-  };
 
   const handleRemoveTicker = async (symbol: string) => {
     if (!confirm(`Remove ${symbol} from watch list?`)) return;
@@ -243,9 +205,6 @@ export default function WatchListDetailPage() {
   };
 
   // ── Existing symbols set (for search input "already added" display) ─
-  // NOTE: watchList?.items is a new array reference on every setWatchList
-  // (including 30s polling), so this memo recalculates on each refresh.
-  // The cost is negligible (small array → Set), kept as useMemo for clarity.
 
   const existingSymbols = useMemo(
     () => new Set(watchList?.items.map((i) => i.symbol) ?? []),
@@ -304,27 +263,16 @@ export default function WatchListDetailPage() {
               </svg>
               View Heatmap
             </button>
-            {!useInlineAdd && (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-ic-blue text-ic-text-primary rounded hover:bg-ic-blue-hover"
-              >
-                + Add Ticker
-              </button>
-            )}
           </div>
         </div>
 
-        {/* Inline search bar (new experience) */}
-        {useInlineAdd && (
-          <WatchlistSearchInput
-            onAdd={handleQuickAdd}
-            existingSymbols={existingSymbols}
-            itemCount={watchList.item_count}
-            maxItems={10}
-            className="mb-4"
-          />
-        )}
+        <WatchlistSearchInput
+          onAdd={handleQuickAdd}
+          existingSymbols={existingSymbols}
+          itemCount={watchList.item_count}
+          maxItems={10}
+          className="mb-4"
+        />
 
         {error && (
           <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-ic-negative rounded">
@@ -352,22 +300,13 @@ export default function WatchListDetailPage() {
               Add stocks or cryptocurrencies to this watch list to track their real-time prices, set
               target alerts, and monitor your investments.
             </p>
-            {useInlineAdd ? (
-              <p className="text-ic-text-secondary text-sm">
-                Use the search bar above or press{' '}
-                <kbd className="border border-ic-border rounded px-1.5 py-0.5 font-mono bg-ic-bg-tertiary text-xs">
-                  /
-                </kbd>{' '}
-                to start adding tickers.
-              </p>
-            ) : (
-              <button
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 bg-ic-blue text-ic-text-primary rounded-lg hover:bg-ic-blue-hover font-medium"
-              >
-                + Add Your First Ticker
-              </button>
-            )}
+            <p className="text-ic-text-secondary text-sm">
+              Use the search bar above or press{' '}
+              <kbd className="border border-ic-border rounded px-1.5 py-0.5 font-mono bg-ic-bg-tertiary text-xs">
+                /
+              </kbd>{' '}
+              to start adding tickers.
+            </p>
             <div className="mt-6 text-sm text-ic-text-dim">
               <p>Examples: AAPL, TSLA, X:BTCUSD, X:ETHUSD</p>
             </div>
@@ -377,33 +316,15 @@ export default function WatchListDetailPage() {
             items={watchList.items}
             onRemove={handleRemoveTicker}
             onEdit={setEditingSymbol}
-            expandedSymbol={useInlineAdd ? editingSymbol : undefined}
-            renderExpandedRow={
-              useInlineAdd
-                ? (item: WatchListItem) => (
-                    <InlineEditPanel
-                      item={item}
-                      tagSuggestions={tagSuggestions}
-                      onSave={handleUpdateTicker}
-                      onCancel={() => setEditingSymbol(null)}
-                    />
-                  )
-                : undefined
-            }
-          />
-        )}
-
-        {/* Legacy modal flow (old experience) */}
-        {!useInlineAdd && showAddModal && (
-          <AddTickerModal onClose={() => setShowAddModal(false)} onAdd={handleAddTicker} />
-        )}
-
-        {!useInlineAdd && editingSymbol && (
-          <EditTickerModal
-            symbol={editingSymbol}
-            item={watchList.items.find((i) => i.symbol === editingSymbol)!}
-            onClose={() => setEditingSymbol(null)}
-            onUpdate={handleUpdateTicker}
+            expandedSymbol={editingSymbol}
+            renderExpandedRow={(item: WatchListItem) => (
+              <InlineEditPanel
+                item={item}
+                tagSuggestions={tagSuggestions}
+                onSave={handleUpdateTicker}
+                onCancel={() => setEditingSymbol(null)}
+              />
+            )}
           />
         )}
       </div>

@@ -6,7 +6,6 @@ import TickerSearch from '@/components/TickerSearch';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ThemeToggle } from '@/lib/contexts/ThemeContext';
 import { useState, useEffect } from 'react';
-import { isFeatureEnabled, FF_INLINE_WATCHLIST_ADD } from '@/lib/featureFlags';
 
 export default function Header() {
   const { user, logout } = useAuth();
@@ -52,16 +51,6 @@ export default function Header() {
               </Link>
               {user && (
                 <>
-                  {/* When inline-add is enabled the top-nav link moves to the
-                      profile dropdown ("My Watch Lists") to reduce nav clutter. */}
-                  {!isFeatureEnabled(FF_INLINE_WATCHLIST_ADD) && (
-                    <Link
-                      href="/watchlist"
-                      className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                    >
-                      Watch Lists
-                    </Link>
-                  )}
                   <Link
                     href="/alerts"
                     className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"

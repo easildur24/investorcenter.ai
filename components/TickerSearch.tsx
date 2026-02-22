@@ -11,7 +11,6 @@ import {
 } from '@heroicons/react/24/outline';
 import { apiClient } from '@/lib/api';
 import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
-import { isFeatureEnabled, FF_INLINE_WATCHLIST_ADD } from '@/lib/featureFlags';
 
 interface SearchResult {
   symbol: string;
@@ -81,8 +80,7 @@ export default function TickerSearch() {
   const existingSymbols = useWatchlistPageStore((s) => s.existingSymbols);
   const addTickerFn = useWatchlistPageStore((s) => s.addTickerFn);
 
-  const showAddButtons =
-    isFeatureEnabled(FF_INLINE_WATCHLIST_ADD) && !!activeWatchlistId && !!addTickerFn;
+  const showAddButtons = !!activeWatchlistId && !!addTickerFn;
 
   // Load recent searches on mount
   useEffect(() => {
