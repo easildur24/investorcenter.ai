@@ -39,11 +39,27 @@ func (s *HeatmapService) GenerateHeatmapData(
 	var config *models.HeatmapConfig
 	if configID != "" {
 		config, err = database.GetHeatmapConfigByID(configID, userID)
+		if err != nil {
+			return nil, err
+		}
 	} else {
 		config, err = database.GetDefaultHeatmapConfig(watchListID, userID)
-	}
-	if err != nil {
-		return nil, err
+		if err != nil {
+			// Fall back to sensible in-memory defaults if DB query fails
+			// (e.g. heatmap_configs table not yet created)
+			config = &models.HeatmapConfig{
+				UserID:       userID,
+				WatchListID:  watchListID,
+				Name:         "Default Heatmap",
+				SizeMetric:   "market_cap",
+				ColorMetric:  "price_change_pct",
+				TimePeriod:   "1D",
+				ColorScheme:  "red_green",
+				LabelDisplay: "symbol_change",
+				LayoutType:   "treemap",
+				IsDefault:    true,
+			}
+		}
 	}
 
 	// Apply overrides
