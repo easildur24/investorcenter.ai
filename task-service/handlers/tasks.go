@@ -34,14 +34,6 @@ func (j *JSONB) Scan(value interface{}) error {
 		*j = nil
 		return nil
 	}
-	// PostgreSQL JSONB binary format may have a leading version byte (0x01)
-	for len(bytes) > 0 && bytes[0] != '{' && bytes[0] != '[' && bytes[0] != '"' && bytes[0] != 't' && bytes[0] != 'f' && bytes[0] != 'n' && !(bytes[0] >= '0' && bytes[0] <= '9') && bytes[0] != '-' {
-		bytes = bytes[1:]
-	}
-	if len(bytes) == 0 {
-		*j = nil
-		return nil
-	}
 	if !json.Valid(bytes) {
 		*j = nil
 		return nil
@@ -94,7 +86,8 @@ type Task struct {
 }
 
 // taskColumns is the standard column list for task queries.
-const taskColumns = `id, status, priority, task_type_id, params, retry_count,
+// params is cast to text to avoid PostgreSQL JSONB binary format issues with lib/pq.
+const taskColumns = `id, status, priority, task_type_id, params::text, retry_count,
 	created_by, created_at, updated_at, started_at, completed_at, claimed_by`
 
 func scanTask(row interface{ Scan(dest ...interface{}) error }, t *Task) error {

@@ -42,23 +42,6 @@ func TestJSONB_Scan_EmptyBytes(t *testing.T) {
 	assert.Nil(t, j)
 }
 
-func TestJSONB_Scan_LeadingVersionByte(t *testing.T) {
-	// PostgreSQL JSONB binary format may have leading \x01 byte
-	data := append([]byte{0x01}, []byte(`{"key":"value"}`)...)
-	var j JSONB
-	err := j.Scan(data)
-	assert.NoError(t, err)
-	assert.Equal(t, JSONB(`{"key":"value"}`), j)
-}
-
-func TestJSONB_Scan_LeadingNullByte(t *testing.T) {
-	data := append([]byte{0x00}, []byte(`{"key":"value"}`)...)
-	var j JSONB
-	err := j.Scan(data)
-	assert.NoError(t, err)
-	assert.Equal(t, JSONB(`{"key":"value"}`), j)
-}
-
 func TestJSONB_Scan_InvalidJSON(t *testing.T) {
 	var j JSONB
 	err := j.Scan([]byte(`{not valid json}`))
