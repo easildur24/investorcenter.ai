@@ -66,7 +66,9 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
 
         setIsCrypto(isCryptoAsset);
         setIsMarketOpen(isCryptoAsset ? true : (result.market?.isOpen ?? false));
-        setUpdateInterval(isCryptoAsset ? 5000 : result.market?.updateInterval || 15000);
+        // API returns updateInterval in seconds — convert to ms with a 1s safety floor
+        const rawInterval = isCryptoAsset ? 5 : (result.market?.updateInterval ?? 15);
+        setUpdateInterval(Math.max(rawInterval * 1000, 1000));
 
         setPriceData({
           price: result.data.price,
