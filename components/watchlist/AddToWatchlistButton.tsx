@@ -5,6 +5,7 @@ import { PlusIcon, CheckIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { watchListAPI, WatchList } from '@/lib/api/watchlist';
+import { useToast } from '@/lib/hooks/useToast';
 import { useRouter } from 'next/navigation';
 
 interface AddToWatchlistButtonProps {
@@ -14,6 +15,7 @@ interface AddToWatchlistButtonProps {
 export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonProps) {
   const { user } = useAuth();
   const router = useRouter();
+  const toast = useToast();
   const [watchlists, setWatchlists] = useState<WatchList[]>([]);
   const [showPicker, setShowPicker] = useState(false);
   const [adding, setAdding] = useState<string | null>(null);
@@ -34,7 +36,7 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
     }
   }, [showPicker]);
 
-  const fetchWatchlists = async () => {
+  const fetchWatchlists = async (): Promise<WatchList[]> => {
     if (loaded) return watchlists;
     try {
       const res = await watchListAPI.getWatchLists();
@@ -42,8 +44,36 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
       setWatchlists(lists);
       setLoaded(true);
       return lists;
-    } catch {
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load watchlists');
       return [];
+    }
+  };
+
+  const addToList = async (listId: string, listName: string) => {
+    try {
+      setAdding(listId);
+      await watchListAPI.addTicker(listId, { symbol });
+      setAddedTo((prev) => {
+        const next = new Set(prev);
+        next.add(listId);
+        return next;
+      });
+      toast.success(`${symbol} added to ${listName}`);
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('already exists') || msg.includes('duplicate')) {
+        toast.info(`${symbol} is already in ${listName}`);
+        setAddedTo((prev) => {
+          const next = new Set(prev);
+          next.add(listId);
+          return next;
+        });
+      } else {
+        toast.error(msg || `Failed to add ${symbol}`);
+      }
+    } finally {
+      setAdding(null);
     }
   };
 
@@ -60,44 +90,20 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
       try {
         setAdding('new');
         const newList = await watchListAPI.createWatchList({ name: 'My Watch List' });
+        setWatchlists([newList]);
         await watchListAPI.addTicker(newList.id, { symbol });
         setAddedTo(new Set([newList.id]));
-        setWatchlists([newList]);
-      } catch {
-        // ignore
+        toast.success(`${symbol} added to My Watch List`);
+      } catch (err: any) {
+        toast.error(err.message || 'Failed to create watchlist');
       } finally {
         setAdding(null);
       }
     } else if (lists.length === 1) {
-      // One watchlist — add directly
-      try {
-        setAdding(lists[0].id);
-        await watchListAPI.addTicker(lists[0].id, { symbol });
-        setAddedTo(new Set([lists[0].id]));
-      } catch {
-        // ignore
-      } finally {
-        setAdding(null);
-      }
+      await addToList(lists[0].id, lists[0].name);
     } else {
       // Multiple watchlists — show picker
       setShowPicker(true);
-    }
-  };
-
-  const handleAddTo = async (listId: string) => {
-    try {
-      setAdding(listId);
-      await watchListAPI.addTicker(listId, { symbol });
-      setAddedTo((prev) => {
-        const next = new Set(prev);
-        next.add(listId);
-        return next;
-      });
-    } catch {
-      // ignore
-    } finally {
-      setAdding(null);
     }
   };
 
@@ -117,7 +123,9 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
           }
           ${adding !== null ? 'opacity-50 cursor-wait' : ''}`}
       >
-        {isAddedToAny ? (
+        {adding !== null ? (
+          'Adding...'
+        ) : isAddedToAny ? (
           <>
             <BookmarkSolidIcon className="w-4 h-4" />
             Watchlisted
@@ -131,7 +139,7 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
       </button>
 
       {showPicker && (
-        <div className="absolute right-0 top-full mt-1 w-56 bg-ic-bg-primary rounded-lg shadow-xl border border-ic-border z-50 py-1">
+        <div className="absolute left-0 top-full mt-1 w-56 bg-ic-bg-primary rounded-lg shadow-xl border border-ic-border z-50 py-1">
           <div className="px-3 py-2 text-xs font-semibold text-ic-text-dim uppercase">
             Add to watch list
           </div>
@@ -142,7 +150,7 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
             return (
               <button
                 key={list.id}
-                onClick={() => !isAdded && handleAddTo(list.id)}
+                onClick={() => !isAdded && addToList(list.id, list.name)}
                 disabled={isAdded || isAdding}
                 className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors
                   ${isAdded ? 'text-ic-positive' : 'text-ic-text-secondary hover:bg-ic-surface'}`}
