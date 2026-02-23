@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { subscriptions } from './routes';
 
 // Subscription Types
 export interface SubscriptionPlan {
@@ -95,42 +96,42 @@ export interface UpdateSubscriptionRequest {
 export const subscriptionAPI = {
   // List all subscription plans
   async listPlans(): Promise<SubscriptionPlan[]> {
-    return apiClient.get('/subscriptions/plans');
+    return apiClient.get(subscriptions.plans);
   },
 
   // Get specific plan details
   async getPlan(planId: string): Promise<SubscriptionPlan> {
-    return apiClient.get(`/subscriptions/plans/${planId}`);
+    return apiClient.get(subscriptions.planById(planId));
   },
 
   // Get user's current subscription
   async getMySubscription(): Promise<UserSubscription> {
-    return apiClient.get('/subscriptions/me');
+    return apiClient.get(subscriptions.me);
   },
 
   // Create new subscription
   async createSubscription(data: CreateSubscriptionRequest): Promise<UserSubscription> {
-    return apiClient.post('/subscriptions', data);
+    return apiClient.post(subscriptions.create, data);
   },
 
   // Update subscription (upgrade/downgrade)
   async updateSubscription(data: UpdateSubscriptionRequest): Promise<UserSubscription> {
-    return apiClient.put('/subscriptions/me', data);
+    return apiClient.put(subscriptions.me, data);
   },
 
   // Cancel subscription
   async cancelSubscription(): Promise<void> {
-    return apiClient.post('/subscriptions/me/cancel', {});
+    return apiClient.post(subscriptions.cancel, {});
   },
 
   // Get subscription limits
   async getLimits(): Promise<SubscriptionLimits> {
-    return apiClient.get('/subscriptions/limits');
+    return apiClient.get(subscriptions.limits);
   },
 
   // Get payment history
   async getPaymentHistory(): Promise<PaymentHistory[]> {
-    return apiClient.get('/subscriptions/payments');
+    return apiClient.get(subscriptions.payments);
   },
 };
 

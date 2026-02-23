@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import TimeRangeSelector from '@/components/reddit/TimeRangeSelector';
 import TrendingList from '@/components/reddit/TrendingList';
+import { reddit } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface RedditHeatmapData {
   tickerSymbol: string;
@@ -40,7 +42,7 @@ export default function RedditTrendingPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/v1/reddit/heatmap?days=${days}&top=50`);
+      const response = await fetch(`${API_BASE_URL}${reddit.heatmap}?days=${days}&top=50`);
       const result: ApiResponse = await response.json();
 
       if (result.data) {

@@ -3,6 +3,12 @@
 import type { ScreenerApiParams, ScreenerResponse } from '@/lib/types/screener';
 import { validateResponse } from '@/lib/api/validate';
 import {
+  markets as marketsRoutes,
+  tickers as tickersRoutes,
+  screener as screenerRoutes,
+  icScoreService,
+} from '@/lib/api/routes';
+import {
   ICScoreSchema,
   ICScoreScreenerResponseSchema,
   ICScoreTopStocksResponseSchema,
@@ -90,8 +96,8 @@ class ApiClient {
         changePercent: number;
         lastUpdated: string;
       }>
-    >('/markets/indices');
-    result.data = validateResponse(MarketIndicesSchema, result.data, '/markets/indices');
+    >(marketsRoutes.indices);
+    result.data = validateResponse(MarketIndicesSchema, result.data, marketsRoutes.indices);
     return result;
   }
 
@@ -104,7 +110,7 @@ class ApiClient {
         exchange: string;
         logo_url?: string;
       }>
-    >(`/markets/search?q=${encodeURIComponent(query)}`);
+    >(`${marketsRoutes.search}?q=${encodeURIComponent(query)}`);
   }
 
   async getMarketMovers(limit: number = 5) {
@@ -133,8 +139,8 @@ class ApiClient {
         changePercent: number;
         volume: number;
       }>;
-    }>(`/markets/movers?limit=${limit}`);
-    result.data = validateResponse(MarketMoversSchema, result.data, '/markets/movers');
+    }>(`${marketsRoutes.movers}?limit=${limit}`);
+    result.data = validateResponse(MarketMoversSchema, result.data, marketsRoutes.movers);
     return result;
   }
 
@@ -149,7 +155,7 @@ class ApiClient {
       });
     }
     const query = queryParams.toString() ? `?${queryParams.toString()}` : '';
-    return this.request<ScreenerResponse>(`/screener/stocks${query}`);
+    return this.request<ScreenerResponse>(`${screenerRoutes.stocks}${query}`);
   }
 
   // Volume data methods (hybrid: database + real-time)
@@ -175,7 +181,7 @@ class ApiClient {
       };
       source: 'database' | 'polygon';
       realtime: boolean;
-    }>(`/tickers/${symbol}/volume${realtime ? '?realtime=true' : ''}`);
+    }>(`${tickersRoutes.volume(symbol)}${realtime ? '?realtime=true' : ''}`);
   }
 
   async getVolumeAggregates(symbol: string, days: number = 90) {
@@ -189,7 +195,7 @@ class ApiClient {
         volumeTrend: 'increasing' | 'decreasing' | 'stable';
       };
       source: 'database' | 'polygon';
-    }>(`/tickers/${symbol}/volume/aggregates?days=${days}`);
+    }>(`${tickersRoutes.volumeAggregates(symbol)}?days=${days}`);
   }
 }
 
@@ -211,7 +217,9 @@ export const icScoreApi = {
    * Get IC Score for a specific ticker
    */
   async getScore(ticker: string): Promise<ICScore> {
-    const response = await fetch(`${IC_SCORE_API_BASE}/api/scores/${ticker.toUpperCase()}`);
+    const response = await fetch(
+      `${IC_SCORE_API_BASE}${icScoreService.score(ticker.toUpperCase())}`
+    );
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -222,7 +230,7 @@ export const icScoreApi = {
     }
 
     const data = await response.json();
-    return validateResponse(ICScoreSchema, data, `/api/scores/${ticker}`);
+    return validateResponse(ICScoreSchema, data, icScoreService.score(ticker));
   },
 
   /**
@@ -230,7 +238,7 @@ export const icScoreApi = {
    */
   async getHistory(ticker: string, days: number = 30): Promise<ICScoreHistory> {
     const response = await fetch(
-      `${IC_SCORE_API_BASE}/api/scores/${ticker.toUpperCase()}/history?days=${days}`
+      `${IC_SCORE_API_BASE}${icScoreService.history(ticker.toUpperCase())}?days=${days}`
     );
 
     if (!response.ok) {
@@ -242,14 +250,14 @@ export const icScoreApi = {
     }
 
     const data = await response.json();
-    return validateResponse(ICScoreHistorySchema, data, `/api/scores/${ticker}/history`);
+    return validateResponse(ICScoreHistorySchema, data, icScoreService.history(ticker));
   },
 
   /**
    * Get top stocks by IC Score
    */
   async getTopStocks(limit: number = 50): Promise<ICScoreTopStocksResponse> {
-    const response = await fetch(`${IC_SCORE_API_BASE}/api/scores/top?limit=${limit}`);
+    const response = await fetch(`${IC_SCORE_API_BASE}${icScoreService.top}?limit=${limit}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -257,7 +265,7 @@ export const icScoreApi = {
     }
 
     const data = await response.json();
-    return validateResponse(ICScoreTopStocksResponseSchema, data, '/api/scores/top');
+    return validateResponse(ICScoreTopStocksResponseSchema, data, icScoreService.top);
   },
 
   /**
@@ -286,7 +294,7 @@ export const icScoreApi = {
     }
 
     const queryString = params.toString();
-    const url = `${IC_SCORE_API_BASE}/api/scores/screener${queryString ? '?' + queryString : ''}`;
+    const url = `${IC_SCORE_API_BASE}${icScoreService.screener}${queryString ? '?' + queryString : ''}`;
 
     const response = await fetch(url);
 
@@ -296,14 +304,14 @@ export const icScoreApi = {
     }
 
     const data = await response.json();
-    return validateResponse(ICScoreScreenerResponseSchema, data, '/api/scores/screener');
+    return validateResponse(ICScoreScreenerResponseSchema, data, icScoreService.screener);
   },
 
   /**
    * Get IC Score statistics
    */
   async getStatistics(): Promise<ICScoreStatistics> {
-    const response = await fetch(`${IC_SCORE_API_BASE}/api/scores/statistics`);
+    const response = await fetch(`${IC_SCORE_API_BASE}${icScoreService.statistics}`);
 
     if (!response.ok) {
       const error = await response.json();
@@ -311,14 +319,14 @@ export const icScoreApi = {
     }
 
     const data = await response.json();
-    return validateResponse(ICScoreStatisticsSchema, data, '/api/scores/statistics');
+    return validateResponse(ICScoreStatisticsSchema, data, icScoreService.statistics);
   },
 
   /**
    * Check IC Score API health
    */
   async checkHealth(): Promise<{ status: string; timestamp: string }> {
-    const response = await fetch(`${IC_SCORE_API_BASE}/health`);
+    const response = await fetch(`${IC_SCORE_API_BASE}${icScoreService.health}`);
 
     if (!response.ok) {
       throw new Error('IC Score API is unavailable');

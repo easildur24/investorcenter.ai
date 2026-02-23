@@ -5,6 +5,7 @@
  */
 
 import { apiClient } from './client';
+import { sentiment } from './routes';
 import type {
   SentimentResponse,
   SentimentHistoryResponse,
@@ -20,7 +21,7 @@ import type {
  * @returns Sentiment data including score, breakdown, and top subreddits
  */
 export async function getSentiment(ticker: string): Promise<SentimentResponse> {
-  return apiClient.get<SentimentResponse>(`/sentiment/${ticker.toUpperCase()}`);
+  return apiClient.get<SentimentResponse>(sentiment.byTicker(ticker.toUpperCase()));
 }
 
 /**
@@ -34,7 +35,7 @@ export async function getSentimentHistory(
   days: number = 7
 ): Promise<SentimentHistoryResponse> {
   return apiClient.get<SentimentHistoryResponse>(
-    `/sentiment/${ticker.toUpperCase()}/history?days=${days}`
+    `${sentiment.history(ticker.toUpperCase())}?days=${days}`
   );
 }
 
@@ -48,7 +49,7 @@ export async function getTrendingSentiment(
   period: TrendingPeriod = '24h',
   limit: number = 20
 ): Promise<TrendingResponse> {
-  return apiClient.get<TrendingResponse>(`/sentiment/trending?period=${period}&limit=${limit}`);
+  return apiClient.get<TrendingResponse>(`${sentiment.trending}?period=${period}&limit=${limit}`);
 }
 
 /**
@@ -64,6 +65,6 @@ export async function getSentimentPosts(
   limit: number = 10
 ): Promise<RepresentativePostsResponse> {
   return apiClient.get<RepresentativePostsResponse>(
-    `/sentiment/${ticker.toUpperCase()}/posts?sort=${sort}&limit=${limit}`
+    `${sentiment.posts(ticker.toUpperCase())}?sort=${sort}&limit=${limit}`
   );
 }

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { API_BASE_URL } from '@/lib/api';
+import { tickers } from '@/lib/api/routes';
 
 interface UseRealTimePriceProps {
   symbol: string;
@@ -52,38 +54,19 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
 
     const fetchPrice = async () => {
       try {
-        // First try crypto endpoint
-        const cryptoResponse = await fetch(`/api/v1/crypto/${symbol}/price`);
-
-        if (cryptoResponse.ok) {
-          const data = await cryptoResponse.json();
-          setIsCrypto(true);
-          setIsMarketOpen(true); // Crypto markets are always open
-          setUpdateInterval(data.update_interval || 5000);
-
-          setPriceData({
-            price: String(data.price),
-            change: String((data.price * data.change_24h) / 100),
-            changePercent: String(data.change_24h / 100),
-            volume: data.volume_24h || 0,
-            lastUpdated: data.last_updated || new Date().toISOString(),
-          });
-
-          setError(null);
-          return;
-        }
-
-        // Fall back to regular ticker endpoint for stocks
-        const response = await fetch(`/api/v1/tickers/${symbol}/realtime`);
+        // Single endpoint handles both stocks (Polygon) and crypto (Redis)
+        const response = await fetch(`${API_BASE_URL}${tickers.price(symbol)}`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch price: ${response.status}`);
         }
 
         const result = await response.json();
-        setIsCrypto(false);
-        setIsMarketOpen(result.market?.isOpen ?? false);
-        setUpdateInterval(result.market?.updateInterval || 15000);
+        const isCryptoAsset = result.data.assetType === 'crypto';
+
+        setIsCrypto(isCryptoAsset);
+        setIsMarketOpen(isCryptoAsset ? true : (result.market?.isOpen ?? false));
+        setUpdateInterval(isCryptoAsset ? 5000 : result.market?.updateInterval || 15000);
 
         setPriceData({
           price: result.data.price,

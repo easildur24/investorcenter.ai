@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { admin } from './routes';
 
 // Types
 export interface CronjobSummary {
@@ -109,7 +110,7 @@ export interface CronjobSchedule {
 
 // API Functions
 export async function getCronjobOverview(): Promise<CronjobOverviewResponse> {
-  return apiClient.get<CronjobOverviewResponse>('/admin/cronjobs/overview');
+  return apiClient.get<CronjobOverviewResponse>(admin.cronjobs.overview);
 }
 
 export async function getCronjobHistory(
@@ -122,20 +123,20 @@ export async function getCronjobHistory(
 
   const query = queryParams.toString();
   return apiClient.get<CronjobHistoryResponse>(
-    `/admin/cronjobs/${jobName}/history${query ? `?${query}` : ''}`
+    `${admin.cronjobs.jobHistory(jobName)}${query ? `?${query}` : ''}`
   );
 }
 
 export async function getCronjobDetails(executionId: string): Promise<CronjobExecutionLog> {
-  return apiClient.get<CronjobExecutionLog>(`/admin/cronjobs/details/${executionId}`);
+  return apiClient.get<CronjobExecutionLog>(admin.cronjobs.details(executionId));
 }
 
 export async function getCronjobMetrics(period: number = 7): Promise<CronjobMetricsResponse> {
-  return apiClient.get<CronjobMetricsResponse>(`/admin/cronjobs/metrics?period=${period}`);
+  return apiClient.get<CronjobMetricsResponse>(`${admin.cronjobs.metrics}?period=${period}`);
 }
 
 export async function getCronjobSchedules(): Promise<CronjobSchedule[]> {
-  return apiClient.get<CronjobSchedule[]>('/admin/cronjobs/schedules');
+  return apiClient.get<CronjobSchedule[]>(admin.cronjobs.schedules);
 }
 
 // Helper functions

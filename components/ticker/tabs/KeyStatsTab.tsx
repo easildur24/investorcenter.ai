@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface KeyStatsTabProps {
   symbol: string;
@@ -105,7 +107,7 @@ export default function KeyStatsTab({ symbol }: KeyStatsTabProps) {
       try {
         setLoading(true);
         setError(null);
-        const response = await fetch(`/api/v1/tickers/${symbol}/keystats`);
+        const response = await fetch(`${API_BASE_URL}${tickers.keyStats(symbol)}`);
         if (response.status === 404) {
           setError('No key stats data available for this ticker');
           return;

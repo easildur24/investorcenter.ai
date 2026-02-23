@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface NewsArticle {
   id?: string | number;
@@ -111,7 +113,7 @@ export default function TickerNewsPage() {
     const fetchNews = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/tickers/${symbol}/news`);
+        const response = await fetch(`${API_BASE_URL}${tickers.news(symbol)}`);
         const result = await response.json();
         if (result.data && Array.isArray(result.data)) {
           setNews(result.data);

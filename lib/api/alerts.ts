@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { alerts } from './routes';
 
 // Alert Types
 export interface AlertRule {
@@ -83,27 +84,27 @@ export const alertAPI = {
       queryParams.append('is_active', params.is_active.toString());
 
     const query = queryParams.toString();
-    return apiClient.get(`/alerts${query ? `?${query}` : ''}`);
+    return apiClient.get(`${alerts.list}${query ? `?${query}` : ''}`);
   },
 
   // Create new alert rule
   async createAlert(data: CreateAlertRequest): Promise<AlertRule> {
-    return apiClient.post('/alerts', data);
+    return apiClient.post(alerts.create, data);
   },
 
   // Get alert rule by ID
   async getAlert(alertId: string): Promise<AlertRule> {
-    return apiClient.get(`/alerts/${alertId}`);
+    return apiClient.get(alerts.byId(alertId));
   },
 
   // Update alert rule
   async updateAlert(alertId: string, data: UpdateAlertRequest): Promise<AlertRule> {
-    return apiClient.put(`/alerts/${alertId}`, data);
+    return apiClient.put(alerts.byId(alertId), data);
   },
 
   // Delete alert rule
   async deleteAlert(alertId: string): Promise<void> {
-    return apiClient.delete(`/alerts/${alertId}`);
+    return apiClient.delete(alerts.byId(alertId));
   },
 
   // Get alert logs (trigger history)
@@ -113,17 +114,17 @@ export const alertAPI = {
     if (params?.offset) queryParams.append('offset', params.offset.toString());
 
     const query = queryParams.toString();
-    return apiClient.get(`/alerts/logs${query ? `?${query}` : ''}`);
+    return apiClient.get(`${alerts.logs.list}${query ? `?${query}` : ''}`);
   },
 
   // Mark alert log as read
   async markAlertLogRead(logId: string): Promise<void> {
-    return apiClient.post(`/alerts/logs/${logId}/read`, {});
+    return apiClient.post(alerts.logs.read(logId), {});
   },
 
   // Dismiss alert log
   async dismissAlertLog(logId: string): Promise<void> {
-    return apiClient.post(`/alerts/logs/${logId}/dismiss`, {});
+    return apiClient.post(alerts.logs.dismiss(logId), {});
   },
 };
 

@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface NewsSentimentProps {
   symbol: string;
@@ -112,7 +114,7 @@ export default function NewsSentiment({ symbol }: NewsSentimentProps) {
     const fetchNews = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/tickers/${symbol}/news`);
+        const response = await fetch(`${API_BASE_URL}${tickers.news(symbol)}`);
         const result = await response.json();
         if (result.data && Array.isArray(result.data)) {
           setNews(result.data.slice(0, 5)); // Show only 3-5 items

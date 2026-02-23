@@ -12,6 +12,8 @@ import {
   StatementType,
 } from '@/types/financials';
 
+import { stocks } from './routes';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**
@@ -80,7 +82,7 @@ export async function getIncomeStatements(
   try {
     const queryString = buildQueryString(params);
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/income${queryString}`,
+      `${API_BASE_URL}${stocks.financialsIncome(ticker.toUpperCase())}${queryString}`,
       {
         method: 'GET',
         headers: {
@@ -121,7 +123,7 @@ export async function getBalanceSheets(
   try {
     const queryString = buildQueryString(params);
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/balance${queryString}`,
+      `${API_BASE_URL}${stocks.financialsBalance(ticker.toUpperCase())}${queryString}`,
       {
         method: 'GET',
         headers: {
@@ -162,7 +164,7 @@ export async function getCashFlowStatements(
   try {
     const queryString = buildQueryString(params);
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/cashflow${queryString}`,
+      `${API_BASE_URL}${stocks.financialsCashflow(ticker.toUpperCase())}${queryString}`,
       {
         method: 'GET',
         headers: {
@@ -203,7 +205,7 @@ export async function getFinancialRatios(
   try {
     const queryString = buildQueryString(params);
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/ratios${queryString}`,
+      `${API_BASE_URL}${stocks.financialsRatios(ticker.toUpperCase())}${queryString}`,
       {
         method: 'GET',
         headers: {
@@ -244,7 +246,7 @@ export async function getAllFinancials(
   try {
     const queryString = buildQueryString(params);
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/all${queryString}`,
+      `${API_BASE_URL}${stocks.financialsAll(ticker.toUpperCase())}${queryString}`,
       {
         method: 'GET',
         headers: {
@@ -307,7 +309,7 @@ export async function getFinancialStatements(
 export async function refreshFinancials(ticker: string): Promise<boolean> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/refresh`,
+      `${API_BASE_URL}${stocks.financialsRefresh(ticker.toUpperCase())}`,
       {
         method: 'POST',
         headers: {
@@ -332,7 +334,7 @@ export async function refreshFinancials(ticker: string): Promise<boolean> {
 export async function hasFinancialData(ticker: string): Promise<boolean> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/financials/income?limit=1`,
+      `${API_BASE_URL}${stocks.financialsIncome(ticker.toUpperCase())}?limit=1`,
       {
         method: 'GET',
         headers: {

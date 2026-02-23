@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRealTimePrice } from '@/lib/hooks/useRealTimePrice';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
 import HybridChart from './HybridChart';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface CryptoTickerHeaderProps {
   symbol: string;
@@ -54,7 +56,7 @@ export default function CryptoTickerHeader({ symbol, initialData }: CryptoTicker
     const fetchChartData = async () => {
       try {
         setChartLoading(true);
-        const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=1Y`);
+        const response = await fetch(`${API_BASE_URL}${tickers.chart(symbol)}?period=1Y`);
         const data = await response.json();
 
         if (data.success && data.data) {

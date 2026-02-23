@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { watchlists } from './routes';
 
 export interface HeatmapConfig {
   id: string;
@@ -80,13 +81,13 @@ export const heatmapAPI = {
     if (overrides?.time_period) params.append('time_period', overrides.time_period);
 
     const queryString = params.toString();
-    const url = `/watchlists/${watchListId}/heatmap${queryString ? `?${queryString}` : ''}`;
+    const url = `${watchlists.heatmap.data(watchListId)}${queryString ? `?${queryString}` : ''}`;
     return apiClient.get(url);
   },
 
   // Get all configs for a watch list
   async getConfigs(watchListId: string): Promise<{ configs: HeatmapConfig[] }> {
-    return apiClient.get(`/watchlists/${watchListId}/heatmap/configs`);
+    return apiClient.get(watchlists.heatmap.configs(watchListId));
   },
 
   // Create new config
@@ -105,7 +106,7 @@ export const heatmapAPI = {
       is_default?: boolean;
     }
   ): Promise<HeatmapConfig> {
-    return apiClient.post(`/watchlists/${watchListId}/heatmap/configs`, {
+    return apiClient.post(watchlists.heatmap.configs(watchListId), {
       watch_list_id: watchListId,
       ...config,
     });
@@ -117,11 +118,11 @@ export const heatmapAPI = {
     configId: string,
     config: Partial<HeatmapConfig>
   ): Promise<HeatmapConfig> {
-    return apiClient.put(`/watchlists/${watchListId}/heatmap/configs/${configId}`, config);
+    return apiClient.put(watchlists.heatmap.config(watchListId, configId), config);
   },
 
   // Delete config
   async deleteConfig(watchListId: string, configId: string): Promise<void> {
-    return apiClient.delete(`/watchlists/${watchListId}/heatmap/configs/${configId}`);
+    return apiClient.delete(watchlists.heatmap.config(watchListId, configId));
   },
 };

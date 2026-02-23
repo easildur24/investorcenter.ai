@@ -7,6 +7,8 @@
 
 import { ComprehensiveMetricsResponse, ComprehensiveMetricsData } from '@/types/metrics';
 
+import { stocks } from './routes';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**
@@ -31,7 +33,7 @@ export async function getComprehensiveMetrics(
   ticker: string
 ): Promise<ComprehensiveMetricsResponse | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`, {
+    const response = await fetch(`${API_BASE_URL}${stocks.metrics(ticker.toUpperCase())}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -64,7 +66,7 @@ export async function getComprehensiveMetrics(
  */
 export async function hasComprehensiveMetrics(ticker: string): Promise<boolean> {
   try {
-    const response = await fetch(`${API_BASE_URL}/stocks/${ticker.toUpperCase()}/metrics`, {
+    const response = await fetch(`${API_BASE_URL}${stocks.metrics(ticker.toUpperCase())}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

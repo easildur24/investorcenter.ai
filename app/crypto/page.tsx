@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
+import { crypto } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface CryptoPrice {
   symbol: string;
@@ -40,7 +42,7 @@ export default function CryptoPage() {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/v1/crypto?page=${page}`);
+      const response = await fetch(`${API_BASE_URL}${crypto.list}?page=${page}`);
       const result = await response.json();
 
       if (result.data) {

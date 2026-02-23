@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface InputTabProps {
   symbol: string;
@@ -18,7 +20,7 @@ export default function InputTab({ symbol }: InputTabProps) {
     setLoadingExisting(true);
     setMessage(null);
     try {
-      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`);
+      const response = await fetch(`${API_BASE_URL}${tickers.keyStats(symbol)}`);
       if (response.ok) {
         const result = await response.json();
         setExistingData(result);
@@ -49,7 +51,7 @@ export default function InputTab({ symbol }: InputTabProps) {
       const parsedData = JSON.parse(jsonInput);
 
       // Send to API
-      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`, {
+      const response = await fetch(`${API_BASE_URL}${tickers.keyStats(symbol)}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -89,7 +91,7 @@ export default function InputTab({ symbol }: InputTabProps) {
     setMessage(null);
 
     try {
-      const response = await fetch(`/api/v1/tickers/${symbol}/keystats`, {
+      const response = await fetch(`${API_BASE_URL}${tickers.keyStats(symbol)}`, {
         method: 'DELETE',
       });
 

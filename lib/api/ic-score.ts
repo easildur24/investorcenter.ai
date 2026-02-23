@@ -6,6 +6,8 @@
 
 import { apiClient } from './client';
 
+import { stocks, admin } from './routes';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 /**
@@ -78,7 +80,7 @@ interface APIResponse<T> {
  */
 export async function getICScore(ticker: string): Promise<ICScoreData | null> {
   try {
-    const response = await fetch(`${API_BASE_URL}/stocks/${ticker.toUpperCase()}/ic-score`, {
+    const response = await fetch(`${API_BASE_URL}${stocks.icScore(ticker.toUpperCase())}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -114,7 +116,7 @@ export async function getICScore(ticker: string): Promise<ICScoreData | null> {
 export async function getICScoreHistory(ticker: string, days: number = 90): Promise<ICScoreData[]> {
   try {
     const response = await fetch(
-      `${API_BASE_URL}/stocks/${ticker.toUpperCase()}/ic-score/history?days=${days}`,
+      `${API_BASE_URL}${stocks.icScoreHistory(ticker.toUpperCase())}?days=${days}`,
       {
         method: 'GET',
         headers: {
@@ -177,7 +179,7 @@ export async function getICScores(params?: {
         total_stocks: number;
         coverage_percent: number;
       };
-    }>(`/admin/ic-scores${query ? '?' + query : ''}`);
+    }>(`${admin.icScores}${query ? '?' + query : ''}`);
   } catch (error) {
     console.error('Error fetching IC Scores:', error);
     return {

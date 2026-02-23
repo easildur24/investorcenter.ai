@@ -1,12 +1,14 @@
 /**
  * Tests for useRealTimePrice hook
  *
- * We test the fetch logic (crypto vs stock fallback),
+ * We test the fetch logic (single /price endpoint for stocks and crypto),
  * error handling, and data transformation.
  */
 
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { useRealTimePrice } from '../useRealTimePrice';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 const mockFetch = global.fetch as jest.Mock;
 
@@ -29,15 +31,21 @@ describe('useRealTimePrice', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('fetches crypto data when crypto endpoint succeeds', async () => {
+  it('fetches crypto data from the price endpoint', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        price: 45000,
-        change_24h: 5.2,
-        volume_24h: 1000000,
-        last_updated: '2026-02-13T10:00:00Z',
-        update_interval: 5000,
+        data: {
+          symbol: 'X:BTCUSD',
+          price: '45000.00',
+          change: '1500.00',
+          changePercent: '3.45',
+          volume: 1000000,
+          lastUpdated: '2026-02-13T10:00:00Z',
+          marketStatus: 'open',
+          assetType: 'crypto',
+        },
+        meta: { timestamp: '2026-02-13T10:00:00Z', source: 'redis' },
       }),
     });
 
@@ -49,15 +57,15 @@ describe('useRealTimePrice', () => {
 
     expect(result.current.isCrypto).toBe(true);
     expect(result.current.isMarketOpen).toBe(true); // Crypto always open
-    expect(result.current.priceData?.price).toBe('45000');
+    expect(result.current.priceData?.price).toBe('45000.00');
   });
 
-  it('falls back to stock endpoint when crypto fails', async () => {
-    // First call (crypto) fails, second call (stock) succeeds
-    mockFetch.mockResolvedValueOnce({ ok: false, status: 404 }).mockResolvedValueOnce({
+  it('fetches stock data from the price endpoint', async () => {
+    mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
         data: {
+          symbol: 'AAPL',
           price: '150.25',
           change: '2.50',
           changePercent: '1.69',
@@ -82,10 +90,8 @@ describe('useRealTimePrice', () => {
     expect(result.current.priceData?.change).toBe('2.50');
   });
 
-  it('sets error when both endpoints fail', async () => {
-    mockFetch
-      .mockResolvedValueOnce({ ok: false, status: 404 }) // crypto
-      .mockResolvedValueOnce({ ok: false, status: 500 }); // stock
+  it('sets error when endpoint fails', async () => {
+    mockFetch.mockResolvedValue({ ok: false, status: 500 });
 
     const { result } = renderHook(() => useRealTimePrice({ symbol: 'INVALID' }));
 
@@ -111,13 +117,20 @@ describe('useRealTimePrice', () => {
     expect(result.current.priceData).toBeNull();
   });
 
-  it('calls crypto endpoint with correct URL', async () => {
+  it('calls price endpoint with correct URL', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        price: 100,
-        change_24h: 1,
-        volume_24h: 500,
+        data: {
+          symbol: 'X:ETHUSD',
+          price: '3000.00',
+          change: '50.00',
+          changePercent: '1.69',
+          volume: 500,
+          lastUpdated: '2026-02-13T10:00:00Z',
+          assetType: 'crypto',
+        },
+        meta: { timestamp: '2026-02-13T10:00:00Z' },
       }),
     });
 
@@ -127,17 +140,23 @@ describe('useRealTimePrice', () => {
       expect(mockFetch).toHaveBeenCalled();
     });
 
-    expect(mockFetch.mock.calls[0][0]).toBe('/api/v1/crypto/X:ETHUSD/price');
+    expect(mockFetch.mock.calls[0][0]).toBe(`${API_BASE_URL}${tickers.price('X:ETHUSD')}`);
   });
 
   it('cleans up interval on unmount', async () => {
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({
-        price: 100,
-        change_24h: 1,
-        volume_24h: 500,
-        update_interval: 5000,
+        data: {
+          symbol: 'X:BTCUSD',
+          price: '45000.00',
+          change: '100.00',
+          changePercent: '0.22',
+          volume: 500,
+          lastUpdated: '2026-02-13T10:00:00Z',
+          assetType: 'crypto',
+        },
+        meta: { timestamp: '2026-02-13T10:00:00Z' },
       }),
     });
 

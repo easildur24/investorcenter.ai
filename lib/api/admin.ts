@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { admin } from './routes';
 
 export interface PaginationMeta {
   total: number;
@@ -31,7 +32,7 @@ export async function getAdminStocks(params?: {
   if (params?.order) queryParams.append('order', params.order);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/stocks${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.stocks}${query ? `?${query}` : ''}`);
 }
 
 // Fetch users (admin)
@@ -46,7 +47,7 @@ export async function getAdminUsers(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/users${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.users}${query ? `?${query}` : ''}`);
 }
 
 // Fetch news articles (admin)
@@ -61,7 +62,7 @@ export async function getAdminNews(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/news${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.news}${query ? `?${query}` : ''}`);
 }
 
 // Fetch fundamentals (admin)
@@ -76,7 +77,7 @@ export async function getAdminFundamentals(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/fundamentals${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.fundamentals}${query ? `?${query}` : ''}`);
 }
 
 // Fetch alerts (admin)
@@ -89,7 +90,7 @@ export async function getAdminAlerts(params?: {
   if (params?.offset) queryParams.append('offset', params.offset.toString());
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/alerts${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.alerts}${query ? `?${query}` : ''}`);
 }
 
 // Fetch watch lists (admin)
@@ -102,12 +103,12 @@ export async function getAdminWatchLists(params?: {
   if (params?.offset) queryParams.append('offset', params.offset.toString());
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/watchlists${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.watchlists}${query ? `?${query}` : ''}`);
 }
 
 // Fetch database statistics (admin)
 export async function getAdminDatabaseStats(): Promise<{ stats: DatabaseStats }> {
-  return apiClient.get('/admin/stats');
+  return apiClient.get(admin.stats);
 }
 
 // Fetch SEC financials (admin)
@@ -122,7 +123,7 @@ export async function getAdminSECFinancials(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/sec-financials${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.secFinancials}${query ? `?${query}` : ''}`);
 }
 
 // Fetch TTM financials (admin)
@@ -137,7 +138,7 @@ export async function getAdminTTMFinancials(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/ttm-financials${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.ttmFinancials}${query ? `?${query}` : ''}`);
 }
 
 // Fetch valuation ratios (admin)
@@ -152,7 +153,7 @@ export async function getAdminValuationRatios(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/valuation-ratios${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.valuationRatios}${query ? `?${query}` : ''}`);
 }
 
 // Fetch analyst ratings (admin)
@@ -167,7 +168,7 @@ export async function getAdminAnalystRatings(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/analyst-ratings${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.analystRatings}${query ? `?${query}` : ''}`);
 }
 
 // Fetch insider trades (admin)
@@ -182,7 +183,7 @@ export async function getAdminInsiderTrades(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/insider-trades${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.insiderTrades}${query ? `?${query}` : ''}`);
 }
 
 // Fetch institutional holdings (admin)
@@ -197,7 +198,7 @@ export async function getAdminInstitutionalHoldings(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/institutional-holdings${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.institutionalHoldings}${query ? `?${query}` : ''}`);
 }
 
 // Fetch technical indicators (admin)
@@ -212,7 +213,7 @@ export async function getAdminTechnicalIndicators(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/technical-indicators${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.technicalIndicators}${query ? `?${query}` : ''}`);
 }
 
 // Fetch companies (admin)
@@ -227,7 +228,7 @@ export async function getAdminCompanies(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/companies${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.companies}${query ? `?${query}` : ''}`);
 }
 
 // Fetch risk metrics (admin)
@@ -242,5 +243,5 @@ export async function getAdminRiskMetrics(params?: {
   if (params?.search) queryParams.append('search', params.search);
 
   const query = queryParams.toString();
-  return apiClient.get(`/admin/risk-metrics${query ? `?${query}` : ''}`);
+  return apiClient.get(`${admin.riskMetrics}${query ? `?${query}` : ''}`);
 }

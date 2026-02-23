@@ -15,6 +15,8 @@ import { DecileBarChart } from './DecileBarChart';
 import { CumulativeReturnsChart } from './CumulativeReturnsChart';
 import { BacktestConfigPanel } from './BacktestConfigPanel';
 import { StatisticalSummary } from './StatisticalSummary';
+import { backtest } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface BacktestDashboardProps {
   initialData?: BacktestSummary;
@@ -36,7 +38,7 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
   const fetchLatestBacktest = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/v1/ic-scores/backtest/latest');
+      const response = await fetch(`${API_BASE_URL}${backtest.latest}`);
       if (!response.ok) {
         throw new Error('Failed to fetch backtest results');
       }
@@ -53,7 +55,7 @@ export default function BacktestDashboard({ initialData }: BacktestDashboardProp
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/v1/ic-scores/backtest', {
+      const response = await fetch(`${API_BASE_URL}${backtest.run}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(config),

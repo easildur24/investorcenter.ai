@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { cn, safeToFixed, safeParseNumber, formatPercent } from '@/lib/utils';
+import { stocks } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface RiskTabProps {
   symbol: string;
@@ -77,7 +79,7 @@ export default function RiskTab({ symbol }: RiskTabProps) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/stocks/${symbol}/risk?period=${period}`);
+        const response = await fetch(`${API_BASE_URL}${stocks.risk(symbol)}?period=${period}`);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }

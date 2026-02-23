@@ -4,6 +4,8 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { getChartColors, themeColors } from '@/lib/theme';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface HybridChartProps {
   symbol: string;
@@ -86,7 +88,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
 
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/v1/tickers/${symbol}/chart?period=${period}`);
+        const response = await fetch(`${API_BASE_URL}${tickers.chart(symbol)}?period=${period}`);
         const result = await response.json();
 
         if (result.data?.dataPoints) {
@@ -113,7 +115,7 @@ export default function HybridChart({ symbol, initialData, currentPrice }: Hybri
   useEffect(() => {
     if (showSP500 && sp500Data.length === 0 && !sp500Loading) {
       setSp500Loading(true);
-      fetch(`/api/v1/tickers/SPY/chart?period=${selectedPeriod}`)
+      fetch(`${API_BASE_URL}${tickers.chart('SPY')}?period=${selectedPeriod}`)
         .then((res) => res.json())
         .then((data) => {
           if (data.data?.dataPoints) {

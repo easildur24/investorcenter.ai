@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { cn, safeToFixed, formatLargeNumber, formatPercent, safeParseNumber } from '@/lib/utils';
+import { admin } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface OwnershipTabProps {
   symbol: string;
@@ -50,10 +52,11 @@ export default function OwnershipTab({ symbol }: OwnershipTabProps) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        // Fetch both insider trades and institutional holdings
+        // TODO: These call admin-only endpoints (/admin/insider-trades, /admin/institutional-holdings).
+        // They'll always 404 for non-admin users. Needs backend routes or removal.
         const [insiderRes, institutionalRes] = await Promise.all([
-          fetch(`/api/v1/stocks/${symbol}/insider-trades`).catch(() => null),
-          fetch(`/api/v1/stocks/${symbol}/institutional-holdings`).catch(() => null),
+          fetch(`${API_BASE_URL}${admin.insiderTrades}?symbol=${symbol}`).catch(() => null),
+          fetch(`${API_BASE_URL}${admin.institutionalHoldings}?symbol=${symbol}`).catch(() => null),
         ]);
 
         const ownershipData: OwnershipData = {};

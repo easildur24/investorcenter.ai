@@ -1,5 +1,7 @@
 // API client with authentication support and automatic token refresh
 
+import { auth } from './routes';
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api/v1';
 
 const getAuthToken = (): string | null => {
@@ -34,7 +36,7 @@ async function refreshAccessToken(): Promise<string> {
         throw new Error('No refresh token available');
       }
 
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      const response = await fetch(`${API_BASE_URL}${auth.refresh}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

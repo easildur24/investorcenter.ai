@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { admin } from './routes';
 
 // Types
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
@@ -93,11 +94,9 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-const BASE = '/admin/workers';
-
 // Workers
 export async function listWorkers(): Promise<Worker[]> {
-  const res = await apiClient.get<ApiResponse<Worker[]>>(BASE);
+  const res = await apiClient.get<ApiResponse<Worker[]>>(admin.workers.list);
   return res.data;
 }
 
@@ -106,7 +105,7 @@ export async function registerWorker(
   password: string,
   fullName: string
 ): Promise<Worker> {
-  const res = await apiClient.post<ApiResponse<Worker>>(BASE, {
+  const res = await apiClient.post<ApiResponse<Worker>>(admin.workers.list, {
     email,
     password,
     full_name: fullName,
@@ -115,12 +114,12 @@ export async function registerWorker(
 }
 
 export async function removeWorker(id: string): Promise<void> {
-  await apiClient.delete(`${BASE}/${id}`);
+  await apiClient.delete(admin.workers.byId(id));
 }
 
 // Task Types
 export async function listTaskTypes(): Promise<TaskType[]> {
-  const res = await apiClient.get<ApiResponse<TaskType[]>>(`${BASE}/task-types`);
+  const res = await apiClient.get<ApiResponse<TaskType[]>>(admin.workers.taskTypes.list);
   return res.data;
 }
 
@@ -130,7 +129,7 @@ export async function createTaskType(data: {
   sop?: string;
   param_schema?: Record<string, string> | null;
 }): Promise<TaskType> {
-  const res = await apiClient.post<ApiResponse<TaskType>>(`${BASE}/task-types`, data);
+  const res = await apiClient.post<ApiResponse<TaskType>>(admin.workers.taskTypes.list, data);
   return res.data;
 }
 
@@ -142,12 +141,12 @@ export async function updateTaskType(
     param_schema?: Record<string, string> | null;
   }
 ): Promise<TaskType> {
-  const res = await apiClient.put<ApiResponse<TaskType>>(`${BASE}/task-types/${id}`, data);
+  const res = await apiClient.put<ApiResponse<TaskType>>(admin.workers.taskTypes.byId(id), data);
   return res.data;
 }
 
 export async function deleteTaskType(id: number): Promise<void> {
-  await apiClient.delete(`${BASE}/task-types/${id}`);
+  await apiClient.delete(admin.workers.taskTypes.byId(id));
 }
 
 // Tasks
@@ -161,12 +160,14 @@ export async function listTasks(params?: {
   if (params?.assigned_to) query.set('assigned_to', params.assigned_to);
   if (params?.task_type) query.set('task_type', params.task_type);
   const qs = query.toString();
-  const res = await apiClient.get<ApiResponse<WorkerTask[]>>(`${BASE}/tasks${qs ? '?' + qs : ''}`);
+  const res = await apiClient.get<ApiResponse<WorkerTask[]>>(
+    `${admin.workers.tasks.list}${qs ? '?' + qs : ''}`
+  );
   return res.data;
 }
 
 export async function getTask(id: string): Promise<WorkerTask> {
-  const res = await apiClient.get<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}`);
+  const res = await apiClient.get<ApiResponse<WorkerTask>>(admin.workers.tasks.byId(id));
   return res.data;
 }
 
@@ -178,7 +179,7 @@ export async function createTask(data: {
   task_type_id?: number;
   params?: Record<string, unknown>;
 }): Promise<WorkerTask> {
-  const res = await apiClient.post<ApiResponse<WorkerTask>>(`${BASE}/tasks`, data);
+  const res = await apiClient.post<ApiResponse<WorkerTask>>(admin.workers.tasks.list, data);
   return res.data;
 }
 
@@ -194,22 +195,22 @@ export async function updateTask(
     params?: Record<string, unknown>;
   }
 ): Promise<WorkerTask> {
-  const res = await apiClient.put<ApiResponse<WorkerTask>>(`${BASE}/tasks/${id}`, data);
+  const res = await apiClient.put<ApiResponse<WorkerTask>>(admin.workers.tasks.byId(id), data);
   return res.data;
 }
 
 export async function deleteTask(id: string): Promise<void> {
-  await apiClient.delete(`${BASE}/tasks/${id}`);
+  await apiClient.delete(admin.workers.tasks.byId(id));
 }
 
 // Task Updates
 export async function listTaskUpdates(taskId: string): Promise<TaskUpdate[]> {
-  const res = await apiClient.get<ApiResponse<TaskUpdate[]>>(`${BASE}/tasks/${taskId}/updates`);
+  const res = await apiClient.get<ApiResponse<TaskUpdate[]>>(admin.workers.tasks.updates(taskId));
   return res.data;
 }
 
 export async function createTaskUpdate(taskId: string, content: string): Promise<TaskUpdate> {
-  const res = await apiClient.post<ApiResponse<TaskUpdate>>(`${BASE}/tasks/${taskId}/updates`, {
+  const res = await apiClient.post<ApiResponse<TaskUpdate>>(admin.workers.tasks.updates(taskId), {
     content,
   });
   return res.data;
@@ -245,7 +246,7 @@ export async function getTaskData(
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString();
   const res = await apiClient.get<ApiResponse<TaskDataResponse>>(
-    `${BASE}/tasks/${taskId}/data${qs ? '?' + qs : ''}`
+    `${admin.workers.tasks.data(taskId)}${qs ? '?' + qs : ''}`
   );
   return res.data;
 }
@@ -278,11 +279,11 @@ export async function getTaskFiles(
   if (params?.offset) query.set('offset', String(params.offset));
   const qs = query.toString();
   const res = await apiClient.get<ApiResponse<TaskFilesResponse>>(
-    `${BASE}/tasks/${taskId}/files${qs ? '?' + qs : ''}`
+    `${admin.workers.tasks.files(taskId)}${qs ? '?' + qs : ''}`
   );
   return res.data;
 }
 
 export function getTaskFileDownloadUrl(taskId: string, fileId: number): string {
-  return `/api/v1${BASE}/tasks/${taskId}/files/${fileId}/download`;
+  return `/api/v1${admin.workers.tasks.fileDownload(taskId, fileId)}`;
 }

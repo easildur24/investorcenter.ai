@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { watchlists } from './routes';
 
 export interface WatchList {
   id: string;
@@ -96,27 +97,27 @@ export interface WatchListWithItems {
 export const watchListAPI = {
   // Get all watch lists for user
   async getWatchLists(): Promise<{ watch_lists: WatchList[] }> {
-    return apiClient.get('/watchlists');
+    return apiClient.get(watchlists.list);
   },
 
   // Create new watch list
   async createWatchList(data: { name: string; description?: string }): Promise<WatchList> {
-    return apiClient.post('/watchlists', data);
+    return apiClient.post(watchlists.create, data);
   },
 
   // Get single watch list with items
   async getWatchList(id: string): Promise<WatchListWithItems> {
-    return apiClient.get(`/watchlists/${id}`);
+    return apiClient.get(watchlists.byId(id));
   },
 
   // Update watch list metadata
   async updateWatchList(id: string, data: { name: string; description?: string }): Promise<void> {
-    return apiClient.put(`/watchlists/${id}`, data);
+    return apiClient.put(watchlists.byId(id), data);
   },
 
   // Delete watch list
   async deleteWatchList(id: string): Promise<void> {
-    return apiClient.delete(`/watchlists/${id}`);
+    return apiClient.delete(watchlists.byId(id));
   },
 
   // Add ticker to watch list
@@ -130,12 +131,12 @@ export const watchListAPI = {
       target_sell_price?: number;
     }
   ): Promise<WatchListItem> {
-    return apiClient.post(`/watchlists/${watchListId}/items`, data);
+    return apiClient.post(watchlists.items.add(watchListId), data);
   },
 
   // Remove ticker from watch list
   async removeTicker(watchListId: string, symbol: string): Promise<void> {
-    return apiClient.delete(`/watchlists/${watchListId}/items/${symbol}`);
+    return apiClient.delete(watchlists.items.remove(watchListId, symbol));
   },
 
   // Update ticker metadata
@@ -149,7 +150,7 @@ export const watchListAPI = {
       target_sell_price?: number;
     }
   ): Promise<WatchListItem> {
-    return apiClient.put(`/watchlists/${watchListId}/items/${symbol}`, data);
+    return apiClient.put(watchlists.items.update(watchListId, symbol), data);
   },
 
   // Bulk add tickers
@@ -161,12 +162,12 @@ export const watchListAPI = {
     failed: string[];
     total: number;
   }> {
-    return apiClient.post(`/watchlists/${watchListId}/bulk`, { symbols });
+    return apiClient.post(watchlists.bulk(watchListId), { symbols });
   },
 
   // Get all tags used across user's watchlists with usage counts, ordered by popularity
   async getUserTags(): Promise<{ tags: { name: string; count: number }[] }> {
-    return apiClient.get('/watchlists/tags');
+    return apiClient.get(watchlists.tags);
   },
 
   // Reorder items
@@ -174,6 +175,6 @@ export const watchListAPI = {
     watchListId: string,
     itemOrders: Array<{ item_id: string; display_order: number }>
   ): Promise<void> {
-    return apiClient.post(`/watchlists/${watchListId}/reorder`, { item_orders: itemOrders });
+    return apiClient.post(watchlists.reorder(watchListId), { item_orders: itemOrders });
   },
 };

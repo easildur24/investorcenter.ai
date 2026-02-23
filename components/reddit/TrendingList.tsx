@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import TrendingListItem from './TrendingListItem';
+import { tickers } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface RedditHeatmapData {
   tickerSymbol: string;
@@ -41,7 +43,7 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
       // In production, you might want to batch this into a single API call
       const fetchPromises = symbols.map(async (symbol) => {
         try {
-          const response = await fetch(`/api/v1/tickers/${symbol}`);
+          const response = await fetch(`${API_BASE_URL}${tickers.bySymbol(symbol)}`);
           const data = await response.json();
           if (data.data && data.data.name) {
             names[symbol] = { name: data.data.name };

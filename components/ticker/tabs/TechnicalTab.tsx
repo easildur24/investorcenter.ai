@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { cn, safeToFixed, safeParseNumber } from '@/lib/utils';
+import { stocks } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface TechnicalTabProps {
   symbol: string;
@@ -57,7 +59,7 @@ export default function TechnicalTab({ symbol }: TechnicalTabProps) {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/v1/stocks/${symbol}/technical`);
+        const response = await fetch(`${API_BASE_URL}${stocks.technical(symbol)}`);
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }

@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { useRealTimePrice } from '@/lib/hooks/useRealTimePrice';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
+import { logos } from '@/lib/api/routes';
+import { API_BASE_URL } from '@/lib/api';
 
 interface RealTimePriceHeaderProps {
   symbol: string;
@@ -131,7 +133,7 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
         {initialData.stock.logoUrl ? (
           <div className="w-12 h-12 relative flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg p-1">
             <Image
-              src={`/api/v1/logos/${initialData.stock.symbol}`}
+              src={`${API_BASE_URL}${logos.bySymbol(initialData.stock.symbol)}`}
               alt={`${initialData.stock.name} logo`}
               fill
               className="object-contain"

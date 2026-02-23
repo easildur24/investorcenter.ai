@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { notifications } from './routes';
 
 // Notification Types
 export interface InAppNotification {
@@ -63,36 +64,36 @@ export const notificationAPI = {
     if (params?.unread_only) queryParams.append('unread_only', 'true');
 
     const query = queryParams.toString();
-    return apiClient.get(`/notifications${query ? `?${query}` : ''}`);
+    return apiClient.get(`${notifications.list}${query ? `?${query}` : ''}`);
   },
 
   // Get unread count
   async getUnreadCount(): Promise<{ count: number }> {
-    return apiClient.get('/notifications/unread-count');
+    return apiClient.get(notifications.unreadCount);
   },
 
   // Mark notification as read
   async markAsRead(notificationId: string): Promise<void> {
-    return apiClient.post(`/notifications/${notificationId}/read`, {});
+    return apiClient.post(notifications.read(notificationId), {});
   },
 
   // Mark all notifications as read
   async markAllAsRead(): Promise<void> {
-    return apiClient.post('/notifications/read-all', {});
+    return apiClient.post(notifications.readAll, {});
   },
 
   // Dismiss notification
   async dismiss(notificationId: string): Promise<void> {
-    return apiClient.post(`/notifications/${notificationId}/dismiss`, {});
+    return apiClient.post(notifications.dismiss(notificationId), {});
   },
 
   // Get notification preferences
   async getPreferences(): Promise<NotificationPreferences> {
-    return apiClient.get('/notifications/preferences');
+    return apiClient.get(notifications.preferences);
   },
 
   // Update notification preferences
   async updatePreferences(data: UpdatePreferencesRequest): Promise<NotificationPreferences> {
-    return apiClient.put('/notifications/preferences', data);
+    return apiClient.put(notifications.preferences, data);
   },
 };
