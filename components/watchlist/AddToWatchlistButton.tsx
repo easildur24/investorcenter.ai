@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { PlusIcon, CheckIcon, BookmarkIcon } from '@heroicons/react/24/outline';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { BookmarkIcon } from '@heroicons/react/24/outline';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { watchListAPI, WatchList } from '@/lib/api/watchlist';
@@ -16,66 +16,41 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
   const { user } = useAuth();
   const router = useRouter();
   const toast = useToast();
-  const [watchlists, setWatchlists] = useState<WatchList[]>([]);
-  const [showPicker, setShowPicker] = useState(false);
-  const [adding, setAdding] = useState<string | null>(null);
-  const [addedTo, setAddedTo] = useState<Set<string>>(new Set());
-  const [loaded, setLoaded] = useState(false);
-  const pickerRef = useRef<HTMLDivElement>(null);
+  const [watchlist, setWatchlist] = useState<WatchList | null>(null);
+  const [isInWatchlist, setIsInWatchlist] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const checkedRef = useRef(false);
 
-  // Close picker on outside click
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
-        setShowPicker(false);
-      }
-    }
-    if (showPicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showPicker]);
-
-  const fetchWatchlists = async (): Promise<WatchList[]> => {
-    if (loaded) return watchlists;
+  // On mount, check if this ticker is already in the user's watchlist
+  const checkMembership = useCallback(async () => {
+    if (!user || checkedRef.current) return;
+    checkedRef.current = true;
+    setChecking(true);
     try {
       const res = await watchListAPI.getWatchLists();
       const lists = res.watch_lists ?? [];
-      setWatchlists(lists);
-      setLoaded(true);
-      return lists;
-    } catch (err: any) {
-      toast.error(err.message || 'Failed to load watchlists');
-      return [];
-    }
-  };
-
-  const addToList = async (listId: string, listName: string) => {
-    try {
-      setAdding(listId);
-      await watchListAPI.addTicker(listId, { symbol });
-      setAddedTo((prev) => {
-        const next = new Set(prev);
-        next.add(listId);
-        return next;
-      });
-      toast.success(`${symbol} added to ${listName}`);
-    } catch (err: any) {
-      const msg = err.message || '';
-      if (msg.includes('already exists') || msg.includes('duplicate')) {
-        toast.info(`${symbol} is already in ${listName}`);
-        setAddedTo((prev) => {
-          const next = new Set(prev);
-          next.add(listId);
-          return next;
-        });
-      } else {
-        toast.error(msg || `Failed to add ${symbol}`);
+      if (lists.length === 0) {
+        setChecking(false);
+        return;
       }
+      // Use first watchlist (one watchlist per account)
+      const list = lists[0];
+      setWatchlist(list);
+      // Fetch full watchlist to check if symbol is in it
+      const full = await watchListAPI.getWatchList(list.id);
+      const found = full.items.some((item) => item.symbol === symbol);
+      setIsInWatchlist(found);
+    } catch {
+      // Non-critical — button will just show default state
     } finally {
-      setAdding(null);
+      setChecking(false);
     }
-  };
+  }, [user, symbol]);
+
+  useEffect(() => {
+    checkMembership();
+  }, [checkMembership]);
 
   const handleClick = async () => {
     if (!user) {
@@ -83,91 +58,78 @@ export default function AddToWatchlistButton({ symbol }: AddToWatchlistButtonPro
       return;
     }
 
-    const lists = await fetchWatchlists();
+    // Already in watchlist — navigate to it
+    if (isInWatchlist && watchlist) {
+      router.push(`/watchlist/${watchlist.id}`);
+      return;
+    }
 
-    if (lists.length === 0) {
-      // No watchlists — create a default one and add
-      try {
-        setAdding('new');
-        const newList = await watchListAPI.createWatchList({ name: 'My Watch List' });
-        setWatchlists([newList]);
-        await watchListAPI.addTicker(newList.id, { symbol });
-        setAddedTo(new Set([newList.id]));
-        toast.success(`${symbol} added to My Watch List`);
-      } catch (err: any) {
-        toast.error(err.message || 'Failed to create watchlist');
-      } finally {
-        setAdding(null);
+    setAdding(true);
+    try {
+      let targetList = watchlist;
+
+      // Auto-create watchlist if none exists
+      if (!targetList) {
+        targetList = await watchListAPI.createWatchList({ name: 'My Watch List' });
+        setWatchlist(targetList);
       }
-    } else if (lists.length === 1) {
-      await addToList(lists[0].id, lists[0].name);
-    } else {
-      // Multiple watchlists — show picker
-      setShowPicker(true);
+
+      await watchListAPI.addTicker(targetList.id, { symbol });
+      setIsInWatchlist(true);
+      toast.success(`${symbol} added to ${targetList.name}`);
+    } catch (err: any) {
+      const msg = err.message || '';
+      if (msg.includes('already exists') || msg.includes('duplicate')) {
+        setIsInWatchlist(true);
+        toast.info(`${symbol} is already in your watchlist`);
+      } else {
+        toast.error(msg || `Failed to add ${symbol}`);
+      }
+    } finally {
+      setAdding(false);
     }
   };
 
-  const isAddedToAny = addedTo.size > 0;
+  // Don't render for logged-out users until they interact
+  if (checking) {
+    return (
+      <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-ic-bg-tertiary text-ic-text-dim border border-ic-border">
+        <BookmarkIcon className="w-4 h-4" />
+        Watchlist
+      </div>
+    );
+  }
 
   return (
-    <div className="relative" ref={pickerRef}>
-      <button
-        onClick={handleClick}
-        disabled={adding !== null}
-        title={isAddedToAny ? 'Added to watchlist' : 'Add to watchlist'}
-        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
-          ${
-            isAddedToAny
-              ? 'bg-ic-positive/10 text-ic-positive border border-ic-positive/30'
-              : 'bg-ic-blue/10 text-ic-blue border border-ic-blue/30 hover:bg-ic-blue/20'
-          }
-          ${adding !== null ? 'opacity-50 cursor-wait' : ''}`}
-      >
-        {adding !== null ? (
-          'Adding...'
-        ) : isAddedToAny ? (
-          <>
-            <BookmarkSolidIcon className="w-4 h-4" />
-            Watchlisted
-          </>
-        ) : (
-          <>
-            <BookmarkIcon className="w-4 h-4" />
-            Watchlist
-          </>
-        )}
-      </button>
-
-      {showPicker && (
-        <div className="absolute left-0 top-full mt-1 w-56 bg-ic-bg-primary rounded-lg shadow-xl border border-ic-border z-50 py-1">
-          <div className="px-3 py-2 text-xs font-semibold text-ic-text-dim uppercase">
-            Add to watch list
-          </div>
-          {watchlists.map((list) => {
-            const isAdded = addedTo.has(list.id);
-            const isAdding = adding === list.id;
-
-            return (
-              <button
-                key={list.id}
-                onClick={() => !isAdded && addToList(list.id, list.name)}
-                disabled={isAdded || isAdding}
-                className={`w-full text-left px-3 py-2 text-sm flex items-center justify-between transition-colors
-                  ${isAdded ? 'text-ic-positive' : 'text-ic-text-secondary hover:bg-ic-surface'}`}
-              >
-                <span className="truncate">{list.name}</span>
-                {isAdded ? (
-                  <CheckIcon className="w-4 h-4 flex-shrink-0" />
-                ) : isAdding ? (
-                  <span className="text-xs text-ic-text-dim">Adding...</span>
-                ) : (
-                  <PlusIcon className="w-4 h-4 flex-shrink-0 text-ic-text-dim" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+    <button
+      onClick={handleClick}
+      disabled={adding}
+      title={
+        isInWatchlist
+          ? `View watchlist${watchlist ? ` — ${watchlist.name}` : ''}`
+          : 'Add to watchlist'
+      }
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors
+        ${
+          isInWatchlist
+            ? 'bg-ic-positive/10 text-ic-positive border border-ic-positive/30 hover:bg-ic-positive/20'
+            : 'bg-ic-blue/10 text-ic-blue border border-ic-blue/30 hover:bg-ic-blue/20'
+        }
+        ${adding ? 'opacity-50 cursor-wait' : ''}`}
+    >
+      {adding ? (
+        'Adding...'
+      ) : isInWatchlist ? (
+        <>
+          <BookmarkSolidIcon className="w-4 h-4" />
+          Watchlisted
+        </>
+      ) : (
+        <>
+          <BookmarkIcon className="w-4 h-4" />
+          Watchlist
+        </>
       )}
-    </div>
+    </button>
   );
 }
