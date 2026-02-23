@@ -366,11 +366,10 @@ func main() {
 		taskRoutes.Any("/task-types/*path", taskProxy)
 	}
 
-	// Data ingestion routes — proxied to data-ingestion-service (protected, require authentication + admin role)
+	// Data ingestion routes — proxied to data-ingestion-service (protected, require authentication)
 	ingestProxy := services.DataIngestionProxy()
 	ingestRoutes := v1.Group("")
 	ingestRoutes.Use(auth.AuthMiddleware())
-	ingestRoutes.Use(auth.AdminMiddleware())
 	{
 		ingestRoutes.Any("/ingest", ingestProxy)
 		ingestRoutes.Any("/ingest/*path", ingestProxy)
