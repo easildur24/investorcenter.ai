@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: task-service
-        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/task-service:latest
+        image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/task-service:schema-redesign
         ports:
         - containerPort: 8001
         env:
@@ -48,8 +48,6 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
-        - name: BCRYPT_COST
-          value: "12"
         resources:
           requests:
             memory: "64Mi"

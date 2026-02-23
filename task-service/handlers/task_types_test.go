@@ -20,18 +20,18 @@ func TestListTaskTypes_Success(t *testing.T) {
 
 	now := time.Now()
 	rows := sqlmock.NewRows([]string{
-		"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
+		"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
 	}).
-		AddRow(1, "reddit_crawl", "Reddit Crawl", "SOP text", nil, true, now, now).
-		AddRow(2, "ai_sentiment", "AI Sentiment", "SOP text 2", nil, true, now, now)
+		AddRow(1, "reddit_crawl", "data-ingestion", nil, now, now).
+		AddRow(2, "scrape_ycharts", "scrape-ycharts-keystats", nil, now, now)
 
-	mock.ExpectQuery("SELECT id, name, label, sop, param_schema").WillReturnRows(rows)
+	mock.ExpectQuery("SELECT id, name, skill_path, param_schema").WillReturnRows(rows)
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.GET("/admin/workers/task-types", ListTaskTypes)
+	r.GET("/task-types", ListTaskTypes)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/admin/workers/task-types", nil)
+	req := httptest.NewRequest("GET", "/task-types", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -49,16 +49,16 @@ func TestListTaskTypes_Empty(t *testing.T) {
 	defer cleanup()
 
 	rows := sqlmock.NewRows([]string{
-		"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
+		"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
 	})
 
-	mock.ExpectQuery("SELECT id, name, label, sop, param_schema").WillReturnRows(rows)
+	mock.ExpectQuery("SELECT id, name, skill_path, param_schema").WillReturnRows(rows)
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.GET("/admin/workers/task-types", ListTaskTypes)
+	r.GET("/task-types", ListTaskTypes)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/admin/workers/task-types", nil)
+	req := httptest.NewRequest("GET", "/task-types", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -77,23 +77,23 @@ func TestCreateTaskType_Success(t *testing.T) {
 	defer cleanup()
 
 	now := time.Now()
+	skillPath := "scrape-ycharts-keystats"
 	mock.ExpectQuery("INSERT INTO task_types").
-		WithArgs("new_type", "New Type", "SOP instructions", nil).
+		WithArgs("new_type", &skillPath, nil).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
-		}).AddRow(3, "new_type", "New Type", "SOP instructions", nil, true, now, now))
+			"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
+		}).AddRow(3, "new_type", "scrape-ycharts-keystats", nil, now, now))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name":  "new_type",
-		"label": "New Type",
-		"sop":   "SOP instructions",
+		"name":       "new_type",
+		"skill_path": "scrape-ycharts-keystats",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -110,15 +110,14 @@ func TestCreateTaskType_InvalidName_Uppercase(t *testing.T) {
 	defer cleanup()
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name":  "InvalidName",
-		"label": "Invalid Name",
+		"name": "InvalidName",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -135,15 +134,14 @@ func TestCreateTaskType_InvalidName_Spaces(t *testing.T) {
 	defer cleanup()
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name":  "has spaces",
-		"label": "Has Spaces",
+		"name": "has spaces",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -156,15 +154,14 @@ func TestCreateTaskType_InvalidName_SpecialChars(t *testing.T) {
 	defer cleanup()
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name":  "type-with-dashes",
-		"label": "Dashes",
+		"name": "type-with-dashes",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -179,19 +176,18 @@ func TestCreateTaskType_ValidName_Underscore(t *testing.T) {
 	now := time.Now()
 	mock.ExpectQuery("INSERT INTO task_types").
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
-		}).AddRow(4, "my_task_type", "My Task Type", "", nil, true, now, now))
+			"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
+		}).AddRow(4, "my_task_type", nil, nil, now, now))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name":  "my_task_type",
-		"label": "My Task Type",
+		"name": "my_task_type",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -204,34 +200,12 @@ func TestCreateTaskType_MissingName(t *testing.T) {
 	defer cleanup()
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
+	r.POST("/task-types", CreateTaskType)
 
-	body, _ := json.Marshal(map[string]interface{}{
-		"label": "No Name",
-	})
+	body, _ := json.Marshal(map[string]interface{}{})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
-	req.Header.Set("Content-Type", "application/json")
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusBadRequest, w.Code)
-	_ = mock
-}
-
-func TestCreateTaskType_MissingLabel(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.POST("/admin/workers/task-types", CreateTaskType)
-
-	body, _ := json.Marshal(map[string]interface{}{
-		"name": "no_label",
-	})
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("POST", "/admin/workers/task-types", bytes.NewBuffer(body))
+	req := httptest.NewRequest("POST", "/task-types", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -247,21 +221,20 @@ func TestUpdateTaskType_Success(t *testing.T) {
 
 	now := time.Now()
 	mock.ExpectQuery("UPDATE task_types SET").
-		WithArgs("1", stringPtr("Updated Label"), stringPtr("Updated SOP"), nil).
+		WithArgs("1", stringPtr("scrape-ycharts-keystats"), nil).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
-		}).AddRow(1, "reddit_crawl", "Updated Label", "Updated SOP", nil, true, now, now))
+			"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
+		}).AddRow(1, "reddit_crawl", "scrape-ycharts-keystats", nil, now, now))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.PUT("/admin/workers/task-types/:id", UpdateTaskType)
+	r.PUT("/task-types/:id", UpdateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"label": "Updated Label",
-		"sop":   "Updated SOP",
+		"skill_path": "scrape-ycharts-keystats",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/admin/workers/task-types/1", bytes.NewBuffer(body))
+	req := httptest.NewRequest("PUT", "/task-types/1", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -274,20 +247,20 @@ func TestUpdateTaskType_NotFound(t *testing.T) {
 	defer cleanup()
 
 	mock.ExpectQuery("UPDATE task_types SET").
-		WithArgs("999", nil, stringPtr("SOP"), nil).
+		WithArgs("999", stringPtr("data-ingestion"), nil).
 		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
+			"id", "name", "skill_path", "param_schema", "created_at", "updated_at",
 		}))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.PUT("/admin/workers/task-types/:id", UpdateTaskType)
+	r.PUT("/task-types/:id", UpdateTaskType)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"sop": "SOP",
+		"skill_path": "data-ingestion",
 	})
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("PUT", "/admin/workers/task-types/999", bytes.NewBuffer(body))
+	req := httptest.NewRequest("PUT", "/task-types/999", bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json")
 	r.ServeHTTP(w, req)
 
@@ -301,15 +274,15 @@ func TestDeleteTaskType_Success(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
 
-	mock.ExpectExec("UPDATE task_types SET is_active = FALSE").
+	mock.ExpectExec("DELETE FROM task_types").
 		WithArgs("1").
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.DELETE("/admin/workers/task-types/:id", DeleteTaskType)
+	r.DELETE("/task-types/:id", DeleteTaskType)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("DELETE", "/admin/workers/task-types/1", nil)
+	req := httptest.NewRequest("DELETE", "/task-types/1", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -324,73 +297,22 @@ func TestDeleteTaskType_NotFound(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
 	defer cleanup()
 
-	mock.ExpectExec("UPDATE task_types SET is_active = FALSE").
+	mock.ExpectExec("DELETE FROM task_types").
 		WithArgs("999").
 		WillReturnResult(sqlmock.NewResult(0, 0))
 
 	r := setupRouterWithMockAuth("admin-1", "admin@test.com", true)
-	r.DELETE("/admin/workers/task-types/:id", DeleteTaskType)
+	r.DELETE("/task-types/:id", DeleteTaskType)
 
 	w := httptest.NewRecorder()
-	req := httptest.NewRequest("DELETE", "/admin/workers/task-types/999", nil)
+	req := httptest.NewRequest("DELETE", "/task-types/999", nil)
 	r.ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
-// ==================== WorkerGetTaskType Tests ====================
-
-func TestWorkerGetTaskType_Success(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	now := time.Now()
-	mock.ExpectQuery("SELECT id, name, label, sop, param_schema").
-		WithArgs("1").
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
-		}).AddRow(1, "reddit_crawl", "Reddit Crawl", "SOP text", nil, true, now, now))
-
-	r := setupRouterWithMockAuth("worker-1", "worker@test.com", false)
-	r.GET("/worker/task-types/:id", WorkerGetTaskType)
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/task-types/1", nil)
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var resp map[string]interface{}
-	json.Unmarshal(w.Body.Bytes(), &resp)
-	assert.True(t, resp["success"].(bool))
-	data := resp["data"].(map[string]interface{})
-	assert.Equal(t, "reddit_crawl", data["name"])
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
-func TestWorkerGetTaskType_NotFound(t *testing.T) {
-	mock, cleanup := setupMockDB(t)
-	defer cleanup()
-
-	mock.ExpectQuery("SELECT id, name, label, sop, param_schema").
-		WithArgs("999").
-		WillReturnRows(sqlmock.NewRows([]string{
-			"id", "name", "label", "sop", "param_schema", "is_active", "created_at", "updated_at",
-		}))
-
-	r := setupRouterWithMockAuth("worker-1", "worker@test.com", false)
-	r.GET("/worker/task-types/:id", WorkerGetTaskType)
-
-	w := httptest.NewRecorder()
-	req := httptest.NewRequest("GET", "/worker/task-types/999", nil)
-	r.ServeHTTP(w, req)
-
-	assert.Equal(t, http.StatusNotFound, w.Code)
-	assert.NoError(t, mock.ExpectationsWereMet())
-}
-
-// ==================== Task Type Name Validation Tests ====================
+// ==================== Validation Tests ====================
 
 func TestValidTaskTypeName(t *testing.T) {
 	tests := []struct {
@@ -414,6 +336,30 @@ func TestValidTaskTypeName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			assert.Equal(t, tt.expected, validTaskTypeName.MatchString(tt.input))
+		})
+	}
+}
+
+func TestValidSkillPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected bool
+	}{
+		{"with hyphens", "scrape-ycharts-keystats", true},
+		{"simple", "dataingestion", true},
+		{"with numbers", "scrape2", true},
+		{"single char", "a", true},
+		{"uppercase", "Scrape", false},
+		{"with underscore", "scrape_data", false},
+		{"with space", "scrape data", false},
+		{"empty", "", false},
+		{"starts with hyphen", "-scrape", false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.expected, validSkillPath.MatchString(tt.input))
 		})
 	}
 }

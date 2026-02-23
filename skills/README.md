@@ -9,6 +9,7 @@ Private skills for InvestorCenter.ai automation tasks.
 - **scrape-ycharts-keystats** — Extract 100+ financial metrics from YCharts Key Stats page and upload to ingestion API
 - **reddit-summarizer** — Aggregate and summarize Reddit posts for market sentiment
 - **data-ingestion** — Upload raw scraped data to S3 via the data ingestion API
+- **task-runner** — Meta-skill: authenticate, pull tasks from queue, execute the corresponding skill, report results
 
 ## Usage
 

@@ -355,15 +355,15 @@ func main() {
 
 	}
 
-	// Worker/task management routes — proxied to task-service (protected, require authentication + admin role)
+	// Task service routes — proxied to task-service (protected, require authentication)
 	taskProxy := services.TaskServiceProxy()
-	workerRoutes := v1.Group("")
-	workerRoutes.Use(auth.AuthMiddleware())
-	workerRoutes.Use(auth.AdminMiddleware())
+	taskRoutes := v1.Group("")
+	taskRoutes.Use(auth.AuthMiddleware())
 	{
-		workerRoutes.Any("/admin/workers", taskProxy)
-		workerRoutes.Any("/admin/workers/*path", taskProxy)
-		workerRoutes.Any("/worker/*path", taskProxy)
+		taskRoutes.Any("/tasks", taskProxy)
+		taskRoutes.Any("/tasks/*path", taskProxy)
+		taskRoutes.Any("/task-types", taskProxy)
+		taskRoutes.Any("/task-types/*path", taskProxy)
 	}
 
 	// Data ingestion routes — proxied to data-ingestion-service (protected, require authentication + admin role)

@@ -30,7 +30,7 @@ func init() {
 	originalDirector := taskServiceProxy.Director
 	taskServiceProxy.Director = func(req *http.Request) {
 		originalDirector(req)
-		// Strip /api/v1 prefix — task service routes start at /admin/workers or /worker
+		// Strip /api/v1 prefix — task service routes start at /tasks or /task-types
 		req.URL.Path = strings.TrimPrefix(req.URL.Path, "/api/v1")
 		req.URL.RawPath = strings.TrimPrefix(req.URL.RawPath, "/api/v1")
 	}

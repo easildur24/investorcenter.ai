@@ -13,36 +13,30 @@ import (
 )
 
 var validTaskTypeName = regexp.MustCompile(`^[a-z0-9_]{1,100}$`)
+var validSkillPath = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,199}$`)
 
-// TaskType represents a task type definition with SOP
+// TaskType represents a task type that maps to a skill.
 type TaskType struct {
 	ID          int              `json:"id"`
 	Name        string           `json:"name"`
-	Label       string           `json:"label"`
-	SOP         string           `json:"sop,omitempty"`
+	SkillPath   *string          `json:"skill_path,omitempty"`
 	ParamSchema *json.RawMessage `json:"param_schema,omitempty"`
-	IsActive    bool             `json:"is_active"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
 }
 
-// ==================== Admin Task Type Handlers ====================
-
-// ListTaskTypes handles GET /admin/workers/task-types
+// ListTaskTypes handles GET /task-types
 func ListTaskTypes(c *gin.Context) {
 	if database.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
 		return
 	}
 
-	query := `
-		SELECT id, name, label, sop, param_schema, is_active, created_at, updated_at
+	rows, err := database.DB.Query(`
+		SELECT id, name, skill_path, param_schema, created_at, updated_at
 		FROM task_types
-		WHERE is_active = TRUE
 		ORDER BY name ASC
-	`
-
-	rows, err := database.DB.Query(query)
+	`)
 	if err != nil {
 		log.Printf("Error fetching task types: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task types"})
@@ -53,7 +47,7 @@ func ListTaskTypes(c *gin.Context) {
 	taskTypes := []TaskType{}
 	for rows.Next() {
 		var t TaskType
-		err := rows.Scan(&t.ID, &t.Name, &t.Label, &t.SOP, &t.ParamSchema, &t.IsActive, &t.CreatedAt, &t.UpdatedAt)
+		err := rows.Scan(&t.ID, &t.Name, &t.SkillPath, &t.ParamSchema, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			log.Printf("Error scanning task type: %v", err)
 			continue
@@ -67,7 +61,7 @@ func ListTaskTypes(c *gin.Context) {
 	})
 }
 
-// CreateTaskType handles POST /admin/workers/task-types
+// CreateTaskType handles POST /task-types
 func CreateTaskType(c *gin.Context) {
 	if database.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
@@ -76,8 +70,7 @@ func CreateTaskType(c *gin.Context) {
 
 	var req struct {
 		Name        string           `json:"name" binding:"required"`
-		Label       string           `json:"label" binding:"required"`
-		SOP         string           `json:"sop"`
+		SkillPath   *string          `json:"skill_path"`
 		ParamSchema *json.RawMessage `json:"param_schema"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -90,14 +83,19 @@ func CreateTaskType(c *gin.Context) {
 		return
 	}
 
+	if req.SkillPath != nil && *req.SkillPath != "" && !validSkillPath.MatchString(*req.SkillPath) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Skill path must be lowercase alphanumeric with hyphens (1-200 chars)"})
+		return
+	}
+
 	var taskType TaskType
 	err := database.DB.QueryRow(
-		`INSERT INTO task_types (name, label, sop, param_schema)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, name, label, sop, param_schema, is_active, created_at, updated_at`,
-		req.Name, req.Label, req.SOP, req.ParamSchema,
-	).Scan(&taskType.ID, &taskType.Name, &taskType.Label, &taskType.SOP, &taskType.ParamSchema,
-		&taskType.IsActive, &taskType.CreatedAt, &taskType.UpdatedAt)
+		`INSERT INTO task_types (name, skill_path, param_schema)
+		 VALUES ($1, $2, $3)
+		 RETURNING id, name, skill_path, param_schema, created_at, updated_at`,
+		req.Name, req.SkillPath, req.ParamSchema,
+	).Scan(&taskType.ID, &taskType.Name, &taskType.SkillPath, &taskType.ParamSchema,
+		&taskType.CreatedAt, &taskType.UpdatedAt)
 	if err != nil {
 		log.Printf("Error creating task type: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create task type. Name may already be in use."})
@@ -110,7 +108,7 @@ func CreateTaskType(c *gin.Context) {
 	})
 }
 
-// UpdateTaskType handles PUT /admin/workers/task-types/:id
+// UpdateTaskType handles PUT /task-types/:id
 func UpdateTaskType(c *gin.Context) {
 	if database.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
@@ -120,8 +118,7 @@ func UpdateTaskType(c *gin.Context) {
 	id := c.Param("id")
 
 	var req struct {
-		Label       *string          `json:"label"`
-		SOP         *string          `json:"sop"`
+		SkillPath   *string          `json:"skill_path"`
 		ParamSchema *json.RawMessage `json:"param_schema"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -129,17 +126,21 @@ func UpdateTaskType(c *gin.Context) {
 		return
 	}
 
+	if req.SkillPath != nil && *req.SkillPath != "" && !validSkillPath.MatchString(*req.SkillPath) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Skill path must be lowercase alphanumeric with hyphens (1-200 chars)"})
+		return
+	}
+
 	var taskType TaskType
 	err := database.DB.QueryRow(
 		`UPDATE task_types SET
-			label = COALESCE($2, label),
-			sop = COALESCE($3, sop),
-			param_schema = COALESCE($4, param_schema)
-		WHERE id = $1 AND is_active = TRUE
-		RETURNING id, name, label, sop, param_schema, is_active, created_at, updated_at`,
-		id, req.Label, req.SOP, req.ParamSchema,
-	).Scan(&taskType.ID, &taskType.Name, &taskType.Label, &taskType.SOP, &taskType.ParamSchema,
-		&taskType.IsActive, &taskType.CreatedAt, &taskType.UpdatedAt)
+			skill_path = COALESCE($2, skill_path),
+			param_schema = COALESCE($3, param_schema)
+		WHERE id = $1
+		RETURNING id, name, skill_path, param_schema, created_at, updated_at`,
+		id, req.SkillPath, req.ParamSchema,
+	).Scan(&taskType.ID, &taskType.Name, &taskType.SkillPath, &taskType.ParamSchema,
+		&taskType.CreatedAt, &taskType.UpdatedAt)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			c.JSON(http.StatusNotFound, gin.H{"error": "Task type not found"})
@@ -156,7 +157,7 @@ func UpdateTaskType(c *gin.Context) {
 	})
 }
 
-// DeleteTaskType handles DELETE /admin/workers/task-types/:id
+// DeleteTaskType handles DELETE /task-types/:id
 func DeleteTaskType(c *gin.Context) {
 	if database.DB == nil {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
@@ -165,7 +166,7 @@ func DeleteTaskType(c *gin.Context) {
 
 	id := c.Param("id")
 
-	result, err := database.DB.Exec("UPDATE task_types SET is_active = FALSE WHERE id = $1 AND is_active = TRUE", id)
+	result, err := database.DB.Exec("DELETE FROM task_types WHERE id = $1", id)
 	if err != nil {
 		log.Printf("Error deleting task type: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete task type"})
@@ -180,42 +181,6 @@ func DeleteTaskType(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
-		"message": "Task type deleted successfully",
-	})
-}
-
-// ==================== Worker Task Type Handlers ====================
-
-// WorkerGetTaskType handles GET /worker/task-types/:id
-func WorkerGetTaskType(c *gin.Context) {
-	if database.DB == nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "Database not available"})
-		return
-	}
-
-	id := c.Param("id")
-
-	query := `
-		SELECT id, name, label, sop, param_schema, is_active, created_at, updated_at
-		FROM task_types
-		WHERE id = $1 AND is_active = TRUE
-	`
-
-	var t TaskType
-	err := database.DB.QueryRow(query, id).Scan(&t.ID, &t.Name, &t.Label, &t.SOP, &t.ParamSchema,
-		&t.IsActive, &t.CreatedAt, &t.UpdatedAt)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			c.JSON(http.StatusNotFound, gin.H{"error": "Task type not found"})
-			return
-		}
-		log.Printf("Error fetching task type: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch task type"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    t,
+		"message": "Task type deleted",
 	})
 }

@@ -15,29 +15,18 @@ import (
 	"task-service/auth"
 	"task-service/database"
 	"task-service/handlers"
-	"task-service/storage"
 )
 
 func main() {
-	// Load .env for local dev (ignore error in production)
 	godotenv.Load()
 
-	// Validate JWT secret before starting — fail fast if missing or too short
 	auth.ValidateJWTSecret()
 
-	// Initialize database
 	database.Initialize()
 	defer database.Close()
 
-	// Initialize S3 storage (for admin file downloads)
-	if err := storage.Initialize(); err != nil {
-		log.Printf("S3 storage initialization failed: %v", err)
-		log.Println("File download features disabled")
-	}
-
 	r := gin.Default()
 
-	// CORS
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -47,7 +36,7 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Health check
+	// Health check (no auth)
 	r.GET("/health", func(c *gin.Context) {
 		if err := database.HealthCheck(); err != nil {
 			c.JSON(http.StatusServiceUnavailable, gin.H{
@@ -59,49 +48,23 @@ func main() {
 		c.JSON(http.StatusOK, gin.H{"status": "healthy"})
 	})
 
-	// Admin worker management routes (proxy strips /api/v1 prefix)
-	adminRoutes := r.Group("/admin/workers")
-	adminRoutes.Use(auth.AuthMiddleware(), auth.AdminMiddleware())
+	// All routes require JWT auth
+	api := r.Group("/")
+	api.Use(auth.AuthMiddleware())
 	{
-		adminRoutes.GET("", handlers.ListWorkers)
-		adminRoutes.POST("", handlers.RegisterWorker)
-		adminRoutes.DELETE("/:id", handlers.DeleteWorker)
-		// Task type management
-		adminRoutes.GET("/task-types", handlers.ListTaskTypes)
-		adminRoutes.POST("/task-types", handlers.CreateTaskType)
-		adminRoutes.PUT("/task-types/:id", handlers.UpdateTaskType)
-		adminRoutes.DELETE("/task-types/:id", handlers.DeleteTaskType)
-		// Task management
-		adminRoutes.GET("/tasks", handlers.ListTasks)
-		adminRoutes.POST("/tasks", handlers.CreateTask)
-		adminRoutes.GET("/tasks/:id", handlers.GetTask)
-		adminRoutes.PUT("/tasks/:id", handlers.UpdateTask)
-		adminRoutes.DELETE("/tasks/:id", handlers.DeleteTask)
-		adminRoutes.GET("/tasks/:id/updates", handlers.ListTaskUpdates)
-		adminRoutes.POST("/tasks/:id/updates", handlers.CreateTaskUpdate)
-		adminRoutes.GET("/tasks/:id/data", handlers.AdminGetTaskData)
-		adminRoutes.GET("/tasks/:id/files", handlers.AdminListTaskFiles)
-		adminRoutes.GET("/tasks/:id/files/:fileId/download", handlers.AdminDownloadTaskFile)
+		// Task queue
+		api.POST("/tasks/next", handlers.ClaimNextTask)
+		api.POST("/tasks", handlers.CreateTask)
+		api.PUT("/tasks/:id", handlers.UpdateTask)
+		api.DELETE("/tasks/:id", handlers.DeleteTask)
+
+		// Task types
+		api.GET("/task-types", handlers.ListTaskTypes)
+		api.POST("/task-types", handlers.CreateTaskType)
+		api.PUT("/task-types/:id", handlers.UpdateTaskType)
+		api.DELETE("/task-types/:id", handlers.DeleteTaskType)
 	}
 
-	// Worker API routes
-	workerRoutes := r.Group("/worker")
-	workerRoutes.Use(auth.AuthMiddleware())
-	{
-		workerRoutes.GET("/task-types", handlers.ListTaskTypes)
-		workerRoutes.GET("/task-types/:id", handlers.WorkerGetTaskType)
-		workerRoutes.GET("/tasks", handlers.WorkerGetMyTasks)
-		workerRoutes.GET("/tasks/:id", handlers.WorkerGetTask)
-		workerRoutes.PUT("/tasks/:id/status", handlers.WorkerUpdateTaskStatus)
-		workerRoutes.POST("/tasks/:id/result", handlers.WorkerPostResult)
-		workerRoutes.GET("/tasks/:id/updates", handlers.WorkerGetTaskUpdates)
-		workerRoutes.POST("/tasks/:id/updates", handlers.WorkerPostUpdate)
-		workerRoutes.POST("/tasks/:id/data", handlers.WorkerPostTaskData)
-		workerRoutes.POST("/tasks/:id/files", handlers.WorkerRegisterTaskFile)
-		workerRoutes.POST("/heartbeat", handlers.WorkerHeartbeat)
-	}
-
-	// Start server
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8001"
@@ -112,7 +75,6 @@ func main() {
 		Handler: r,
 	}
 
-	// Graceful shutdown
 	go func() {
 		log.Printf("Task service starting on port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
