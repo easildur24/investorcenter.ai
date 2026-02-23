@@ -505,7 +505,8 @@ export default function WatchListTable({
                               : col.align === 'right'
                                 ? 'text-right'
                                 : 'text-center',
-                            col.width
+                            col.width,
+                            col.type === 'text' && col.width && 'overflow-hidden text-ellipsis'
                           )}
                         >
                           {renderCell(col, item, alert, onRemove, onEdit)}
