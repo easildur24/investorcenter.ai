@@ -270,7 +270,7 @@ export default function WatchListDetailPage() {
           onAdd={handleQuickAdd}
           existingSymbols={existingSymbols}
           itemCount={watchList.item_count}
-          maxItems={10}
+          maxItems={50} // TODO: revisit watchlist item limit — should this be configurable per plan?
           className="mb-4"
         />
 
