@@ -15,6 +15,7 @@ import MetricsTab from '@/components/ticker/tabs/MetricsTab';
 import OwnershipTab from '@/components/ticker/tabs/OwnershipTab';
 import KeyStatsTab from '@/components/ticker/tabs/KeyStatsTab';
 import InputTab from '@/components/ticker/tabs/InputTab';
+import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
 
 interface PageProps {
   params: {
@@ -128,6 +129,9 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
           ) : (
             <RealTimePriceHeader symbol={symbol} initialData={tickerData.summary} />
           )}
+          <div className="mt-3 flex gap-2">
+            <AddToWatchlistButton symbol={symbol} />
+          </div>
         </div>
       </div>
 

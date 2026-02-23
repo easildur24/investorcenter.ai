@@ -50,20 +50,12 @@ export default function Header() {
                 Reddit Trends
               </Link>
               {user && (
-                <>
-                  <Link
-                    href="/watchlist"
-                    className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Watch Lists
-                  </Link>
-                  <Link
-                    href="/alerts"
-                    className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Alerts
-                  </Link>
-                </>
+                <Link
+                  href="/alerts"
+                  className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  Alerts
+                </Link>
               )}
             </div>
           </div>
