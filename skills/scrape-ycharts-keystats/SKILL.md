@@ -119,6 +119,18 @@ Check the response:
 
 Data is now in S3 at `s3://investorcenter-raw-data/{s3_key}`.
 
+### Step 6: Close Browser
+
+**IMPORTANT:** Stop the entire browser (not just the tab) to prevent stuck state:
+
+```javascript
+browser.stop({
+  profile: "openclaw"
+})
+```
+
+This ensures clean state for the next task run.
+
 ## Parse Helpers Reference
 
 Located at: `skills/scrape-ycharts-keystats/parse_helpers.py`
@@ -433,6 +445,7 @@ All fields in `data` are nullable.
 6. Get auth token
 7. POST to ingestion API
 8. Verify S3 upload
+9. Stop browser (browser.stop) to prevent stuck state
 
 **Key points:**
 - Browser profile = `openclaw` (NOT Chrome extension relay!)
