@@ -55,6 +55,8 @@ type SentimentTimeSeriesPoint struct {
 	Ticker         string    `json:"ticker" db:"ticker"`
 	SentimentScore float64   `json:"sentiment_score" db:"sentiment_score"`
 	BullishPct     float64   `json:"bullish_pct" db:"bullish_pct"`
+	BearishPct     *float64  `json:"bearish_pct,omitempty" db:"bearish_pct"`
+	NeutralPct     *float64  `json:"neutral_pct,omitempty" db:"neutral_pct"`
 	MentionCount   int       `json:"mention_count" db:"mention_count"`
 	CompositeScore float64   `json:"composite_score" db:"composite_score"`
 }

@@ -627,8 +627,9 @@ class SentimentAggregator:
         query = """
             INSERT INTO ticker_sentiment_history
                 (time, ticker, sentiment_score, bullish_pct,
+                 bearish_pct, neutral_pct,
                  mention_count, composite_score)
-            VALUES (%s, %s, %s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (ticker, time) DO NOTHING
         """
 
@@ -647,6 +648,8 @@ class SentimentAggregator:
                             6,
                         ),
                         round(snap["bullish_pct"], 6),
+                        round(snap["bearish_pct"], 6),
+                        round(snap["neutral_pct"], 6),
                         snap["mention_count"],
                         snap["composite_score"],
                     ),

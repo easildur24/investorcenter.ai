@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"investorcenter-api/models"
 	"time"
+
+	"github.com/lib/pq"
 )
 
 // GetLatestSnapshots returns the most recent snapshot for each ticker in a given
@@ -146,14 +148,15 @@ func UpsertSnapshot(s *models.SentimentSnapshot) error {
 // within the same snapshot cycle.
 func InsertSentimentHistory(point *models.SentimentTimeSeriesPoint) error {
 	query := `
-		INSERT INTO ticker_sentiment_history (time, ticker, sentiment_score, bullish_pct, mention_count, composite_score)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO ticker_sentiment_history (time, ticker, sentiment_score, bullish_pct, bearish_pct, neutral_pct, mention_count, composite_score)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		ON CONFLICT (ticker, time) DO NOTHING
 	`
 
 	_, err := DB.Exec(query,
 		point.Time, point.Ticker, point.SentimentScore,
-		point.BullishPct, point.MentionCount, point.CompositeScore,
+		point.BullishPct, point.BearishPct, point.NeutralPct,
+		point.MentionCount, point.CompositeScore,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to insert sentiment history: %w", err)
@@ -173,7 +176,7 @@ func GetSentimentTimeSeries(ticker string, days int) ([]models.SentimentTimeSeri
 	}
 
 	query := `
-		SELECT time, ticker, sentiment_score, bullish_pct, mention_count, composite_score
+		SELECT time, ticker, sentiment_score, bullish_pct, bearish_pct, neutral_pct, mention_count, composite_score
 		FROM ticker_sentiment_history
 		WHERE ticker = $1
 		  AND time > NOW() - make_interval(days => $2)
@@ -220,4 +223,148 @@ func GetLatestSnapshotTime(timeRange string) (time.Time, error) {
 	}
 
 	return latestTime.Time, nil
+}
+
+// GetCompanyNames returns a map of symbol -> company name for batch lookups.
+// Used by handlers to enrich snapshot data with human-readable names.
+func GetCompanyNames(symbols []string) (map[string]string, error) {
+	if len(symbols) == 0 {
+		return map[string]string{}, nil
+	}
+
+	query := `SELECT symbol, name FROM tickers WHERE symbol = ANY($1)`
+
+	type tickerName struct {
+		Symbol string `db:"symbol"`
+		Name   string `db:"name"`
+	}
+
+	var results []tickerName
+	err := DB.Select(&results, query, pq.Array(symbols))
+	if err != nil {
+		return nil, fmt.Errorf("failed to get company names: %w", err)
+	}
+
+	names := make(map[string]string, len(results))
+	for _, r := range results {
+		names[r.Symbol] = r.Name
+	}
+	return names, nil
+}
+
+// GetTickerPostsV2 returns representative posts from the V2 pipeline tables
+// (reddit_posts_raw + reddit_post_tickers) for a specific ticker.
+func GetTickerPostsV2(ticker string, sort models.SocialPostSortOption, limit int) (*models.RepresentativePostsResponse, error) {
+	if limit <= 0 {
+		limit = 10
+	}
+	if limit > 20 {
+		limit = 20
+	}
+
+	// Build ORDER BY and optional WHERE based on sort option
+	orderBy := "rpr.posted_at DESC" // default: recent
+	sentimentFilter := ""
+
+	switch sort {
+	case models.SortByEngagement:
+		orderBy = "(rpr.upvotes + rpr.comment_count * 2) DESC"
+	case models.SortByBullish:
+		sentimentFilter = "AND rpt.sentiment = 'bullish'"
+		orderBy = "rpt.confidence DESC NULLS LAST, rpr.upvotes DESC"
+	case models.SortByBearish:
+		sentimentFilter = "AND rpt.sentiment = 'bearish'"
+		orderBy = "rpt.confidence DESC NULLS LAST, rpr.upvotes DESC"
+	case models.SortByRecent:
+		orderBy = "rpr.posted_at DESC"
+	}
+
+	query := fmt.Sprintf(`
+		SELECT
+			rpr.id, rpr.title, rpr.body, rpr.url, rpr.subreddit,
+			rpr.upvotes, rpr.comment_count, rpr.flair, rpr.posted_at,
+			COALESCE(rpt.sentiment, 'neutral') AS sentiment,
+			rpt.confidence
+		FROM reddit_posts_raw rpr
+		JOIN reddit_post_tickers rpt ON rpt.post_id = rpr.id
+		WHERE rpt.ticker = $1
+		  AND rpr.posted_at > NOW() - INTERVAL '7 days'
+		  AND rpr.is_finance_related = true
+		  %s
+		ORDER BY %s
+		LIMIT $2
+	`, sentimentFilter, orderBy)
+
+	rows, err := DB.Query(query, ticker, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get ticker posts: %w", err)
+	}
+	defer rows.Close()
+
+	var posts []models.RepresentativePost
+	for rows.Next() {
+		var p models.RepresentativePost
+		var body, flair sql.NullString
+		var confidence sql.NullFloat64
+		var postedAt time.Time
+
+		err := rows.Scan(
+			&p.ID, &p.Title, &body, &p.URL, &p.Subreddit,
+			&p.Upvotes, &p.CommentCount, &flair, &postedAt,
+			&p.Sentiment, &confidence,
+		)
+		if err != nil {
+			continue
+		}
+
+		if body.Valid {
+			// Truncate body to preview length (200 chars)
+			preview := body.String
+			if len(preview) > 200 {
+				preview = preview[:200] + "..."
+			}
+			p.BodyPreview = &preview
+		}
+		if flair.Valid {
+			p.Flair = &flair.String
+		}
+		if confidence.Valid {
+			p.SentimentConfidence = &confidence.Float64
+		}
+		p.Source = "reddit"
+		p.AwardCount = 0 // V2 tables don't track awards
+		p.PostedAt = postedAt.Format(time.RFC3339)
+
+		posts = append(posts, p)
+	}
+
+	// Get total count
+	var total int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM reddit_posts_raw rpr
+		JOIN reddit_post_tickers rpt ON rpt.post_id = rpr.id
+		WHERE rpt.ticker = $1
+		  AND rpr.posted_at > NOW() - INTERVAL '7 days'
+		  AND rpr.is_finance_related = true
+	`
+	_ = DB.QueryRow(countQuery, ticker).Scan(&total)
+
+	// Determine sort string for response
+	sortStr := "recent"
+	switch sort {
+	case models.SortByEngagement:
+		sortStr = "engagement"
+	case models.SortByBullish:
+		sortStr = "bullish"
+	case models.SortByBearish:
+		sortStr = "bearish"
+	}
+
+	return &models.RepresentativePostsResponse{
+		Ticker: ticker,
+		Posts:  posts,
+		Total:  total,
+		Sort:   sortStr,
+	}, nil
 }
