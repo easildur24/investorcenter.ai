@@ -1,3 +1,4 @@
+# DEPRECATED: Use requirements-pipeline.txt instead.
 # Reddit sentiment collector dependencies
 psycopg2-binary>=2.9.0
 requests>=2.28.0
