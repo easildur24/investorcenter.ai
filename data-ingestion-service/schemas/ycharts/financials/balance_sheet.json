@@ -1,0 +1,240 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/financials/balance_sheet.json",
+  "title": "YCharts Balance Sheet",
+  "description": "Historical balance sheet data from YCharts financials page",
+  "type": "object",
+  "required": ["period", "period_type", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "period": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$",
+      "description": "Fiscal period in YYYY-MM format (e.g. 2025-12)"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": ["quarterly", "annual", "ttm"],
+      "description": "Period granularity"
+    },
+    "release_date": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+      "description": "Actual release date in MM/DD/YYYY format"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "cash_and_short_term_investments": {
+      "type": ["number", "null"],
+      "description": "Cash and Short Term Investments"
+    },
+    "accounts_receivable": {
+      "type": ["number", "null"],
+      "description": "Accounts Receivable"
+    },
+    "other_receivables": {
+      "type": ["number", "null"],
+      "description": "Other Receivables"
+    },
+    "short_term_receivables": {
+      "type": ["number", "null"],
+      "description": "Short-Term Receivables"
+    },
+    "inventories": {
+      "type": ["number", "null"],
+      "description": "Inventories"
+    },
+    "prepaid_expenses": {
+      "type": ["number", "null"],
+      "description": "Prepaid Expenses"
+    },
+    "miscellaneous_current_assets": {
+      "type": ["number", "null"],
+      "description": "Miscellaneous Current Assets"
+    },
+    "current_assets_other": {
+      "type": ["number", "null"],
+      "description": "Current Assets, Other"
+    },
+    "total_current_assets": {
+      "type": ["number", "null"],
+      "description": "Total Current Assets"
+    },
+    "gross_ppe": {
+      "type": ["number", "null"],
+      "description": "Gross PP&E"
+    },
+    "accumulated_da": {
+      "type": ["number", "null"],
+      "description": "Accumulated D&A (typically negative)"
+    },
+    "net_ppe": {
+      "type": ["number", "null"],
+      "description": "Net PP&E"
+    },
+    "long_term_investments": {
+      "type": ["number", "null"],
+      "description": "Long Term Investments"
+    },
+    "net_goodwill": {
+      "type": ["number", "null"],
+      "description": "Net Goodwill"
+    },
+    "net_other_intangibles": {
+      "type": ["number", "null"],
+      "description": "Net Other Intangibles"
+    },
+    "goodwill_and_intangibles": {
+      "type": ["number", "null"],
+      "description": "Goodwill and Intangibles"
+    },
+    "deferred_tax_assets": {
+      "type": ["number", "null"],
+      "description": "Deferred Tax Assets"
+    },
+    "assets_other": {
+      "type": ["number", "null"],
+      "description": "Assets - Other"
+    },
+    "total_assets": {
+      "type": ["number", "null"],
+      "description": "Total Assets"
+    },
+    "st_debt_current_portion_lt_debt": {
+      "type": ["number", "null"],
+      "description": "ST Debt & Current Portion Of LT Debt"
+    },
+    "accounts_payable": {
+      "type": ["number", "null"],
+      "description": "Accounts Payable"
+    },
+    "current_tax_payable": {
+      "type": ["number", "null"],
+      "description": "Current Tax Payable"
+    },
+    "other_current_liabilities": {
+      "type": ["number", "null"],
+      "description": "Other Current Liabilities"
+    },
+    "total_current_liabilities": {
+      "type": ["number", "null"],
+      "description": "Total Current Liabilities"
+    },
+    "long_term_debt_excl_lease_liab": {
+      "type": ["number", "null"],
+      "description": "Long Term Debt Excl Lease Liab"
+    },
+    "capital_operating_lease_oblig": {
+      "type": ["number", "null"],
+      "description": "Capital & Operating Lease Oblig"
+    },
+    "non_current_portion_lt_debt": {
+      "type": ["number", "null"],
+      "description": "Non-Current Portion of Long Term Debt"
+    },
+    "provisions_for_risk_and_charges": {
+      "type": ["number", "null"],
+      "description": "Provisions for Risk and Charges"
+    },
+    "long_term_deferred_tax_liabilities": {
+      "type": ["number", "null"],
+      "description": "Long Term Deferred Tax Liabilities"
+    },
+    "other_liabilities": {
+      "type": ["number", "null"],
+      "description": "Other Liabilities"
+    },
+    "total_long_term_liabilities": {
+      "type": ["number", "null"],
+      "description": "Total Long Term Liabilities"
+    },
+    "total_liabilities": {
+      "type": ["number", "null"],
+      "description": "Total Liabilities"
+    },
+    "non_equity_reserves": {
+      "type": ["number", "null"],
+      "description": "Non-Equity Reserves"
+    },
+    "preferred_stock": {
+      "type": ["number", "null"],
+      "description": "Preferred Stock"
+    },
+    "common_equity": {
+      "type": ["number", "null"],
+      "description": "Common Equity"
+    },
+    "shareholders_equity": {
+      "type": ["number", "null"],
+      "description": "Shareholders Equity"
+    },
+    "minority_interest_ownership": {
+      "type": ["number", "null"],
+      "description": "Minority Interest Ownership"
+    },
+    "total_equity_incl_minority_interest": {
+      "type": ["number", "null"],
+      "description": "Total Equity Including Minority Interest"
+    },
+    "total_liabilities_and_shareholders_equity": {
+      "type": ["number", "null"],
+      "description": "Total Liabilities And Shareholders' Equity"
+    },
+    "book_value_per_share": {
+      "type": ["number", "null"],
+      "description": "Book Value Per Share"
+    },
+    "tangible_book_value_per_share": {
+      "type": ["number", "null"],
+      "description": "Tangible Book Value Per Share"
+    },
+    "working_capital": {
+      "type": ["number", "null"],
+      "description": "Working Capital - Total (Net Working Capital)"
+    },
+    "total_capital_incl_st_debt": {
+      "type": ["number", "null"],
+      "description": "Total Capital, Including Short-Term Debt"
+    },
+    "total_debt": {
+      "type": ["number", "null"],
+      "description": "Total Debt"
+    },
+    "net_debt": {
+      "type": ["number", "null"],
+      "description": "Net Debt"
+    },
+    "minimum_pension_liabilities": {
+      "type": ["number", "null"],
+      "description": "Minimum Pension Liabilities"
+    },
+    "comprehensive_income_hedging_gain_loss": {
+      "type": ["number", "null"],
+      "description": "Comprehensive Income - Hedging Gain/Loss"
+    },
+    "comprehensive_income_unearned_comp": {
+      "type": ["number", "null"],
+      "description": "Comprehensive Income - Unearned Comp"
+    },
+    "stock_based_compensation_expense": {
+      "type": ["number", "null"],
+      "description": "Stock-Based Compensation Expense"
+    },
+    "stock_based_comp_adj_to_net_income": {
+      "type": ["number", "null"],
+      "description": "Stock-Based Comp Adj to Net Income Q"
+    },
+    "total_operating_lease_commitments": {
+      "type": ["number", "null"],
+      "description": "Total Operating Lease Commitments"
+    },
+    "current_portion_of_lt_debt": {
+      "type": ["number", "null"],
+      "description": "Current Portion of Long Term Debt"
+    }
+  }
+}

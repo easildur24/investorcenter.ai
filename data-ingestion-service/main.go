@@ -82,6 +82,7 @@ func main() {
 
 		// YCharts endpoints
 		ingestRoutes.POST("/ycharts/key_stats/:ticker", ycharts.PostKeyStats)
+		ingestRoutes.POST("/ycharts/financials/:statement/:ticker", ycharts.PostFinancials)
 	}
 
 	// Admin routes — list and view ingestion records

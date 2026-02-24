@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/financials/income_statement.json",
+  "title": "YCharts Income Statement",
+  "description": "Historical income statement data from YCharts financials page",
+  "type": "object",
+  "required": ["period", "period_type", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "period": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$",
+      "description": "Fiscal period in YYYY-MM format (e.g. 2025-09)"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": ["quarterly", "annual", "ttm"],
+      "description": "Period granularity"
+    },
+    "release_date": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+      "description": "Actual release date in MM/DD/YYYY format"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "revenue": {
+      "type": ["number", "null"],
+      "description": "Revenue"
+    },
+    "cogs_incl_da": {
+      "type": ["number", "null"],
+      "description": "COGS Including D&A"
+    },
+    "cogs_excl_da": {
+      "type": ["number", "null"],
+      "description": "COGS Excluding D&A"
+    },
+    "depreciation_amortization_expense": {
+      "type": ["number", "null"],
+      "description": "Depreciation & Amortization Expense"
+    },
+    "gross_income": {
+      "type": ["number", "null"],
+      "description": "Gross Income"
+    },
+    "sga_expense": {
+      "type": ["number", "null"],
+      "description": "SG&A Expense"
+    },
+    "rd_expense": {
+      "type": ["number", "null"],
+      "description": "R&D Expense"
+    },
+    "other_operating_expense": {
+      "type": ["number", "null"],
+      "description": "Other Operating Expense"
+    },
+    "operating_income": {
+      "type": ["number", "null"],
+      "description": "Operating Income"
+    },
+    "non_operating_income_expense": {
+      "type": ["number", "null"],
+      "description": "Non Operating Income/Expense"
+    },
+    "interest_expense": {
+      "type": ["number", "null"],
+      "description": "Interest Expense"
+    },
+    "pretax_income": {
+      "type": ["number", "null"],
+      "description": "Pretax Income"
+    },
+    "income_tax": {
+      "type": ["number", "null"],
+      "description": "Income Tax"
+    },
+    "income_tax_current_domestic": {
+      "type": ["number", "null"],
+      "description": "Income Tax - Current Domestic"
+    },
+    "income_tax_current_foreign": {
+      "type": ["number", "null"],
+      "description": "Income Tax - Current Foreign"
+    },
+    "income_tax_deferred_domestic": {
+      "type": ["number", "null"],
+      "description": "Income Tax - Deferred Domestic"
+    },
+    "income_tax_deferred_foreign": {
+      "type": ["number", "null"],
+      "description": "Income Tax - Deferred Foreign"
+    },
+    "income_tax_credits": {
+      "type": ["number", "null"],
+      "description": "Income Tax - Credits"
+    },
+    "consolidated_net_income_before_nci": {
+      "type": ["number", "null"],
+      "description": "Consolidated Net Income Before Non-Controlling Interests"
+    },
+    "equity_in_net_income": {
+      "type": ["number", "null"],
+      "description": "Equity in Net Income"
+    },
+    "consolidated_net_income": {
+      "type": ["number", "null"],
+      "description": "Consolidated Net Income"
+    },
+    "minority_interest_in_earnings": {
+      "type": ["number", "null"],
+      "description": "Minority Interest in Earnings"
+    },
+    "net_income": {
+      "type": ["number", "null"],
+      "description": "Net Income"
+    },
+    "ebitda": {
+      "type": ["number", "null"],
+      "description": "EBITDA"
+    },
+    "ebit": {
+      "type": ["number", "null"],
+      "description": "EBIT"
+    },
+    "gross_profit_margin": {
+      "type": ["number", "null"],
+      "description": "Gross Profit Margin (decimal)"
+    },
+    "ebitda_margin": {
+      "type": ["number", "null"],
+      "description": "EBITDA Margin (decimal)"
+    },
+    "ebit_margin": {
+      "type": ["number", "null"],
+      "description": "EBIT Margin (decimal)"
+    },
+    "net_profit_margin": {
+      "type": ["number", "null"],
+      "description": "Net Profit Margin (decimal)"
+    },
+    "nopat": {
+      "type": ["number", "null"],
+      "description": "NOPAT"
+    },
+    "nopat_margin": {
+      "type": ["number", "null"],
+      "description": "NOPAT Margin (decimal)"
+    },
+    "net_eps": {
+      "type": ["number", "null"],
+      "description": "Net EPS"
+    },
+    "eps_basic": {
+      "type": ["number", "null"],
+      "description": "EPS - Earnings Per Share (Basic)"
+    },
+    "eps_diluted": {
+      "type": ["number", "null"],
+      "description": "EPS - Earnings Per Share (Diluted)"
+    },
+    "eps_cash_flow": {
+      "type": ["number", "null"],
+      "description": "EPS - Cash Flow"
+    },
+    "dps": {
+      "type": ["number", "null"],
+      "description": "DPS - Dividends Per Share"
+    },
+    "basic_shares_outstanding": {
+      "type": ["number", "null"],
+      "description": "Basic Shares Outstanding"
+    },
+    "diluted_shares_outstanding": {
+      "type": ["number", "null"],
+      "description": "Diluted Shares Outstanding"
+    }
+  }
+}

@@ -7,6 +7,7 @@ Private skills for InvestorCenter.ai automation tasks.
 - **scrape-seekingalpha** — Extract ticker data, metrics, sentiment, and articles from SeekingAlpha
 - **scrape-ycharts** — Pull financial data, charts, and comparisons from YCharts
 - **scrape-ycharts-keystats** — Extract 100+ financial metrics from YCharts Key Stats page and upload to ingestion API
+- **scrape-ycharts-financials** — Extract historical financial statements (income statement, balance sheet, cash flow) from YCharts and upload each period to ingestion API
 - **reddit-summarizer** — Aggregate and summarize Reddit posts for market sentiment
 - **data-ingestion** — Upload raw scraped data to S3 via the data ingestion API
 - **task-runner** — Meta-skill: authenticate, pull tasks from queue, execute the corresponding skill, report results

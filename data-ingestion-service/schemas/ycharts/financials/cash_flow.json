@@ -1,0 +1,156 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/financials/cash_flow.json",
+  "title": "YCharts Cash Flow Statement",
+  "description": "Historical cash flow statement data from YCharts financials page",
+  "type": "object",
+  "required": ["period", "period_type", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "period": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$",
+      "description": "Fiscal period in YYYY-MM format (e.g. 2025-12)"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": ["quarterly", "annual", "ttm"],
+      "description": "Period granularity"
+    },
+    "release_date": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{2}/\\d{2}/\\d{4}$",
+      "description": "Actual release date in MM/DD/YYYY format"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "net_income": {
+      "type": ["number", "null"],
+      "description": "Net Income"
+    },
+    "total_depreciation_and_amortization": {
+      "type": ["number", "null"],
+      "description": "Total Depreciation and Amortization"
+    },
+    "deferred_taxes_investment_tax_credit": {
+      "type": ["number", "null"],
+      "description": "Deferred Taxes & Investment Tax Credit"
+    },
+    "operating_interest_paid_lease_liab": {
+      "type": ["number", "null"],
+      "description": "Operating Interest Paid - Lease Liab"
+    },
+    "non_cash_items": {
+      "type": ["number", "null"],
+      "description": "Non-Cash Items"
+    },
+    "funds_from_operations": {
+      "type": ["number", "null"],
+      "description": "Funds From Operations"
+    },
+    "extraordinary_items": {
+      "type": ["number", "null"],
+      "description": "Extraordinary Items"
+    },
+    "changes_in_working_capital": {
+      "type": ["number", "null"],
+      "description": "Changes in Working Capital"
+    },
+    "cash_from_operations": {
+      "type": ["number", "null"],
+      "description": "Cash from Operations"
+    },
+    "capital_expenditures_total": {
+      "type": ["number", "null"],
+      "description": "Capital Expenditures - Total"
+    },
+    "net_divestitures_acquisitions": {
+      "type": ["number", "null"],
+      "description": "Net Divestitures (Acquisitions)"
+    },
+    "sale_of_fixed_assets_businesses": {
+      "type": ["number", "null"],
+      "description": "Sale of Fixed Assets & Businesses"
+    },
+    "total_net_change_in_investments": {
+      "type": ["number", "null"],
+      "description": "Total Net Change in Investments"
+    },
+    "other_funds_investing": {
+      "type": ["number", "null"],
+      "description": "Other Funds (Investing)"
+    },
+    "cash_from_investing": {
+      "type": ["number", "null"],
+      "description": "Cash from Investing"
+    },
+    "total_dividends_paid": {
+      "type": ["number", "null"],
+      "description": "Total Dividends Paid"
+    },
+    "net_common_equity_issued_purchased": {
+      "type": ["number", "null"],
+      "description": "Net Common Equity Issued (Purchased)"
+    },
+    "net_debt_issuance": {
+      "type": ["number", "null"],
+      "description": "Net Debt Issuance"
+    },
+    "repayments_of_operating_lease_liabilities": {
+      "type": ["number", "null"],
+      "description": "Repayments Of Operating Lease Liabilities"
+    },
+    "financing_interest_paid_lease_liab": {
+      "type": ["number", "null"],
+      "description": "Financing Interest Paid - Lease Liab"
+    },
+    "other_funds_financing": {
+      "type": ["number", "null"],
+      "description": "Other Funds - Financing"
+    },
+    "cash_from_financing": {
+      "type": ["number", "null"],
+      "description": "Cash from Financing"
+    },
+    "beginning_cash": {
+      "type": ["number", "null"],
+      "description": "Beginning Cash"
+    },
+    "exchange_rate_effect": {
+      "type": ["number", "null"],
+      "description": "Exchange Rate Effect"
+    },
+    "net_change_in_cash": {
+      "type": ["number", "null"],
+      "description": "Net Change in Cash"
+    },
+    "ending_cash": {
+      "type": ["number", "null"],
+      "description": "Ending Cash"
+    },
+    "free_cash_flow": {
+      "type": ["number", "null"],
+      "description": "Free Cash Flow"
+    },
+    "interest_paid_operating_and_financing": {
+      "type": ["number", "null"],
+      "description": "Interest Paid, Operating and Financing"
+    },
+    "capital_and_operating_lease_obligations": {
+      "type": ["number", "null"],
+      "description": "Capital and Operating Lease Obligations"
+    },
+    "income_tax_paid": {
+      "type": ["number", "null"],
+      "description": "Income Tax Paid"
+    },
+    "stock_based_compensation": {
+      "type": ["number", "null"],
+      "description": "Stock Based Compensation"
+    }
+  }
+}
