@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Task Runner - Single Execution Mode
+Task Runner - Grab next task, execute it, exit.
 
-Claims next task, executes it, marks complete/failed, then exits.
-Designed to be called repeatedly by cron (every 5-10 minutes).
+Called by OpenClaw agent when skill is invoked.
+No loops, no scheduling - just one task per run.
 """
 import json
 import sys
@@ -21,7 +21,6 @@ from parse_helpers import parse_dollar_amount, parse_percentage, parse_float, pa
 API_BASE = os.getenv("API_BASE_URL", "https://investorcenter.ai/api/v1")
 WORKER_EMAIL = os.getenv("WORKER_EMAIL", "nikola@investorcenter.ai")
 WORKER_PASSWORD = os.getenv("WORKER_PASSWORD", "ziyj9VNdHH5tjqB2m3lup3MG")
-BROWSER_PROFILE = os.getenv("BROWSER_PROFILE", "openclaw")
 
 
 def log(msg):
@@ -248,7 +247,7 @@ def extract_metrics_from_snapshot(snapshot_text):
 def execute_ycharts_task(task, token):
     """
     Execute a YCharts key stats scraping task.
-    This is a PLACEHOLDER - actual browser automation should be done via OpenClaw browser tool.
+    NOTE: Browser automation requires OpenClaw environment.
     """
     ticker = task.get("params", {}).get("ticker")
     if not ticker:
@@ -256,19 +255,16 @@ def execute_ycharts_task(task, token):
     
     log(f"🏀 Processing {ticker}...")
     
-    # NOTE: This is where browser automation would happen
-    # For now, this is a stub - the actual implementation needs OpenClaw browser tool
-    # which is only available when running as an OpenClaw agent, not standalone Python
-    
+    # This is a placeholder - actual implementation needs OpenClaw browser tool
+    # The agent invoking this skill will handle browser automation
     raise NotImplementedError(
-        "Browser automation requires OpenClaw environment. "
-        "Run this via: sessions_send or sessions_spawn with the task_runner skill."
+        "This script is a template. Actual execution requires OpenClaw agent context with browser access."
     )
 
 
 def main():
     """Main execution: claim task, run it, exit."""
-    log("🏀 Task Runner starting (single-execution mode)")
+    log("🏀 Task Runner starting")
     
     # Get auth token
     token = get_auth_token()
@@ -277,7 +273,7 @@ def main():
     # Claim next task
     task = claim_next_task(token)
     if not task:
-        log("ℹ️  No tasks in queue - exiting")
+        log("ℹ️  No tasks in queue")
         sys.exit(0)
     
     task_id = task["id"]
@@ -301,7 +297,6 @@ def main():
         mark_task_status(task_id, token, "failed", error=error_msg)
         sys.exit(1)
     
-    log("🏀 Task Runner finished")
     sys.exit(0)
 
 
