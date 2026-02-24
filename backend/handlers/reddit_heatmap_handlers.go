@@ -2,10 +2,12 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
 
 	"investorcenter-api/database"
+	"investorcenter-api/services"
 
 	"github.com/gin-gonic/gin"
 )
@@ -59,6 +61,9 @@ func GetRedditHeatmap(c *gin.Context) {
 		return
 	}
 
+	// BUG-003: Enrich with real-time price data from Polygon
+	enrichWithPriceData(heatmapData)
+
 	// Get latest date with data
 	latestDate, err := database.GetLatestRedditDate()
 	if err != nil && err != sql.ErrNoRows {
@@ -75,6 +80,54 @@ func GetRedditHeatmap(c *gin.Context) {
 			"latestDate": latestDate,
 		},
 	})
+}
+
+// enrichWithPriceData fetches real-time prices for all tickers and attaches them
+// to the heatmap data. Errors are logged but not propagated — missing price data
+// is better than failing the entire request.
+func enrichWithPriceData(data []database.RedditHeatmapData) {
+	if len(data) == 0 {
+		return
+	}
+
+	// Collect unique symbols
+	symbols := make([]string, len(data))
+	for i, item := range data {
+		symbols[i] = item.TickerSymbol
+	}
+
+	// Fetch prices in bulk
+	polygonClient := services.NewPolygonClient()
+	quotes, err := polygonClient.GetMultipleQuotes(symbols)
+	if err != nil {
+		log.Printf("Warning: Failed to enrich Reddit heatmap with price data: %v\n", err)
+		return
+	}
+
+	// Attach price data to each row
+	for i := range data {
+		if quote, ok := quotes[data[i].TickerSymbol]; ok {
+			price := quote.Price
+			changePct := quote.ChangePercent
+			data[i].Price = &price
+			data[i].PriceChangePct = &changePct
+		}
+	}
+}
+
+// GetRedditPipelineHealth returns pipeline freshness data for the DataFreshnessIndicator.
+// BUG-004: Enables the frontend to show how fresh the data is and warn when stale.
+// No auth required.
+func GetRedditPipelineHealth(c *gin.Context) {
+	health, err := database.GetRedditPipelineHealth()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to fetch pipeline health",
+			"details": err.Error(),
+		})
+		return
+	}
+	c.JSON(http.StatusOK, health)
 }
 
 // GetTickerRedditHistory returns Reddit popularity history for a specific ticker

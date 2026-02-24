@@ -19,6 +19,9 @@ type RedditHeatmapData struct {
 	TrendDirection  string    `json:"trendDirection"`
 	PopularityScore float64   `json:"popularityScore"`
 	DataSource      string    `json:"dataSource"`
+	// BUG-003: Price data enriched by the handler via Polygon
+	Price          *float64 `json:"price,omitempty"`
+	PriceChangePct *float64 `json:"priceChangePct,omitempty"`
 }
 
 // RedditTickerHistory represents a ticker's Reddit history over time
@@ -264,4 +267,60 @@ func GetLatestRedditDate() (time.Time, error) {
 	}
 
 	return latestDate.Time, nil
+}
+
+// RedditPipelineHealth represents the freshness status of the Reddit data pipelines
+type RedditPipelineHealth struct {
+	LastHeatmapDate *time.Time `json:"lastHeatmapDate"`  // Latest date in reddit_heatmap_daily
+	LastPostAt      *time.Time `json:"lastPostAt"`       // Latest posted_at in social_posts
+	TotalPosts7d    int        `json:"totalPosts7d"`     // Posts in last 7 days
+	Status          string     `json:"status"`           // "healthy", "stale", "no_data"
+	StalenessMin    int        `json:"stalenessMinutes"` // Minutes since last post
+}
+
+// GetRedditPipelineHealth returns freshness data for the DataFreshnessIndicator.
+// BUG-004: The frontend uses this to display data freshness and warn when stale.
+func GetRedditPipelineHealth() (*RedditPipelineHealth, error) {
+	health := &RedditPipelineHealth{}
+
+	// Latest heatmap date
+	var heatmapDate sql.NullTime
+	err := DB.QueryRow("SELECT MAX(date) FROM reddit_heatmap_daily").Scan(&heatmapDate)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to query heatmap freshness: %w", err)
+	}
+	if heatmapDate.Valid {
+		health.LastHeatmapDate = &heatmapDate.Time
+	}
+
+	// Latest social post and 7-day count
+	var lastPost sql.NullTime
+	err = DB.QueryRow(`
+		SELECT MAX(posted_at), COUNT(*)
+		FROM social_posts
+		WHERE posted_at > NOW() - INTERVAL '7 days'
+	`).Scan(&lastPost, &health.TotalPosts7d)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to query post freshness: %w", err)
+	}
+	if lastPost.Valid {
+		health.LastPostAt = &lastPost.Time
+	}
+
+	// Determine status
+	if lastPost.Valid {
+		staleness := time.Since(lastPost.Time)
+		health.StalenessMin = int(staleness.Minutes())
+
+		if staleness < 30*time.Minute {
+			health.Status = "healthy"
+		} else {
+			health.Status = "stale"
+		}
+	} else {
+		health.Status = "no_data"
+		health.StalenessMin = -1
+	}
+
+	return health, nil
 }

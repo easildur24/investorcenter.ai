@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import RankChangePill from '@/components/social/RankChangePill';
 
 interface TrendingListItemProps {
   rank: number;
@@ -13,8 +13,16 @@ interface TrendingListItemProps {
   upvotes?: number;
   popularityScore: number;
   trendDirection: string;
+  // BUG-003: Price data from Polygon
+  price?: number;
+  priceChangePct?: number;
 }
 
+/**
+ * BUG-001 fix: Uses RankChangePill to always display integer rank changes.
+ * BUG-002 fix: Consistent score badge (no rank-dependent emojis).
+ * BUG-003 fix: Displays price and % change columns.
+ */
 export default function TrendingListItem({
   rank,
   symbol,
@@ -25,26 +33,9 @@ export default function TrendingListItem({
   upvotes = 0,
   popularityScore,
   trendDirection,
+  price,
+  priceChangePct,
 }: TrendingListItemProps) {
-  const [showTooltip, setShowTooltip] = useState(false);
-
-  const getRankChangeDisplay = () => {
-    if (rankChange > 1) {
-      return <span className="text-green-600 font-medium">↑{rankChange}</span>;
-    }
-    if (rankChange < -1) {
-      return <span className="text-red-600 font-medium">↓{Math.abs(rankChange)}</span>;
-    }
-    return <span className="text-ic-text-muted">→</span>;
-  };
-
-  const getScoreEmoji = () => {
-    if (popularityScore >= 90) return '🔥';
-    if (popularityScore >= 70) return '📈';
-    if (popularityScore >= 50) return '📊';
-    return '💬';
-  };
-
   const getScoreBadgeColor = () => {
     if (popularityScore >= 90) return 'bg-red-100 text-red-800';
     if (popularityScore >= 70) return 'bg-yellow-100 text-yellow-800';
@@ -59,13 +50,16 @@ export default function TrendingListItem({
     return 'bg-ic-bg-tertiary';
   };
 
+  const formatPrice = (p: number) => {
+    if (p >= 1000)
+      return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (p >= 1) return `$${p.toFixed(2)}`;
+    return `$${p.toFixed(4)}`;
+  };
+
   return (
     <Link href={`/ticker/${symbol}`}>
-      <div
-        className="flex items-center justify-between p-4 hover:bg-ic-surface-hover cursor-pointer border-b border-ic-border-subtle transition-colors duration-150 group"
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-      >
+      <div className="flex items-center justify-between p-4 hover:bg-ic-surface-hover cursor-pointer border-b border-ic-border-subtle transition-colors duration-150 group">
         {/* Left Section: Rank, Ticker, Company */}
         <div className="flex items-center gap-4 flex-1 min-w-0">
           {/* Rank Number */}
@@ -78,7 +72,7 @@ export default function TrendingListItem({
               <span className="text-xs px-2 py-0.5 rounded-full bg-ic-surface text-ic-text-muted">
                 #{currentRank}
               </span>
-              {getRankChangeDisplay()}
+              <RankChangePill change={rankChange} />
             </div>
             {companyName && (
               <div className="text-sm text-ic-text-muted truncate">{companyName}</div>
@@ -88,6 +82,27 @@ export default function TrendingListItem({
 
         {/* Right Section: Stats */}
         <div className="flex items-center gap-6 ml-4">
+          {/* BUG-003: Price */}
+          {price != null && (
+            <div className="text-right hidden lg:block w-24">
+              <div className="text-sm font-semibold text-ic-text-primary">{formatPrice(price)}</div>
+            </div>
+          )}
+
+          {/* BUG-003: % Change */}
+          {priceChangePct != null && (
+            <div className="text-right hidden lg:block w-20">
+              <div
+                className={`text-sm font-semibold ${
+                  priceChangePct >= 0 ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {priceChangePct >= 0 ? '+' : ''}
+                {priceChangePct.toFixed(2)}%
+              </div>
+            </div>
+          )}
+
           {/* Mentions */}
           <div className="text-right hidden sm:block">
             <div className="text-sm font-semibold text-ic-text-primary">
@@ -106,9 +121,8 @@ export default function TrendingListItem({
             </div>
           )}
 
-          {/* Popularity Score */}
+          {/* Popularity Score — BUG-002: consistent rendering, no rank-dependent emoji */}
           <div className="flex items-center gap-2">
-            <span className="text-xl">{getScoreEmoji()}</span>
             <div className="text-right">
               <div
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getScoreBadgeColor()}`}

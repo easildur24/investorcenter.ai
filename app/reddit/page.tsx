@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import TimeRangeSelector from '@/components/reddit/TimeRangeSelector';
 import TrendingList from '@/components/reddit/TrendingList';
+import DataFreshnessIndicator from '@/components/social/DataFreshnessIndicator';
 import { reddit } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
 
@@ -18,6 +19,9 @@ interface RedditHeatmapData {
   trendDirection: string;
   popularityScore: number;
   dataSource: string;
+  // BUG-003: Price data from Polygon
+  price?: number;
+  priceChangePct?: number;
 }
 
 interface ApiResponse {
@@ -35,7 +39,6 @@ export default function RedditTrendingPage() {
   const [data, setData] = useState<RedditHeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   const fetchData = async (days: string) => {
     try {
@@ -47,7 +50,6 @@ export default function RedditTrendingPage() {
 
       if (result.data) {
         setData(result.data);
-        setLastUpdated(new Date());
       } else {
         setError('Failed to load Reddit trending data');
       }
@@ -78,16 +80,6 @@ export default function RedditTrendingPage() {
     fetchData(timeRange);
   };
 
-  const getLastUpdatedText = () => {
-    if (!lastUpdated) return '';
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - lastUpdated.getTime()) / 1000 / 60);
-
-    if (diff < 1) return 'Just now';
-    if (diff === 1) return '1 minute ago';
-    return `${diff} minutes ago`;
-  };
-
   return (
     <div className="min-h-screen bg-ic-bg-primary">
       {/* Header Section */}
@@ -109,23 +101,8 @@ export default function RedditTrendingPage() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
 
-            <div className="flex items-center gap-2 text-sm text-ic-text-muted">
-              <span>Last updated: {getLastUpdatedText()}</span>
-              <button
-                onClick={handleRefresh}
-                className="ml-2 p-1 hover:bg-ic-surface-hover rounded"
-                title="Refresh data"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-              </button>
-            </div>
+            {/* BUG-004: DataFreshnessIndicator replaces the old static "Last updated" text */}
+            <DataFreshnessIndicator onRefresh={handleRefresh} />
           </div>
         </div>
 

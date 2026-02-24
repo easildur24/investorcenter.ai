@@ -339,12 +339,13 @@ func (p *PolygonClient) GetMultipleQuotes(symbols []string) (map[string]*QuoteDa
 	return quotes, nil
 }
 
-// QuoteData represents simplified quote data for alert processing
+// QuoteData represents simplified quote data for alert processing and enrichment
 type QuoteData struct {
-	Symbol    string
-	Price     float64
-	Volume    int64
-	Timestamp int64
+	Symbol        string
+	Price         float64
+	ChangePercent float64 // Today's change percent (e.g., 2.5 means +2.5%)
+	Volume        int64
+	Timestamp     int64
 }
 
 // getBulkStockQuotes fetches quotes for multiple stock symbols
@@ -376,10 +377,11 @@ func (p *PolygonClient) getBulkStockQuotes(symbols []string) (map[string]*QuoteD
 			}
 
 			quotes[ticker.Ticker] = &QuoteData{
-				Symbol:    ticker.Ticker,
-				Price:     price,
-				Volume:    volume,
-				Timestamp: ticker.LastTrade.Timestamp,
+				Symbol:        ticker.Ticker,
+				Price:         price,
+				ChangePercent: ticker.TodaysChangePerc,
+				Volume:        volume,
+				Timestamp:     ticker.LastTrade.Timestamp,
 			}
 		}
 	}
@@ -411,10 +413,11 @@ func (p *PolygonClient) getBulkCryptoQuotes(symbols []string) (map[string]*Quote
 			}
 
 			quotes[ticker.Ticker] = &QuoteData{
-				Symbol:    ticker.Ticker,
-				Price:     price,
-				Volume:    int64(ticker.Day.Volume),
-				Timestamp: ticker.LastTrade.Timestamp,
+				Symbol:        ticker.Ticker,
+				Price:         price,
+				ChangePercent: ticker.TodaysChangePerc,
+				Volume:        int64(ticker.Day.Volume),
+				Timestamp:     ticker.LastTrade.Timestamp,
 			}
 		}
 	}
