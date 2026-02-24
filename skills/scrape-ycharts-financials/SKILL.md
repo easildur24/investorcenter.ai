@@ -2,6 +2,18 @@
 
 **Goal:** Extract historical financial statement data (income statement, balance sheet, or cash flow) from YCharts and upload each period to the data ingestion API.
 
+## Execution Pattern
+
+**This skill is executed directly by the AI agent** (not a separate Python script). The workflow is:
+1. Open browser, navigate to YCharts page
+2. Capture snapshot (100k chars max)
+3. Extract all visible periods (~8 per page) from the snapshot
+4. Use exec + Python to parse and POST each period to the API
+5. Navigate to next page, repeat
+6. Stop browser when done
+
+**Do not overthink this.** It's just web scraping + API calls, page by page.
+
 ## Prerequisites
 
 1. **YCharts account login** (already logged in at `easildur24@gmail.com`)
