@@ -1,137 +1,190 @@
 # Task Runner Skill
 
-**Goal:** Continuously pull tasks from the task service, execute the corresponding skill, and report results.
+## Purpose
+Execute YCharts data scraping tasks from the task queue. Designed for **single-task execution** - claim one task, run it, exit. Managed by cron for reliability.
 
-## Prerequisites
+## Architecture
 
-1. **API credentials** — email and password for a user account on investorcenter.ai
-2. **Repo cloned** — `~/.openclaw/workspace/investorcenter.ai` with latest `skills/` folder
-3. **OpenClaw browser profile** available for skills that need browser automation
+**Single-Execution Pattern:**
+1. Claim next pending task
+2. Execute task (scrape + ingest)
+3. Mark complete/failed
+4. Exit
 
-## Authentication
+**Why Single-Execution?**
+- Cron manages scheduling (every 5-10 minutes)
+- Sessions don't hang for hours
+- Failures are isolated per-task
+- Easy to monitor and restart
 
-Before starting the loop, get a JWT token:
+## Usage
 
+### One-Shot Task Execution
 ```bash
-curl -s -X POST https://investorcenter.ai/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "<EMAIL>", "password": "<PASSWORD>"}'
+# Claim next task, run it, exit
+python3 ~/.openclaw/workspace/skills/task-runner/run_task.py
 ```
 
-Response:
-```json
-{"access_token": "eyJ..."}
-```
-
-Store the token. It expires after 24 hours — if you get a 401, re-authenticate.
-
-## Task Loop
-
-Repeat the following steps until no tasks remain:
-
-### Step 1: Claim Next Task
-
+### Cron Setup (Recommended)
 ```bash
-curl -s -X POST https://investorcenter.ai/api/v1/tasks/next \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json"
+# Every 10 minutes during business hours (9 AM - 6 PM PST)
+*/10 9-18 * * * cd ~/.openclaw/workspace && python3 skills/task-runner/run_task.py >> logs/task-runner.log 2>&1
 ```
 
-**If no tasks are pending**, you'll get:
-```json
-{"error": "No pending tasks available"}
-```
-→ Stop the loop. You're done.
+## Task Workflow
 
-**If a task is available**, you'll get:
-```json
-{
-  "success": true,
-  "data": {
-    "id": "<task-id>",
-    "status": "in_progress",
-    "task_type_id": 7,
-    "task_type": {
-      "name": "scrape_ycharts_keystats",
-      "skill_path": "scrape-ycharts-keystats"
-    },
-    "params": {"ticker": "AAPL"},
-    "claimed_by": "<your-user-id>"
-  }
-}
-```
-
-The task is now yours — no other bot can claim it.
-
-### Step 2: Load the Skill
-
-Read the skill file at:
-```
-skills/<skill_path>/SKILL.md
-```
-
-For example, if `skill_path` is `scrape-ycharts-keystats`, load:
-```
-~/.openclaw/workspace/investorcenter.ai/skills/scrape-ycharts-keystats/SKILL.md
-```
-
-This file contains the full instructions for executing the task.
-
-### Step 3: Execute the Skill
-
-Follow the instructions in the loaded SKILL.md, using `params` from the task as input.
-
-For example, with `scrape_ycharts_keystats` and `params: {"ticker": "AAPL"}`:
-1. Open `https://ycharts.com/companies/AAPL/key_stats` in OpenClaw browser
-2. Wait for page load
-3. Capture snapshot
-4. Extract metrics using parse helpers
-5. POST data to ingestion API
-
-### Step 4: Update Task Status
-
-**On success:**
+### 1. Claim Task
 ```bash
-curl -s -X PUT https://investorcenter.ai/api/v1/tasks/<task-id> \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "completed"}'
+POST /api/v1/tasks/next
+Authorization: Bearer <token>
 ```
 
-**On failure:**
+**Success:** Returns task object with `id`, `type`, `params.ticker`  
+**Empty queue:** 204 No Content → exit gracefully
+
+### 2. Execute Task
+
+**For `ycharts_key_stats` tasks:**
+1. Open browser: `https://ycharts.com/companies/{TICKER}/key_stats`
+2. Wait 3 seconds for page load
+3. Capture snapshot (maxChars: 100000)
+4. Extract all 84 metrics from snapshot
+5. Build ingestion payload
+6. POST to `/api/v1/ingest/ycharts/key_stats/{TICKER}`
+
+### 3. Mark Complete/Failed
+
+**Success:**
 ```bash
-curl -s -X PUT https://investorcenter.ai/api/v1/tasks/<task-id> \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"status": "failed"}'
+PUT /api/v1/tasks/{task_id}
+{"status": "completed"}
 ```
 
-### Step 5: Loop
+**Failure:**
+```bash
+PUT /api/v1/tasks/{task_id}
+{"status": "failed", "error": "<error message>"}
+```
 
-Go back to Step 1 and claim the next task.
+## Files
+
+- `SKILL.md` - This file
+- `run_task.py` - Main execution script (single-task mode)
+- `parse_helpers.py` - Data parsing utilities (from scrape-ycharts-keystats)
 
 ## Error Handling
 
-- **401 Unauthorized** → Re-authenticate (token expired), then retry
-- **Skill file not found** → Mark task as `failed`, continue to next task
-- **Skill execution fails** → Mark task as `failed`, continue to next task
-- **Network error** → Wait 10 seconds, retry up to 3 times, then mark as `failed`
+**Browser errors:**
+- Tab not found → Reopen browser
+- Page load timeout → Retry once, then fail task
 
-## Filtering by Task Type
+**Ingestion errors:**
+- 401/403 → Token expired, re-authenticate
+- 400 → Schema validation error, log and fail task
+- 500 → Server error, fail task (will retry on next cron run)
 
-To only grab tasks of a specific type:
+**Task queue errors:**
+- 204 No Content → Normal exit (queue empty)
+- Network errors → Log and exit (cron will retry)
 
+## Configuration
+
+**Environment Variables:**
 ```bash
-curl -s -X POST https://investorcenter.ai/api/v1/tasks/next \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"task_type": "scrape_ycharts_keystats"}'
+WORKER_EMAIL=nikola@investorcenter.ai
+WORKER_PASSWORD=<from TOOLS.md>
+API_BASE_URL=https://investorcenter.ai/api/v1
+BROWSER_PROFILE=openclaw
 ```
 
-## Summary
+**Defaults (if not set):**
+- Uses credentials from TOOLS.md
+- Browser: `openclaw` profile
+- API: `https://investorcenter.ai/api/v1`
 
-```
-authenticate → claim next task → load skill → execute → update status → repeat
+## Monitoring
+
+**Success indicators:**
+```bash
+✅ TICKER: s3://path/to/file.json
+Task <id> completed
 ```
 
-The bot is stateless. It doesn't need to know what tasks exist ahead of time — it just keeps pulling the next one until the queue is empty.
+**Failure indicators:**
+```bash
+❌ TICKER: <error message>
+Task <id> failed: <reason>
+```
+
+**Check logs:**
+```bash
+tail -f ~/.openclaw/workspace/logs/task-runner.log
+```
+
+**Check queue status:**
+```bash
+curl -H "Authorization: Bearer <token>" \
+  https://investorcenter.ai/api/v1/tasks?status=pending
+```
+
+## Integration with scrape-ycharts-keystats
+
+This skill **depends on** the `scrape-ycharts-keystats` skill for:
+- `parse_helpers.py` - Metric parsing functions
+- Field mapping knowledge
+- YCharts-specific date/number formats
+
+**Import parse helpers:**
+```python
+import sys
+sys.path.append('~/.openclaw/workspace/skills/scrape-ycharts-keystats')
+from parse_helpers import parse_dollar_amount, parse_percentage, parse_float
+```
+
+## Task Types
+
+Currently supports:
+- `ycharts_key_stats` - Scrape YCharts key stats page for a ticker
+
+**Future task types:**
+- `ycharts_financials` - Income statement, balance sheet, cash flow
+- `sec_filings` - 10-K, 10-Q filings
+- `earnings_transcripts` - Quarterly earnings calls
+
+## Best Practices
+
+✅ **DO:**
+- Exit after each task (let cron handle next run)
+- Log all actions (timestamps, ticker, status)
+- Mark tasks as failed if anything goes wrong
+- Use fresh auth token for each run
+
+❌ **DON'T:**
+- Run in a loop (defeats the purpose)
+- Retry failed tasks immediately (let cron handle it)
+- Keep browser tabs open between runs
+- Assume token is still valid
+
+## Troubleshooting
+
+**"No tasks in queue"**
+- Normal - just means queue is empty
+- Check if all tasks completed or failed
+
+**"Browser tab not found"**
+- Previous run didn't close browser properly
+- Script will reopen - should auto-recover
+
+**"401 Unauthorized"**
+- Token expired (tokens last ~1 hour)
+- Script auto-refreshes on each run
+
+**"Task stuck in 'in_progress'"**
+- Previous run crashed without marking complete/failed
+- Manually reset: `PUT /api/v1/tasks/{id}` with `status=pending`
+
+## Notes
+
+- Created: 2026-02-23
+- Replaces: Long-running loop-based task runner
+- Pattern: Single-execution, cron-managed
