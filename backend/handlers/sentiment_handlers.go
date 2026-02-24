@@ -285,7 +285,7 @@ func GetTickerPosts(c *gin.Context) {
 // parseTopSubreddits parses the subreddit_distribution JSONB field into
 // a sorted list of SubredditCount, returning the top N entries.
 func parseTopSubreddits(data json.RawMessage, topN int) []models.SubredditCount {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return []models.SubredditCount{}
 	}
 
