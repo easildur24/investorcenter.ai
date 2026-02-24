@@ -1,0 +1,288 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/analyst_estimates.json",
+  "title": "YCharts Analyst Estimates",
+  "description": "Analyst estimates and consensus data from YCharts estimates page. URL: https://ycharts.com/companies/{TICKER}/estimates",
+  "type": "object",
+  "required": ["ticker", "as_of_date", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Stock ticker symbol (e.g. AAPL)"
+    },
+    "as_of_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date when estimates were captured (YYYY-MM-DD)"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "period_type": {
+      "type": "string",
+      "enum": ["annual", "quarterly"],
+      "description": "Period granularity for estimates"
+    },
+    "current_period": {
+      "type": ["object", "null"],
+      "description": "Current period estimates (e.g. 2026 for annual)",
+      "properties": {
+        "period": {
+          "type": "string",
+          "description": "Period identifier (e.g. 2026, 2026-03)"
+        },
+        "eps_actual": {
+          "type": ["number", "null"],
+          "description": "Actual EPS (if reported)"
+        },
+        "eps_estimated": {
+          "type": ["number", "null"],
+          "description": "Estimated EPS"
+        },
+        "eps_surprise_pct": {
+          "type": ["number", "null"],
+          "description": "Surprise percentage (decimal, e.g. 0.0093 for 0.93%)"
+        },
+        "eps_gaap_actual": {
+          "type": ["number", "null"],
+          "description": "Actual GAAP EPS"
+        },
+        "eps_gaap_estimated": {
+          "type": ["number", "null"],
+          "description": "Estimated GAAP EPS"
+        },
+        "eps_gaap_surprise_pct": {
+          "type": ["number", "null"],
+          "description": "GAAP surprise percentage"
+        },
+        "revenue_actual": {
+          "type": ["number", "null"],
+          "description": "Actual revenue in dollars"
+        },
+        "revenue_estimated": {
+          "type": ["number", "null"],
+          "description": "Estimated revenue"
+        },
+        "revenue_surprise_pct": {
+          "type": ["number", "null"],
+          "description": "Revenue surprise percentage"
+        },
+        "ebitda_actual": {
+          "type": ["number", "null"],
+          "description": "Actual EBITDA"
+        },
+        "ebitda_estimated": {
+          "type": ["number", "null"],
+          "description": "Estimated EBITDA"
+        },
+        "ebitda_surprise_pct": {
+          "type": ["number", "null"],
+          "description": "EBITDA surprise percentage"
+        },
+        "ebitda_margin_actual": {
+          "type": ["number", "null"],
+          "description": "Actual EBITDA margin (decimal)"
+        },
+        "ebitda_margin_estimated": {
+          "type": ["number", "null"],
+          "description": "Estimated EBITDA margin"
+        },
+        "ebitda_margin_surprise_pct": {
+          "type": ["number", "null"],
+          "description": "EBITDA margin surprise percentage"
+        },
+        "estimate_30d_change_pct": {
+          "type": ["number", "null"],
+          "description": "30-day change in estimates (decimal)"
+        },
+        "yoy_growth_pct": {
+          "type": ["number", "null"],
+          "description": "Year-over-year growth (decimal)"
+        }
+      }
+    },
+    "future_periods": {
+      "type": ["array", "null"],
+      "description": "Future period estimates (e.g. 2027, 2028)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "period": {
+            "type": "string",
+            "description": "Period identifier"
+          },
+          "eps_mean": {
+            "type": ["number", "null"],
+            "description": "Mean EPS estimate"
+          },
+          "eps_std_dev": {
+            "type": ["number", "null"],
+            "description": "Standard deviation of EPS estimates"
+          },
+          "eps_num_analysts": {
+            "type": ["integer", "null"],
+            "description": "Number of analysts covering EPS"
+          },
+          "eps_gaap_mean": {
+            "type": ["number", "null"],
+            "description": "Mean GAAP EPS estimate"
+          },
+          "eps_gaap_std_dev": {
+            "type": ["number", "null"],
+            "description": "Standard deviation of GAAP EPS estimates"
+          },
+          "eps_gaap_num_analysts": {
+            "type": ["integer", "null"],
+            "description": "Number of analysts covering GAAP EPS"
+          },
+          "revenue_mean": {
+            "type": ["number", "null"],
+            "description": "Mean revenue estimate"
+          },
+          "revenue_std_dev": {
+            "type": ["number", "null"],
+            "description": "Standard deviation of revenue estimates"
+          },
+          "revenue_num_analysts": {
+            "type": ["integer", "null"],
+            "description": "Number of analysts covering revenue"
+          },
+          "ebitda_mean": {
+            "type": ["number", "null"],
+            "description": "Mean EBITDA estimate"
+          },
+          "ebitda_std_dev": {
+            "type": ["number", "null"],
+            "description": "Standard deviation of EBITDA estimates"
+          },
+          "ebitda_num_analysts": {
+            "type": ["integer", "null"],
+            "description": "Number of analysts covering EBITDA"
+          },
+          "ebitda_margin_mean": {
+            "type": ["number", "null"],
+            "description": "Mean EBITDA margin estimate (decimal)"
+          }
+        }
+      }
+    },
+    "price_targets": {
+      "type": ["object", "null"],
+      "description": "Analyst price target data",
+      "properties": {
+        "current_price": {
+          "type": ["number", "null"],
+          "description": "Current stock price"
+        },
+        "target_mean": {
+          "type": ["number", "null"],
+          "description": "Mean price target"
+        },
+        "target_low": {
+          "type": ["number", "null"],
+          "description": "Lowest price target"
+        },
+        "target_high": {
+          "type": ["number", "null"],
+          "description": "Highest price target"
+        },
+        "target_std_dev": {
+          "type": ["number", "null"],
+          "description": "Standard deviation of price targets"
+        },
+        "target_upside_pct": {
+          "type": ["number", "null"],
+          "description": "Upside to mean target (decimal)"
+        },
+        "num_estimates": {
+          "type": ["integer", "null"],
+          "description": "Number of price target estimates"
+        }
+      }
+    },
+    "recommendations": {
+      "type": ["object", "null"],
+      "description": "Analyst buy/sell recommendations",
+      "properties": {
+        "buy": {
+          "type": ["integer", "null"],
+          "description": "Number of buy ratings"
+        },
+        "outperform": {
+          "type": ["integer", "null"],
+          "description": "Number of outperform ratings"
+        },
+        "hold": {
+          "type": ["integer", "null"],
+          "description": "Number of hold ratings"
+        },
+        "underperform": {
+          "type": ["integer", "null"],
+          "description": "Number of underperform ratings"
+        },
+        "sell": {
+          "type": ["integer", "null"],
+          "description": "Number of sell ratings"
+        },
+        "consensus_score": {
+          "type": ["number", "null"],
+          "description": "Consensus recommendation score (1=buy, 5=sell)"
+        },
+        "consensus_rating": {
+          "type": ["string", "null"],
+          "description": "Text rating (e.g. Outperform, Buy, Hold)"
+        },
+        "total_analysts": {
+          "type": ["integer", "null"],
+          "description": "Total number of analysts with recommendations"
+        }
+      }
+    },
+    "valuation_multiples": {
+      "type": ["object", "null"],
+      "description": "Current valuation multiples from estimates page",
+      "properties": {
+        "pe_ratio": {
+          "type": ["number", "null"],
+          "description": "Current P/E ratio"
+        },
+        "pe_ratio_forward": {
+          "type": ["number", "null"],
+          "description": "Forward P/E ratio"
+        },
+        "pe_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/E ratio"
+        },
+        "ps_ratio": {
+          "type": ["number", "null"],
+          "description": "Current P/S ratio"
+        },
+        "ps_ratio_forward": {
+          "type": ["number", "null"],
+          "description": "Forward P/S ratio"
+        },
+        "ps_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/S ratio"
+        },
+        "peg_ratio": {
+          "type": ["number", "null"],
+          "description": "PEG ratio"
+        }
+      }
+    },
+    "next_announcement": {
+      "type": ["string", "null"],
+      "description": "Next earnings announcement date (MM/DD/YYYY)"
+    },
+    "last_announcement": {
+      "type": ["string", "null"],
+      "description": "Last earnings announcement date (MM/DD/YYYY)"
+    }
+  }
+}

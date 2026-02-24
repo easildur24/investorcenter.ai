@@ -1,0 +1,304 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/valuation.json",
+  "title": "YCharts Valuation Ratios",
+  "description": "Valuation ratios and enterprise metrics from YCharts valuation page. URL: https://ycharts.com/companies/{TICKER}/valuation",
+  "type": "object",
+  "required": ["ticker", "as_of_date", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Stock ticker symbol (e.g. AAPL)"
+    },
+    "as_of_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date when ratios were captured (YYYY-MM-DD)"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "price_ratios": {
+      "type": ["object", "null"],
+      "description": "Price-based valuation ratios",
+      "properties": {
+        "pe_ratio_ttm": {
+          "type": ["number", "null"],
+          "description": "Trailing twelve month P/E ratio"
+        },
+        "pe_ratio_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average P/E ratio"
+        },
+        "pe_ratio_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median P/E ratio"
+        },
+        "pe_ratio_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median P/E ratio"
+        },
+        "pe_ratio_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median P/E ratio"
+        },
+        "pe_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/E ratio"
+        },
+        "ps_ratio_ttm": {
+          "type": ["number", "null"],
+          "description": "Trailing twelve month P/S ratio"
+        },
+        "ps_ratio_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average P/S ratio"
+        },
+        "ps_ratio_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median P/S ratio"
+        },
+        "ps_ratio_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median P/S ratio"
+        },
+        "ps_ratio_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median P/S ratio"
+        },
+        "ps_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward P/S ratio"
+        },
+        "price_to_book_ttm": {
+          "type": ["number", "null"],
+          "description": "Price to book value ratio"
+        },
+        "price_to_book_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average price to book"
+        },
+        "price_to_book_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median price to book"
+        },
+        "price_to_book_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median price to book"
+        },
+        "price_to_book_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median price to book"
+        },
+        "price_to_fcf_ttm": {
+          "type": ["number", "null"],
+          "description": "Price to free cash flow ratio"
+        },
+        "price_to_fcf_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average price to FCF"
+        },
+        "price_to_fcf_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median price to FCF"
+        },
+        "price_to_fcf_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median price to FCF"
+        },
+        "price_to_fcf_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median price to FCF"
+        },
+        "peg_ratio_ttm": {
+          "type": ["number", "null"],
+          "description": "PEG ratio (P/E to growth)"
+        },
+        "peg_ratio_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average PEG ratio"
+        },
+        "peg_ratio_forward_1y": {
+          "type": ["number", "null"],
+          "description": "1-year forward PEG ratio"
+        }
+      }
+    },
+    "enterprise_ratios": {
+      "type": ["object", "null"],
+      "description": "Enterprise value-based ratios",
+      "properties": {
+        "ev_to_ebitda_ttm": {
+          "type": ["number", "null"],
+          "description": "EV to EBITDA ratio"
+        },
+        "ev_to_ebitda_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average EV/EBITDA"
+        },
+        "ev_to_ebitda_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median EV/EBITDA"
+        },
+        "ev_to_ebitda_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median EV/EBITDA"
+        },
+        "ev_to_ebitda_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median EV/EBITDA"
+        },
+        "ev_to_ebit_ttm": {
+          "type": ["number", "null"],
+          "description": "EV to EBIT ratio"
+        },
+        "ev_to_ebit_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average EV/EBIT"
+        },
+        "ev_to_ebit_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median EV/EBIT"
+        },
+        "ev_to_ebit_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median EV/EBIT"
+        },
+        "ev_to_ebit_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median EV/EBIT"
+        },
+        "ev_to_revenue_ttm": {
+          "type": ["number", "null"],
+          "description": "EV to revenue ratio"
+        },
+        "ev_to_revenue_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average EV/Revenue"
+        },
+        "ev_to_revenue_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median EV/Revenue"
+        },
+        "ev_to_revenue_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median EV/Revenue"
+        },
+        "ev_to_revenue_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median EV/Revenue"
+        },
+        "ev_to_fcf_ttm": {
+          "type": ["number", "null"],
+          "description": "EV to free cash flow ratio"
+        },
+        "ev_to_fcf_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average EV/FCF"
+        },
+        "ev_to_fcf_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median EV/FCF"
+        },
+        "ev_to_fcf_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median EV/FCF"
+        },
+        "ev_to_fcf_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median EV/FCF"
+        },
+        "ev_to_assets_ttm": {
+          "type": ["number", "null"],
+          "description": "EV to total assets ratio"
+        },
+        "ev_to_assets_industry_avg": {
+          "type": ["number", "null"],
+          "description": "Industry average EV/Assets"
+        },
+        "ev_to_assets_3y_median": {
+          "type": ["number", "null"],
+          "description": "3-year median EV/Assets"
+        },
+        "ev_to_assets_5y_median": {
+          "type": ["number", "null"],
+          "description": "5-year median EV/Assets"
+        },
+        "ev_to_assets_10y_median": {
+          "type": ["number", "null"],
+          "description": "10-year median EV/Assets"
+        }
+      }
+    },
+    "historical_price_ratios": {
+      "type": ["array", "null"],
+      "description": "Annual historical price ratios (10+ years)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Year (e.g. 2025)"
+          },
+          "pe_ratio": {
+            "type": ["number", "null"],
+            "description": "P/E ratio for the year"
+          },
+          "ps_ratio": {
+            "type": ["number", "null"],
+            "description": "P/S ratio for the year"
+          },
+          "price_to_book": {
+            "type": ["number", "null"],
+            "description": "Price to book for the year"
+          },
+          "price_to_fcf": {
+            "type": ["number", "null"],
+            "description": "Price to FCF for the year"
+          },
+          "peg_ratio": {
+            "type": ["number", "null"],
+            "description": "PEG ratio for the year"
+          }
+        }
+      }
+    },
+    "historical_enterprise_ratios": {
+      "type": ["array", "null"],
+      "description": "Annual historical enterprise ratios (10+ years)",
+      "items": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Year (e.g. 2025)"
+          },
+          "ev_to_ebitda": {
+            "type": ["number", "null"],
+            "description": "EV/EBITDA for the year"
+          },
+          "ev_to_ebit": {
+            "type": ["number", "null"],
+            "description": "EV/EBIT for the year"
+          },
+          "ev_to_revenue": {
+            "type": ["number", "null"],
+            "description": "EV/Revenue for the year"
+          },
+          "ev_to_fcf": {
+            "type": ["number", "null"],
+            "description": "EV/FCF for the year"
+          },
+          "ev_to_assets": {
+            "type": ["number", "null"],
+            "description": "EV/Assets for the year"
+          }
+        }
+      }
+    }
+  }
+}

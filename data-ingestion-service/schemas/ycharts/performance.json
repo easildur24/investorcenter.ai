@@ -1,0 +1,287 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/ycharts/performance.json",
+  "title": "YCharts Performance Metrics",
+  "description": "Stock performance and returns data from YCharts performance page. URL: https://ycharts.com/companies/{TICKER}/performance/price",
+  "type": "object",
+  "required": ["ticker", "as_of_date", "source_url"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Stock ticker symbol (e.g. AAPL)"
+    },
+    "as_of_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date when performance was captured (YYYY-MM-DD)"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "YCharts URL that was scraped"
+    },
+    "periodic_returns": {
+      "type": ["object", "null"],
+      "description": "Total returns across various time periods (decimal format, e.g. 0.0741 for 7.41%)",
+      "properties": {
+        "return_1m": {
+          "type": ["number", "null"],
+          "description": "1-month total return"
+        },
+        "return_3m": {
+          "type": ["number", "null"],
+          "description": "3-month total return"
+        },
+        "return_6m": {
+          "type": ["number", "null"],
+          "description": "6-month total return"
+        },
+        "return_1y": {
+          "type": ["number", "null"],
+          "description": "1-year total return"
+        },
+        "return_3y": {
+          "type": ["number", "null"],
+          "description": "3-year annualized total return"
+        },
+        "return_5y": {
+          "type": ["number", "null"],
+          "description": "5-year annualized total return"
+        },
+        "return_10y": {
+          "type": ["number", "null"],
+          "description": "10-year annualized total return"
+        },
+        "return_15y": {
+          "type": ["number", "null"],
+          "description": "15-year annualized total return"
+        },
+        "return_20y": {
+          "type": ["number", "null"],
+          "description": "20-year annualized total return"
+        },
+        "return_all_time": {
+          "type": ["number", "null"],
+          "description": "All-time annualized total return"
+        }
+      }
+    },
+    "annual_returns": {
+      "type": ["array", "null"],
+      "description": "Year-by-year annual total returns",
+      "items": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Year (e.g. 2025)"
+          },
+          "total_return": {
+            "type": ["number", "null"],
+            "description": "Total return for the year (decimal)"
+          }
+        }
+      }
+    },
+    "benchmark_comparison": {
+      "type": ["object", "null"],
+      "description": "Performance vs benchmark (S&P 500)",
+      "properties": {
+        "benchmark_name": {
+          "type": "string",
+          "description": "Benchmark name (e.g. S&P 500 Total Return)"
+        },
+        "benchmark_return_1m": {
+          "type": ["number", "null"],
+          "description": "Benchmark 1-month return"
+        },
+        "benchmark_return_3m": {
+          "type": ["number", "null"],
+          "description": "Benchmark 3-month return"
+        },
+        "benchmark_return_6m": {
+          "type": ["number", "null"],
+          "description": "Benchmark 6-month return"
+        },
+        "benchmark_return_1y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 1-year return"
+        },
+        "benchmark_return_3y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 3-year return"
+        },
+        "benchmark_return_5y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 5-year return"
+        },
+        "benchmark_return_10y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 10-year return"
+        },
+        "benchmark_return_15y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 15-year return"
+        },
+        "benchmark_return_20y": {
+          "type": ["number", "null"],
+          "description": "Benchmark 20-year return"
+        },
+        "benchmark_return_all_time": {
+          "type": ["number", "null"],
+          "description": "Benchmark all-time return"
+        }
+      }
+    },
+    "benchmark_annual_comparison": {
+      "type": ["array", "null"],
+      "description": "Year-by-year benchmark comparison",
+      "items": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "integer",
+            "description": "Year"
+          },
+          "stock_return": {
+            "type": ["number", "null"],
+            "description": "Stock return for the year"
+          },
+          "benchmark_return": {
+            "type": ["number", "null"],
+            "description": "Benchmark return for the year"
+          },
+          "excess_return": {
+            "type": ["number", "null"],
+            "description": "Stock return minus benchmark return"
+          }
+        }
+      }
+    },
+    "risk_metrics": {
+      "type": ["object", "null"],
+      "description": "Risk and volatility metrics",
+      "properties": {
+        "beta_3y": {
+          "type": ["number", "null"],
+          "description": "3-year beta vs benchmark"
+        },
+        "beta_5y": {
+          "type": ["number", "null"],
+          "description": "5-year beta vs benchmark"
+        },
+        "alpha_3y": {
+          "type": ["number", "null"],
+          "description": "3-year alpha (excess return over benchmark)"
+        },
+        "sharpe_ratio_3y": {
+          "type": ["number", "null"],
+          "description": "3-year Sharpe ratio"
+        },
+        "sortino_ratio_3y": {
+          "type": ["number", "null"],
+          "description": "3-year Sortino ratio"
+        },
+        "max_drawdown_3y": {
+          "type": ["number", "null"],
+          "description": "3-year maximum drawdown (decimal)"
+        },
+        "max_drawdown_5y": {
+          "type": ["number", "null"],
+          "description": "5-year maximum drawdown"
+        },
+        "std_dev_monthly_3y": {
+          "type": ["number", "null"],
+          "description": "Annualized standard deviation of monthly returns (3Y)"
+        },
+        "var_5pct_monthly_3y": {
+          "type": ["number", "null"],
+          "description": "Monthly Value at Risk 5% (3Y lookback)"
+        }
+      }
+    },
+    "peer_comparison": {
+      "type": ["array", "null"],
+      "description": "Performance comparison to peer companies",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Peer ticker"
+          },
+          "name": {
+            "type": "string",
+            "description": "Company name"
+          },
+          "return_1m": {
+            "type": ["number", "null"],
+            "description": "1-month return"
+          },
+          "return_3m": {
+            "type": ["number", "null"],
+            "description": "3-month return"
+          },
+          "return_6m": {
+            "type": ["number", "null"],
+            "description": "6-month return"
+          },
+          "return_1y": {
+            "type": ["number", "null"],
+            "description": "1-year return"
+          },
+          "return_3y": {
+            "type": ["number", "null"],
+            "description": "3-year return"
+          },
+          "return_5y": {
+            "type": ["number", "null"],
+            "description": "5-year return"
+          },
+          "return_10y": {
+            "type": ["number", "null"],
+            "description": "10-year return"
+          },
+          "return_15y": {
+            "type": ["number", "null"],
+            "description": "15-year return"
+          },
+          "return_20y": {
+            "type": ["number", "null"],
+            "description": "20-year return"
+          },
+          "return_all_time": {
+            "type": ["number", "null"],
+            "description": "All-time return"
+          }
+        }
+      }
+    },
+    "peer_annual_comparison": {
+      "type": ["array", "null"],
+      "description": "Annual returns vs peers by year",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ticker": {
+            "type": "string",
+            "description": "Ticker (stock or benchmark)"
+          },
+          "name": {
+            "type": "string",
+            "description": "Company/index name"
+          },
+          "year_returns": {
+            "type": "object",
+            "description": "Returns by year (key=year, value=return decimal)",
+            "additionalProperties": {
+              "type": ["number", "null"]
+            }
+          }
+        }
+      }
+    }
+  }
+}
