@@ -30,6 +30,12 @@ SELECT create_hypertable(
 CREATE INDEX IF NOT EXISTS idx_sentiment_history_ticker
     ON ticker_sentiment_history (ticker, time DESC);
 
+-- Unique constraint: one row per (ticker, time). Prevents duplicate inserts
+-- when the pipeline retries or runs twice in the same cycle. The Go layer
+-- uses ON CONFLICT (ticker, time) DO NOTHING to tolerate duplicates.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sentiment_history_ticker_time_unique
+    ON ticker_sentiment_history (ticker, time);
+
 -- Retention policy: automatically drop data older than 12 months
 -- TimescaleDB handles this via background worker
 SELECT add_retention_policy(
@@ -38,8 +44,11 @@ SELECT add_retention_policy(
     if_not_exists => TRUE
 );
 
--- Compression policy: compress chunks older than 7 days for storage efficiency
--- Compressed data is still queryable but uses significantly less disk space
+-- Compression policy: compress chunks older than 7 days for storage efficiency.
+-- Compressed data is still queryable but uses significantly less disk space.
+-- NOTE: ALTER TABLE SET is idempotent — re-running it with the same settings
+-- is a no-op in TimescaleDB. The add_compression_policy below uses
+-- if_not_exists to avoid errors on re-run.
 ALTER TABLE ticker_sentiment_history SET (
     timescaledb.compress,
     timescaledb.compress_segmentby = 'ticker',

@@ -2,7 +2,6 @@ package database
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"investorcenter-api/models"
 	"time"
@@ -22,6 +21,9 @@ func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot
 		limit = 100
 	}
 
+	// The snapshot_time guard (> NOW() - INTERVAL '1 hour') limits the CTE scan
+	// to recent data, avoiding a full-table DISTINCT ON at scale. Snapshots run
+	// every ~15 min so 1 hour covers several cycles with headroom.
 	query := `
 		WITH latest AS (
 			SELECT DISTINCT ON (ticker)
@@ -35,6 +37,7 @@ func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot
 				rank, previous_rank, rank_change, created_at
 			FROM ticker_sentiment_snapshots
 			WHERE time_range = $1
+			  AND snapshot_time > NOW() - INTERVAL '1 hour'
 			ORDER BY ticker, snapshot_time DESC
 		)
 		SELECT * FROM latest
@@ -42,13 +45,13 @@ func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot
 		LIMIT $2
 	`
 
-	rows, err := DB.Query(query, timeRange, limit)
+	var snapshots []models.SentimentSnapshot
+	err := DB.Select(&snapshots, query, timeRange, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query latest snapshots: %w", err)
 	}
-	defer rows.Close()
 
-	return scanSnapshots(rows)
+	return snapshots, nil
 }
 
 // GetTickerSnapshot returns the latest snapshot for a specific ticker and time range.
@@ -74,20 +77,7 @@ func GetTickerSnapshot(ticker string, timeRange string) (*models.SentimentSnapsh
 	`
 
 	var s models.SentimentSnapshot
-	var mentionVelocity, sentimentVelocity sql.NullFloat64
-	var subredditDist []byte
-	var rank, prevRank, rankChg sql.NullInt32
-
-	err := DB.QueryRow(query, ticker, timeRange).Scan(
-		&s.ID, &s.Ticker, &s.SnapshotTime, &s.TimeRange,
-		&s.MentionCount, &s.TotalUpvotes, &s.TotalComments, &s.UniquePosts,
-		&s.BullishCount, &s.NeutralCount, &s.BearishCount,
-		&s.BullishPct, &s.NeutralPct, &s.BearishPct,
-		&s.SentimentScore, &s.SentimentLabel,
-		&mentionVelocity, &sentimentVelocity,
-		&s.CompositeScore, &subredditDist,
-		&rank, &prevRank, &rankChg, &s.CreatedAt,
-	)
+	err := DB.Get(&s, query, ticker, timeRange)
 	if err == sql.ErrNoRows {
 		return nil, nil
 	}
@@ -95,7 +85,6 @@ func GetTickerSnapshot(ticker string, timeRange string) (*models.SentimentSnapsh
 		return nil, fmt.Errorf("failed to query ticker snapshot: %w", err)
 	}
 
-	applyNullableSnapshotFields(&s, mentionVelocity, sentimentVelocity, subredditDist, rank, prevRank, rankChg)
 	return &s, nil
 }
 
@@ -153,11 +142,13 @@ func UpsertSnapshot(s *models.SentimentSnapshot) error {
 }
 
 // InsertSentimentHistory inserts a time-series data point into the hypertable.
-// Used by the pipeline after computing a snapshot.
+// Uses ON CONFLICT DO NOTHING to tolerate pipeline retries or duplicate runs
+// within the same snapshot cycle.
 func InsertSentimentHistory(point *models.SentimentTimeSeriesPoint) error {
 	query := `
 		INSERT INTO ticker_sentiment_history (time, ticker, sentiment_score, bullish_pct, mention_count, composite_score)
 		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (ticker, time) DO NOTHING
 	`
 
 	_, err := DB.Exec(query,
@@ -185,28 +176,14 @@ func GetSentimentTimeSeries(ticker string, days int) ([]models.SentimentTimeSeri
 		SELECT time, ticker, sentiment_score, bullish_pct, mention_count, composite_score
 		FROM ticker_sentiment_history
 		WHERE ticker = $1
-		  AND time > NOW() - $2::INTEGER * INTERVAL '1 day'
+		  AND time > NOW() - make_interval(days => $2)
 		ORDER BY time ASC
 	`
 
-	rows, err := DB.Query(query, ticker, days)
+	var points []models.SentimentTimeSeriesPoint
+	err := DB.Select(&points, query, ticker, days)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query sentiment time series: %w", err)
-	}
-	defer rows.Close()
-
-	var points []models.SentimentTimeSeriesPoint
-	for rows.Next() {
-		var p models.SentimentTimeSeriesPoint
-		err := rows.Scan(&p.Time, &p.Ticker, &p.SentimentScore, &p.BullishPct, &p.MentionCount, &p.CompositeScore)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan sentiment history point: %w", err)
-		}
-		points = append(points, p)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating sentiment history rows: %w", err)
 	}
 
 	return points, nil
@@ -220,7 +197,7 @@ func PruneOldSnapshots(retentionDays int) (int64, error) {
 	}
 
 	result, err := DB.Exec(
-		"DELETE FROM ticker_sentiment_snapshots WHERE snapshot_time < NOW() - $1 * INTERVAL '1 day'",
+		"DELETE FROM ticker_sentiment_snapshots WHERE snapshot_time < NOW() - make_interval(days => $1)",
 		retentionDays,
 	)
 	if err != nil {
@@ -230,81 +207,11 @@ func PruneOldSnapshots(retentionDays int) (int64, error) {
 	return result.RowsAffected()
 }
 
-// --- internal helpers ---
-
-// scanSnapshots scans multiple snapshot rows from a query result.
-func scanSnapshots(rows *sql.Rows) ([]models.SentimentSnapshot, error) {
-	var snapshots []models.SentimentSnapshot
-	for rows.Next() {
-		var s models.SentimentSnapshot
-		var mentionVelocity, sentimentVelocity sql.NullFloat64
-		var subredditDist []byte
-		var rank, prevRank, rankChg sql.NullInt32
-
-		err := rows.Scan(
-			&s.ID, &s.Ticker, &s.SnapshotTime, &s.TimeRange,
-			&s.MentionCount, &s.TotalUpvotes, &s.TotalComments, &s.UniquePosts,
-			&s.BullishCount, &s.NeutralCount, &s.BearishCount,
-			&s.BullishPct, &s.NeutralPct, &s.BearishPct,
-			&s.SentimentScore, &s.SentimentLabel,
-			&mentionVelocity, &sentimentVelocity,
-			&s.CompositeScore, &subredditDist,
-			&rank, &prevRank, &rankChg, &s.CreatedAt,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("failed to scan snapshot row: %w", err)
-		}
-
-		applyNullableSnapshotFields(&s, mentionVelocity, sentimentVelocity, subredditDist, rank, prevRank, rankChg)
-		snapshots = append(snapshots, s)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating snapshot rows: %w", err)
-	}
-
-	return snapshots, nil
-}
-
-// applyNullableSnapshotFields converts sql.Null* types to Go pointer fields.
-func applyNullableSnapshotFields(
-	s *models.SentimentSnapshot,
-	mentionVelocity, sentimentVelocity sql.NullFloat64,
-	subredditDist []byte,
-	rank, prevRank, rankChg sql.NullInt32,
-) {
-	if mentionVelocity.Valid {
-		v := mentionVelocity.Float64
-		s.MentionVelocity1h = &v
-	}
-	if sentimentVelocity.Valid {
-		v := sentimentVelocity.Float64
-		s.SentimentVelocity24h = &v
-	}
-	if len(subredditDist) > 0 {
-		s.SubredditDistribution = json.RawMessage(subredditDist)
-	}
-	if rank.Valid {
-		v := int(rank.Int32)
-		s.Rank = &v
-	}
-	if prevRank.Valid {
-		v := int(prevRank.Int32)
-		s.PreviousRank = &v
-	}
-	if rankChg.Valid {
-		v := int(rankChg.Int32)
-		s.RankChange = &v
-	}
-}
-
 // GetLatestSnapshotTime returns the most recent snapshot_time for a time range.
 // Useful for pipeline health checks.
 func GetLatestSnapshotTime(timeRange string) (time.Time, error) {
-	query := `SELECT MAX(snapshot_time) FROM ticker_sentiment_snapshots WHERE time_range = $1`
-
 	var latestTime sql.NullTime
-	err := DB.QueryRow(query, timeRange).Scan(&latestTime)
+	err := DB.Get(&latestTime, `SELECT MAX(snapshot_time) FROM ticker_sentiment_snapshots WHERE time_range = $1`, timeRange)
 	if err != nil {
 		return time.Time{}, fmt.Errorf("failed to get latest snapshot time: %w", err)
 	}
