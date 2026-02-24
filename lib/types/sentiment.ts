@@ -204,15 +204,3 @@ export function formatPercentageChange(delta: number): string {
   const sign = delta >= 0 ? '+' : '';
   return `${sign}${delta.toFixed(0)}%`;
 }
-
-/**
- * Helper function to format rank change indicator
- */
-export function formatRankChange(change: number): { text: string; color: string } {
-  if (change > 0) {
-    return { text: `↑${change}`, color: 'text-green-600' };
-  } else if (change < 0) {
-    return { text: `↓${Math.abs(change)}`, color: 'text-red-600' };
-  }
-  return { text: '—', color: 'text-ic-text-muted' };
-}

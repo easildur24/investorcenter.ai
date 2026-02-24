@@ -174,6 +174,7 @@ func main() {
 		{
 			reddit.GET("/heatmap", handlers.GetRedditHeatmap)                      // Get trending tickers heatmap (days=7, top=50)
 			reddit.GET("/ticker/:symbol/history", handlers.GetTickerRedditHistory) // Get Reddit history for specific ticker (days=30)
+			reddit.GET("/health", handlers.GetRedditPipelineHealth)                // BUG-004: Pipeline freshness for DataFreshnessIndicator
 		}
 
 		// Social sentiment endpoints

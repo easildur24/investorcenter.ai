@@ -2,13 +2,19 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 	"strconv"
 
 	"investorcenter-api/database"
+	"investorcenter-api/services"
 
 	"github.com/gin-gonic/gin"
 )
+
+// polygonClientForReddit is a package-level client reused across heatmap requests,
+// avoiding per-request construction of the HTTP client and connection pool.
+var polygonClientForReddit = services.NewPolygonClient()
 
 // GetRedditHeatmap returns trending tickers based on Reddit popularity
 // Query params:
@@ -59,6 +65,9 @@ func GetRedditHeatmap(c *gin.Context) {
 		return
 	}
 
+	// BUG-003: Enrich with real-time price data from Polygon
+	enrichWithPriceData(heatmapData)
+
 	// Get latest date with data
 	latestDate, err := database.GetLatestRedditDate()
 	if err != nil && err != sql.ErrNoRows {
@@ -75,6 +84,57 @@ func GetRedditHeatmap(c *gin.Context) {
 			"latestDate": latestDate,
 		},
 	})
+}
+
+// enrichWithPriceData fetches real-time prices for all tickers and attaches them
+// to the heatmap data. Errors are logged but not propagated — missing price data
+// is better than failing the entire request.
+func enrichWithPriceData(data []database.RedditHeatmapData) {
+	if len(data) == 0 {
+		return
+	}
+
+	// Collect unique symbols (deduplicate to avoid wasting Polygon API quota)
+	seen := make(map[string]bool, len(data))
+	symbols := make([]string, 0, len(data))
+	for _, item := range data {
+		if !seen[item.TickerSymbol] {
+			seen[item.TickerSymbol] = true
+			symbols = append(symbols, item.TickerSymbol)
+		}
+	}
+
+	// Fetch prices in bulk (reuse package-level client)
+	quotes, err := polygonClientForReddit.GetMultipleQuotes(symbols)
+	if err != nil {
+		log.Printf("Warning: Failed to enrich Reddit heatmap with price data: %v\n", err)
+		return
+	}
+
+	// Attach price data to each row
+	for i := range data {
+		if quote, ok := quotes[data[i].TickerSymbol]; ok {
+			price := quote.Price
+			changePct := quote.ChangePercent
+			data[i].Price = &price
+			data[i].PriceChangePct = &changePct
+		}
+	}
+}
+
+// GetRedditPipelineHealth returns pipeline freshness data for the DataFreshnessIndicator.
+// BUG-004: Enables the frontend to show how fresh the data is and warn when stale.
+// No auth required.
+func GetRedditPipelineHealth(c *gin.Context) {
+	health, err := database.GetRedditPipelineHealth()
+	if err != nil {
+		log.Printf("Error fetching pipeline health: %v\n", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": "Failed to fetch pipeline health",
+		})
+		return
+	}
+	c.JSON(http.StatusOK, health)
 }
 
 // GetTickerRedditHistory returns Reddit popularity history for a specific ticker

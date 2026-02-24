@@ -17,6 +17,9 @@ interface RedditHeatmapData {
   trendDirection: string;
   popularityScore: number;
   dataSource: string;
+  // BUG-003: Price data from Polygon
+  price?: number;
+  priceChangePct?: number;
 }
 
 interface TrendingListProps {
@@ -63,12 +66,12 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
     }
   }, [items]);
 
-  // Calculate rank change (simplified - assumes ranks are sequential)
+  // Calculate rank change: positive = improved (moved up), negative = dropped.
+  // Lower rank number is better, so avgRank > currentRank means improvement.
+  // BUG-001 fix: always return integer to avoid floating-point display.
   const getRankChange = (index: number, avgRank: number) => {
-    // This is a simplified calculation
-    // In a real implementation, you'd compare with previous period's rank
-    const expectedRank = index + 1;
-    return expectedRank - avgRank;
+    const currentRank = index + 1;
+    return Math.round(avgRank - currentRank);
   };
 
   return (
@@ -81,6 +84,8 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
             <span>Ticker</span>
           </div>
           <div className="flex items-center gap-6">
+            <span className="w-24 text-right hidden lg:block">Price</span>
+            <span className="w-20 text-right hidden lg:block">% Change</span>
             <span className="w-20 text-right">Mentions</span>
             <span className="w-20 text-right hidden md:block">Upvotes</span>
             <span className="w-28 text-right">Score</span>
@@ -103,6 +108,8 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
             upvotes={item.totalUpvotes}
             popularityScore={item.popularityScore}
             trendDirection={item.trendDirection}
+            price={item.price}
+            priceChangePct={item.priceChangePct}
           />
         ))}
       </div>

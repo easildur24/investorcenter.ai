@@ -83,6 +83,7 @@ export const crypto = {
 export const reddit = {
   heatmap: '/reddit/heatmap',
   tickerHistory: (symbol: string) => `/reddit/ticker/${symbol}/history`,
+  health: '/reddit/health', // BUG-004: Pipeline freshness endpoint
 } as const;
 
 // ─── Sentiment ─────────────────────────────────────────────────────────────────
