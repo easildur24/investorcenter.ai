@@ -293,18 +293,22 @@ func GetRedditPipelineHealth() (*RedditPipelineHealth, error) {
 		health.LastHeatmapDate = &heatmapDate.Time
 	}
 
-	// Latest social post and 7-day count
+	// Latest social post (unscoped — we want the true last post even if >7 days old)
 	var lastPost sql.NullTime
-	err = DB.QueryRow(`
-		SELECT MAX(posted_at), COUNT(*)
-		FROM social_posts
-		WHERE posted_at > NOW() - INTERVAL '7 days'
-	`).Scan(&lastPost, &health.TotalPosts7d)
+	err = DB.QueryRow(`SELECT MAX(posted_at) FROM social_posts`).Scan(&lastPost)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to query post freshness: %w", err)
 	}
 	if lastPost.Valid {
 		health.LastPostAt = &lastPost.Time
+	}
+
+	// 7-day post count (separate query so the WHERE clause doesn't mask staleness)
+	err = DB.QueryRow(`
+		SELECT COUNT(*) FROM social_posts WHERE posted_at > NOW() - INTERVAL '7 days'
+	`).Scan(&health.TotalPosts7d)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, fmt.Errorf("failed to query 7-day post count: %w", err)
 	}
 
 	// Determine status

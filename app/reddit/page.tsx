@@ -39,6 +39,7 @@ export default function RedditTrendingPage() {
   const [data, setData] = useState<RedditHeatmapData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshCounter, setRefreshCounter] = useState(0);
 
   const fetchData = async (days: string) => {
     try {
@@ -78,6 +79,7 @@ export default function RedditTrendingPage() {
 
   const handleRefresh = () => {
     fetchData(timeRange);
+    setRefreshCounter((c) => c + 1); // Signal DataFreshnessIndicator to re-fetch health
   };
 
   return (
@@ -102,7 +104,7 @@ export default function RedditTrendingPage() {
             <TimeRangeSelector value={timeRange} onChange={setTimeRange} />
 
             {/* BUG-004: DataFreshnessIndicator replaces the old static "Last updated" text */}
-            <DataFreshnessIndicator onRefresh={handleRefresh} />
+            <DataFreshnessIndicator onRefresh={handleRefresh} refreshTrigger={refreshCounter} />
           </div>
         </div>
 

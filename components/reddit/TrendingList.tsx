@@ -66,11 +66,12 @@ export default function TrendingList({ items, timeRange }: TrendingListProps) {
     }
   }, [items]);
 
-  // Calculate rank change (simplified - assumes ranks are sequential)
-  // BUG-001 fix: always return integer to avoid floating-point display
+  // Calculate rank change: positive = improved (moved up), negative = dropped.
+  // Lower rank number is better, so avgRank > currentRank means improvement.
+  // BUG-001 fix: always return integer to avoid floating-point display.
   const getRankChange = (index: number, avgRank: number) => {
-    const expectedRank = index + 1;
-    return Math.round(expectedRank - avgRank);
+    const currentRank = index + 1;
+    return Math.round(avgRank - currentRank);
   };
 
   return (

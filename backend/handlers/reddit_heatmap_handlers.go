@@ -12,6 +12,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+// polygonClientForReddit is a package-level client reused across heatmap requests,
+// avoiding per-request construction of the HTTP client and connection pool.
+var polygonClientForReddit = services.NewPolygonClient()
+
 // GetRedditHeatmap returns trending tickers based on Reddit popularity
 // Query params:
 //   - days: number of days to aggregate (default: 7)
@@ -90,15 +94,18 @@ func enrichWithPriceData(data []database.RedditHeatmapData) {
 		return
 	}
 
-	// Collect unique symbols
-	symbols := make([]string, len(data))
-	for i, item := range data {
-		symbols[i] = item.TickerSymbol
+	// Collect unique symbols (deduplicate to avoid wasting Polygon API quota)
+	seen := make(map[string]bool, len(data))
+	symbols := make([]string, 0, len(data))
+	for _, item := range data {
+		if !seen[item.TickerSymbol] {
+			seen[item.TickerSymbol] = true
+			symbols = append(symbols, item.TickerSymbol)
+		}
 	}
 
-	// Fetch prices in bulk
-	polygonClient := services.NewPolygonClient()
-	quotes, err := polygonClient.GetMultipleQuotes(symbols)
+	// Fetch prices in bulk (reuse package-level client)
+	quotes, err := polygonClientForReddit.GetMultipleQuotes(symbols)
 	if err != nil {
 		log.Printf("Warning: Failed to enrich Reddit heatmap with price data: %v\n", err)
 		return
@@ -121,9 +128,9 @@ func enrichWithPriceData(data []database.RedditHeatmapData) {
 func GetRedditPipelineHealth(c *gin.Context) {
 	health, err := database.GetRedditPipelineHealth()
 	if err != nil {
+		log.Printf("Error fetching pipeline health: %v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to fetch pipeline health",
-			"details": err.Error(),
+			"error": "Failed to fetch pipeline health",
 		})
 		return
 	}

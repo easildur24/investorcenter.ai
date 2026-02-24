@@ -204,17 +204,3 @@ export function formatPercentageChange(delta: number): string {
   const sign = delta >= 0 ? '+' : '';
   return `${sign}${delta.toFixed(0)}%`;
 }
-
-/**
- * Helper function to format rank change indicator
- */
-export function formatRankChange(change: number): { text: string; color: string } {
-  // BUG-001 fix: Math.round to eliminate floating-point display
-  const rounded = Math.round(change);
-  if (rounded > 0) {
-    return { text: `↑${rounded}`, color: 'text-green-600' };
-  } else if (rounded < 0) {
-    return { text: `↓${Math.abs(rounded)}`, color: 'text-red-600' };
-  }
-  return { text: '—', color: 'text-ic-text-muted' };
-}
