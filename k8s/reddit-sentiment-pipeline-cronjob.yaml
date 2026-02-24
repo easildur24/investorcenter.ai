@@ -1,14 +1,14 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: reddit-sentiment-collector
+  name: reddit-sentiment-pipeline
   namespace: investorcenter
   labels:
-    app: reddit-sentiment-collector
+    app: reddit-sentiment-pipeline
     component: social-sentiment
-    source: reddit
+    version: v3
 spec:
-  # Run every hour for fresher sentiment data
+  # Run hourly (collect + process + aggregate in one pipeline)
   schedule: "0 * * * *"
 
   successfulJobsHistoryLimit: 3
@@ -18,31 +18,30 @@ spec:
   jobTemplate:
     metadata:
       labels:
-        app: reddit-sentiment-collector
+        app: reddit-sentiment-pipeline
         component: social-sentiment
-        source: reddit
+        version: v3
     spec:
       backoffLimit: 2
-      activeDeadlineSeconds: 3600  # 60 minute timeout (increased for more data)
+      activeDeadlineSeconds: 5400  # 90 minute timeout (collect + process + aggregate)
       ttlSecondsAfterFinished: 7200
 
       template:
         metadata:
           labels:
-            app: reddit-sentiment-collector
+            app: reddit-sentiment-pipeline
             component: social-sentiment
         spec:
           restartPolicy: OnFailure
 
           containers:
-          - name: reddit-collector
-            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-collector:latest
+          - name: reddit-pipeline
+            image: 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/reddit-sentiment-pipeline:latest
             imagePullPolicy: Always
 
-            # Expanded coverage: 30 subreddits, 1000 posts limit, 14 day lookback
             args:
             - "--subreddits"
-            # Core trading/investing (8 original)
+            # Core trading/investing (8)
             - "wallstreetbets"
             - "stocks"
             - "options"
@@ -86,6 +85,13 @@ spec:
             - "1"
             - "--max-age"
             - "14"
+            - "--process-all"
+            - "--batch-size"
+            - "20"
+            - "--min-upvotes"
+            - "1"
+            - "--min-comments"
+            - "1"
             - "--prune"
             - "60"
 
@@ -109,6 +115,13 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: password
+
+            # Google API key for Gemini
+            - name: GOOGLE_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: google-api-secret
+                  key: api-key
 
             - name: PYTHONUNBUFFERED
               value: "1"
