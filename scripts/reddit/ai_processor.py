@@ -1,15 +1,16 @@
-"""AI-powered ticker extraction from Reddit posts using Gemini 2.0 Flash-Lite.
+"""AI-powered ticker extraction from Reddit posts using Gemini.
 
 This processor fetches unprocessed posts from reddit_posts_raw and uses
-Google's Gemini 2.0 Flash-Lite to extract tickers, map company names, and determine sentiment.
+Google's Gemini to extract tickers, map company names, determine sentiment,
+and assess post quality for investment analysis.
 
 Cost optimizations:
-1. Batch processing (5 posts per API call)
+1. Batch processing (20 posts per API call)
 2. Engagement threshold (skip low-engagement posts)
 3. Company name cache (skip LLM for known mappings)
 
-Gemini 2.0 Flash-Lite pricing: $0.075/1M input, $0.30/1M output tokens
-Estimated cost: ~$5/month for 30,000 posts
+Gemini 2.5 Flash-Lite pricing: $0.10/1M input, $0.40/1M output tokens
+Estimated cost: ~$1.70/month for 30,000 posts
 """
 
 import json
@@ -43,6 +44,7 @@ For each post, return a JSON object with:
   - mention_type: "ticker", "company_name", or "abbreviation"
 - is_finance_related: true if the post is about investing/trading
 - spam_score: 0.0 to 1.0 (high for pump-and-dump or promotional posts)
+- quality_score: 0.0 to 1.0 (investment analysis quality of the post)
 
 Rules:
 1. Map company names to tickers (e.g., "Oracle" -> "ORCL", "Tesla" -> "TSLA")
@@ -53,10 +55,17 @@ Rules:
 6. Mark is_primary=true for the main ticker being discussed
 7. If no valid tickers, return empty tickers array
 8. Set spam_score > 0.5 for pump-and-dump or promotional posts
+9. quality_score reflects overall post quality for investment sentiment analysis.
+   High (0.7-1.0): original analysis, DD posts, earnings discussion with data,
+   specific catalysts, well-reasoned bull/bear thesis.
+   Medium (0.3-0.7): news sharing, basic price commentary, general market
+   discussion with some substance.
+   Low (0.0-0.3): memes, one-liners, reposts, vague hype, "to the moon"
+   type posts, off-topic, emotional rants without substance.
 
 Return ONLY valid JSON array, no other text:
 [
-  {{"post_id": "abc123", "tickers": [...], "is_finance_related": true, "spam_score": 0.1}},
+  {{"post_id": "abc123", "tickers": [...], "is_finance_related": true, "spam_score": 0.1, "quality_score": 0.75}},
   ...
 ]"""
 
@@ -85,15 +94,15 @@ class ProcessingResult:
 class RedditAIProcessor:
     """AI-powered processor for extracting tickers from Reddit posts."""
 
-    # Gemini 2.0 Flash-Lite - cheapest option
-    DEFAULT_MODEL = "gemini-2.0-flash-lite"
+    # Gemini 2.5 Flash-Lite - best cost/quality for structured extraction
+    DEFAULT_MODEL = "gemini-2.5-flash-lite"
 
     # Engagement thresholds
     MIN_UPVOTES = 5
     MIN_COMMENTS = 3
 
-    # Batch size for LLM calls
-    BATCH_SIZE = 5
+    # Batch size for LLM calls (20 posts * ~90 tokens avg output = ~1800 tokens)
+    BATCH_SIZE = 20
 
     def __init__(
         self,
@@ -107,6 +116,7 @@ class RedditAIProcessor:
         batch_size: int = None,
         min_upvotes: int = None,
         min_comments: int = None,
+        conn=None,
     ):
         """Initialize processor.
 
@@ -121,6 +131,7 @@ class RedditAIProcessor:
             batch_size: Posts per LLM call
             min_upvotes: Minimum upvotes to process
             min_comments: Minimum comments to process
+            conn: Optional shared psycopg2 connection (from pipeline)
         """
         # Database config
         self.db_host = db_host or os.getenv("DB_HOST", "localhost")
@@ -128,6 +139,9 @@ class RedditAIProcessor:
         self.db_user = db_user or os.getenv("DB_USER", "investorcenter")
         self.db_password = db_password or os.getenv("DB_PASSWORD", "")
         self.db_name = db_name or os.getenv("DB_NAME", "investorcenter_db")
+
+        # Shared connection (set before connect() is called)
+        self._shared_conn = conn
 
         # Google API config
         api_key = google_api_key or os.getenv("GOOGLE_API_KEY")
@@ -160,17 +174,23 @@ class RedditAIProcessor:
         }
 
     def connect(self):
-        """Establish database connection."""
+        """Establish database connection (or reuse shared connection)."""
         try:
-            self.conn = psycopg2.connect(
-                host=self.db_host,
-                port=self.db_port,
-                user=self.db_user,
-                password=self.db_password,
-                database=self.db_name,
-            )
-            self.conn.autocommit = False
-            logger.info(f"Connected to database {self.db_name}@{self.db_host}")
+            if self._shared_conn is not None:
+                self.conn = self._shared_conn
+                logger.info("Using shared database connection")
+            else:
+                self.conn = psycopg2.connect(
+                    host=self.db_host,
+                    port=self.db_port,
+                    user=self.db_user,
+                    password=self.db_password,
+                    database=self.db_name,
+                )
+                self.conn.autocommit = False
+                logger.info(
+                    f"Connected to database {self.db_name}@{self.db_host}"
+                )
 
             # Load company name cache
             self._load_company_cache()
@@ -180,8 +200,8 @@ class RedditAIProcessor:
             raise
 
     def close(self):
-        """Close database connection."""
-        if self.conn:
+        """Close database connection (skips if using shared connection)."""
+        if self.conn and self._shared_conn is None:
             self.conn.close()
             logger.info("Database connection closed")
 
@@ -368,7 +388,7 @@ class RedditAIProcessor:
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=2000,
+                    max_output_tokens=4000,
                     temperature=0.1,  # Low temperature for structured extraction
                 ),
             )
@@ -449,13 +469,15 @@ class RedditAIProcessor:
                     llm_response = %s,
                     llm_model = %s,
                     is_finance_related = %s,
-                    spam_score = %s
+                    spam_score = %s,
+                    quality_score = %s
                 WHERE id = %s
             """, (
                 json.dumps(result),
                 self.model_name,
                 result.get("is_finance_related", True),
                 result.get("spam_score", 0.0),
+                result.get("quality_score"),
                 post_id,
             ))
 
@@ -641,8 +663,8 @@ def main():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=5,
-        help="Posts per LLM call (default: 5)",
+        default=20,
+        help="Posts per LLM call (default: 20)",
     )
     parser.add_argument(
         "--min-upvotes",
@@ -658,8 +680,8 @@ def main():
     )
     parser.add_argument(
         "--model",
-        default="gemini-2.0-flash-lite",
-        help="Gemini model to use (default: gemini-2.0-flash-lite)",
+        default="gemini-2.5-flash-lite",
+        help="Gemini model to use (default: gemini-2.5-flash-lite)",
     )
     parser.add_argument(
         "-v", "--verbose",

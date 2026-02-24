@@ -1,3 +1,6 @@
+# DEPRECATED: Replaced by reddit-sentiment-pipeline-cronjob.yaml
+# Delete from cluster after verifying the new pipeline:
+#   kubectl delete cronjob reddit-sentiment-collector -n investorcenter
 apiVersion: batch/v1
 kind: CronJob
 metadata:
