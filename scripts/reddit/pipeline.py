@@ -241,12 +241,10 @@ def main():
     )
 
     # Processor args
-    parser.add_argument(
-        "--process-all",
-        action="store_true",
-        default=True,
-        help="Process all unprocessed posts (default: True)",
-    )
+    # --process-all is always enabled in the pipeline context
+    # (the pipeline always processes all unprocessed posts).
+    # --max-posts is kept for standalone ai_processor.py use
+    # but is ignored here.
     parser.add_argument(
         "--batch-size",
         type=int,
@@ -323,6 +321,11 @@ def main():
         db.connect()
         conn = db.get_connection()
 
+        # Ensure transactional mode for all phases.
+        # The AI processor and aggregator both expect
+        # explicit commit/rollback control.
+        conn.autocommit = False
+
         # Phase 1: Collect
         if not args.skip_collect:
             fetcher = RedditFetcher()
@@ -347,7 +350,7 @@ def main():
                 min_comments=args.min_comments,
                 model=args.model,
                 max_posts=args.max_posts,
-                process_all=args.process_all,
+                process_all=True,
             )
         else:
             logger.info("Skipping Phase 2 (process)")

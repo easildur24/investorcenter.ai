@@ -9,7 +9,8 @@ Cost optimizations:
 2. Engagement threshold (skip low-engagement posts)
 3. Company name cache (skip LLM for known mappings)
 
-Gemini 2.5 Flash-Lite pricing: $0.10/1M input, $0.40/1M output tokens
+Gemini 2.5 Flash-Lite pricing (as of Feb 2026, verify at
+https://ai.google.dev/pricing): ~$0.10/1M input, ~$0.40/1M output tokens
 Estimated cost: ~$1.70/month for 30,000 posts
 """
 
@@ -178,6 +179,9 @@ class RedditAIProcessor:
         try:
             if self._shared_conn is not None:
                 self.conn = self._shared_conn
+                # Ensure transactional mode — our _save_extractions
+                # relies on explicit commit/rollback.
+                self.conn.autocommit = False
                 logger.info("Using shared database connection")
             else:
                 self.conn = psycopg2.connect(
@@ -477,6 +481,8 @@ class RedditAIProcessor:
                 self.model_name,
                 result.get("is_finance_related", True),
                 result.get("spam_score", 0.0),
+                # NULL if LLM doesn't return quality_score;
+                # aggregator defaults NULL to 0.5 in scoring
                 result.get("quality_score"),
                 post_id,
             ))

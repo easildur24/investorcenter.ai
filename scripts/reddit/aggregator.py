@@ -25,20 +25,24 @@ TIME_RANGE_DAYS = {
     "30d": 30,
 }
 
-# Minimum mentions for a ticker to appear in snapshots
-MIN_MENTIONS = 2
+# Default time range used for history point insertion
+HISTORY_TIME_RANGE = "7d"
 
 
 class SentimentAggregator:
     """Aggregates per-post sentiment data into per-ticker snapshots."""
 
-    def __init__(self, conn):
+    def __init__(self, conn, min_mentions: int = 2):
         """Initialize aggregator.
 
         Args:
-            conn: psycopg2 connection (shared with pipeline)
+            conn: psycopg2 connection (shared with pipeline).
+                  Must have autocommit=False.
+            min_mentions: Minimum mentions for a ticker to appear
+                in snapshots (default: 2).
         """
         self.conn = conn
+        self.min_mentions = min_mentions
         self.snapshot_time = datetime.now(timezone.utc)
         self.stats = {
             "time_ranges_processed": 0,
@@ -55,31 +59,41 @@ class SentimentAggregator:
         time_ranges = time_ranges or list(TIME_RANGE_DAYS.keys())
 
         logger.info(
-            f"Starting aggregation for {len(time_ranges)} time ranges "
+            f"Starting aggregation for {len(time_ranges)} "
+            f"time ranges "
             f"(snapshot_time={self.snapshot_time.isoformat()})"
         )
 
-        # Store 7d aggregations for history insertion
-        seven_day_snapshots = []
+        # Store aggregations keyed by time range for history
+        all_snapshots: Dict[str, List[dict]] = {}
 
         for tr in time_ranges:
             if tr not in TIME_RANGE_DAYS:
-                logger.warning(f"Unknown time range: {tr}, skipping")
+                logger.warning(
+                    f"Unknown time range: {tr}, skipping"
+                )
                 continue
 
             snapshots = self._aggregate_time_range(tr)
             self.stats["time_ranges_processed"] += 1
+            all_snapshots[tr] = snapshots
 
-            if tr == "7d":
-                seven_day_snapshots = snapshots
-
-        # Insert history points from 7d aggregation only
-        if seven_day_snapshots:
-            self._write_history_points(seven_day_snapshots)
+        # Insert history points from HISTORY_TIME_RANGE
+        history_snapshots = all_snapshots.get(HISTORY_TIME_RANGE)
+        if history_snapshots:
+            self._write_history_points(history_snapshots)
+        elif HISTORY_TIME_RANGE not in time_ranges:
+            logger.warning(
+                f"'{HISTORY_TIME_RANGE}' not in requested "
+                f"time_ranges {time_ranges}; no history "
+                f"points written"
+            )
 
         self._log_summary()
 
-    def _aggregate_time_range(self, time_range: str) -> List[dict]:
+    def _aggregate_time_range(
+        self, time_range: str
+    ) -> List[dict]:
         """Aggregate metrics for a single time range.
 
         Args:
@@ -89,32 +103,39 @@ class SentimentAggregator:
             List of snapshot dicts (one per ticker)
         """
         days = TIME_RANGE_DAYS[time_range]
-        logger.info(f"Aggregating time_range={time_range} ({days} days)")
+        logger.info(
+            f"Aggregating time_range={time_range} "
+            f"({days} days)"
+        )
 
         # Step A: Query per-ticker aggregated metrics
-        raw_aggregations = self._query_aggregations(days)
-        if not raw_aggregations:
-            logger.info(f"  No tickers found for {time_range}")
+        raw_aggs = self._query_aggregations(days)
+        if not raw_aggs:
+            logger.info(
+                f"  No tickers found for {time_range}"
+            )
             return []
 
         logger.info(
-            f"  Found {len(raw_aggregations)} tickers "
-            f"with >= {MIN_MENTIONS} mentions"
+            f"  Found {len(raw_aggs)} tickers "
+            f"with >= {self.min_mentions} mentions"
         )
 
         # Step B: Compute composite scores
-        for agg in raw_aggregations:
-            agg["composite_score"] = self._compute_composite_score(agg)
+        for agg in raw_aggs:
+            agg["composite_score"] = (
+                self._compute_composite_score(agg)
+            )
 
         # Step C: Compute velocity metrics
         velocities = self._compute_velocities(time_range)
 
         # Step D: Compute ranks + previous ranks
         previous_ranks = self._get_previous_ranks(time_range)
-        raw_aggregations.sort(
+        raw_aggs.sort(
             key=lambda x: x["composite_score"], reverse=True
         )
-        for i, agg in enumerate(raw_aggregations):
+        for i, agg in enumerate(raw_aggs):
             agg["rank"] = i + 1
             prev = previous_ranks.get(agg["ticker"])
             agg["previous_rank"] = prev
@@ -124,7 +145,7 @@ class SentimentAggregator:
                 agg["rank_change"] = None
 
         # Step E: Derive sentiment_label
-        for agg in raw_aggregations:
+        for agg in raw_aggs:
             score = agg["sentiment_score"]
             if score > 0.1:
                 agg["sentiment_label"] = "bullish"
@@ -133,19 +154,28 @@ class SentimentAggregator:
             else:
                 agg["sentiment_label"] = "neutral"
 
-        # Merge velocity data
-        for agg in raw_aggregations:
+        # Merge velocity data + compute sentiment_velocity_24h
+        for agg in raw_aggs:
             ticker = agg["ticker"]
             vel = velocities.get(ticker, {})
-            agg["mention_velocity_1h"] = vel.get("mention_velocity_1h")
-            agg["sentiment_velocity_24h"] = vel.get(
-                "sentiment_velocity_24h"
+            agg["mention_velocity_1h"] = vel.get(
+                "mention_velocity_1h"
             )
+            # sentiment_velocity_24h: diff between current
+            # sentiment_score and the previous snapshot's value
+            prev_sent = vel.get("prev_sentiment")
+            if prev_sent is not None:
+                agg["sentiment_velocity_24h"] = (
+                    float(agg["sentiment_score"])
+                    - float(prev_sent)
+                )
+            else:
+                agg["sentiment_velocity_24h"] = None
 
         # Step F: Upsert into ticker_sentiment_snapshots
-        self._upsert_snapshots(raw_aggregations, time_range)
+        self._upsert_snapshots(raw_aggs, time_range)
 
-        return raw_aggregations
+        return raw_aggs
 
     def _query_aggregations(self, days: int) -> List[dict]:
         """Query per-ticker aggregated metrics from post data.
@@ -159,10 +189,13 @@ class SentimentAggregator:
         query = """
             SELECT
                 rpt.ticker,
-                COUNT(DISTINCT rpt.post_id) AS unique_posts,
+                COUNT(DISTINCT rpt.post_id)
+                    AS unique_posts,
                 COUNT(*) AS mention_count,
-                COALESCE(SUM(rpr.upvotes), 0) AS total_upvotes,
-                COALESCE(SUM(rpr.comment_count), 0) AS total_comments,
+                COALESCE(SUM(rpr.upvotes), 0)
+                    AS total_upvotes,
+                COALESCE(SUM(rpr.comment_count), 0)
+                    AS total_comments,
                 COUNT(*) FILTER (
                     WHERE rpt.sentiment = 'bullish'
                 ) AS bullish_count,
@@ -172,26 +205,31 @@ class SentimentAggregator:
                 COUNT(*) FILTER (
                     WHERE rpt.sentiment = 'bearish'
                 ) AS bearish_count,
-                -- Confidence-weighted sentiment score (-1 to +1)
                 COALESCE(
                     SUM(
                         CASE rpt.sentiment
-                            WHEN 'bullish' THEN rpt.confidence
-                            WHEN 'bearish' THEN -rpt.confidence
+                            WHEN 'bullish'
+                                THEN rpt.confidence
+                            WHEN 'bearish'
+                                THEN -rpt.confidence
                             ELSE 0
                         END
                     ) / NULLIF(SUM(rpt.confidence), 0),
                     0
                 ) AS sentiment_score,
-                -- Average LLM quality score
+                -- quality_score NULL means "not assessed"
+                -- and defaults to 0.5 via COALESCE below
                 COALESCE(
-                    AVG(rpr.quality_score)
-                        FILTER (WHERE rpr.quality_score IS NOT NULL),
+                    AVG(rpr.quality_score) FILTER (
+                        WHERE rpr.quality_score IS NOT NULL
+                    ),
                     0.5
                 ) AS avg_quality_score
             FROM reddit_post_tickers rpt
-            JOIN reddit_posts_raw rpr ON rpt.post_id = rpr.id
-            WHERE rpr.posted_at > NOW() - make_interval(days => %s)
+            JOIN reddit_posts_raw rpr
+                ON rpt.post_id = rpr.id
+            WHERE rpr.posted_at
+                > NOW() - make_interval(days => %s)
               AND rpr.is_finance_related = true
               AND COALESCE(rpr.spam_score, 0) < 0.5
             GROUP BY rpt.ticker
@@ -200,7 +238,7 @@ class SentimentAggregator:
         """
 
         cursor = self.conn.cursor()
-        cursor.execute(query, (days, MIN_MENTIONS))
+        cursor.execute(query, (days, self.min_mentions))
         columns = [desc[0] for desc in cursor.description]
         rows = cursor.fetchall()
         cursor.close()
@@ -215,9 +253,15 @@ class SentimentAggregator:
                 + agg["bearish_count"]
             )
             if total > 0:
-                agg["bullish_pct"] = agg["bullish_count"] / total
-                agg["neutral_pct"] = agg["neutral_count"] / total
-                agg["bearish_pct"] = agg["bearish_count"] / total
+                agg["bullish_pct"] = (
+                    agg["bullish_count"] / total
+                )
+                agg["neutral_pct"] = (
+                    agg["neutral_count"] / total
+                )
+                agg["bearish_pct"] = (
+                    agg["bearish_count"] / total
+                )
             else:
                 agg["bullish_pct"] = 0.0
                 agg["neutral_pct"] = 1.0
@@ -233,7 +277,12 @@ class SentimentAggregator:
     def _add_subreddit_distributions(
         self, aggregations: List[dict], days: int
     ):
-        """Add subreddit distribution JSON to each aggregation.
+        """Add subreddit distribution JSON to each ticker.
+
+        Note: runs one query per time range. Could be folded
+        into _query_aggregations for perf, but kept separate
+        for clarity since this is a CronJob (not latency
+        sensitive).
 
         Args:
             aggregations: List of per-ticker aggregation dicts
@@ -250,8 +299,10 @@ class SentimentAggregator:
                 rpr.subreddit,
                 COUNT(*) AS cnt
             FROM reddit_post_tickers rpt
-            JOIN reddit_posts_raw rpr ON rpt.post_id = rpr.id
-            WHERE rpr.posted_at > NOW() - make_interval(days => %s)
+            JOIN reddit_posts_raw rpr
+                ON rpt.post_id = rpr.id
+            WHERE rpr.posted_at
+                > NOW() - make_interval(days => %s)
               AND rpr.is_finance_related = true
               AND COALESCE(rpr.spam_score, 0) < 0.5
               AND rpt.ticker = ANY(%s)
@@ -280,8 +331,9 @@ class SentimentAggregator:
     def _compute_composite_score(self, agg: dict) -> float:
         """Compute composite score from aggregated metrics.
 
-        The composite score is primarily driven by LLM quality (40%),
-        supplemented by mention volume, engagement, and sentiment.
+        The composite score is primarily driven by LLM quality
+        (40%), supplemented by mention volume, engagement, and
+        sentiment intensity.
 
         Args:
             agg: Per-ticker aggregation dict
@@ -289,25 +341,29 @@ class SentimentAggregator:
         Returns:
             Composite score (0.0 to 1.0)
         """
-        avg_quality = float(agg.get("avg_quality_score", 0.5))
+        avg_quality = float(
+            agg.get("avg_quality_score", 0.5)
+        )
 
-        # Log-normalized mention count (capped at 1.0 around 100 mentions)
+        # Log-normalized mentions (cap ~100)
         mentions = int(agg.get("mention_count", 0))
         log_mentions = min(
             math.log2(mentions + 1) / math.log2(100), 1.0
         )
 
-        # Log-normalized engagement (capped at 1.0 around 10K)
-        engagement = (
-            int(agg.get("total_upvotes", 0))
-            + int(agg.get("total_comments", 0))
+        # Log-normalized engagement (cap ~10K)
+        engagement = int(agg.get("total_upvotes", 0)) + int(
+            agg.get("total_comments", 0)
         )
         log_engagement = min(
-            math.log2(engagement + 1) / math.log2(10000), 1.0
+            math.log2(engagement + 1) / math.log2(10000),
+            1.0,
         )
 
         # Sentiment intensity (absolute value)
-        sentiment_intensity = abs(float(agg.get("sentiment_score", 0)))
+        sentiment_intensity = abs(
+            float(agg.get("sentiment_score", 0))
+        )
 
         composite = (
             avg_quality * 0.4
@@ -318,10 +374,45 @@ class SentimentAggregator:
 
         return round(composite, 6)
 
+    def _safe_select(self, query, params=None):
+        """Execute a read-only SELECT inside a savepoint.
+
+        On failure, rolls back only the savepoint (not the
+        whole transaction), keeping the shared connection
+        usable for subsequent operations.
+
+        Args:
+            query: SQL SELECT query
+            params: Query parameters
+
+        Returns:
+            List of rows, or empty list on failure
+        """
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("SAVEPOINT safe_select")
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            cursor.execute("RELEASE SAVEPOINT safe_select")
+            return rows
+        except Exception as e:
+            logger.warning(f"SELECT failed: {e}")
+            cursor.execute(
+                "ROLLBACK TO SAVEPOINT safe_select"
+            )
+            return []
+        finally:
+            cursor.close()
+
     def _compute_velocities(
         self, time_range: str
     ) -> Dict[str, dict]:
         """Compute velocity metrics for all tickers.
+
+        Returns a dict mapping ticker -> {
+            mention_velocity_1h: float or None,
+            prev_sentiment: float or None,
+        }
 
         Args:
             time_range: Time range label
@@ -332,19 +423,22 @@ class SentimentAggregator:
         velocities: Dict[str, dict] = {}
 
         # Mention velocity: compare last 1h vs prior 1h
-        query = """
+        mention_query = """
             WITH recent AS (
                 SELECT rpt.ticker, COUNT(*) AS cnt
                 FROM reddit_post_tickers rpt
-                JOIN reddit_posts_raw rpr ON rpt.post_id = rpr.id
-                WHERE rpr.posted_at > NOW() - INTERVAL '1 hour'
+                JOIN reddit_posts_raw rpr
+                    ON rpt.post_id = rpr.id
+                WHERE rpr.posted_at
+                    > NOW() - INTERVAL '1 hour'
                   AND rpr.is_finance_related = true
                 GROUP BY rpt.ticker
             ),
             prior AS (
                 SELECT rpt.ticker, COUNT(*) AS cnt
                 FROM reddit_post_tickers rpt
-                JOIN reddit_posts_raw rpr ON rpt.post_id = rpr.id
+                JOIN reddit_posts_raw rpr
+                    ON rpt.post_id = rpr.id
                 WHERE rpr.posted_at
                     BETWEEN NOW() - INTERVAL '2 hours'
                         AND NOW() - INTERVAL '1 hour'
@@ -360,47 +454,29 @@ class SentimentAggregator:
             LEFT JOIN prior p ON r.ticker = p.ticker
         """
 
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(query)
-            for row in cursor.fetchall():
-                ticker, vel = row
-                velocities[ticker] = {
-                    "mention_velocity_1h": vel,
-                }
-            cursor.close()
-        except Exception as e:
-            logger.warning(f"Failed to compute mention velocity: {e}")
-            self.conn.rollback()
+        rows = self._safe_select(mention_query)
+        for ticker, vel in rows:
+            velocities[ticker] = {
+                "mention_velocity_1h": vel,
+            }
 
-        # Sentiment velocity: compare current sentiment to previous snapshot
-        query = """
-            SELECT DISTINCT ON (ticker) ticker, sentiment_score
+        # Previous sentiment: for computing velocity_24h
+        prev_query = """
+            SELECT DISTINCT ON (ticker)
+                ticker, sentiment_score
             FROM ticker_sentiment_snapshots
             WHERE time_range = %s
               AND snapshot_time < %s
             ORDER BY ticker, snapshot_time DESC
         """
 
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(query, (time_range, self.snapshot_time))
-            prev_sentiments = {
-                row[0]: row[1] for row in cursor.fetchall()
-            }
-            cursor.close()
-
-            # sentiment_velocity_24h is set during upsert in
-            # _aggregate_time_range based on the current vs previous
-            # sentiment_score. We store the previous values here.
-            for ticker, vel_data in velocities.items():
-                prev = prev_sentiments.get(ticker)
-                vel_data["prev_sentiment"] = prev
-        except Exception as e:
-            logger.warning(
-                f"Failed to get previous sentiments: {e}"
-            )
-            self.conn.rollback()
+        rows = self._safe_select(
+            prev_query, (time_range, self.snapshot_time)
+        )
+        for ticker, prev_score in rows:
+            if ticker not in velocities:
+                velocities[ticker] = {}
+            velocities[ticker]["prev_sentiment"] = prev_score
 
         return velocities
 
@@ -424,16 +500,10 @@ class SentimentAggregator:
             ORDER BY ticker, snapshot_time DESC
         """
 
-        try:
-            cursor = self.conn.cursor()
-            cursor.execute(query, (time_range, self.snapshot_time))
-            result = {row[0]: row[1] for row in cursor.fetchall()}
-            cursor.close()
-            return result
-        except Exception as e:
-            logger.warning(f"Failed to get previous ranks: {e}")
-            self.conn.rollback()
-            return {}
+        rows = self._safe_select(
+            query, (time_range, self.snapshot_time)
+        )
+        return {row[0]: row[1] for row in rows}
 
     def _upsert_snapshots(
         self, aggregations: List[dict], time_range: str
@@ -450,12 +520,14 @@ class SentimentAggregator:
         query = """
             INSERT INTO ticker_sentiment_snapshots (
                 ticker, snapshot_time, time_range,
-                mention_count, total_upvotes, total_comments,
-                unique_posts,
-                bullish_count, neutral_count, bearish_count,
+                mention_count, total_upvotes,
+                total_comments, unique_posts,
+                bullish_count, neutral_count,
+                bearish_count,
                 bullish_pct, neutral_pct, bearish_pct,
                 sentiment_score, sentiment_label,
-                mention_velocity_1h, sentiment_velocity_24h,
+                mention_velocity_1h,
+                sentiment_velocity_24h,
                 composite_score, subreddit_distribution,
                 rank, previous_rank, rank_change
             ) VALUES (
@@ -463,7 +535,8 @@ class SentimentAggregator:
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s
             )
-            ON CONFLICT (ticker, snapshot_time, time_range) DO UPDATE SET
+            ON CONFLICT (ticker, snapshot_time, time_range)
+            DO UPDATE SET
                 mention_count = EXCLUDED.mention_count,
                 total_upvotes = EXCLUDED.total_upvotes,
                 total_comments = EXCLUDED.total_comments,
@@ -476,10 +549,13 @@ class SentimentAggregator:
                 bearish_pct = EXCLUDED.bearish_pct,
                 sentiment_score = EXCLUDED.sentiment_score,
                 sentiment_label = EXCLUDED.sentiment_label,
-                mention_velocity_1h = EXCLUDED.mention_velocity_1h,
-                sentiment_velocity_24h = EXCLUDED.sentiment_velocity_24h,
+                mention_velocity_1h
+                    = EXCLUDED.mention_velocity_1h,
+                sentiment_velocity_24h
+                    = EXCLUDED.sentiment_velocity_24h,
                 composite_score = EXCLUDED.composite_score,
-                subreddit_distribution = EXCLUDED.subreddit_distribution,
+                subreddit_distribution
+                    = EXCLUDED.subreddit_distribution,
                 rank = EXCLUDED.rank,
                 previous_rank = EXCLUDED.previous_rank,
                 rank_change = EXCLUDED.rank_change
@@ -489,14 +565,6 @@ class SentimentAggregator:
             cursor = self.conn.cursor()
 
             for agg in aggregations:
-                # Compute sentiment_velocity_24h if we have previous
-                sent_vel = None
-                vel_data = {}
-                if agg.get("mention_velocity_1h") is not None:
-                    # We computed velocities earlier, check for
-                    # prev_sentiment to compute sentiment velocity
-                    pass
-
                 cursor.execute(
                     query,
                     (
@@ -513,7 +581,10 @@ class SentimentAggregator:
                         round(agg["bullish_pct"], 6),
                         round(agg["neutral_pct"], 6),
                         round(agg["bearish_pct"], 6),
-                        round(float(agg["sentiment_score"]), 6),
+                        round(
+                            float(agg["sentiment_score"]),
+                            6,
+                        ),
                         agg["sentiment_label"],
                         agg.get("mention_velocity_1h"),
                         agg.get("sentiment_velocity_24h"),
@@ -527,7 +598,9 @@ class SentimentAggregator:
 
             self.conn.commit()
             cursor.close()
-            self.stats["snapshots_upserted"] += len(aggregations)
+            self.stats["snapshots_upserted"] += len(
+                aggregations
+            )
             logger.info(
                 f"  Upserted {len(aggregations)} snapshots "
                 f"for time_range={time_range}"
@@ -538,12 +611,15 @@ class SentimentAggregator:
             self.conn.rollback()
 
     def _write_history_points(self, snapshots: List[dict]):
-        """Insert time-series data points into ticker_sentiment_history.
+        """Insert time-series data points.
 
-        Only called for 7d aggregation to avoid duplicate history entries.
+        Writes to ticker_sentiment_history from the
+        HISTORY_TIME_RANGE aggregation. Only called once per
+        run to avoid duplicate history entries across time
+        ranges.
 
         Args:
-            snapshots: List of snapshot dicts from 7d aggregation
+            snapshots: List of snapshot dicts
         """
         if not snapshots:
             return
@@ -566,7 +642,10 @@ class SentimentAggregator:
                     (
                         self.snapshot_time,
                         snap["ticker"],
-                        round(float(snap["sentiment_score"]), 6),
+                        round(
+                            float(snap["sentiment_score"]),
+                            6,
+                        ),
                         round(snap["bullish_pct"], 6),
                         snap["mention_count"],
                         snap["composite_score"],
@@ -579,11 +658,13 @@ class SentimentAggregator:
             self.stats["history_points_inserted"] = inserted
             logger.info(
                 f"Inserted {inserted} history points "
-                f"(from 7d aggregation)"
+                f"(from {HISTORY_TIME_RANGE} aggregation)"
             )
 
         except Exception as e:
-            logger.error(f"Failed to insert history points: {e}")
+            logger.error(
+                f"Failed to insert history points: {e}"
+            )
             self.conn.rollback()
 
     def _log_summary(self):
