@@ -3,6 +3,8 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
+	"log"
+	"math"
 	"net/http"
 	"sort"
 	"strconv"
@@ -58,7 +60,11 @@ func GetTrendingSentiment(c *gin.Context) {
 	for i, s := range snapshots {
 		symbols[i] = s.Ticker
 	}
-	companyNames, _ := database.GetCompanyNames(symbols)
+	companyNames, err := database.GetCompanyNames(symbols)
+	if err != nil {
+		log.Printf("warn: GetCompanyNames: %v", err)
+		companyNames = map[string]string{}
+	}
 
 	// Transform snapshots to TrendingTicker response
 	tickers := make([]models.TrendingTicker, 0, len(snapshots))
@@ -132,7 +138,10 @@ func GetTickerSentiment(c *gin.Context) {
 	}
 
 	// Get company name
-	companyNames, _ := database.GetCompanyNames([]string{ticker})
+	companyNames, err := database.GetCompanyNames([]string{ticker})
+	if err != nil {
+		log.Printf("warn: GetCompanyNames: %v", err)
+	}
 	companyName := ""
 	if name, ok := companyNames[ticker]; ok {
 		companyName = name
@@ -276,7 +285,7 @@ func GetTickerPosts(c *gin.Context) {
 // parseTopSubreddits parses the subreddit_distribution JSONB field into
 // a sorted list of SubredditCount, returning the top N entries.
 func parseTopSubreddits(data json.RawMessage, topN int) []models.SubredditCount {
-	if len(data) == 0 {
+	if data == nil || len(data) == 0 {
 		return []models.SubredditCount{}
 	}
 
@@ -332,12 +341,15 @@ func groupTimeSeriesByDate(points []models.SentimentTimeSeriesPoint) []models.Se
 		p := entry.point
 		mentionCount := p.MentionCount
 
-		// Compute bullish/bearish/neutral counts from percentages
-		bullish := int(p.BullishPct * float64(mentionCount))
+		// Compute bullish/bearish/neutral counts from percentages.
+		// Use math.Round to avoid systematic truncation, then assign
+		// the remainder to neutral so the three counts always sum to
+		// mentionCount exactly.
+		bullish := int(math.Round(p.BullishPct * float64(mentionCount)))
 
 		var bearish, neutral int
 		if p.BearishPct != nil && p.NeutralPct != nil {
-			bearish = int(*p.BearishPct * float64(mentionCount))
+			bearish = int(math.Round(*p.BearishPct * float64(mentionCount)))
 			neutral = mentionCount - bullish - bearish
 		} else {
 			// Fallback for old rows without bearish_pct/neutral_pct:
@@ -346,7 +358,7 @@ func groupTimeSeriesByDate(points []models.SentimentTimeSeriesPoint) []models.Se
 			bearish = 0
 		}
 
-		// Ensure no negative counts from rounding
+		// Clamp: rounding can push a bucket slightly negative
 		if neutral < 0 {
 			neutral = 0
 		}

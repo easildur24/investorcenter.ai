@@ -561,9 +561,8 @@ class SentimentAggregator:
                 rank_change = EXCLUDED.rank_change
         """
 
+        cursor = self.conn.cursor()
         try:
-            cursor = self.conn.cursor()
-
             for agg in aggregations:
                 cursor.execute(
                     query,
@@ -597,7 +596,6 @@ class SentimentAggregator:
                 )
 
             self.conn.commit()
-            cursor.close()
             self.stats["snapshots_upserted"] += len(
                 aggregations
             )
@@ -609,6 +607,8 @@ class SentimentAggregator:
         except Exception as e:
             logger.error(f"Failed to upsert snapshots: {e}")
             self.conn.rollback()
+        finally:
+            cursor.close()
 
     def _write_history_points(self, snapshots: List[dict]):
         """Insert time-series data points.
@@ -633,8 +633,8 @@ class SentimentAggregator:
             ON CONFLICT (ticker, time) DO NOTHING
         """
 
+        cursor = self.conn.cursor()
         try:
-            cursor = self.conn.cursor()
             inserted = 0
 
             for snap in snapshots:
@@ -657,7 +657,6 @@ class SentimentAggregator:
                 inserted += cursor.rowcount
 
             self.conn.commit()
-            cursor.close()
             self.stats["history_points_inserted"] = inserted
             logger.info(
                 f"Inserted {inserted} history points "
@@ -669,6 +668,8 @@ class SentimentAggregator:
                 f"Failed to insert history points: {e}"
             )
             self.conn.rollback()
+        finally:
+            cursor.close()
 
     def _log_summary(self):
         """Log aggregation summary."""

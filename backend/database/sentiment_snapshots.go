@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"investorcenter-api/models"
+	"log"
 	"time"
 
 	"github.com/lib/pq"
@@ -279,6 +280,8 @@ func GetTickerPostsV2(ticker string, sort models.SocialPostSortOption, limit int
 		orderBy = "rpr.posted_at DESC"
 	}
 
+	// Safe: sentimentFilter and orderBy are derived from a typed enum switch
+	// above (never from user input), so fmt.Sprintf here is not a SQL injection risk.
 	query := fmt.Sprintf(`
 		SELECT
 			rpr.id, rpr.title, rpr.body, rpr.url, rpr.subreddit,
@@ -314,6 +317,7 @@ func GetTickerPostsV2(ticker string, sort models.SocialPostSortOption, limit int
 			&p.Sentiment, &confidence,
 		)
 		if err != nil {
+			log.Printf("warn: GetTickerPostsV2: scan error: %v", err)
 			continue
 		}
 
@@ -338,7 +342,7 @@ func GetTickerPostsV2(ticker string, sort models.SocialPostSortOption, limit int
 		posts = append(posts, p)
 	}
 
-	// Get total count
+	// Get total count (best-effort; returns 0 on failure)
 	var total int
 	countQuery := `
 		SELECT COUNT(*)
@@ -348,7 +352,9 @@ func GetTickerPostsV2(ticker string, sort models.SocialPostSortOption, limit int
 		  AND rpr.posted_at > NOW() - INTERVAL '7 days'
 		  AND rpr.is_finance_related = true
 	`
-	_ = DB.QueryRow(countQuery, ticker).Scan(&total)
+	if err := DB.QueryRow(countQuery, ticker).Scan(&total); err != nil {
+		log.Printf("warn: GetTickerPostsV2: count query failed: %v", err)
+	}
 
 	// Determine sort string for response
 	sortStr := "recent"
