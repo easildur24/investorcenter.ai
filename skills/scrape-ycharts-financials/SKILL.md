@@ -50,6 +50,8 @@ Page number starts at 1. Each page shows ~8 periods.
 
 ### Step 1: Open YCharts Financials Page
 
+**CRITICAL:** Use `profile="openclaw"` - this is the standalone browser, NOT the Chrome extension relay.
+
 ```javascript
 browser.open({
   profile: "openclaw",
