@@ -121,13 +121,18 @@ Data is now in S3 at `s3://investorcenter-raw-data/{s3_key}`.
 
 ### Step 6: Close Browser
 
-**IMPORTANT:** Stop the entire browser (not just the tab) to prevent stuck state:
+**CRITICAL - Stop the Browser, Not Just the Tab:**
+
+After data ingestion succeeds, you MUST stop the entire browser process:
 
 ```javascript
-browser.stop({
+browser({
+  action: "stop",
   profile: "openclaw"
 })
 ```
+
+**DO NOT use `action: "close"`** - that only closes the tab and leaves the browser process running, causing stuck states.
 
 This ensures clean state for the next task run.
 
