@@ -5,11 +5,8 @@ import { reddit } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
 
 interface PipelineHealth {
-  lastHeatmapDate: string | null;
   lastPostAt: string | null;
-  totalPosts7d: number;
   status: 'healthy' | 'stale' | 'no_data';
-  stalenessMinutes: number;
 }
 
 interface DataFreshnessIndicatorProps {

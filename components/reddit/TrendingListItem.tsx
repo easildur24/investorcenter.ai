@@ -51,10 +51,12 @@ export default function TrendingListItem({
   };
 
   const formatPrice = (p: number) => {
-    if (p >= 1000)
-      return `$${p.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (p >= 1) return `$${p.toFixed(2)}`;
-    return `$${p.toFixed(4)}`;
+    const abs = Math.abs(p);
+    const sign = p < 0 ? '-' : '';
+    if (abs >= 1000)
+      return `${sign}$${abs.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    if (abs >= 1) return `${sign}$${abs.toFixed(2)}`;
+    return `${sign}$${abs.toFixed(4)}`;
   };
 
   return (
