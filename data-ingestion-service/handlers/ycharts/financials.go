@@ -121,13 +121,13 @@ func PostFinancials(c *gin.Context) {
 
 	// Prepare payload for S3 (add metadata)
 	payload := map[string]interface{}{
-		"ticker":       ticker,
-		"statement":    statement,
-		"period":       period,
-		"period_type":  periodType,
-		"source_url":   sourceURL,
-		"uploaded_by":  userID,
-		"uploaded_at":  time.Now().UTC().Format(time.RFC3339),
+		"ticker":      ticker,
+		"statement":   statement,
+		"period":      period,
+		"period_type": periodType,
+		"source_url":  sourceURL,
+		"uploaded_by": userID,
+		"uploaded_at": time.Now().UTC().Format(time.RFC3339),
 	}
 
 	// Merge all data fields into payload
