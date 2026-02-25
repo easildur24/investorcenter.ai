@@ -100,9 +100,10 @@ type WatchListItemDetail struct {
 // WatchListWithItems includes the watch list, all items with detail, and summary metrics
 type WatchListWithItems struct {
 	WatchList
-	ItemCount int                      `json:"item_count"`
-	Items     []WatchListItemDetail    `json:"items"`
-	Summary   *WatchListSummaryMetrics `json:"summary,omitempty"`
+	ItemCount         int                      `json:"item_count"`
+	Items             []WatchListItemDetail    `json:"items"`
+	Summary           *WatchListSummaryMetrics `json:"summary,omitempty"`
+	AlertsFetchFailed bool                     `json:"alerts_fetch_failed,omitempty"` // True when alert enrichment fails; lets the UI show degraded state instead of "no alerts"
 }
 
 // WatchListSummaryMetrics provides aggregate stats across all items in a watchlist

@@ -133,6 +133,7 @@ export const ALERT_TYPES = {
   // Price alerts
   price_above: { label: 'Price Above', icon: '↑', category: 'price' },
   price_below: { label: 'Price Below', icon: '↓', category: 'price' },
+  price_change: { label: 'Price Change', icon: '±', category: 'price' },
   price_change_pct: { label: 'Price Change %', icon: '±', category: 'price' },
   price_change_amount: { label: 'Price Change $', icon: '$', category: 'price' },
 

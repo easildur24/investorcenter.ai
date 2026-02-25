@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { WatchListItem } from '@/lib/api/watchlist';
+import { AlertRuleWithDetails, CreateAlertRequest, UpdateAlertRequest } from '@/lib/api/alerts';
 import TagChipInput from '@/components/watchlist/TagChipInput';
+import InlineAlertSection from '@/components/watchlist/InlineAlertSection';
 
 interface InlineEditPanelProps {
   /** The watchlist item being edited. */
@@ -21,6 +23,16 @@ interface InlineEditPanelProps {
   ) => Promise<void>;
   /** Called when the user cancels editing. */
   onCancel: () => void;
+  /** Watchlist ID (for alert creation). */
+  watchListId: string;
+  /** Existing alert rule for this symbol, if any. */
+  existingAlert?: AlertRuleWithDetails;
+  /** Create a new alert rule. */
+  onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
+  /** Update an existing alert rule. */
+  onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
+  /** Delete an alert rule. */
+  onAlertDelete: (alertId: string, symbol: string) => Promise<void>;
 }
 
 export default function InlineEditPanel({
@@ -28,6 +40,11 @@ export default function InlineEditPanel({
   tagSuggestions,
   onSave,
   onCancel,
+  watchListId,
+  existingAlert,
+  onAlertCreate,
+  onAlertUpdate,
+  onAlertDelete,
 }: InlineEditPanelProps) {
   const [targetBuy, setTargetBuy] = useState(item.target_buy_price?.toString() ?? '');
   const [targetSell, setTargetSell] = useState(item.target_sell_price?.toString() ?? '');
@@ -208,6 +225,19 @@ export default function InlineEditPanel({
             bg-ic-input-bg text-ic-text-primary placeholder-ic-text-dim
             border-ic-input-border
             focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-ic-blue"
+        />
+      </div>
+
+      {/* Alert */}
+      <div className="mt-3">
+        <InlineAlertSection
+          watchListId={watchListId}
+          symbol={item.symbol}
+          currentPrice={item.current_price}
+          existingAlert={existingAlert}
+          onCreate={onAlertCreate}
+          onUpdate={onAlertUpdate}
+          onDelete={onAlertDelete}
         />
       </div>
 

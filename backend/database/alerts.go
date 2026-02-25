@@ -5,6 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"investorcenter-api/models"
+
+	"github.com/lib/pq"
+)
+
+// Sentinel errors for alert operations
+var (
+	ErrAlertAlreadyExists = errors.New("alert already exists for this ticker in this watchlist")
 )
 
 // Alert Rule Operations
@@ -37,6 +44,10 @@ func CreateAlertRule(alert *models.AlertRule) error {
 	).Scan(&alert.ID, &alert.CreatedAt, &alert.UpdatedAt, &alert.TriggerCount)
 
 	if err != nil {
+		// Unique index on (watch_list_id, symbol) — race-condition-safe duplicate guard
+		if pqErr, ok := err.(*pq.Error); ok && pqErr.Code == "23505" {
+			return ErrAlertAlreadyExists
+		}
 		return fmt.Errorf("failed to create alert rule: %w", err)
 	}
 	return nil
@@ -337,18 +348,6 @@ func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*m
 	}
 
 	return alertMap, nil
-}
-
-// AlertExistsForSymbol checks if an alert already exists for a given symbol
-// in a watchlist. Used to enforce the 1:1 constraint (one alert per watchlist item).
-func AlertExistsForSymbol(watchListID string, symbol string) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM alert_rules WHERE watch_list_id = $1 AND symbol = $2)`
-	err := DB.QueryRow(query, watchListID, symbol).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("failed to check alert existence: %w", err)
-	}
-	return exists, nil
 }
 
 // CountAlertRulesByUserID counts alert rules for a user
