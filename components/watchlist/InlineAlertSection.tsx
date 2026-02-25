@@ -9,7 +9,9 @@ import {
   UpdateAlertRequest,
 } from '@/lib/api/alerts';
 
-// Only the alert types accepted by the backend binding validation
+// Must match the backend binding validation in models.CreateAlertRuleRequest:
+//   `binding:"required,oneof=price_above price_below price_change volume_above volume_spike news earnings sec_filing"`
+// Kept in sync manually — if the backend adds types, update here too.
 const ALLOWED_ALERT_TYPES = [
   'price_above',
   'price_below',
@@ -92,6 +94,7 @@ export default function InlineAlertSection({
   const [notifyInApp, setNotifyInApp] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   const autoName = useMemo(() => {
     const typeInfo = ALERT_TYPES[alertType as keyof typeof ALERT_TYPES];
@@ -186,18 +189,18 @@ export default function InlineAlertSection({
     if (!existingAlert) return;
     try {
       await onUpdate(existingAlert.id, { is_active: !existingAlert.is_active });
-    } catch {
-      // Swallow — toast is shown by parent
+    } catch (err) {
+      console.error('[InlineAlertSection] Failed to toggle alert active state:', err);
     }
   };
 
   const handleDelete = async () => {
     if (!existingAlert) return;
-    if (!confirm(`Delete alert "${existingAlert.name}"?`)) return;
     try {
       await onDelete(existingAlert.id, symbol);
-    } catch {
-      // Swallow — toast is shown by parent
+      setConfirmingDelete(false);
+    } catch (err) {
+      console.error('[InlineAlertSection] Failed to delete alert:', err);
     }
   };
 
@@ -316,21 +319,41 @@ export default function InlineAlertSection({
                 />
               </svg>
             </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="p-1 text-ic-text-dim hover:text-ic-negative rounded transition-colors"
-              title="Delete alert"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
-            </button>
+            {confirmingDelete ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-ic-text-secondary">Delete?</span>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="px-1.5 py-0.5 text-[10px] font-medium bg-ic-negative/20 text-ic-negative rounded hover:bg-ic-negative/30 transition-colors"
+                >
+                  Yes
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmingDelete(false)}
+                  className="px-1.5 py-0.5 text-[10px] font-medium border border-ic-border text-ic-text-secondary rounded hover:bg-ic-surface-hover transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmingDelete(true)}
+                className="p-1 text-ic-text-dim hover:text-ic-negative rounded transition-colors"
+                title="Delete alert"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -369,6 +392,11 @@ export default function InlineAlertSection({
               );
             })}
           </select>
+          {isEditing && (
+            <p className="mt-0.5 text-[10px] text-ic-text-dim">
+              To change type, delete and recreate the alert.
+            </p>
+          )}
         </div>
 
         {/* Threshold (hidden for event types) */}

@@ -102,7 +102,10 @@ func GetWatchList(c *gin.Context) {
 		alertMap, alertErr := database.GetAlertForWatchListItems(watchListID, userID)
 		if alertErr != nil {
 			log.Printf("Warning: failed to fetch alerts for watchlist %s: %v", watchListID, alertErr)
-			// Non-fatal: items are still returned without alert data
+			// Non-fatal: items are still returned without alert data.
+			// Signal to the frontend so it can show a degraded-state indicator
+			// rather than silently representing the state as "no alerts".
+			result.AlertsFetchFailed = true
 		} else {
 			for i := range result.Items {
 				result.Items[i].Alert = alertMap[result.Items[i].Symbol]

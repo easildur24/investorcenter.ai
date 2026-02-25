@@ -223,6 +223,11 @@ function renderCell(
     }
 
     // ── Alert badge ─────────────────────────────────────────────────
+    // Two distinct alert systems coexist:
+    //  1. Alert rules (alertCount) — user-created rules from InlineAlertSection
+    //  2. Target-price alerts (alert) — derived from checkTargetAlert() when
+    //     current_price crosses target_buy_price or target_sell_price
+    // Priority: alert rules pill > target-price badge > muted bell.
     case 'badge': {
       const alertCount = col.id === 'alert' ? Number(col.getValue(item)) || 0 : 0;
 
@@ -245,7 +250,7 @@ function renderCell(
         );
       }
 
-      // Target price triggered (legacy badge)
+      // Target price triggered (buy/sell target badge, distinct from alert rules)
       if (alert) {
         return (
           <span

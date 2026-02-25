@@ -70,9 +70,11 @@ export default function WatchListDetailPage() {
 
   const handleAlertCreate = useCallback(
     async (req: CreateAlertRequest) => {
+      // Let errors propagate to InlineAlertSection's catch handler for display.
+      // Only refresh watchlist data (alert_count) on confirmed success.
       const result = await createAlert(req);
-      await loadWatchList(); // refresh alert_count in table
       toast.success('Alert created');
+      loadWatchList(); // refresh alert_count in table (fire-and-forget)
       return result;
     },
     [createAlert, loadWatchList, toast]
@@ -88,9 +90,11 @@ export default function WatchListDetailPage() {
 
   const handleAlertDelete = useCallback(
     async (alertId: string, symbol: string) => {
+      // Let errors propagate so the caller knows the delete failed.
+      // Only refresh watchlist data on confirmed success.
       await deleteAlert(alertId, symbol);
-      await loadWatchList(); // refresh alert_count
       toast.success('Alert removed');
+      loadWatchList(); // refresh alert_count (fire-and-forget)
     },
     [deleteAlert, loadWatchList, toast]
   );

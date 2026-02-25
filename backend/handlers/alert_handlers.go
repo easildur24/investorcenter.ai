@@ -64,17 +64,6 @@ func (h *AlertHandler) CreateAlertRule(c *gin.Context) {
 		return
 	}
 
-	// Enforce 1:1: one alert per watchlist item
-	alertExists, err := database.AlertExistsForSymbol(req.WatchListID, req.Symbol)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check existing alerts"})
-		return
-	}
-	if alertExists {
-		c.JSON(http.StatusConflict, gin.H{"error": "Alert already exists for this ticker in this watchlist"})
-		return
-	}
-
 	// Check tier limits
 	canCreate, err := h.alertService.CanCreateAlert(userID)
 	if err != nil {

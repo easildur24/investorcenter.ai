@@ -350,18 +350,6 @@ func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*m
 	return alertMap, nil
 }
 
-// AlertExistsForSymbol checks if an alert already exists for a given symbol
-// in a watchlist. Used to enforce the 1:1 constraint (one alert per watchlist item).
-func AlertExistsForSymbol(watchListID string, symbol string) (bool, error) {
-	var exists bool
-	query := `SELECT EXISTS(SELECT 1 FROM alert_rules WHERE watch_list_id = $1 AND symbol = $2)`
-	err := DB.QueryRow(query, watchListID, symbol).Scan(&exists)
-	if err != nil {
-		return false, fmt.Errorf("failed to check alert existence: %w", err)
-	}
-	return exists, nil
-}
-
 // CountAlertRulesByUserID counts alert rules for a user
 func CountAlertRulesByUserID(userID string) (int, error) {
 	var count int

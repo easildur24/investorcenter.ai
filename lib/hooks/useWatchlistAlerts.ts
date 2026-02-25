@@ -34,8 +34,9 @@ export function useWatchlistAlerts(watchListId: string | null): UseWatchlistAler
     try {
       const data = await alertAPI.listAlerts({ watch_list_id: watchListId });
       setAlerts(data ?? []);
-    } catch {
+    } catch (err) {
       // Alert fetch is non-critical — table still renders without alert data
+      console.error('[useWatchlistAlerts] Failed to fetch alerts:', err);
     } finally {
       setLoading(false);
     }
@@ -63,13 +64,15 @@ export function useWatchlistAlerts(watchListId: string | null): UseWatchlistAler
     [fetchAlerts]
   );
 
-  const updateAlert = useCallback(async (alertId: string, req: UpdateAlertRequest) => {
-    await alertAPI.updateAlert(alertId, req);
-    // Patch local cache
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === alertId ? ({ ...a, ...req } as AlertRuleWithDetails) : a))
-    );
-  }, []);
+  const updateAlert = useCallback(
+    async (alertId: string, req: UpdateAlertRequest) => {
+      await alertAPI.updateAlert(alertId, req);
+      // Re-fetch to get the canonical server state (avoids shallow-spread issues
+      // where conditions may be a string from the API but an object in the request).
+      await fetchAlerts();
+    },
+    [fetchAlerts]
+  );
 
   const deleteAlert = useCallback(async (alertId: string, _symbol: string) => {
     await alertAPI.deleteAlert(alertId);
