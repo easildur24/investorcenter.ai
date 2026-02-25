@@ -86,7 +86,7 @@ spec:
             - "--max-age"
             - "14"
             - "--batch-size"
-            - "10"
+            - "25"
             - "--min-upvotes"
             - "1"
             - "--min-comments"

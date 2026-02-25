@@ -102,8 +102,8 @@ class RedditAIProcessor:
     MIN_UPVOTES = 5
     MIN_COMMENTS = 3
 
-    # Batch size for LLM calls — keep small to avoid output truncation
-    BATCH_SIZE = 10
+    # Batch size for LLM calls (max_output_tokens=8192 supports ~25)
+    BATCH_SIZE = 25
 
     def __init__(
         self,
@@ -676,9 +676,9 @@ class RedditAIProcessor:
                     post_id = id_mapping[external_id]
                     self._save_extractions(post_id, external_id, result)
 
-            # Rate limit between batches
-            if i + self.batch_size < len(posts_to_process):
-                time.sleep(1)  # Small delay between batches
+            # No sleep needed — Gemini API handles rate limiting
+            # via 429 responses, and the DB commit acts as a
+            # natural throttle between batches.
 
         # Return per-batch stats (deltas from start)
         return ProcessingResult(
@@ -711,7 +711,7 @@ class RedditAIProcessor:
             batch_num += 1
 
             if process_all:
-                batch_limit = 100  # Process 100 posts at a time when processing all
+                batch_limit = 200  # Process 200 posts at a time when processing all
             else:
                 remaining = max_posts - processed
                 batch_limit = min(100, remaining)
@@ -727,8 +727,8 @@ class RedditAIProcessor:
             processed += result.posts_processed + result.posts_skipped
             logger.info(f"Progress: {processed} posts processed/skipped so far (cumulative: {self.stats['posts_processed']} processed, {self.stats['posts_skipped']} skipped)")
 
-            # Rate limit between batches
-            time.sleep(2)
+            # Brief pause between outer batches for DB breathing room
+            time.sleep(0.5)
 
         # Log summary
         self._log_summary()
