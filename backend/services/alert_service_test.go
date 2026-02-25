@@ -240,7 +240,7 @@ func TestAlertTypeLabel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.alertType, func(t *testing.T) {
-			result := AlertTypeLabel(tt.alertType)
+			result := models.AlertTypeLabel(tt.alertType)
 			if result != tt.expected {
 				t.Errorf("AlertTypeLabel(%q) = %q, want %q", tt.alertType, result, tt.expected)
 			}
@@ -250,12 +250,12 @@ func TestAlertTypeLabel(t *testing.T) {
 
 func TestAlertTypeLabel_Unknown(t *testing.T) {
 	// Unknown types should return the raw string as fallback
-	result := AlertTypeLabel("unknown_type")
+	result := models.AlertTypeLabel("unknown_type")
 	if result != "unknown_type" {
 		t.Errorf("AlertTypeLabel(%q) = %q, want %q", "unknown_type", result, "unknown_type")
 	}
 
-	result = AlertTypeLabel("")
+	result = models.AlertTypeLabel("")
 	if result != "" {
 		t.Errorf("AlertTypeLabel(%q) = %q, want %q", "", result, "")
 	}
