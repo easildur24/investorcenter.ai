@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 interface Tab {
@@ -17,7 +18,20 @@ interface TickerTabsProps {
 }
 
 export default function TickerTabs({ symbol, children, tabs, defaultTab }: TickerTabsProps) {
-  const [activeTab, setActiveTab] = useState(defaultTab || tabs[0]?.id || 'overview');
+  const searchParams = useSearchParams();
+  const tabFromUrl = searchParams.get('tab');
+  const initialTab =
+    tabFromUrl && tabs.some((t) => t.id === tabFromUrl)
+      ? tabFromUrl
+      : defaultTab || tabs[0]?.id || 'overview';
+  const [activeTab, setActiveTab] = useState(initialTab);
+
+  // Sync with URL changes (e.g., browser back/forward)
+  useEffect(() => {
+    if (tabFromUrl && tabs.some((t) => t.id === tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl, tabs]);
 
   const activeIndex = tabs.findIndex((tab) => tab.id === activeTab);
 

@@ -373,25 +373,42 @@ CREATE TABLE IF NOT EXISTS sentiment_lexicon (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- social_posts (Batch 3: social)
-CREATE TABLE IF NOT EXISTS social_posts (
+-- reddit_posts_raw (Batch 3: raw Reddit posts from Arctic Shift API)
+CREATE TABLE IF NOT EXISTS reddit_posts_raw (
     id BIGSERIAL PRIMARY KEY,
-    external_post_id VARCHAR(50) UNIQUE NOT NULL,
-    source VARCHAR(20) NOT NULL DEFAULT 'reddit',
-    ticker VARCHAR(10),
-    subreddit VARCHAR(50),
+    external_id VARCHAR(20) UNIQUE NOT NULL,
+    subreddit VARCHAR(50) NOT NULL,
+    author VARCHAR(50),
     title TEXT NOT NULL,
-    body_preview VARCHAR(500),
+    body TEXT,
     url TEXT NOT NULL,
     upvotes INTEGER DEFAULT 0,
     comment_count INTEGER DEFAULT 0,
     award_count INTEGER DEFAULT 0,
-    sentiment VARCHAR(10),
-    sentiment_confidence DECIMAL(3,2),
-    flair VARCHAR(50),
+    flair VARCHAR(200),
     posted_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW(),
-    updated_at TIMESTAMPTZ DEFAULT NOW()
+    fetched_at TIMESTAMPTZ DEFAULT NOW(),
+    processed_at TIMESTAMPTZ,
+    processing_skipped BOOLEAN DEFAULT FALSE,
+    llm_response JSONB,
+    llm_model VARCHAR(50),
+    is_finance_related BOOLEAN,
+    spam_score DECIMAL(3,2),
+    quality_score DECIMAL(3,2),
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- reddit_post_tickers (Batch 3: AI-extracted ticker mentions)
+CREATE TABLE IF NOT EXISTS reddit_post_tickers (
+    id BIGSERIAL PRIMARY KEY,
+    post_id BIGINT REFERENCES reddit_posts_raw(id) ON DELETE CASCADE,
+    ticker VARCHAR(10) NOT NULL,
+    sentiment VARCHAR(10),
+    confidence DECIMAL(3,2),
+    is_primary BOOLEAN DEFAULT FALSE,
+    mention_type VARCHAR(20),
+    extracted_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(post_id, ticker)
 );
 
 -- reddit_ticker_rankings (Batch 3: hourly reddit ranking snapshots)

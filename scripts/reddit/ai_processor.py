@@ -102,8 +102,8 @@ class RedditAIProcessor:
     MIN_UPVOTES = 5
     MIN_COMMENTS = 3
 
-    # Batch size for LLM calls (20 posts * ~90 tokens avg output = ~1800 tokens)
-    BATCH_SIZE = 20
+    # Batch size for LLM calls (max_output_tokens=8192 supports ~25)
+    BATCH_SIZE = 25
 
     def __init__(
         self,
@@ -292,7 +292,7 @@ class RedditAIProcessor:
                 FROM reddit_posts_raw
                 WHERE processed_at IS NULL
                   AND processing_skipped = FALSE
-                ORDER BY fetched_at ASC
+                ORDER BY posted_at DESC
                 LIMIT %s
             """, (limit,))
 
@@ -388,36 +388,102 @@ class RedditAIProcessor:
         try:
             self.stats["llm_calls"] += 1
 
-            # Call Gemini
+            # Call Gemini with JSON output mode
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=4000,
-                    temperature=0.1,  # Low temperature for structured extraction
+                    max_output_tokens=8192,
+                    temperature=0.1,
+                    response_mime_type="application/json",
                 ),
             )
 
             # Parse JSON response
             response_text = response.text.strip()
-
-            # Try to extract JSON from response
-            # Sometimes the model adds explanation text
-            json_match = re.search(r'\[[\s\S]*\]', response_text)
-            if json_match:
-                response_text = json_match.group(0)
-
-            return json.loads(response_text)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response: {e}")
-            logger.debug(f"Response was: {response_text[:500]}")
-            self.stats["errors"] += 1
-            return None
+            return self._parse_json_response(response_text)
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             self.stats["errors"] += 1
             return None
+
+    def _parse_json_response(
+        self, response_text: str
+    ) -> Optional[List[dict]]:
+        """Parse JSON from LLM response with multiple fallback
+        strategies.
+
+        Args:
+            response_text: Raw text from LLM
+
+        Returns:
+            Parsed list of dicts or None on failure
+        """
+        # Strategy 1: direct parse
+        try:
+            result = json.loads(response_text)
+            if isinstance(result, list):
+                return result
+            if isinstance(result, dict):
+                return [result]
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 2: extract JSON array from surrounding text
+        json_match = re.search(r'\[[\s\S]*\]', response_text)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 3: fix common JSON issues (trailing commas,
+        # single quotes, unescaped newlines)
+        cleaned = response_text
+        if json_match:
+            cleaned = json_match.group(0)
+
+        # Remove trailing commas before ] or }
+        cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+        # Replace single quotes with double quotes (but not
+        # within already double-quoted strings)
+        cleaned = cleaned.replace("'", '"')
+        # Remove control characters except \n and \t
+        cleaned = re.sub(
+            r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', cleaned
+        )
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 4: try parsing individual JSON objects
+        # (handle case where array delimiters are missing)
+        objects = []
+        for match in re.finditer(
+            r'\{[^{}]*\}', cleaned
+        ):
+            try:
+                obj = json.loads(match.group(0))
+                if "post_id" in obj:
+                    objects.append(obj)
+            except json.JSONDecodeError:
+                continue
+
+        if objects:
+            logger.warning(
+                f"Recovered {len(objects)} results via "
+                "individual object parsing"
+            )
+            return objects
+
+        logger.error(
+            f"All JSON parse strategies failed. "
+            f"Response preview: {response_text[:300]}"
+        )
+        self.stats["errors"] += 1
+        return None
 
     def _save_extractions(self, post_id: int, external_id: str, result: dict):
         """Save ticker extractions to database.
@@ -496,6 +562,37 @@ class RedditAIProcessor:
             self.conn.rollback()
             self.stats["errors"] += 1
 
+    def _mark_failed_batch(self, batch: List[dict]):
+        """Mark posts as processed after LLM parse failure.
+
+        Prevents infinite retry loops on posts that consistently
+        produce unparseable LLM output.
+
+        Args:
+            batch: List of post dicts that failed processing
+        """
+        post_ids = [p["id"] for p in batch]
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                UPDATE reddit_posts_raw
+                SET processed_at = NOW(),
+                    llm_model = %s,
+                    is_finance_related = FALSE
+                WHERE id = ANY(%s)
+                  AND processed_at IS NULL
+            """, (self.model_name, post_ids))
+            self.conn.commit()
+            cursor.close()
+            self.stats["posts_processed"] += len(post_ids)
+            logger.info(
+                f"Marked {len(post_ids)} posts as processed "
+                "(LLM parse failure)"
+            )
+        except Exception as e:
+            logger.error(f"Failed to mark batch as failed: {e}")
+            self.conn.rollback()
+
     def process_batch(self, limit: int = 100) -> ProcessingResult:
         """Process a batch of unprocessed posts.
 
@@ -565,7 +662,8 @@ class RedditAIProcessor:
             results = self._call_llm(batch)
 
             if results is None:
-                logger.error("LLM call failed, skipping batch")
+                logger.error("LLM call failed, marking batch as processed to avoid retry loop")
+                self._mark_failed_batch(batch)
                 continue
 
             # Create mapping from external_id to database id
@@ -578,9 +676,9 @@ class RedditAIProcessor:
                     post_id = id_mapping[external_id]
                     self._save_extractions(post_id, external_id, result)
 
-            # Rate limit between batches
-            if i + self.batch_size < len(posts_to_process):
-                time.sleep(1)  # Small delay between batches
+            # No sleep needed — Gemini API handles rate limiting
+            # via 429 responses, and the DB commit acts as a
+            # natural throttle between batches.
 
         # Return per-batch stats (deltas from start)
         return ProcessingResult(
@@ -613,7 +711,7 @@ class RedditAIProcessor:
             batch_num += 1
 
             if process_all:
-                batch_limit = 100  # Process 100 posts at a time when processing all
+                batch_limit = 200  # Process 200 posts at a time when processing all
             else:
                 remaining = max_posts - processed
                 batch_limit = min(100, remaining)
@@ -629,8 +727,8 @@ class RedditAIProcessor:
             processed += result.posts_processed + result.posts_skipped
             logger.info(f"Progress: {processed} posts processed/skipped so far (cumulative: {self.stats['posts_processed']} processed, {self.stats['posts_skipped']} skipped)")
 
-            # Rate limit between batches
-            time.sleep(2)
+            # Brief pause between outer batches for DB breathing room
+            time.sleep(0.5)
 
         # Log summary
         self._log_summary()

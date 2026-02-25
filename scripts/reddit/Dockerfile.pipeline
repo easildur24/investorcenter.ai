@@ -30,4 +30,4 @@ ENV PYTHONUNBUFFERED=1
 
 # Default command: run the unified pipeline
 ENTRYPOINT ["python", "-m", "reddit.pipeline"]
-CMD ["--process-all", "--batch-size", "20", "--prune", "60"]
+CMD ["--batch-size", "25", "--prune", "60"]

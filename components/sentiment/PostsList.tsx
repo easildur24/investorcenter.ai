@@ -47,30 +47,31 @@ export default function PostsList({ ticker, initialSort = 'recent', limit = 10 }
 
   const sortOptions: { value: PostSortOption; label: string }[] = [
     { value: 'recent', label: 'Recent' },
-    { value: 'engagement', label: 'Most Engaged' },
+    { value: 'engagement', label: 'Top Engaged' },
     { value: 'bullish', label: 'Bullish' },
     { value: 'bearish', label: 'Bearish' },
   ];
 
   return (
     <div className="bg-ic-surface rounded-lg shadow-sm overflow-hidden">
-      {/* Header */}
+      {/* Header with pill-style filter buttons */}
       <div className="px-4 py-4 border-b border-ic-border-subtle">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <h3 className="text-lg font-semibold text-ic-text-primary">Social Media Posts</h3>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-ic-text-dim">Sort:</label>
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as PostSortOption)}
-              className="text-sm border border-ic-border rounded-md px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
-            >
-              {sortOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+          <div className="flex gap-1">
+            {sortOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSort(option.value)}
+                className={`px-3 py-1 text-xs rounded-md transition-colors ${
+                  sort === option.value
+                    ? 'bg-ic-blue text-ic-text-primary'
+                    : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
