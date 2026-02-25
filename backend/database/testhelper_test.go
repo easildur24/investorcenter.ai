@@ -69,7 +69,7 @@ func setupTestDB(t *testing.T) {
 			tickers, users, watch_lists, watch_list_items, screener_data,
 			financial_statements, eps_estimates, valuation_ratios, fundamental_metrics_extended,
 			mv_latest_sector_percentiles, alert_rules, alert_logs, sessions, password_reset_tokens,
-			notification_preferences, notification_queue, sentiment_lexicon, social_posts,
+			notification_preferences, notification_queue, sentiment_lexicon, reddit_posts_raw, reddit_post_tickers,
 			reddit_heatmap_daily, heatmap_configs, subscription_plans, user_subscriptions
 			CASCADE`)
 		db.Close()
@@ -84,7 +84,7 @@ func cleanTables(t *testing.T) {
 		tickers, users, watch_lists, watch_list_items, screener_data,
 		financial_statements, eps_estimates, valuation_ratios, fundamental_metrics_extended,
 		mv_latest_sector_percentiles, alert_rules, alert_logs, sessions, password_reset_tokens,
-		notification_preferences, notification_queue, sentiment_lexicon, social_posts,
+		notification_preferences, notification_queue, sentiment_lexicon, reddit_posts_raw, reddit_post_tickers,
 		reddit_heatmap_daily, heatmap_configs, subscription_plans, user_subscriptions
 		CASCADE`)
 }

@@ -272,7 +272,7 @@ func GetLatestRedditDate() (time.Time, error) {
 // RedditPipelineHealth represents the freshness status of the Reddit data pipelines
 type RedditPipelineHealth struct {
 	LastHeatmapDate *time.Time `json:"lastHeatmapDate"`  // Latest date in reddit_heatmap_daily
-	LastPostAt      *time.Time `json:"lastPostAt"`       // Latest posted_at in social_posts
+	LastPostAt      *time.Time `json:"lastPostAt"`       // Latest posted_at from reddit_posts_raw
 	TotalPosts7d    int        `json:"totalPosts7d"`     // Posts in last 7 days
 	Status          string     `json:"status"`           // "healthy", "stale", "no_data"
 	StalenessMin    int        `json:"stalenessMinutes"` // Minutes since last post
@@ -295,7 +295,12 @@ func GetRedditPipelineHealth() (*RedditPipelineHealth, error) {
 
 	// Latest social post (unscoped — we want the true last post even if >7 days old)
 	var lastPost sql.NullTime
-	err = DB.QueryRow(`SELECT MAX(posted_at) FROM social_posts`).Scan(&lastPost)
+	err = DB.QueryRow(`
+		SELECT MAX(r.posted_at)
+		FROM reddit_post_tickers t
+		JOIN reddit_posts_raw r ON t.post_id = r.id
+		WHERE r.processed_at IS NOT NULL
+	`).Scan(&lastPost)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to query post freshness: %w", err)
 	}
@@ -305,7 +310,13 @@ func GetRedditPipelineHealth() (*RedditPipelineHealth, error) {
 
 	// 7-day post count (separate query so the WHERE clause doesn't mask staleness)
 	err = DB.QueryRow(`
-		SELECT COUNT(*) FROM social_posts WHERE posted_at > NOW() - INTERVAL '7 days'
+		SELECT COUNT(*)
+		FROM reddit_post_tickers t
+		JOIN reddit_posts_raw r ON t.post_id = r.id
+		WHERE r.posted_at > NOW() - INTERVAL '7 days'
+		  AND r.processed_at IS NOT NULL
+		  AND r.is_finance_related = TRUE
+		  AND COALESCE(r.spam_score, 0) < 0.5
 	`).Scan(&health.TotalPosts7d)
 	if err != nil && err != sql.ErrNoRows {
 		return nil, fmt.Errorf("failed to query 7-day post count: %w", err)
