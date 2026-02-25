@@ -104,23 +104,3 @@ class SentimentResult:
     @property
     def is_bearish(self) -> bool:
         return self.sentiment == "bearish"
-
-
-@dataclass
-class SocialPostRecord:
-    """Database record for social_posts table."""
-
-    external_post_id: str
-    source: str
-    ticker: str
-    subreddit: str
-    title: str
-    body_preview: Optional[str]
-    url: str
-    upvotes: int
-    comment_count: int
-    award_count: int
-    sentiment: Optional[str]
-    sentiment_confidence: Optional[float]
-    flair: Optional[str]
-    posted_at: datetime
