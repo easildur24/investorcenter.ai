@@ -326,8 +326,8 @@ func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*m
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan alert rule: %w", err)
 		}
-		// First-write-wins: ORDER BY created_at DESC means most recent first.
-		// Only set if not already present (enforces 1:1).
+		// Most-recent-wins: ORDER BY created_at DESC means newest first.
+		// Only keep the first (newest) alert per symbol (enforces 1:1).
 		if _, exists := alertMap[alert.Symbol]; !exists {
 			alertMap[alert.Symbol] = alert
 		}
