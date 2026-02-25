@@ -292,7 +292,7 @@ class RedditAIProcessor:
                 FROM reddit_posts_raw
                 WHERE processed_at IS NULL
                   AND processing_skipped = FALSE
-                ORDER BY fetched_at ASC
+                ORDER BY posted_at DESC
                 LIMIT %s
             """, (limit,))
 
