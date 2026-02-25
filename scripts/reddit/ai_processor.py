@@ -388,36 +388,102 @@ class RedditAIProcessor:
         try:
             self.stats["llm_calls"] += 1
 
-            # Call Gemini
+            # Call Gemini with JSON output mode
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
                     max_output_tokens=4000,
-                    temperature=0.1,  # Low temperature for structured extraction
+                    temperature=0.1,
+                    response_mime_type="application/json",
                 ),
             )
 
             # Parse JSON response
             response_text = response.text.strip()
-
-            # Try to extract JSON from response
-            # Sometimes the model adds explanation text
-            json_match = re.search(r'\[[\s\S]*\]', response_text)
-            if json_match:
-                response_text = json_match.group(0)
-
-            return json.loads(response_text)
-
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response: {e}")
-            logger.debug(f"Response was: {response_text[:500]}")
-            self.stats["errors"] += 1
-            return None
+            return self._parse_json_response(response_text)
 
         except Exception as e:
             logger.error(f"LLM call failed: {e}")
             self.stats["errors"] += 1
             return None
+
+    def _parse_json_response(
+        self, response_text: str
+    ) -> Optional[List[dict]]:
+        """Parse JSON from LLM response with multiple fallback
+        strategies.
+
+        Args:
+            response_text: Raw text from LLM
+
+        Returns:
+            Parsed list of dicts or None on failure
+        """
+        # Strategy 1: direct parse
+        try:
+            result = json.loads(response_text)
+            if isinstance(result, list):
+                return result
+            if isinstance(result, dict):
+                return [result]
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 2: extract JSON array from surrounding text
+        json_match = re.search(r'\[[\s\S]*\]', response_text)
+        if json_match:
+            try:
+                return json.loads(json_match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 3: fix common JSON issues (trailing commas,
+        # single quotes, unescaped newlines)
+        cleaned = response_text
+        if json_match:
+            cleaned = json_match.group(0)
+
+        # Remove trailing commas before ] or }
+        cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
+        # Replace single quotes with double quotes (but not
+        # within already double-quoted strings)
+        cleaned = cleaned.replace("'", '"')
+        # Remove control characters except \n and \t
+        cleaned = re.sub(
+            r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', cleaned
+        )
+
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Strategy 4: try parsing individual JSON objects
+        # (handle case where array delimiters are missing)
+        objects = []
+        for match in re.finditer(
+            r'\{[^{}]*\}', cleaned
+        ):
+            try:
+                obj = json.loads(match.group(0))
+                if "post_id" in obj:
+                    objects.append(obj)
+            except json.JSONDecodeError:
+                continue
+
+        if objects:
+            logger.warning(
+                f"Recovered {len(objects)} results via "
+                "individual object parsing"
+            )
+            return objects
+
+        logger.error(
+            f"All JSON parse strategies failed. "
+            f"Response preview: {response_text[:300]}"
+        )
+        self.stats["errors"] += 1
+        return None
 
     def _save_extractions(self, post_id: int, external_id: str, result: dict):
         """Save ticker extractions to database.
