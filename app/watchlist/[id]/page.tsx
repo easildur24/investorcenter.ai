@@ -354,17 +354,17 @@ export default function WatchListDetailPage() {
             onRemove={handleRemoveTicker}
             onEdit={setEditingSymbol}
             expandedSymbol={editingSymbol}
+            watchListId={watchListId}
+            alertsBySymbol={alertsBySymbol}
+            onAlertCreate={handleAlertCreate}
+            onAlertUpdate={handleAlertUpdate}
+            onAlertDelete={handleAlertDelete}
             renderExpandedRow={(item: WatchListItem) => (
               <InlineEditPanel
                 item={item}
                 tagSuggestions={tagSuggestions}
                 onSave={handleUpdateTicker}
                 onCancel={() => setEditingSymbol(null)}
-                watchListId={watchListId}
-                existingAlert={alertsBySymbol.get(item.symbol)}
-                onAlertCreate={handleAlertCreate}
-                onAlertUpdate={handleAlertUpdate}
-                onAlertDelete={handleAlertDelete}
               />
             )}
           />

@@ -12,7 +12,9 @@ import {
   DEFAULT_VIEW,
   VIEW_STORAGE_KEY,
 } from '@/lib/watchlist/columns';
+import { AlertRuleWithDetails, CreateAlertRequest, UpdateAlertRequest } from '@/lib/api/alerts';
 import ViewSwitcher from './ViewSwitcher';
+import AlertCell from './AlertCell';
 
 // ---------------------------------------------------------------------------
 // Display label for asset type filter chips (uppercase abbreviations).
@@ -42,6 +44,16 @@ interface WatchListTableProps {
   expandedSymbol?: string | null;
   /** Render function for the expanded row content (e.g. InlineEditPanel). */
   renderExpandedRow?: (item: WatchListItem) => React.ReactNode;
+  /** Watchlist ID (passed to AlertCell for alert creation). */
+  watchListId: string;
+  /** Map from symbol to alert rule (from useWatchlistAlerts hook). */
+  alertsBySymbol: Map<string, AlertRuleWithDetails>;
+  /** Create a new alert rule. */
+  onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
+  /** Update an existing alert rule. */
+  onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
+  /** Delete an alert rule. */
+  onAlertDelete: (alertId: string, symbol: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -91,7 +103,14 @@ function renderCell(
   item: WatchListItem,
   alert: ReturnType<typeof checkTargetAlert>,
   onRemove: (symbol: string) => void,
-  onEdit: (symbol: string) => void
+  onEdit: (symbol: string) => void,
+  alertCellProps?: {
+    existingAlert?: AlertRuleWithDetails;
+    watchListId: string;
+    onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
+    onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
+    onAlertDelete: (alertId: string, symbol: string) => Promise<void>;
+  }
 ): React.ReactNode {
   const raw = col.getValue(item);
 
@@ -222,68 +241,27 @@ function renderCell(
       );
     }
 
-    // ── Alert badge ─────────────────────────────────────────────────
+    // ── Alert badge → AlertCell popover ──────────────────────────────
     // Two distinct alert systems coexist:
-    //  1. Alert rules (alertCount) — user-created rules from InlineAlertSection
-    //  2. Target-price alerts (alert) — derived from checkTargetAlert() when
+    //  1. Alert rules — user-created rules managed via AlertCell popover
+    //  2. Target-price alerts — derived from checkTargetAlert() when
     //     current_price crosses target_buy_price or target_sell_price
-    // Priority: alert rules pill > target-price badge > muted bell.
+    // AlertCell handles all three states: active rule, target badge, muted bell.
     case 'badge': {
-      const alertCount = col.id === 'alert' ? Number(col.getValue(item)) || 0 : 0;
-
-      // Has active alert rule — show blue pill
-      if (alertCount > 0) {
-        return (
-          <button
-            className="inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold rounded bg-ic-blue/20 text-ic-blue hover:bg-ic-blue/30 transition-colors"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(item.symbol);
-            }}
-            title="Manage alert"
-          >
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
-            </svg>
-            Active
-          </button>
-        );
+      if (!alertCellProps) {
+        // Fallback when alert props aren't provided (shouldn't happen in practice)
+        return <span className="text-ic-text-secondary">—</span>;
       }
-
-      // Target price triggered (buy/sell target badge, distinct from alert rules)
-      if (alert) {
-        return (
-          <span
-            className={`inline-block px-2 py-1 text-xs font-semibold rounded ${
-              alert.type === 'buy'
-                ? 'bg-green-500/20 text-ic-positive'
-                : 'bg-blue-500/20 text-ic-blue'
-            }`}
-          >
-            {alert.message}
-          </span>
-        );
-      }
-
-      // No alert — show muted bell to invite creation
       return (
-        <button
-          className="text-ic-text-dim hover:text-ic-blue transition-colors"
-          onClick={(e) => {
-            e.stopPropagation();
-            onEdit(item.symbol);
-          }}
-          title="Set alert"
-        >
-          <svg className="w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
-            />
-          </svg>
-        </button>
+        <AlertCell
+          item={item}
+          existingAlert={alertCellProps.existingAlert}
+          watchListId={alertCellProps.watchListId}
+          targetAlert={alert}
+          onAlertCreate={alertCellProps.onAlertCreate}
+          onAlertUpdate={alertCellProps.onAlertUpdate}
+          onAlertDelete={alertCellProps.onAlertDelete}
+        />
       );
     }
 
@@ -336,6 +314,11 @@ export default function WatchListTable({
   onEdit,
   expandedSymbol,
   renderExpandedRow,
+  watchListId,
+  alertsBySymbol,
+  onAlertCreate,
+  onAlertUpdate,
+  onAlertDelete,
 }: WatchListTableProps) {
   // ── View preset (persisted to localStorage) ───────────────────────
   const [activeView, setActiveView] = useState<ViewPresetId>(() => {
@@ -558,7 +541,13 @@ export default function WatchListTable({
                             col.type === 'text' && col.width && 'overflow-hidden text-ellipsis'
                           )}
                         >
-                          {renderCell(col, item, alert, onRemove, onEdit)}
+                          {renderCell(col, item, alert, onRemove, onEdit, {
+                            existingAlert: alertsBySymbol.get(item.symbol),
+                            watchListId,
+                            onAlertCreate,
+                            onAlertUpdate,
+                            onAlertDelete,
+                          })}
                         </td>
                       ))}
                     </tr>

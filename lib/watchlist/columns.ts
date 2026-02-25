@@ -171,15 +171,6 @@ export const ALL_COLUMNS: ColumnDefinition[] = [
     premium: false,
     getValue: (i) => i.alert_count,
   },
-  {
-    id: 'alert_count',
-    label: 'Alerts',
-    type: 'integer',
-    align: 'right',
-    sortable: true,
-    premium: false,
-    getValue: (i) => i.alert_count,
-  },
 
   // ── IC Score ──────────────────────────────────────────────────────────
   {

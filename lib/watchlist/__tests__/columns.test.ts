@@ -155,11 +155,6 @@ describe('getValue extractors', () => {
     expect(col.getValue(item)).toBe('rising');
   });
 
-  it('alert_count extracts count', () => {
-    const col = getColumn('alert_count')!;
-    expect(col.getValue(item)).toBe(2);
-  });
-
   it('volume extracts large number', () => {
     const col = getColumn('volume')!;
     expect(col.getValue(item)).toBe(52_000_000);
