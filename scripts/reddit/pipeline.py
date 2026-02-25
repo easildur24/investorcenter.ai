@@ -248,8 +248,8 @@ def main():
     parser.add_argument(
         "--batch-size",
         type=int,
-        default=20,
-        help="Posts per LLM call (default: 20)",
+        default=10,
+        help="Posts per LLM call (default: 10)",
     )
     parser.add_argument(
         "--min-upvotes",

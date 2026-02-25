@@ -102,8 +102,8 @@ class RedditAIProcessor:
     MIN_UPVOTES = 5
     MIN_COMMENTS = 3
 
-    # Batch size for LLM calls (20 posts * ~90 tokens avg output = ~1800 tokens)
-    BATCH_SIZE = 20
+    # Batch size for LLM calls — keep small to avoid output truncation
+    BATCH_SIZE = 10
 
     def __init__(
         self,
@@ -392,7 +392,7 @@ class RedditAIProcessor:
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=4000,
+                    max_output_tokens=8192,
                     temperature=0.1,
                     response_mime_type="application/json",
                 ),
@@ -562,6 +562,37 @@ class RedditAIProcessor:
             self.conn.rollback()
             self.stats["errors"] += 1
 
+    def _mark_failed_batch(self, batch: List[dict]):
+        """Mark posts as processed after LLM parse failure.
+
+        Prevents infinite retry loops on posts that consistently
+        produce unparseable LLM output.
+
+        Args:
+            batch: List of post dicts that failed processing
+        """
+        post_ids = [p["id"] for p in batch]
+        try:
+            cursor = self.conn.cursor()
+            cursor.execute("""
+                UPDATE reddit_posts_raw
+                SET processed_at = NOW(),
+                    llm_model = %s,
+                    is_finance_related = FALSE
+                WHERE id = ANY(%s)
+                  AND processed_at IS NULL
+            """, (self.model_name, post_ids))
+            self.conn.commit()
+            cursor.close()
+            self.stats["posts_processed"] += len(post_ids)
+            logger.info(
+                f"Marked {len(post_ids)} posts as processed "
+                "(LLM parse failure)"
+            )
+        except Exception as e:
+            logger.error(f"Failed to mark batch as failed: {e}")
+            self.conn.rollback()
+
     def process_batch(self, limit: int = 100) -> ProcessingResult:
         """Process a batch of unprocessed posts.
 
@@ -631,7 +662,8 @@ class RedditAIProcessor:
             results = self._call_llm(batch)
 
             if results is None:
-                logger.error("LLM call failed, skipping batch")
+                logger.error("LLM call failed, marking batch as processed to avoid retry loop")
+                self._mark_failed_batch(batch)
                 continue
 
             # Create mapping from external_id to database id
