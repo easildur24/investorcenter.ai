@@ -281,6 +281,76 @@ func UpdateAlertRuleTrigger(alertID string) error {
 	return nil
 }
 
+// GetAlertForWatchListItems retrieves alerts for all tickers in a watchlist,
+// returning a map keyed by symbol. Since alerts are 1:1 with watchlist items,
+// each symbol has at most one alert. If legacy duplicates exist, the most
+// recent (by created_at) wins.
+func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*models.AlertRule, error) {
+	query := `
+		SELECT
+			id, user_id, watch_list_id, watch_list_item_id, symbol, alert_type,
+			conditions, is_active, frequency, notify_email, notify_in_app,
+			name, description, last_triggered_at, trigger_count, created_at, updated_at
+		FROM alert_rules
+		WHERE watch_list_id = $1 AND user_id = $2
+		ORDER BY created_at DESC
+	`
+	rows, err := DB.Query(query, watchListID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get alerts for watchlist items: %w", err)
+	}
+	defer rows.Close()
+
+	alertMap := make(map[string]*models.AlertRule)
+	for rows.Next() {
+		alert := &models.AlertRule{}
+		err := rows.Scan(
+			&alert.ID,
+			&alert.UserID,
+			&alert.WatchListID,
+			&alert.WatchListItemID,
+			&alert.Symbol,
+			&alert.AlertType,
+			&alert.Conditions,
+			&alert.IsActive,
+			&alert.Frequency,
+			&alert.NotifyEmail,
+			&alert.NotifyInApp,
+			&alert.Name,
+			&alert.Description,
+			&alert.LastTriggeredAt,
+			&alert.TriggerCount,
+			&alert.CreatedAt,
+			&alert.UpdatedAt,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to scan alert rule: %w", err)
+		}
+		// First-write-wins: ORDER BY created_at DESC means most recent first.
+		// Only set if not already present (enforces 1:1).
+		if _, exists := alertMap[alert.Symbol]; !exists {
+			alertMap[alert.Symbol] = alert
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating alert rules: %w", err)
+	}
+
+	return alertMap, nil
+}
+
+// AlertExistsForSymbol checks if an alert already exists for a given symbol
+// in a watchlist. Used to enforce the 1:1 constraint (one alert per watchlist item).
+func AlertExistsForSymbol(watchListID string, symbol string) (bool, error) {
+	var exists bool
+	query := `SELECT EXISTS(SELECT 1 FROM alert_rules WHERE watch_list_id = $1 AND symbol = $2)`
+	err := DB.QueryRow(query, watchListID, symbol).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check alert existence: %w", err)
+	}
+	return exists, nil
+}
+
 // CountAlertRulesByUserID counts alert rules for a user
 func CountAlertRulesByUserID(userID string) (int, error) {
 	var count int

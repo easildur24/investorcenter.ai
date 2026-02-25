@@ -275,3 +275,29 @@ func (s *AlertService) TriggerAlert(alert *models.AlertRule, conditionMet interf
 
 	return nil
 }
+
+// alertTypeLabels maps alert type identifiers to human-readable labels.
+var alertTypeLabels = map[string]string{
+	"price_above":         "Price Above",
+	"price_below":         "Price Below",
+	"price_change_pct":    "Price Change %",
+	"price_change_amount": "Price Change $",
+	"volume_spike":        "Volume Spike",
+	"unusual_volume":      "Unusual Volume",
+	"volume_above":        "Volume Above",
+	"volume_below":        "Volume Below",
+	"news":                "News Alert",
+	"earnings":            "Earnings Report",
+	"dividend":            "Dividend",
+	"sec_filing":          "SEC Filing",
+	"analyst_rating":      "Analyst Rating",
+}
+
+// AlertTypeLabel returns a human-readable label for the given alert type.
+// Returns the raw alertType string if no mapping exists.
+func AlertTypeLabel(alertType string) string {
+	if label, ok := alertTypeLabels[alertType]; ok {
+		return label
+	}
+	return alertType
+}
