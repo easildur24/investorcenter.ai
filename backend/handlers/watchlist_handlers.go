@@ -94,6 +94,22 @@ func GetWatchList(c *gin.Context) {
 		return
 	}
 
+	// Optionally enrich each item with its full alert object (1:1 per watchlist item).
+	// Ownership is already verified: GetWatchListWithItems filters by userID and
+	// returns ErrWatchListNotFound (early return above) if the user doesn't own it.
+	// Usage: GET /api/v1/watchlists/:id?include_alerts=true
+	if c.Query("include_alerts") == "true" {
+		alertMap, alertErr := database.GetAlertForWatchListItems(watchListID, userID)
+		if alertErr != nil {
+			log.Printf("Warning: failed to fetch alerts for watchlist %s: %v", watchListID, alertErr)
+			// Non-fatal: items are still returned without alert data
+		} else {
+			for i := range result.Items {
+				result.Items[i].Alert = alertMap[result.Items[i].Symbol]
+			}
+		}
+	}
+
 	c.JSON(http.StatusOK, result)
 }
 

@@ -213,3 +213,50 @@ func BenchmarkShouldTriggerBasedOnFrequency_Always(b *testing.B) {
 		service.ShouldTriggerBasedOnFrequency(alert)
 	}
 }
+
+// ---------------------------------------------------------------------------
+// AlertTypeLabel
+// ---------------------------------------------------------------------------
+
+func TestAlertTypeLabel(t *testing.T) {
+	tests := []struct {
+		alertType string
+		expected  string
+	}{
+		{"price_above", "Price Above"},
+		{"price_below", "Price Below"},
+		{"price_change_pct", "Price Change %"},
+		{"price_change_amount", "Price Change $"},
+		{"volume_spike", "Volume Spike"},
+		{"unusual_volume", "Unusual Volume"},
+		{"volume_above", "Volume Above"},
+		{"volume_below", "Volume Below"},
+		{"news", "News Alert"},
+		{"earnings", "Earnings Report"},
+		{"dividend", "Dividend"},
+		{"sec_filing", "SEC Filing"},
+		{"analyst_rating", "Analyst Rating"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.alertType, func(t *testing.T) {
+			result := models.AlertTypeLabel(tt.alertType)
+			if result != tt.expected {
+				t.Errorf("AlertTypeLabel(%q) = %q, want %q", tt.alertType, result, tt.expected)
+			}
+		})
+	}
+}
+
+func TestAlertTypeLabel_Unknown(t *testing.T) {
+	// Unknown types should return the raw string as fallback
+	result := models.AlertTypeLabel("unknown_type")
+	if result != "unknown_type" {
+		t.Errorf("AlertTypeLabel(%q) = %q, want %q", "unknown_type", result, "unknown_type")
+	}
+
+	result = models.AlertTypeLabel("")
+	if result != "" {
+		t.Errorf("AlertTypeLabel(%q) = %q, want %q", "", result, "")
+	}
+}

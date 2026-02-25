@@ -93,7 +93,8 @@ type WatchListItemDetail struct {
 	PayoutRatio     *float64 `json:"payout_ratio"`
 
 	// Alert metadata
-	AlertCount int `json:"alert_count"`
+	AlertCount int        `json:"alert_count"`
+	Alert      *AlertRule `json:"alert,omitempty"` // The single alert for this item (populated when include_alerts=true)
 }
 
 // WatchListWithItems includes the watch list, all items with detail, and summary metrics
