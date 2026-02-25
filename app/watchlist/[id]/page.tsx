@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { watchListAPI, WatchListWithItems, WatchListItem } from '@/lib/api/watchlist';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { useToast } from '@/lib/hooks/useToast';
+import { useWatchlistAlerts } from '@/lib/hooks/useWatchlistAlerts';
+import { CreateAlertRequest, UpdateAlertRequest } from '@/lib/api/alerts';
 import WatchListTable from '@/components/watchlist/WatchListTable';
 import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
 import WatchlistSearchInput from '@/components/watchlist/WatchlistSearchInput';
@@ -61,6 +63,37 @@ export default function WatchListDetailPage() {
         /* tag suggestions are non-critical */
       });
   }, []);
+
+  // ── Alerts for this watchlist ────────────────────────────────────────
+
+  const { alertsBySymbol, createAlert, updateAlert, deleteAlert } = useWatchlistAlerts(watchListId);
+
+  const handleAlertCreate = useCallback(
+    async (req: CreateAlertRequest) => {
+      const result = await createAlert(req);
+      await loadWatchList(); // refresh alert_count in table
+      toast.success('Alert created');
+      return result;
+    },
+    [createAlert, loadWatchList, toast]
+  );
+
+  const handleAlertUpdate = useCallback(
+    async (alertId: string, req: UpdateAlertRequest) => {
+      await updateAlert(alertId, req);
+      toast.success('Alert updated');
+    },
+    [updateAlert, toast]
+  );
+
+  const handleAlertDelete = useCallback(
+    async (alertId: string, symbol: string) => {
+      await deleteAlert(alertId, symbol);
+      await loadWatchList(); // refresh alert_count
+      toast.success('Alert removed');
+    },
+    [deleteAlert, loadWatchList, toast]
+  );
 
   // ── Quick add handler (inline search + header integration) ──────────
 
@@ -323,6 +356,11 @@ export default function WatchListDetailPage() {
                 tagSuggestions={tagSuggestions}
                 onSave={handleUpdateTicker}
                 onCancel={() => setEditingSymbol(null)}
+                watchListId={watchListId}
+                existingAlert={alertsBySymbol.get(item.symbol)}
+                onAlertCreate={handleAlertCreate}
+                onAlertUpdate={handleAlertUpdate}
+                onAlertDelete={handleAlertDelete}
               />
             )}
           />

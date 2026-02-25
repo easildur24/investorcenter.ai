@@ -169,7 +169,7 @@ export const ALL_COLUMNS: ColumnDefinition[] = [
     align: 'center',
     sortable: false,
     premium: false,
-    getValue: () => null,
+    getValue: (i) => i.alert_count,
   },
   {
     id: 'alert_count',

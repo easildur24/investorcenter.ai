@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"errors"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
 	"investorcenter-api/services"
@@ -88,6 +89,11 @@ func (h *AlertHandler) CreateAlertRule(c *gin.Context) {
 	// Create alert
 	alert, err := h.alertService.CreateAlert(userID, &req)
 	if err != nil {
+		// Catch unique constraint violation (race-condition-safe duplicate guard)
+		if errors.Is(err, database.ErrAlertAlreadyExists) {
+			c.JSON(http.StatusConflict, gin.H{"error": "Alert already exists for this ticker in this watchlist"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
