@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"log"
 	"net/http"
 	"os"
@@ -15,6 +16,9 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 )
+
+//go:embed migrations/*.sql
+var migrationsFS embed.FS
 
 func main() {
 	// Load environment variables
@@ -32,6 +36,11 @@ func main() {
 	} else {
 		log.Println("Database connected successfully")
 		defer database.Close()
+
+		// Auto-run pending database migrations
+		if err := database.RunMigrations(migrationsFS); err != nil {
+			log.Fatalf("Database migration failed: %v", err)
+		}
 	}
 
 	// Set Gin mode
