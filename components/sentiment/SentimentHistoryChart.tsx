@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import {
-  LineChart,
   Line,
   XAxis,
   YAxis,
@@ -20,22 +19,39 @@ import { getSentimentScoreColor } from '@/lib/types/sentiment';
 import type { SentimentHistoryResponse, SentimentHistoryPoint } from '@/lib/types/sentiment';
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { getChartColors, themeColors } from '@/lib/theme';
+import { apiClient } from '@/lib/api/client';
+import { tickers } from '@/lib/api/routes';
 
 interface SentimentHistoryChartProps {
   ticker: string;
   initialDays?: number;
   height?: number;
   showPostCount?: boolean;
+  showPriceOverlay?: boolean;
+}
+
+/** Map sentiment days to chart API period */
+const DAYS_TO_CHART_PERIOD: Record<number, string> = {
+  7: '1M',
+  30: '3M',
+  90: '6M',
+};
+
+interface ChartDataPoint {
+  timestamp: string;
+  close: string;
 }
 
 /**
  * Line chart showing sentiment over time with optional post count overlay
+ * and optional stock price overlay.
  */
 export default function SentimentHistoryChart({
   ticker,
   initialDays = 7,
   height = 300,
   showPostCount = true,
+  showPriceOverlay = false,
 }: SentimentHistoryChartProps) {
   const { resolvedTheme } = useTheme();
   const chartColors = useMemo(() => getChartColors(resolvedTheme), [resolvedTheme]);
@@ -44,7 +60,10 @@ export default function SentimentHistoryChart({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [days, setDays] = useState(initialDays);
+  const [priceEnabled, setPriceEnabled] = useState(showPriceOverlay);
+  const [priceData, setPriceData] = useState<Map<string, number> | null>(null);
 
+  // Fetch sentiment history
   useEffect(() => {
     async function fetchHistory() {
       try {
@@ -62,6 +81,38 @@ export default function SentimentHistoryChart({
     fetchHistory();
   }, [ticker, days]);
 
+  // Fetch price data when price overlay is enabled
+  useEffect(() => {
+    if (!priceEnabled) {
+      setPriceData(null);
+      return;
+    }
+
+    async function fetchPriceData() {
+      try {
+        const period = DAYS_TO_CHART_PERIOD[days] || '3M';
+        const result = await apiClient.get<{ dataPoints: ChartDataPoint[] }>(
+          `${tickers.chart(ticker)}?period=${period}`
+        );
+
+        if (result?.dataPoints) {
+          // Build a date→price map keyed by YYYY-MM-DD
+          const priceMap = new Map<string, number>();
+          for (const point of result.dataPoints) {
+            const dateKey = point.timestamp.slice(0, 10); // YYYY-MM-DD
+            priceMap.set(dateKey, parseFloat(point.close));
+          }
+          setPriceData(priceMap);
+        }
+      } catch {
+        // Price overlay is optional; silently fail
+        setPriceData(null);
+      }
+    }
+
+    fetchPriceData();
+  }, [ticker, days, priceEnabled]);
+
   if (loading) {
     return <LoadingSkeleton height={height} />;
   }
@@ -74,22 +125,41 @@ export default function SentimentHistoryChart({
     );
   }
 
-  // Prepare chart data
-  const chartData = data.history.map((point) => ({
-    ...point,
-    date: parseISO(point.date),
-  }));
+  // Prepare chart data — merge sentiment with optional price
+  const chartData = data.history.map((point) => {
+    const price = priceEnabled && priceData ? (priceData.get(point.date) ?? null) : null;
+    return {
+      ...point,
+      date: parseISO(point.date),
+      price,
+    };
+  });
 
   // Get current score for color
   const currentScore = chartData[chartData.length - 1]?.score || 0;
   const lineColor = getSentimentScoreColor(currentScore);
 
+  // Check if we have any price data to show
+  const hasPriceData = priceEnabled && chartData.some((d) => d.price !== null);
+
   return (
     <div className="w-full">
-      {/* Period selector */}
+      {/* Period selector + price toggle */}
       <div className="flex items-center justify-between mb-4">
         <h4 className="text-sm font-medium text-ic-text-secondary">Sentiment History</h4>
         <div className="flex gap-1">
+          {/* Price overlay toggle */}
+          <button
+            onClick={() => setPriceEnabled(!priceEnabled)}
+            className={`px-3 py-1 text-xs rounded-md transition-colors mr-2 ${
+              priceEnabled
+                ? 'bg-ic-blue text-ic-text-primary'
+                : 'bg-ic-surface text-ic-text-muted hover:bg-ic-surface-hover'
+            }`}
+          >
+            Price
+          </button>
+          {/* Period buttons */}
           {[7, 30, 90].map((d) => (
             <button
               key={d}
@@ -107,8 +177,11 @@ export default function SentimentHistoryChart({
       </div>
 
       {/* Chart */}
-      <ResponsiveContainer width="100%" height={height} key={resolvedTheme}>
-        <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+      <ResponsiveContainer width="100%" height={height} key={`${resolvedTheme}-${priceEnabled}`}>
+        <ComposedChart
+          data={chartData}
+          margin={{ top: 10, right: hasPriceData ? 50 : 10, left: -10, bottom: 0 }}
+        >
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.grid} />
           <XAxis
             dataKey="date"
@@ -123,7 +196,7 @@ export default function SentimentHistoryChart({
             stroke={chartColors.text}
             tickFormatter={(value) => value.toFixed(1)}
           />
-          {showPostCount && (
+          {showPostCount && !hasPriceData && (
             <YAxis
               yAxisId="right"
               orientation="right"
@@ -131,7 +204,17 @@ export default function SentimentHistoryChart({
               stroke={chartColors.text}
             />
           )}
-          <Tooltip content={<CustomTooltip />} />
+          {hasPriceData && (
+            <YAxis
+              yAxisId="price"
+              orientation="right"
+              tick={{ fontSize: 11, fill: chartColors.text }}
+              stroke={chartColors.line}
+              tickFormatter={(value) => `$${value.toFixed(0)}`}
+              domain={['auto', 'auto']}
+            />
+          )}
+          <Tooltip content={<CustomTooltip showPrice={hasPriceData} />} />
 
           {/* Reference line at 0 */}
           <ReferenceLine yAxisId="left" y={0} stroke={chartColors.text} strokeDasharray="3 3" />
@@ -152,8 +235,8 @@ export default function SentimentHistoryChart({
             strokeOpacity={0.5}
           />
 
-          {/* Post count bars */}
-          {showPostCount && (
+          {/* Post count bars (hidden when price overlay is active) */}
+          {showPostCount && !hasPriceData && (
             <Bar
               yAxisId="right"
               dataKey="post_count"
@@ -163,7 +246,7 @@ export default function SentimentHistoryChart({
             />
           )}
 
-          {/* Area fill under line */}
+          {/* Area fill under sentiment line */}
           <defs>
             <linearGradient id="sentimentGradient" x1="0" y1="0" x2="0" y2="1">
               <stop offset="5%" stopColor={lineColor} stopOpacity={0.2} />
@@ -188,8 +271,43 @@ export default function SentimentHistoryChart({
             dot={false}
             activeDot={{ r: 5 }}
           />
+
+          {/* Price overlay line */}
+          {hasPriceData && (
+            <Line
+              yAxisId="price"
+              type="monotone"
+              dataKey="price"
+              stroke={chartColors.line}
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              dot={false}
+              activeDot={{ r: 4, fill: chartColors.line }}
+              connectNulls={true}
+            />
+          )}
         </ComposedChart>
       </ResponsiveContainer>
+
+      {/* Legend */}
+      {hasPriceData && (
+        <div className="flex items-center justify-center gap-6 mt-3 text-xs text-ic-text-muted">
+          <div className="flex items-center gap-1.5">
+            <div className="w-4 h-0.5 rounded" style={{ backgroundColor: lineColor }} />
+            <span>Sentiment</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <div
+              className="w-4 h-0.5 rounded"
+              style={{
+                backgroundColor: chartColors.line,
+                backgroundImage: `repeating-linear-gradient(90deg, ${chartColors.line} 0px, ${chartColors.line} 4px, transparent 4px, transparent 8px)`,
+              }}
+            />
+            <span>Price</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -197,14 +315,15 @@ export default function SentimentHistoryChart({
 /**
  * Custom tooltip for the chart
  */
-interface TooltipProps {
+interface CustomTooltipProps {
+  showPrice: boolean;
   active?: boolean;
   payload?: Array<{
-    payload: SentimentHistoryPoint & { date: Date };
+    payload: SentimentHistoryPoint & { date: Date; price: number | null };
   }>;
 }
 
-function CustomTooltip({ active, payload }: TooltipProps) {
+function CustomTooltip({ showPrice, active, payload }: CustomTooltipProps) {
   if (!active || !payload || payload.length === 0) {
     return null;
   }
@@ -225,6 +344,14 @@ function CustomTooltip({ active, payload }: TooltipProps) {
             {data.score.toFixed(2)}
           </span>
         </div>
+        {showPrice && data.price !== null && (
+          <div className="flex justify-between gap-4">
+            <span className="text-ic-text-muted">Price:</span>
+            <span className="font-medium" style={{ color: themeColors.accent.blue }}>
+              ${data.price.toFixed(2)}
+            </span>
+          </div>
+        )}
         <div className="flex justify-between gap-4">
           <span className="text-ic-text-muted">Posts:</span>
           <span className="font-medium text-ic-text-primary">{data.post_count}</span>

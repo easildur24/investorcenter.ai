@@ -7,6 +7,7 @@ import { formatRelativeTime, getSentimentScoreColor } from '@/lib/types/sentimen
 import type { SentimentResponse } from '@/lib/types/sentiment';
 import SentimentGauge from './SentimentGauge';
 import SentimentBreakdownBar from './SentimentBreakdownBar';
+import SubredditDistributionChart from './SubredditDistributionChart';
 
 interface SentimentCardProps {
   ticker: string;
@@ -60,7 +61,7 @@ export default function SentimentCard({ ticker, variant = 'full' }: SentimentCar
             <p className="text-sm text-ic-text-muted">{data.post_count_7d} posts in 7 days</p>
           </div>
           <Link
-            href={`/sentiment?ticker=${ticker}`}
+            href={`/ticker/${ticker}?tab=sentiment`}
             className="text-sm text-blue-600 hover:text-blue-700 hover:underline"
           >
             View Details
@@ -160,20 +161,13 @@ export default function SentimentCard({ ticker, variant = 'full' }: SentimentCar
           <StatBox label="Posts (7d)" value={data.post_count_7d.toString()} />
         </div>
 
-        {/* Top subreddits */}
+        {/* Subreddit distribution chart */}
         {data.top_subreddits.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-ic-text-secondary mb-2">Top Subreddits</h4>
-            <div className="space-y-2">
-              {data.top_subreddits.slice(0, 5).map((sub) => (
-                <div key={sub.subreddit} className="flex items-center justify-between">
-                  <span className="text-sm text-ic-text-muted">r/{sub.subreddit}</span>
-                  <span className="text-sm font-medium text-ic-text-primary">
-                    {sub.count} posts
-                  </span>
-                </div>
-              ))}
-            </div>
+            <h4 className="text-sm font-medium text-ic-text-secondary mb-2">
+              Subreddit Distribution
+            </h4>
+            <SubredditDistributionChart subreddits={data.top_subreddits} />
           </div>
         )}
 

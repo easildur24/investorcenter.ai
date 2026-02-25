@@ -15,6 +15,7 @@ import MetricsTab from '@/components/ticker/tabs/MetricsTab';
 import OwnershipTab from '@/components/ticker/tabs/OwnershipTab';
 import KeyStatsTab from '@/components/ticker/tabs/KeyStatsTab';
 import InputTab from '@/components/ticker/tabs/InputTab';
+import SentimentTab from '@/components/ticker/tabs/SentimentTab';
 import AddToWatchlistButton from '@/components/watchlist/AddToWatchlistButton';
 
 interface PageProps {
@@ -87,6 +88,7 @@ async function getChartData(symbol: string, period: string = '1Y') {
 // Tab configuration with icons
 const stockTabs = [
   { id: 'overview', label: 'Overview' },
+  { id: 'sentiment', label: 'Sentiment' },
   { id: 'technical', label: 'Technical' },
   { id: 'risk', label: 'Risk' },
   { id: 'financials', label: 'Financials' },
@@ -152,6 +154,9 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
                 <TickerTabs symbol={symbol} tabs={stockTabs} defaultTab="overview">
                   {/* Overview Tab */}
                   <OverviewTab symbol={symbol} chartData={chartData} currentPrice={currentPrice} />
+
+                  {/* Sentiment Tab */}
+                  <SentimentTab symbol={symbol} />
 
                   {/* Technical Tab */}
                   <TechnicalTab symbol={symbol} />
