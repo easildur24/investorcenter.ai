@@ -25,9 +25,9 @@ Creating an alert requires navigating to a separate /alerts page, selecting a wa
 
 ## 4. User Stories
 
-1. **As a** watchlist user, **I want to** click a bell icon on any ticker row to create an alert for that symbol **so that** I never leave my watchlist to set up monitoring.
-2. **As a** watchlist user, **I want to** see which tickers have active alerts (and how many) directly in the table **so that** I know my coverage at a glance.
-3. **As a** watchlist user, **I want to** view, edit, and delete all alerts for a specific ticker from within the watchlist row **so that** I can manage alerts in context.
+1. **As a** user, **I want to** create a watchlist and add tickers to it (without price data) **so that** I can organize the symbols I care about before setting up any monitoring.
+2. **As a** watchlist user, **I want to** click a bell icon on any ticker row to create an alert (which includes price thresholds and conditions) **so that** I never leave my watchlist to set up monitoring.
+3. **As a** watchlist user, **I want to** see which tickers have active alerts and manage them (view, edit, delete) directly from the watchlist row **so that** I can stay in context without navigating away.
 4. **As a** watchlist user, **I want to** apply a single alert condition to every ticker in my watchlist **so that** I can monitor an entire list without configuring each row individually.
 
 ## 5. UX Design Specification
