@@ -38,11 +38,17 @@ export default function SubredditDistributionChart({
   // Compute dynamic height: at least the default, but scale with number of subreddits
   const dynamicHeight = Math.max(height, chartData.length * 36 + 20);
 
-  // Bar colors: top subreddit gets full orange, rest fade slightly
+  // Bar colors: top subreddit gets full orange, rest fade slightly.
+  // Uses theme token themeColors.accent.orange (#F97316) via hex→rgba conversion.
   const getBarColor = (index: number): string => {
     const baseOpacity = 1.0 - index * 0.12;
     const opacity = Math.max(baseOpacity, 0.4);
-    return `rgba(249, 115, 22, ${opacity})`; // orange-500 with fading opacity
+    // Parse the hex token into RGB components
+    const hex = themeColors.accent.orange; // '#F97316'
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
   };
 
   return (

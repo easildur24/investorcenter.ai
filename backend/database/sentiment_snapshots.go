@@ -13,6 +13,10 @@ import (
 // GetLatestSnapshots returns the most recent snapshot for each ticker in a given
 // time range, ordered by rank (or composite_score). This is the primary read path
 // for the trending page.
+//
+// Uses a two-pass strategy: first tries a tight 1-hour window (normal case when
+// the pipeline is running on schedule), then falls back to a 6-hour window if the
+// first query returns no rows (e.g. pipeline delay or cold start).
 func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot, error) {
 	if !models.ValidTimeRanges[timeRange] {
 		timeRange = "7d"
@@ -24,10 +28,27 @@ func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot
 		limit = 100
 	}
 
-	// The snapshot_time guard (> NOW() - INTERVAL '1 hour') limits the CTE scan
-	// to recent data, avoiding a full-table DISTINCT ON at scale. Snapshots run
-	// every ~15 min so 1 hour covers several cycles with headroom.
-	query := `
+	// Try tight window first (snapshots run every ~15 min, 1 hour covers several cycles)
+	snapshots, err := getLatestSnapshotsWithWindow(timeRange, limit, "1 hour")
+	if err != nil {
+		return nil, err
+	}
+
+	// Fall back to wider window if pipeline is delayed
+	if len(snapshots) == 0 {
+		snapshots, err = getLatestSnapshotsWithWindow(timeRange, limit, "6 hours")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return snapshots, nil
+}
+
+// getLatestSnapshotsWithWindow is the inner query for GetLatestSnapshots.
+func getLatestSnapshotsWithWindow(timeRange string, limit int, window string) ([]models.SentimentSnapshot, error) {
+	// window is always a compile-time literal from this package, never user input.
+	query := fmt.Sprintf(`
 		WITH latest AS (
 			SELECT DISTINCT ON (ticker)
 				id, ticker, snapshot_time, time_range,
@@ -40,13 +61,13 @@ func GetLatestSnapshots(timeRange string, limit int) ([]models.SentimentSnapshot
 				rank, previous_rank, rank_change, created_at
 			FROM ticker_sentiment_snapshots
 			WHERE time_range = $1
-			  AND snapshot_time > NOW() - INTERVAL '1 hour'
+			  AND snapshot_time > NOW() - INTERVAL '%s'
 			ORDER BY ticker, snapshot_time DESC
 		)
 		SELECT * FROM latest
 		ORDER BY COALESCE(rank, 999999) ASC, composite_score DESC
 		LIMIT $2
-	`
+	`, window)
 
 	var snapshots []models.SentimentSnapshot
 	err := DB.Select(&snapshots, query, timeRange, limit)

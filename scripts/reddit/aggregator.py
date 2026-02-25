@@ -180,6 +180,19 @@ class SentimentAggregator:
     def _query_aggregations(self, days: int) -> List[dict]:
         """Query per-ticker aggregated metrics from post data.
 
+        Note on mention_count vs unique_posts:
+          - unique_posts = COUNT(DISTINCT post_id): number of
+            distinct Reddit posts that mention this ticker.
+          - mention_count = COUNT(*): total rows in the join,
+            which can exceed unique_posts when a single post
+            mentions the same ticker with multiple sentiment
+            labels (e.g. the AI processor extracts both a
+            bullish and bearish signal from one post).
+          Both are stored in the snapshot for downstream use:
+          unique_posts is better for "how many posts discuss
+          this ticker", while mention_count drives the
+          composite score (more signals = higher activity).
+
         Args:
             days: Number of days to look back
 
@@ -375,11 +388,16 @@ class SentimentAggregator:
         return round(composite, 6)
 
     def _safe_select(self, query, params=None):
-        """Execute a read-only SELECT inside a savepoint.
+        """Execute a read-only SELECT with error handling.
 
-        On failure, rolls back only the savepoint (not the
-        whole transaction), keeping the shared connection
-        usable for subsequent operations.
+        On failure, rolls back the current transaction state
+        to keep the shared connection usable for subsequent
+        operations.
+
+        Note: SAVEPOINTs were removed because these are
+        read-only SELECTs — a failed read doesn't dirty the
+        transaction, and the rollback in the except branch is
+        sufficient to clear the aborted-transaction state.
 
         Args:
             query: SQL SELECT query
@@ -390,16 +408,11 @@ class SentimentAggregator:
         """
         cursor = self.conn.cursor()
         try:
-            cursor.execute("SAVEPOINT safe_select")
             cursor.execute(query, params)
-            rows = cursor.fetchall()
-            cursor.execute("RELEASE SAVEPOINT safe_select")
-            return rows
+            return cursor.fetchall()
         except Exception as e:
             logger.warning(f"SELECT failed: {e}")
-            cursor.execute(
-                "ROLLBACK TO SAVEPOINT safe_select"
-            )
+            self.conn.rollback()
             return []
         finally:
             cursor.close()

@@ -7,13 +7,42 @@ import (
 	"time"
 )
 
-// Base WHERE clause for all queries against the joined reddit tables.
+// Base WHERE clause fragment for all queries against the joined reddit tables.
 // Filters out unprocessed posts, non-finance posts, and spam.
+// Includes a leading AND so it can be appended directly after another condition.
 const redditPostBaseFilter = `
-	r.processed_at IS NOT NULL
+	AND r.processed_at IS NOT NULL
 	AND r.is_finance_related = TRUE
 	AND COALESCE(r.spam_score, 0) < 0.5
 `
+
+// Whitelist maps for GetTrendingTickers — prevents SQL injection by mapping
+// user-supplied period strings to known-safe SQL interval literals.
+type trendingPeriod struct {
+	interval         string // current window
+	previousInterval string // previous window (2x current) for delta calculation
+}
+
+var trendingIntervals = map[string]trendingPeriod{
+	"24h": {interval: "24 hours", previousInterval: "48 hours"},
+	"7d":  {interval: "7 days", previousInterval: "14 days"},
+}
+
+// Whitelist maps for GetRepresentativePostsForAPI — maps typed sort options
+// to known-safe SQL fragments.
+var postsOrderBy = map[models.SocialPostSortOption]string{
+	models.SortByRecent:     "r.posted_at DESC",
+	models.SortByEngagement: "(r.upvotes + r.comment_count * 2) DESC",
+	models.SortByBullish:    "t.confidence DESC NULLS LAST, r.upvotes DESC",
+	models.SortByBearish:    "t.confidence DESC NULLS LAST, r.upvotes DESC",
+}
+
+var postsWhereClause = map[models.SocialPostSortOption]string{
+	models.SortByRecent:     "",
+	models.SortByEngagement: "",
+	models.SortByBullish:    "AND t.sentiment = 'bullish'",
+	models.SortByBearish:    "AND t.sentiment = 'bearish'",
+}
 
 // GetTickerSentiment returns sentiment data for the API response
 func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
@@ -37,7 +66,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		JOIN reddit_posts_raw r ON t.post_id = r.id
 		WHERE t.ticker = $1
 		  AND r.posted_at > NOW() - INTERVAL '30 days'
-		  AND ` + redditPostBaseFilter
+		  ` + redditPostBaseFilter
 
 	var score float64
 	var bullishCount, bearishCount, neutralCount, totalCount, count24h, count7d int
@@ -62,7 +91,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 		JOIN reddit_posts_raw r ON t.post_id = r.id
 		WHERE t.ticker = $1
 		  AND r.posted_at > NOW() - INTERVAL '7 days'
-		  AND ` + redditPostBaseFilter + `
+		  ` + redditPostBaseFilter + `
 		GROUP BY r.subreddit
 		ORDER BY count DESC
 		LIMIT 5
@@ -91,7 +120,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 			FROM reddit_post_tickers t
 			JOIN reddit_posts_raw r ON t.post_id = r.id
 			WHERE r.posted_at > NOW() - INTERVAL '7 days'
-			  AND ` + redditPostBaseFilter + `
+			  ` + redditPostBaseFilter + `
 			GROUP BY t.ticker
 		)
 		SELECT COALESCE(rank, 0) FROM ticker_ranks WHERE ticker = $1
@@ -107,7 +136,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 			FROM reddit_post_tickers t
 			JOIN reddit_posts_raw r ON t.post_id = r.id
 			WHERE r.posted_at > NOW() - INTERVAL '7 days'
-			  AND ` + redditPostBaseFilter + `
+			  ` + redditPostBaseFilter + `
 			GROUP BY t.ticker
 		),
 		previous_ranks AS (
@@ -117,7 +146,7 @@ func GetTickerSentiment(ticker string) (*models.SentimentResponse, error) {
 			JOIN reddit_posts_raw r ON t.post_id = r.id
 			WHERE r.posted_at > NOW() - INTERVAL '14 days'
 			  AND r.posted_at <= NOW() - INTERVAL '7 days'
-			  AND ` + redditPostBaseFilter + `
+			  ` + redditPostBaseFilter + `
 			GROUP BY t.ticker
 		)
 		SELECT COALESCE(p.rank, 100) - COALESCE(c.rank, 100)
@@ -188,7 +217,7 @@ func GetSentimentHistory(ticker string, days int) (*models.SentimentHistoryRespo
 		JOIN reddit_posts_raw r ON t.post_id = r.id
 		WHERE t.ticker = $1
 		  AND r.posted_at > NOW() - $2::INTEGER * INTERVAL '1 day'
-		  AND ` + redditPostBaseFilter + `
+		  ` + redditPostBaseFilter + `
 		GROUP BY DATE(r.posted_at)
 		ORDER BY date ASC
 	`
@@ -228,12 +257,12 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 		limit = 50
 	}
 
-	// Determine interval based on period
-	interval := "24 hours"
-	previousInterval := "48 hours"
-	if period == "7d" {
-		interval = "7 days"
-		previousInterval = "14 days"
+	// Look up intervals from whitelist map (prevents SQL injection).
+	// Default to 24h if period is not recognized.
+	tp, ok := trendingIntervals[period]
+	if !ok {
+		period = "24h"
+		tp = trendingIntervals["24h"]
 	}
 
 	query := fmt.Sprintf(`
@@ -251,7 +280,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 			FROM reddit_post_tickers t
 			JOIN reddit_posts_raw r ON t.post_id = r.id
 			WHERE r.posted_at > NOW() - INTERVAL '%s'
-			  AND `+redditPostBaseFilter+`
+			  `+redditPostBaseFilter+`
 			GROUP BY t.ticker
 		),
 		previous_period AS (
@@ -262,7 +291,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 			JOIN reddit_posts_raw r ON t.post_id = r.id
 			WHERE r.posted_at > NOW() - INTERVAL '%s'
 			  AND r.posted_at <= NOW() - INTERVAL '%s'
-			  AND `+redditPostBaseFilter+`
+			  `+redditPostBaseFilter+`
 			GROUP BY t.ticker
 		)
 		SELECT
@@ -283,7 +312,7 @@ func GetTrendingTickers(period string, limit int) (*models.TrendingResponse, err
 		WHERE c.post_count >= 3
 		ORDER BY c.post_count DESC
 		LIMIT $1
-	`, interval, previousInterval, interval)
+	`, tp.interval, tp.previousInterval, tp.interval)
 
 	rows, err := DB.Query(query, limit)
 	if err != nil {
@@ -321,22 +350,12 @@ func GetRepresentativePostsForAPI(ticker string, sort models.SocialPostSortOptio
 		limit = 20
 	}
 
-	// Build ORDER BY and WHERE based on sort option
-	orderBy := "r.posted_at DESC" // default: recent
-	whereClause := ""
-
-	switch sort {
-	case models.SortByEngagement:
-		orderBy = "(r.upvotes + r.comment_count * 2) DESC"
-	case models.SortByBullish:
-		whereClause = "AND t.sentiment = 'bullish'"
-		orderBy = "t.confidence DESC NULLS LAST, r.upvotes DESC"
-	case models.SortByBearish:
-		whereClause = "AND t.sentiment = 'bearish'"
-		orderBy = "t.confidence DESC NULLS LAST, r.upvotes DESC"
-	case models.SortByRecent:
-		orderBy = "r.posted_at DESC"
+	// Look up ORDER BY and WHERE from whitelist maps (prevents SQL injection).
+	orderBy := postsOrderBy[sort]
+	if orderBy == "" {
+		orderBy = postsOrderBy[models.SortByRecent]
 	}
+	whereClause := postsWhereClause[sort]
 
 	query := fmt.Sprintf(`
 		SELECT
@@ -349,7 +368,7 @@ func GetRepresentativePostsForAPI(ticker string, sort models.SocialPostSortOptio
 		JOIN reddit_posts_raw r ON t.post_id = r.id
 		WHERE t.ticker = $1
 		  AND r.posted_at > NOW() - INTERVAL '7 days'
-		  AND `+redditPostBaseFilter+`
+		  `+redditPostBaseFilter+`
 		  %s
 		ORDER BY %s
 		LIMIT $2
@@ -399,7 +418,7 @@ func GetRepresentativePostsForAPI(ticker string, sort models.SocialPostSortOptio
 		JOIN reddit_posts_raw r ON t.post_id = r.id
 		WHERE t.ticker = $1
 		  AND r.posted_at > NOW() - INTERVAL '7 days'
-		  AND ` + redditPostBaseFilter
+		  ` + redditPostBaseFilter
 	_ = DB.QueryRow(countQuery, ticker).Scan(&total)
 
 	// Determine sort string for response
