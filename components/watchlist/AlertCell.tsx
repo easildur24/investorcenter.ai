@@ -2,7 +2,12 @@
 
 import React, { useState, useRef } from 'react';
 import { WatchListItem } from '@/lib/api/watchlist';
-import { AlertRuleWithDetails, CreateAlertRequest, UpdateAlertRequest } from '@/lib/api/alerts';
+import {
+  AlertRule,
+  AlertRuleWithDetails,
+  CreateAlertRequest,
+  UpdateAlertRequest,
+} from '@/lib/api/alerts';
 import AlertQuickPanel from './AlertQuickPanel';
 
 // ---------------------------------------------------------------------------
@@ -17,8 +22,8 @@ interface AlertCellProps {
   watchListId: string;
   /** Target-price alert from checkTargetAlert() — buy/sell target badge. */
   targetAlert: { type: 'buy' | 'sell'; message: string } | null;
-  /** Create a new alert rule. */
-  onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
+  /** Create a new alert rule. Returns the created AlertRule from the API. */
+  onAlertCreate: (req: CreateAlertRequest) => Promise<AlertRule>;
   /** Update an existing alert rule. */
   onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
   /** Delete an alert rule. */
@@ -27,6 +32,11 @@ interface AlertCellProps {
 
 // ---------------------------------------------------------------------------
 // Component
+//
+// Three visual states: active rule pill, target-price badge, muted bell.
+// triggerRef is always attached to a <button> in states 1 & 3 so the
+// popover can position itself. State 2 (target badge) has no interactive
+// trigger, but the ref stays defined to avoid conditional hook issues.
 // ---------------------------------------------------------------------------
 
 export default function AlertCell({
@@ -79,8 +89,10 @@ export default function AlertCell({
   }
 
   // ── State 2: Target price triggered (legacy badge, no popover) ───────
-  // These are derived from checkTargetAlert() when current_price crosses
-  // target_buy_price or target_sell_price. Distinct from alert rules.
+  // Derived from checkTargetAlert() when current_price crosses target_buy_price
+  // or target_sell_price. Distinct from alert rules. triggerRef is not attached
+  // here — if state oscillates rapidly between 2 ↔ 1/3, React reconciliation
+  // remounts the button and the ref reattaches cleanly.
   if (targetAlert) {
     return (
       <span

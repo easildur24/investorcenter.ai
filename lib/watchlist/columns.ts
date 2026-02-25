@@ -169,7 +169,10 @@ export const ALL_COLUMNS: ColumnDefinition[] = [
     align: 'center',
     sortable: false,
     premium: false,
-    getValue: (i) => i.alert_count,
+    // getValue is unused for badge columns — AlertCell renders from the
+    // alertsBySymbol map passed as a prop. Kept as a no-op for interface
+    // conformance (ColumnDefinition requires getValue).
+    getValue: () => null,
   },
 
   // ── IC Score ──────────────────────────────────────────────────────────

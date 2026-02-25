@@ -70,7 +70,7 @@ export default function WatchListDetailPage() {
 
   const handleAlertCreate = useCallback(
     async (req: CreateAlertRequest) => {
-      // Let errors propagate to InlineAlertSection's catch handler for display.
+      // Let errors propagate to AlertQuickPanel's catch handler for display.
       // Only refresh watchlist data (alert_count) on confirmed success.
       const result = await createAlert(req);
       toast.success('Alert created');

@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
+  AlertRule,
   AlertRuleWithDetails,
   ALERT_TYPES,
   ALERT_FREQUENCIES,
@@ -36,14 +37,18 @@ function needsThreshold(t: string) {
   return isPriceType(t) || isVolumeType(t);
 }
 
-function formatConditions(alertType: string, conditions: any): string {
+function formatConditions(alertType: string, conditions: unknown): string {
   try {
-    const cond = typeof conditions === 'string' ? JSON.parse(conditions) : conditions;
+    const cond =
+      typeof conditions === 'string'
+        ? (JSON.parse(conditions) as Record<string, unknown>)
+        : (conditions as Record<string, unknown> | null);
+    if (!cond || typeof cond !== 'object') return 'Configured';
     if (isPriceType(alertType) && cond.threshold != null) {
       return `$${Number(cond.threshold).toFixed(2)}`;
     }
     if (alertType === 'volume_above' && cond.threshold != null) {
-      return formatVolume(cond.threshold);
+      return formatVolume(Number(cond.threshold));
     }
     if (alertType === 'volume_spike' && cond.volume_multiplier != null) {
       return `${cond.volume_multiplier}x avg`;
@@ -70,7 +75,7 @@ interface AlertQuickPanelProps {
   symbol: string;
   currentPrice?: number;
   existingAlert?: AlertRuleWithDetails;
-  onCreate: (req: CreateAlertRequest) => Promise<any>;
+  onCreate: (req: CreateAlertRequest) => Promise<AlertRule>;
   onUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
   onDelete: (alertId: string, symbol: string) => Promise<void>;
   onClose: () => void;
@@ -144,7 +149,11 @@ export default function AlertQuickPanel({
     // Initial positioning (allow one render for panelRef to measure)
     requestAnimationFrame(updatePosition);
 
-    // Close on scroll (table may scroll away from trigger)
+    // Close on scroll (table may scroll away from trigger).
+    // Note: scrollParent is captured at mount time. If the DOM tree changes
+    // (e.g. row virtualization), the old parent stops being tracked. This is
+    // acceptable since the panel closes on scroll anyway, and the cleanup
+    // runs on unmount. triggerRef.current is guarded by the early-return above.
     const handleScroll = () => onClose();
     const scrollParent = triggerRef.current.closest('.overflow-x-auto');
     scrollParent?.addEventListener('scroll', handleScroll);
@@ -190,6 +199,8 @@ export default function AlertQuickPanel({
       setNotifyEmail(true);
       setNotifyInApp(true);
     }
+    // Intentional: runs once on mount to seed form defaults (threshold from
+    // currentPrice). Re-running on currentPrice changes would overwrite user edits.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -265,8 +276,8 @@ export default function AlertQuickPanel({
         });
       }
       onClose();
-    } catch (err: any) {
-      setError(err.message || 'Failed to save alert');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to save alert');
     } finally {
       setSaving(false);
     }
@@ -423,6 +434,9 @@ export default function AlertQuickPanel({
               );
             })}
           </select>
+          {/* TODO: Alert type is immutable after creation — this is enforced by the backend
+              binding validation (`oneof=...`), not just a frontend choice. If the backend ever
+              supports type changes, remove the disabled prop and this message. */}
           {isEditing && (
             <p className="mt-0.5 text-[10px] text-ic-text-dim">
               To change type, delete and recreate.
@@ -593,10 +607,16 @@ export default function AlertQuickPanel({
   return (
     <div
       ref={panelRef}
-      className={`fixed z-50 w-[340px] p-4 bg-ic-surface border border-ic-border rounded-xl shadow-xl transition-opacity duration-100 ${
-        isPositioned ? 'opacity-100' : 'opacity-0'
-      }`}
-      style={{ top: coords.top, left: coords.left }}
+      className="fixed z-50 w-[340px] p-4 bg-ic-surface border border-ic-border rounded-xl shadow-xl transition-opacity duration-100"
+      style={{
+        top: coords.top,
+        left: coords.left,
+        // Use visibility + opacity to prevent keyboard focus reaching an invisible panel
+        // during the initial layout pass (one frame before positioning is calculated).
+        visibility: isPositioned ? 'visible' : 'hidden',
+        opacity: isPositioned ? 1 : 0,
+      }}
+      aria-hidden={!isPositioned}
     >
       {formOpen ? renderFormMode() : renderViewMode()}
     </div>

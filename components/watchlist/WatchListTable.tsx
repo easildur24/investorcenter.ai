@@ -12,7 +12,12 @@ import {
   DEFAULT_VIEW,
   VIEW_STORAGE_KEY,
 } from '@/lib/watchlist/columns';
-import { AlertRuleWithDetails, CreateAlertRequest, UpdateAlertRequest } from '@/lib/api/alerts';
+import {
+  AlertRule,
+  AlertRuleWithDetails,
+  CreateAlertRequest,
+  UpdateAlertRequest,
+} from '@/lib/api/alerts';
 import ViewSwitcher from './ViewSwitcher';
 import AlertCell from './AlertCell';
 
@@ -33,7 +38,7 @@ function formatAssetTypeLabel(type: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Props — unchanged from original, no parent changes needed.
+// Props
 // ---------------------------------------------------------------------------
 
 interface WatchListTableProps {
@@ -48,8 +53,8 @@ interface WatchListTableProps {
   watchListId: string;
   /** Map from symbol to alert rule (from useWatchlistAlerts hook). */
   alertsBySymbol: Map<string, AlertRuleWithDetails>;
-  /** Create a new alert rule. */
-  onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
+  /** Create a new alert rule. Returns the created AlertRule from the API. */
+  onAlertCreate: (req: CreateAlertRequest) => Promise<AlertRule>;
   /** Update an existing alert rule. */
   onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
   /** Delete an alert rule. */
@@ -103,14 +108,7 @@ function renderCell(
   item: WatchListItem,
   alert: ReturnType<typeof checkTargetAlert>,
   onRemove: (symbol: string) => void,
-  onEdit: (symbol: string) => void,
-  alertCellProps?: {
-    existingAlert?: AlertRuleWithDetails;
-    watchListId: string;
-    onAlertCreate: (req: CreateAlertRequest) => Promise<any>;
-    onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
-    onAlertDelete: (alertId: string, symbol: string) => Promise<void>;
-  }
+  onEdit: (symbol: string) => void
 ): React.ReactNode {
   const raw = col.getValue(item);
 
@@ -241,30 +239,6 @@ function renderCell(
       );
     }
 
-    // ── Alert badge → AlertCell popover ──────────────────────────────
-    // Two distinct alert systems coexist:
-    //  1. Alert rules — user-created rules managed via AlertCell popover
-    //  2. Target-price alerts — derived from checkTargetAlert() when
-    //     current_price crosses target_buy_price or target_sell_price
-    // AlertCell handles all three states: active rule, target badge, muted bell.
-    case 'badge': {
-      if (!alertCellProps) {
-        // Fallback when alert props aren't provided (shouldn't happen in practice)
-        return <span className="text-ic-text-secondary">—</span>;
-      }
-      return (
-        <AlertCell
-          item={item}
-          existingAlert={alertCellProps.existingAlert}
-          watchListId={alertCellProps.watchListId}
-          targetAlert={alert}
-          onAlertCreate={alertCellProps.onAlertCreate}
-          onAlertUpdate={alertCellProps.onAlertUpdate}
-          onAlertDelete={alertCellProps.onAlertDelete}
-        />
-      );
-    }
-
     // ── Actions (Edit / Remove) ───────────────────────────────────────
     case 'actions':
       return (
@@ -286,9 +260,90 @@ function renderCell(
         </>
       );
 
+    // Badge columns are handled by WatchListRow directly (AlertCell).
+    // If we get here, it's an unknown type — render raw value.
     default:
       return <span>{raw != null ? String(raw) : '—'}</span>;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Row component — renders cells for a single item, handles badge/alert
+// columns inline to avoid constructing alert props for every cell.
+// ---------------------------------------------------------------------------
+
+interface WatchListRowProps {
+  item: WatchListItem;
+  columns: ColumnDefinition[];
+  alert: ReturnType<typeof checkTargetAlert>;
+  onRemove: (symbol: string) => void;
+  onEdit: (symbol: string) => void;
+  isExpanded: boolean;
+  renderExpandedRow?: (item: WatchListItem) => React.ReactNode;
+  // Alert props — only used for badge columns
+  existingAlert?: AlertRuleWithDetails;
+  watchListId: string;
+  onAlertCreate: (req: CreateAlertRequest) => Promise<AlertRule>;
+  onAlertUpdate: (alertId: string, req: UpdateAlertRequest) => Promise<void>;
+  onAlertDelete: (alertId: string, symbol: string) => Promise<void>;
+}
+
+function WatchListRow({
+  item,
+  columns,
+  alert,
+  onRemove,
+  onEdit,
+  isExpanded,
+  renderExpandedRow,
+  existingAlert,
+  watchListId,
+  onAlertCreate,
+  onAlertUpdate,
+  onAlertDelete,
+}: WatchListRowProps) {
+  return (
+    <React.Fragment>
+      <tr className={cn('hover:bg-ic-surface-hover', alert ? alert.bgClass : '')}>
+        {columns.map((col) => (
+          <td
+            key={col.id}
+            className={cn(
+              'px-4 py-3 text-sm',
+              col.align === 'left'
+                ? 'text-left'
+                : col.align === 'right'
+                  ? 'text-right'
+                  : 'text-center',
+              col.width,
+              col.type === 'text' && col.width && 'overflow-hidden text-ellipsis'
+            )}
+          >
+            {col.type === 'badge' ? (
+              <AlertCell
+                item={item}
+                existingAlert={existingAlert}
+                watchListId={watchListId}
+                targetAlert={alert}
+                onAlertCreate={onAlertCreate}
+                onAlertUpdate={onAlertUpdate}
+                onAlertDelete={onAlertDelete}
+              />
+            ) : (
+              renderCell(col, item, alert, onRemove, onEdit)
+            )}
+          </td>
+        ))}
+      </tr>
+      {isExpanded && renderExpandedRow && (
+        <tr>
+          <td colSpan={columns.length} className="p-0">
+            {renderExpandedRow(item)}
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -521,46 +576,23 @@ export default function WatchListTable({
                 </td>
               </tr>
             ) : (
-              processedItems.map((item) => {
-                const alert = checkTargetAlert(item);
-                const isExpanded = expandedSymbol === item.symbol;
-                return (
-                  <React.Fragment key={item.symbol}>
-                    <tr className={cn('hover:bg-ic-surface-hover', alert ? alert.bgClass : '')}>
-                      {columns.map((col) => (
-                        <td
-                          key={col.id}
-                          className={cn(
-                            'px-4 py-3 text-sm',
-                            col.align === 'left'
-                              ? 'text-left'
-                              : col.align === 'right'
-                                ? 'text-right'
-                                : 'text-center',
-                            col.width,
-                            col.type === 'text' && col.width && 'overflow-hidden text-ellipsis'
-                          )}
-                        >
-                          {renderCell(col, item, alert, onRemove, onEdit, {
-                            existingAlert: alertsBySymbol.get(item.symbol),
-                            watchListId,
-                            onAlertCreate,
-                            onAlertUpdate,
-                            onAlertDelete,
-                          })}
-                        </td>
-                      ))}
-                    </tr>
-                    {isExpanded && renderExpandedRow && (
-                      <tr>
-                        <td colSpan={columns.length} className="p-0">
-                          {renderExpandedRow(item)}
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })
+              processedItems.map((item) => (
+                <WatchListRow
+                  key={item.symbol}
+                  item={item}
+                  columns={columns}
+                  alert={checkTargetAlert(item)}
+                  onRemove={onRemove}
+                  onEdit={onEdit}
+                  isExpanded={expandedSymbol === item.symbol}
+                  renderExpandedRow={renderExpandedRow}
+                  existingAlert={alertsBySymbol.get(item.symbol)}
+                  watchListId={watchListId}
+                  onAlertCreate={onAlertCreate}
+                  onAlertUpdate={onAlertUpdate}
+                  onAlertDelete={onAlertDelete}
+                />
+              ))
             )}
           </tbody>
         </table>

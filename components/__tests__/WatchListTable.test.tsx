@@ -932,6 +932,92 @@ describe('WatchListTable — Cell rendering', () => {
 });
 
 // ===========================================================================
+// Alert cell rendering (WatchListRow → AlertCell integration)
+// ===========================================================================
+
+describe('WatchListTable — AlertCell rendering', () => {
+  const onRemove = jest.fn();
+  const onEdit = jest.fn();
+
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it('renders muted bell button when no alert exists', () => {
+    render(
+      <WatchListTable
+        items={[makeItem({ alert_count: 0 })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
+
+    // The muted bell has title="Set alert"
+    expect(screen.getByTitle('Set alert')).toBeInTheDocument();
+  });
+
+  it('renders "Active" pill when alertsBySymbol has an alert for the symbol', () => {
+    const alert: AlertRuleWithDetails = {
+      id: 'alert-1',
+      user_id: 'user-1',
+      watch_list_id: 'wl-1',
+      symbol: 'AAPL',
+      alert_type: 'price_above',
+      conditions: { threshold: 200 },
+      is_active: true,
+      frequency: 'daily',
+      notify_email: true,
+      notify_in_app: true,
+      name: 'AAPL Price Above $200',
+      trigger_count: 0,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      watch_list_name: 'My Watchlist',
+    };
+
+    const alertsBySymbol = new Map<string, AlertRuleWithDetails>();
+    alertsBySymbol.set('AAPL', alert);
+
+    render(
+      <WatchListTable
+        items={[makeItem({ symbol: 'AAPL', alert_count: 1 })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+        alertsBySymbol={alertsBySymbol}
+      />
+    );
+
+    // AlertCell should render the "Active" pill button
+    expect(screen.getByTitle('Manage alert')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('renders target-price badge instead of alert when no rule and target hit', () => {
+    render(
+      <WatchListTable
+        items={[
+          makeItem({
+            symbol: 'AAPL',
+            current_price: 150,
+            target_buy_price: 155,
+            alert_count: 0,
+          }),
+        ]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
+
+    // Target badge should render, not the muted bell
+    expect(screen.getByText('At buy target')).toBeInTheDocument();
+    expect(screen.queryByTitle('Set alert')).not.toBeInTheDocument();
+  });
+});
+
+// ===========================================================================
 // Edge cases
 // ===========================================================================
 
