@@ -37,10 +37,39 @@ export default function NotificationDropdown() {
     }
   }, []);
 
+  // Use a ref for the interval so the visibilitychange handler can
+  // clear / restart it without re-running the effect.
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   useEffect(() => {
+    const startPolling = () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
+    };
+
+    // Initial fetch + start polling
     fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    startPolling();
+
+    // Pause polling when the browser tab is hidden to avoid wasted
+    // requests, and resume (with an immediate refresh) when visible.
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (pollRef.current) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+        }
+      } else {
+        fetchUnreadCount();
+        startPolling();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [fetchUnreadCount]);
 
   // ── Fetch notifications when dropdown opens ─────────────────────────
@@ -94,7 +123,8 @@ export default function NotificationDropdown() {
   const handleMarkAllRead = async () => {
     try {
       await notificationAPI.markAllAsRead();
-      setUnreadCount(0);
+      // Re-fetch from server to stay in sync instead of local decrement
+      await fetchUnreadCount();
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, is_read: true, read_at: new Date().toISOString() }))
       );
@@ -103,12 +133,19 @@ export default function NotificationDropdown() {
     }
   };
 
+  /** Navigate to the watchlist associated with a notification, or fall back to /watchlist. */
+  const getNotificationHref = (notification: InAppNotification): string => {
+    const watchListId = notification.data?.watch_list_id;
+    return watchListId ? `/watchlist/${watchListId}` : '/watchlist';
+  };
+
   const handleNotificationClick = async (notification: InAppNotification) => {
     // Mark as read if unread
     if (!notification.is_read) {
       try {
         await notificationAPI.markAsRead(notification.id);
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        // Re-fetch to stay in sync with the server
+        await fetchUnreadCount();
         setNotifications((prev) =>
           prev.map((n) =>
             n.id === notification.id
@@ -122,18 +159,16 @@ export default function NotificationDropdown() {
     }
 
     setIsOpen(false);
-    router.push('/watchlist');
+    router.push(getNotificationHref(notification));
   };
 
   const handleDismiss = async (e: React.MouseEvent, notificationId: string) => {
     e.stopPropagation(); // Prevent triggering the row click
     try {
       await notificationAPI.dismiss(notificationId);
-      const dismissed = notifications.find((n) => n.id === notificationId);
-      if (dismissed && !dismissed.is_read) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+      // Re-fetch from server to stay in sync
+      await fetchUnreadCount();
     } catch {
       // Non-critical
     }
@@ -260,7 +295,7 @@ export default function NotificationDropdown() {
               }}
               className="text-xs text-ic-blue hover:text-ic-blue-hover font-medium w-full text-center"
             >
-              View all watchlists &rarr;
+              Manage watchlists &rarr;
             </button>
           </div>
         </div>

@@ -24,6 +24,14 @@ function needsThreshold(t: string) {
   return isPriceType(t) || isVolumeType(t);
 }
 
+/** Returns a human-readable label for the threshold input based on alert type. */
+function getThresholdLabel(alertType: string): string {
+  if (isPriceType(alertType)) return 'Price threshold ($)';
+  if (alertType === 'volume_spike') return 'Volume multiplier (e.g., 2 = 2x average)';
+  if (alertType === 'volume_above') return 'Volume threshold';
+  return 'Threshold';
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -56,13 +64,12 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
   );
   const [frequency, setFrequency] = useState<'once' | 'daily' | 'always'>(alert.frequency);
   const [name, setName] = useState(alert.name);
-  const [nameManuallyEdited, setNameManuallyEdited] = useState(true);
   const [notifyEmail, setNotifyEmail] = useState(alert.notify_email);
   const [notifyInApp, setNotifyInApp] = useState(alert.notify_in_app);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // ── Auto-generated name ─────────────────────────────────────────────
+  // ── Auto-generated name (fallback when name field is cleared) ─────
   const autoName = useMemo(() => {
     const typeInfo = ALERT_TYPES[alertType as keyof typeof ALERT_TYPES];
     const label = typeInfo?.label ?? alertType;
@@ -95,7 +102,9 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
     setSaving(true);
     setError(null);
 
-    const finalName = nameManuallyEdited && name ? name : autoName;
+    // Use the user-entered name, falling back to auto-generated name
+    // when the name field is empty (e.g. the user cleared it).
+    const finalName = name.trim() || autoName;
     const conditions = needsThreshold(alertType)
       ? alertType === 'volume_spike'
         ? { volume_multiplier: parseFloat(threshold) }
@@ -115,26 +124,7 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
     } finally {
       setSaving(false);
     }
-  }, [
-    alert.id,
-    alertType,
-    autoName,
-    frequency,
-    name,
-    nameManuallyEdited,
-    notifyEmail,
-    notifyInApp,
-    onSave,
-    threshold,
-  ]);
-
-  // ── Threshold label ─────────────────────────────────────────────────
-  const getThresholdLabel = (): string => {
-    if (isPriceType(alertType)) return 'Price threshold ($)';
-    if (alertType === 'volume_spike') return 'Volume multiplier (e.g., 2 = 2x average)';
-    if (alertType === 'volume_above') return 'Volume threshold';
-    return 'Threshold';
-  };
+  }, [alert.id, alertType, autoName, frequency, name, notifyEmail, notifyInApp, onSave, threshold]);
 
   // ── Render ──────────────────────────────────────────────────────────
   const typeInfo = ALERT_TYPES[alertType as keyof typeof ALERT_TYPES];
@@ -142,10 +132,11 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        {/* Background overlay */}
-        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions -- overlay dismiss is a convenience; Escape key also closes */}
+        {/* Background overlay — click to dismiss (keyboard dismiss via Escape) */}
+        {/* eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions */}
         <div
           className="fixed inset-0 transition-opacity bg-ic-bg-tertiary bg-opacity-75"
+          data-testid="modal-overlay"
           onClick={onClose}
         />
 
@@ -219,7 +210,7 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
                     htmlFor="edit-alert-threshold"
                     className="block text-sm font-medium text-ic-text-secondary mb-1"
                   >
-                    {getThresholdLabel()} <span className="text-ic-negative">*</span>
+                    {getThresholdLabel(alertType)} <span className="text-ic-negative">*</span>
                   </label>
                   <input
                     id="edit-alert-threshold"
@@ -279,18 +270,9 @@ export default function EditAlertModal({ alert, onSave, onClose }: EditAlertModa
                 <input
                   id="edit-alert-name"
                   type="text"
-                  value={nameManuallyEdited ? name : autoName}
-                  onChange={(e) => {
-                    setName(e.target.value);
-                    setNameManuallyEdited(true);
-                  }}
-                  onFocus={() => {
-                    if (!nameManuallyEdited) {
-                      setName(autoName);
-                      setNameManuallyEdited(true);
-                    }
-                  }}
-                  placeholder="Alert name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder={autoName}
                   className="w-full px-3 py-2 bg-ic-bg-secondary border border-ic-border rounded-md text-ic-text-primary focus:ring-ic-blue focus:border-ic-blue"
                 />
               </div>

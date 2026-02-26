@@ -44,6 +44,12 @@ const renderModal = (overrides: Partial<typeof defaultProps> = {}) => {
   return render(<EditAlertModal {...defaultProps} {...overrides} />);
 };
 
+/** Helper: submit the form via the <form> element. */
+const submitForm = () => {
+  const form = screen.getByText('Update Alert').closest('form')!;
+  fireEvent.submit(form);
+};
+
 // ---------------------------------------------------------------------------
 // Rendering & pre-population
 // ---------------------------------------------------------------------------
@@ -129,6 +135,13 @@ describe('EditAlertModal — Rendering', () => {
     renderModal({ alert: makeAlert({ alert_type: 'news', conditions: {} }) });
     expect(screen.queryByLabelText(/threshold/i)).not.toBeInTheDocument();
   });
+
+  it('shows autoName as placeholder when name is editable', () => {
+    renderModal();
+    const input = screen.getByLabelText('Name') as HTMLInputElement;
+    // The placeholder should be the auto-generated name
+    expect(input.placeholder).toContain('AAPL');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -174,7 +187,7 @@ describe('EditAlertModal — Validation', () => {
   it('shows error for empty threshold', async () => {
     renderModal();
     fireEvent.change(screen.getByLabelText(/Price threshold/), { target: { value: '' } });
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid threshold value')).toBeInTheDocument();
@@ -185,7 +198,39 @@ describe('EditAlertModal — Validation', () => {
   it('shows error for zero threshold', async () => {
     renderModal();
     fireEvent.change(screen.getByLabelText(/Price threshold/), { target: { value: '0' } });
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter a valid threshold value')).toBeInTheDocument();
+    });
+    expect(defaultProps.onSave).not.toHaveBeenCalled();
+  });
+
+  it('shows error for zero volume_spike multiplier', async () => {
+    renderModal({
+      alert: makeAlert({
+        alert_type: 'volume_spike',
+        conditions: { volume_multiplier: 2 },
+      }),
+    });
+    fireEvent.change(screen.getByLabelText(/Volume multiplier/), { target: { value: '0' } });
+    submitForm();
+
+    await waitFor(() => {
+      expect(screen.getByText('Please enter a valid threshold value')).toBeInTheDocument();
+    });
+    expect(defaultProps.onSave).not.toHaveBeenCalled();
+  });
+
+  it('shows error for negative volume_spike multiplier', async () => {
+    renderModal({
+      alert: makeAlert({
+        alert_type: 'volume_spike',
+        conditions: { volume_multiplier: 2 },
+      }),
+    });
+    fireEvent.change(screen.getByLabelText(/Volume multiplier/), { target: { value: '-1' } });
+    submitForm();
 
     await waitFor(() => {
       expect(screen.getByText('Please enter a valid threshold value')).toBeInTheDocument();
@@ -204,7 +249,7 @@ describe('EditAlertModal — Submission', () => {
   it('calls onSave with correct UpdateAlertRequest', async () => {
     defaultProps.onSave.mockResolvedValueOnce(undefined);
     renderModal();
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(defaultProps.onSave).toHaveBeenCalledWith('alert-1', {
@@ -226,7 +271,7 @@ describe('EditAlertModal — Submission', () => {
         name: 'AAPL Volume Spike',
       }),
     });
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(defaultProps.onSave).toHaveBeenCalledWith(
@@ -242,7 +287,7 @@ describe('EditAlertModal — Submission', () => {
     defaultProps.onSave.mockResolvedValueOnce(undefined);
     renderModal();
     fireEvent.change(screen.getByLabelText(/Price threshold/), { target: { value: '200' } });
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(defaultProps.onSave).toHaveBeenCalledWith(
@@ -256,12 +301,26 @@ describe('EditAlertModal — Submission', () => {
     defaultProps.onSave.mockResolvedValueOnce(undefined);
     renderModal();
     fireEvent.change(screen.getByLabelText('Frequency'), { target: { value: 'once' } });
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(defaultProps.onSave).toHaveBeenCalledWith(
         'alert-1',
         expect.objectContaining({ frequency: 'once' })
+      );
+    });
+  });
+
+  it('uses auto-generated name when name is cleared', async () => {
+    defaultProps.onSave.mockResolvedValueOnce(undefined);
+    renderModal();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: '' } });
+    submitForm();
+
+    await waitFor(() => {
+      expect(defaultProps.onSave).toHaveBeenCalledWith(
+        'alert-1',
+        expect.objectContaining({ name: 'AAPL Price Above $150' })
       );
     });
   });
@@ -274,11 +333,36 @@ describe('EditAlertModal — Submission', () => {
     defaultProps.onSave.mockReturnValueOnce(promise);
 
     renderModal();
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(screen.getByText('Saving...')).toBeInTheDocument();
     });
+
+    // Resolve to clean up
+    resolvePromise!();
+    await waitFor(() => {
+      expect(screen.queryByText('Saving...')).not.toBeInTheDocument();
+    });
+  });
+
+  it('disables both buttons while saving', async () => {
+    let resolvePromise: () => void;
+    const promise = new Promise<void>((resolve) => {
+      resolvePromise = resolve;
+    });
+    defaultProps.onSave.mockReturnValueOnce(promise);
+
+    renderModal();
+    submitForm();
+
+    await waitFor(() => {
+      expect(screen.getByText('Saving...')).toBeInTheDocument();
+    });
+
+    // Both Update Alert (now "Saving...") and Cancel should be disabled
+    expect(screen.getByText('Saving...').closest('button')).toBeDisabled();
+    expect(screen.getByText('Cancel').closest('button')).toBeDisabled();
 
     // Resolve to clean up
     resolvePromise!();
@@ -298,7 +382,7 @@ describe('EditAlertModal — Error handling', () => {
   it('displays error from onSave rejection', async () => {
     defaultProps.onSave.mockRejectedValueOnce(new Error('Server error'));
     renderModal();
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(screen.getByText('Server error')).toBeInTheDocument();
@@ -308,7 +392,7 @@ describe('EditAlertModal — Error handling', () => {
   it('displays fallback error for non-Error throws', async () => {
     defaultProps.onSave.mockRejectedValueOnce('some string');
     renderModal();
-    fireEvent.submit(screen.getByText('Update Alert'));
+    submitForm();
 
     await waitFor(() => {
       expect(screen.getByText('Failed to update alert')).toBeInTheDocument();
@@ -342,10 +426,9 @@ describe('EditAlertModal — Close interactions', () => {
   });
 
   it('calls onClose when background overlay is clicked', () => {
-    const { container } = renderModal();
-    const overlay = container.querySelector('.fixed.inset-0.transition-opacity');
-    expect(overlay).toBeTruthy();
-    fireEvent.click(overlay!);
+    renderModal();
+    const overlay = screen.getByTestId('modal-overlay');
+    fireEvent.click(overlay);
     expect(defaultProps.onClose).toHaveBeenCalled();
   });
 });

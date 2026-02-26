@@ -331,11 +331,16 @@ export default function WatchListDetailPage() {
   };
 
   const handleEditModalSave = async (alertId: string, req: UpdateAlertRequest) => {
+    // Let the API call throw so the modal shows the error inline.
     await alertAPI.updateAlert(alertId, req);
     setEditingAlert(null);
-    await loadTabAlerts();
-    await refreshAlerts(); // sync bell icons in table tab
     toast.success('Alert updated');
+    // Refresh in background — failures here are non-critical.
+    try {
+      await Promise.all([loadTabAlerts(), refreshAlerts()]);
+    } catch {
+      // Silently ignore — stale data will refresh on next tab switch
+    }
   };
 
   const handleBulkSuccess = (message: string) => {
