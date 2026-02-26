@@ -238,7 +238,6 @@ describe('BulkAlertModal — Validation', () => {
 describe('BulkAlertModal — Submission', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    window.alert = jest.fn();
   });
 
   it('calls bulkCreateAlerts with correct payload on submit', async () => {
@@ -282,7 +281,7 @@ describe('BulkAlertModal — Submission', () => {
     });
   });
 
-  it('calls window.alert with created count and calls onSuccess', async () => {
+  it('calls onSuccess with created/skipped summary message', async () => {
     mockBulkCreate.mockResolvedValueOnce({ created: 3, skipped: 2 });
 
     renderModal();
@@ -290,15 +289,13 @@ describe('BulkAlertModal — Submission', () => {
     fireEvent.submit(screen.getByText('Create Alerts (5)'));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith(
+      expect(defaultProps.onSuccess).toHaveBeenCalledWith(
         'Created 3 alerts, skipped 2 (already have alerts)'
       );
     });
-
-    expect(defaultProps.onSuccess).toHaveBeenCalled();
   });
 
-  it('shows singular "alert" for created=1', async () => {
+  it('calls onSuccess with singular "alert" for created=1', async () => {
     mockBulkCreate.mockResolvedValueOnce({ created: 1, skipped: 0 });
 
     renderModal();
@@ -306,11 +303,11 @@ describe('BulkAlertModal — Submission', () => {
     fireEvent.submit(screen.getByText('Create Alerts (5)'));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('Created 1 alert');
+      expect(defaultProps.onSuccess).toHaveBeenCalledWith('Created 1 alert');
     });
   });
 
-  it('shows "No changes made" when created=0 and skipped=0', async () => {
+  it('calls onSuccess with "No changes made" when created=0 and skipped=0', async () => {
     mockBulkCreate.mockResolvedValueOnce({ created: 0, skipped: 0 });
 
     renderModal();
@@ -318,7 +315,7 @@ describe('BulkAlertModal — Submission', () => {
     fireEvent.submit(screen.getByText('Create Alerts (5)'));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('No changes made');
+      expect(defaultProps.onSuccess).toHaveBeenCalledWith('No changes made');
     });
   });
 
@@ -384,7 +381,6 @@ describe('BulkAlertModal — Submission', () => {
 describe('BulkAlertModal — Error handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    window.alert = jest.fn();
   });
 
   it('displays API error message', async () => {

@@ -260,7 +260,7 @@ func TestBulkCreateAlertRules_MissingUserID(t *testing.T) {
 func TestBulkCreateAlertRules_AllValidAlertTypes(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	validTypes := []string{"price_above", "price_below", "price_change", "volume_above", "volume_spike"}
+	validTypes := []string{"price_above", "price_below", "volume_above", "volume_spike"}
 
 	for _, alertType := range validTypes {
 		t.Run(alertType, func(t *testing.T) {

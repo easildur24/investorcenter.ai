@@ -14,6 +14,9 @@ import Link from 'next/link';
 export default function AlertsRedirectPage() {
   const router = useRouter();
 
+  // `router` is stable in Next.js App Router (useRouter returns the same ref
+  // across re-renders), so including it in deps is safe and satisfies the
+  // exhaustive-deps lint rule without causing extra timeouts.
   useEffect(() => {
     const timer = setTimeout(() => router.replace('/watchlist'), 5000);
     return () => clearTimeout(timer);

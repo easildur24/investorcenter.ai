@@ -37,6 +37,7 @@ export default function WatchListDetailPage() {
   const [tabAlerts, setTabAlerts] = useState<AlertRuleWithDetails[]>([]);
   const [tabAlertsLoading, setTabAlertsLoading] = useState(false);
   const [tabAlertsFilter, setTabAlertsFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   // Zustand store for cross-component communication (header search → watchlist)
   const setActiveWatchlist = useWatchlistPageStore((s) => s.setActiveWatchlist);
@@ -304,7 +305,13 @@ export default function WatchListDetailPage() {
   };
 
   const handleTabAlertDelete = async (alertId: string) => {
-    if (!confirm('Are you sure you want to delete this alert?')) return;
+    // First click sets confirmation state; second click (from inline confirm
+    // button rendered in the Alerts tab) performs the actual delete.
+    if (confirmDeleteId !== alertId) {
+      setConfirmDeleteId(alertId);
+      return;
+    }
+    setConfirmDeleteId(null);
     try {
       await alertAPI.deleteAlert(alertId);
       await loadTabAlerts();
@@ -323,12 +330,12 @@ export default function WatchListDetailPage() {
     toast.info('Switch to the Table tab and click the bell icon to edit alerts');
   };
 
-  const handleBulkSuccess = () => {
+  const handleBulkSuccess = (message: string) => {
     setShowBulkModal(false);
     loadWatchList(); // refresh alert_count in the table
     refreshAlerts(); // refresh alertsBySymbol map
     if (activeTab === 'alerts') loadTabAlerts(); // refresh alerts list
-    toast.success('Bulk alerts created');
+    toast.success(message);
   };
 
   const tabActiveCount = tabAlerts.filter((a) => a.is_active).length;
@@ -572,13 +579,35 @@ export default function WatchListDetailPage() {
             ) : (
               <div className="grid gap-4">
                 {tabAlerts.map((alert) => (
-                  <AlertCard
-                    key={alert.id}
-                    alert={alert}
-                    onEdit={handleTabAlertEdit}
-                    onToggleActive={handleTabAlertToggle}
-                    onDelete={handleTabAlertDelete}
-                  />
+                  <div key={alert.id} className="relative">
+                    <AlertCard
+                      alert={alert}
+                      onEdit={handleTabAlertEdit}
+                      onToggleActive={handleTabAlertToggle}
+                      onDelete={handleTabAlertDelete}
+                    />
+                    {confirmDeleteId === alert.id && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-ic-bg-tertiary/80 rounded-lg backdrop-blur-sm z-10">
+                        <div className="bg-ic-surface border border-ic-border rounded-lg p-4 shadow-lg text-center">
+                          <p className="text-sm text-ic-text-primary mb-3">Delete this alert?</p>
+                          <div className="flex gap-2 justify-center">
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="px-3 py-1.5 text-xs font-medium text-ic-text-secondary bg-ic-surface border border-ic-border rounded hover:bg-ic-surface-hover"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={() => handleTabAlertDelete(alert.id)}
+                              className="px-3 py-1.5 text-xs font-medium text-white bg-ic-negative rounded hover:bg-red-600"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
             )}

@@ -27,7 +27,8 @@ interface BulkAlertModalProps {
   watchListName: string;
   tickerCount: number;
   onClose: () => void;
-  onSuccess: () => void;
+  /** Called on successful bulk create with a human-readable summary message. */
+  onSuccess: (message: string) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,7 +76,6 @@ export default function BulkAlertModal({
   const getThresholdLabel = (): string => {
     switch (alertType) {
       case 'price_above':
-        return 'Price threshold ($)';
       case 'price_below':
         return 'Price threshold ($)';
       case 'volume_above':
@@ -115,17 +115,14 @@ export default function BulkAlertModal({
       setLoading(true);
       const result = await alertAPI.bulkCreateAlerts(req);
 
-      // Build success message
+      // Build success message for the parent's toast system
       const parts: string[] = [];
       if (result.created > 0)
         parts.push(`Created ${result.created} alert${result.created !== 1 ? 's' : ''}`);
       if (result.skipped > 0) parts.push(`skipped ${result.skipped} (already have alerts)`);
       const message = parts.join(', ') || 'No changes made';
 
-      // Use window.alert as a simple feedback mechanism; the parent will also
-      // show a toast via onSuccess callback.
-      window.alert(message);
-      onSuccess();
+      onSuccess(message);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to create alerts';
       setError(msg);
