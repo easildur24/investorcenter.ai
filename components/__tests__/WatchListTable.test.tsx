@@ -30,6 +30,16 @@ jest.mock('next/link', () => {
 
 import WatchListTable from '../watchlist/WatchListTable';
 import type { WatchListItem } from '@/lib/api/watchlist';
+import type { AlertRuleWithDetails } from '@/lib/api/alerts';
+
+// Default alert props for all test renders (alert features are not under test here)
+const defaultAlertProps = {
+  watchListId: 'wl-1',
+  alertsBySymbol: new Map<string, AlertRuleWithDetails>(),
+  onAlertCreate: jest.fn().mockResolvedValue({}),
+  onAlertUpdate: jest.fn().mockResolvedValue(undefined),
+  onAlertDelete: jest.fn().mockResolvedValue(undefined),
+};
 
 // ---------------------------------------------------------------------------
 // Mock factory
@@ -125,7 +135,9 @@ describe('WatchListTable', () => {
       makeItem({ symbol: 'MSFT', name: 'Microsoft Corp.' }),
     ];
 
-    render(<WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     expect(screen.getByText('AAPL')).toBeInTheDocument();
     expect(screen.getByText('Apple Inc.')).toBeInTheDocument();
@@ -139,6 +151,7 @@ describe('WatchListTable', () => {
         items={[makeItem({ current_price: 185.5 })]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 
@@ -151,6 +164,7 @@ describe('WatchListTable', () => {
         items={[makeItem({ current_price: undefined })]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 
@@ -170,6 +184,7 @@ describe('WatchListTable', () => {
         ]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 
@@ -187,6 +202,7 @@ describe('WatchListTable', () => {
         ]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 
@@ -205,6 +221,7 @@ describe('WatchListTable', () => {
         ]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 
@@ -214,7 +231,12 @@ describe('WatchListTable', () => {
 
   it('calls onRemove when Remove button clicked', () => {
     render(
-      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
+      <WatchListTable
+        items={[makeItem({ symbol: 'AAPL' })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
     );
 
     fireEvent.click(screen.getByText('Remove'));
@@ -224,7 +246,12 @@ describe('WatchListTable', () => {
 
   it('calls onEdit when Edit button clicked', () => {
     render(
-      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
+      <WatchListTable
+        items={[makeItem({ symbol: 'AAPL' })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
     );
 
     fireEvent.click(screen.getByText('Edit'));
@@ -262,7 +289,14 @@ describe('WatchListTable — Sorting', () => {
   };
 
   it('sorts by Price ascending on first click', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('Price'));
 
@@ -272,7 +306,14 @@ describe('WatchListTable — Sorting', () => {
   });
 
   it('sorts by Price descending on second click', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('Price'));
     fireEvent.click(screen.getByText('Price'));
@@ -283,7 +324,14 @@ describe('WatchListTable — Sorting', () => {
   });
 
   it('returns to original order on third click (unsorted)', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('Price'));
     fireEvent.click(screen.getByText('Price'));
@@ -301,7 +349,9 @@ describe('WatchListTable — Sorting', () => {
       makeItem({ symbol: 'GOOG', current_price: 150, ic_score: 55 }),
     ];
 
-    render(<WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Click the IC Score column header (not the tab — use columnheader role)
     const header = screen.getByRole('columnheader', { name: /IC Score/ });
@@ -319,7 +369,9 @@ describe('WatchListTable — Sorting', () => {
       makeItem({ symbol: 'GOOG', current_price: 150, ic_score: 55 }),
     ];
 
-    render(<WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={items} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Click the IC Score column header twice for descending
     const header = screen.getByRole('columnheader', { name: /IC Score/ });
@@ -332,7 +384,14 @@ describe('WatchListTable — Sorting', () => {
   });
 
   it('sorts alphabetically by Symbol', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('Symbol'));
 
@@ -341,7 +400,14 @@ describe('WatchListTable — Sorting', () => {
   });
 
   it('shows sort indicator arrow when sorted', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('Price'));
     expect(screen.getByText('↑')).toBeInTheDocument();
@@ -351,7 +417,14 @@ describe('WatchListTable — Sorting', () => {
   });
 
   it('switching sort columns resets to ascending', () => {
-    render(<WatchListTable items={threeItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={threeItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // Sort by Price descending
     fireEvent.click(screen.getByText('Price'));
@@ -385,7 +458,14 @@ describe('WatchListTable — Filtering', () => {
   ];
 
   it('filters by search query matching symbol', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const searchInput = screen.getByPlaceholderText('Search by symbol or name...');
     fireEvent.change(searchInput, { target: { value: 'AAPL' } });
@@ -396,7 +476,14 @@ describe('WatchListTable — Filtering', () => {
   });
 
   it('filters by search query matching name (case-insensitive)', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const searchInput = screen.getByPlaceholderText('Search by symbol or name...');
     fireEvent.change(searchInput, { target: { value: 'microsoft' } });
@@ -406,7 +493,14 @@ describe('WatchListTable — Filtering', () => {
   });
 
   it('filters by asset type chip', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByText('ETF'));
 
@@ -416,14 +510,28 @@ describe('WatchListTable — Filtering', () => {
   });
 
   it('shows "All" filter chip active by default', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const allButton = screen.getByText('All');
     expect(allButton).toHaveClass('bg-ic-blue');
   });
 
   it('toggles asset type filter off when clicking the same chip again', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // Click etf to filter
     fireEvent.click(screen.getByText('ETF'));
@@ -437,7 +545,14 @@ describe('WatchListTable — Filtering', () => {
   });
 
   it('shows result count "X of Y"', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const count = screen.getByTestId('result-count');
     expect(count).toHaveTextContent('3 of 3 tickers');
@@ -448,7 +563,14 @@ describe('WatchListTable — Filtering', () => {
   });
 
   it('combines search and asset type filter', () => {
-    render(<WatchListTable items={mixedItems} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={mixedItems}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // Filter by stock type first
     fireEvent.click(screen.getByText('Stock'));
@@ -493,7 +615,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('defaults to General view', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // General view should show General tab as active
     const generalTab = screen.getByRole('tab', { name: /General/i });
@@ -501,7 +630,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('switches to Fundamentals view and shows P/E column', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // Click Fundamentals tab
     fireEvent.click(screen.getByRole('tab', { name: /Fundamentals/i }));
@@ -514,7 +650,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('switches to IC Score view and shows sub-factor columns', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: /IC Score/i }));
 
@@ -526,7 +669,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('switches to Social view and shows Reddit columns', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: /Social/i }));
 
@@ -535,7 +685,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('persists view to localStorage', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: /Fundamentals/i }));
 
@@ -545,7 +702,14 @@ describe('WatchListTable — View Switching', () => {
   it('restores view from localStorage on mount', () => {
     localStorageMock.getItem.mockReturnValueOnce('fundamentals');
 
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     // Fundamentals tab should be active
     const fundTab = screen.getByRole('tab', { name: /Fundamentals/i });
@@ -556,7 +720,14 @@ describe('WatchListTable — View Switching', () => {
   });
 
   it('Compact view has minimal columns', () => {
-    render(<WatchListTable items={[itemWithData]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[itemWithData]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     fireEvent.click(screen.getByRole('tab', { name: /Compact/i }));
 
@@ -579,14 +750,28 @@ describe('WatchListTable — ViewSwitcher rendering', () => {
   });
 
   it('renders all 7 view preset tabs', () => {
-    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[makeItem()]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const tabs = screen.getAllByRole('tab');
     expect(tabs).toHaveLength(7);
   });
 
   it('General tab is active (blue) by default', () => {
-    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[makeItem()]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const generalTab = screen.getByRole('tab', { name: /General/i });
     expect(generalTab).toHaveClass('bg-ic-blue');
@@ -594,7 +779,14 @@ describe('WatchListTable — ViewSwitcher rendering', () => {
   });
 
   it('inactive tabs have surface background', () => {
-    render(<WatchListTable items={[makeItem()]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable
+        items={[makeItem()]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
 
     const compactTab = screen.getByRole('tab', { name: /Compact/i });
     expect(compactTab).toHaveClass('bg-ic-surface');
@@ -616,7 +808,9 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders IC Score as colored pill badge', () => {
     const item = makeItem({ ic_score: 78.5 });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Score >= 70 gets green pill
     const pill = screen.getByText('78.5');
@@ -626,7 +820,9 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders low IC Score with red pill', () => {
     const item = makeItem({ ic_score: 25 });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const pill = screen.getByText('25.0');
     expect(pill).toHaveClass('bg-red-500/20');
@@ -635,7 +831,9 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders medium IC Score with yellow pill', () => {
     const item = makeItem({ ic_score: 55 });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const pill = screen.getByText('55.0');
     expect(pill).toHaveClass('bg-yellow-500/20');
@@ -644,7 +842,9 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders positive change in green', () => {
     const item = makeItem({ price_change: 2.3, price_change_pct: 1.25 });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const changeCell = screen.getByText('+2.30 (+1.25%)');
     expect(changeCell).toHaveClass('text-ic-positive');
@@ -652,7 +852,9 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders negative change in red', () => {
     const item = makeItem({ price_change: -3.5, price_change_pct: -1.89 });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const changeCell = screen.getByText('-3.50 (-1.89%)');
     expect(changeCell).toHaveClass('text-ic-negative');
@@ -660,7 +862,12 @@ describe('WatchListTable — Cell rendering', () => {
 
   it('renders symbol as link to ticker page', () => {
     render(
-      <WatchListTable items={[makeItem({ symbol: 'AAPL' })]} onRemove={onRemove} onEdit={onEdit} />
+      <WatchListTable
+        items={[makeItem({ symbol: 'AAPL' })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
     );
 
     const link = screen.getByRole('link', { name: 'AAPL' });
@@ -671,7 +878,9 @@ describe('WatchListTable — Cell rendering', () => {
     // Switch to Social view to see trend column
     localStorageMock.getItem.mockReturnValueOnce('social');
     const item = makeItem({ reddit_trend: 'rising' });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const trendCell = screen.getByLabelText('Trend: rising');
     expect(trendCell).toHaveClass('text-ic-positive');
@@ -682,7 +891,9 @@ describe('WatchListTable — Cell rendering', () => {
   it('renders falling trend with down arrow', () => {
     localStorageMock.getItem.mockReturnValueOnce('social');
     const item = makeItem({ reddit_trend: 'falling' });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const trendCell = screen.getByLabelText('Trend: falling');
     expect(trendCell).toHaveClass('text-ic-negative');
@@ -695,7 +906,9 @@ describe('WatchListTable — Cell rendering', () => {
       current_price: 150,
       target_buy_price: 155,
     });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Target buy price should be bold green
     const buyPrice = screen.getByText('$155.00');
@@ -708,11 +921,99 @@ describe('WatchListTable — Cell rendering', () => {
       current_price: 200,
       target_sell_price: 195,
     });
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     const sellPrice = screen.getByText('$195.00');
     expect(sellPrice).toHaveClass('font-bold');
     expect(sellPrice).toHaveClass('text-ic-blue');
+  });
+});
+
+// ===========================================================================
+// Alert cell rendering (WatchListRow → AlertCell integration)
+// ===========================================================================
+
+describe('WatchListTable — AlertCell rendering', () => {
+  const onRemove = jest.fn();
+  const onEdit = jest.fn();
+
+  beforeEach(() => {
+    localStorageMock.clear();
+  });
+
+  it('renders muted bell button when no alert exists', () => {
+    render(
+      <WatchListTable
+        items={[makeItem({ alert_count: 0 })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
+
+    // The muted bell has title="Set alert"
+    expect(screen.getByTitle('Set alert')).toBeInTheDocument();
+  });
+
+  it('renders "Active" pill when alertsBySymbol has an alert for the symbol', () => {
+    const alert: AlertRuleWithDetails = {
+      id: 'alert-1',
+      user_id: 'user-1',
+      watch_list_id: 'wl-1',
+      symbol: 'AAPL',
+      alert_type: 'price_above',
+      conditions: { threshold: 200 },
+      is_active: true,
+      frequency: 'daily',
+      notify_email: true,
+      notify_in_app: true,
+      name: 'AAPL Price Above $200',
+      trigger_count: 0,
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+      watch_list_name: 'My Watchlist',
+    };
+
+    const alertsBySymbol = new Map<string, AlertRuleWithDetails>();
+    alertsBySymbol.set('AAPL', alert);
+
+    render(
+      <WatchListTable
+        items={[makeItem({ symbol: 'AAPL', alert_count: 1 })]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+        alertsBySymbol={alertsBySymbol}
+      />
+    );
+
+    // AlertCell should render the "Active" pill button
+    expect(screen.getByTitle('Manage alert')).toBeInTheDocument();
+    expect(screen.getByText('Active')).toBeInTheDocument();
+  });
+
+  it('renders target-price badge instead of alert when no rule and target hit', () => {
+    render(
+      <WatchListTable
+        items={[
+          makeItem({
+            symbol: 'AAPL',
+            current_price: 150,
+            target_buy_price: 155,
+            alert_count: 0,
+          }),
+        ]}
+        onRemove={onRemove}
+        onEdit={onEdit}
+        {...defaultAlertProps}
+      />
+    );
+
+    // Target badge should render, not the muted bell
+    expect(screen.getByText('At buy target')).toBeInTheDocument();
+    expect(screen.queryByTitle('Set alert')).not.toBeInTheDocument();
   });
 });
 
@@ -729,7 +1030,9 @@ describe('WatchListTable — Edge cases', () => {
   });
 
   it('renders empty table when no items', () => {
-    render(<WatchListTable items={[]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Should have header row + empty message row
     const rows = screen.getAllByRole('row');
@@ -745,7 +1048,9 @@ describe('WatchListTable — Edge cases', () => {
     });
 
     // Should not throw
-    render(<WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} />);
+    render(
+      <WatchListTable items={[item]} onRemove={onRemove} onEdit={onEdit} {...defaultAlertProps} />
+    );
 
     // Null IC Score shows dash
     const dashes = screen.getAllByText('—');
@@ -758,6 +1063,7 @@ describe('WatchListTable — Edge cases', () => {
         items={[makeItem({ symbol: 'AAPL', name: 'Apple Inc.' })]}
         onRemove={onRemove}
         onEdit={onEdit}
+        {...defaultAlertProps}
       />
     );
 

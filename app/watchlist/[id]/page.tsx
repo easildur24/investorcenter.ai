@@ -70,7 +70,7 @@ export default function WatchListDetailPage() {
 
   const handleAlertCreate = useCallback(
     async (req: CreateAlertRequest) => {
-      // Let errors propagate to InlineAlertSection's catch handler for display.
+      // Let errors propagate to AlertQuickPanel's catch handler for display.
       // Only refresh watchlist data (alert_count) on confirmed success.
       const result = await createAlert(req);
       toast.success('Alert created');
@@ -354,17 +354,17 @@ export default function WatchListDetailPage() {
             onRemove={handleRemoveTicker}
             onEdit={setEditingSymbol}
             expandedSymbol={editingSymbol}
+            watchListId={watchListId}
+            alertsBySymbol={alertsBySymbol}
+            onAlertCreate={handleAlertCreate}
+            onAlertUpdate={handleAlertUpdate}
+            onAlertDelete={handleAlertDelete}
             renderExpandedRow={(item: WatchListItem) => (
               <InlineEditPanel
                 item={item}
                 tagSuggestions={tagSuggestions}
                 onSave={handleUpdateTicker}
                 onCancel={() => setEditingSymbol(null)}
-                watchListId={watchListId}
-                existingAlert={alertsBySymbol.get(item.symbol)}
-                onAlertCreate={handleAlertCreate}
-                onAlertUpdate={handleAlertUpdate}
-                onAlertDelete={handleAlertDelete}
               />
             )}
           />
