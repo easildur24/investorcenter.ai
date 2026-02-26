@@ -59,7 +59,9 @@ func (e *Evaluator) HandlePriceUpdate(msg []byte) error {
 			continue
 		}
 
-		// Check frequency gating
+		// Pre-check frequency gating (fast path to avoid DB round-trip for
+		// alerts that clearly shouldn't fire). The actual atomic claim happens
+		// in trigger() via ClaimAlertTrigger.
 		if !shouldTriggerBasedOnFrequency(alert) {
 			continue
 		}
@@ -90,24 +92,48 @@ func (e *Evaluator) HandlePriceUpdate(msg []byte) error {
 	return nil
 }
 
-// trigger handles a single triggered alert: creates a log entry,
-// updates the rule, and delivers notifications.
+// trigger handles a single triggered alert: atomically claims the trigger slot,
+// creates a log entry, and delivers notifications.
 func (e *Evaluator) trigger(alert *models.AlertRule, quote *models.SymbolQuote) error {
+	// Atomically claim the trigger slot in the DB. This prevents race conditions
+	// where multiple consumers (or a future multi-replica setup) could trigger
+	// the same alert simultaneously. The UPDATE uses a WHERE clause that checks
+	// frequency constraints, so only one caller wins the claim.
+	claimed, err := e.db.ClaimAlertTrigger(alert.ID, alert.Frequency)
+	if err != nil {
+		return fmt.Errorf("claim alert trigger: %w", err)
+	}
+	if !claimed {
+		// Another consumer already triggered this alert, or the frequency
+		// constraint was not met at the DB level. Skip silently.
+		return nil
+	}
+
 	// Build condition_met and market_data JSON
-	conditionMet, _ := json.Marshal(map[string]interface{}{
+	conditionMet, err := json.Marshal(map[string]interface{}{
 		"alert_type": alert.AlertType,
 		"threshold":  getThreshold(alert),
 		"triggered":  true,
 	})
-	marketData, _ := json.Marshal(map[string]interface{}{
+	if err != nil {
+		log.Printf("Warning: failed to marshal condition_met for alert %s: %v", alert.ID, err)
+		conditionMet = []byte(`{"triggered":true}`)
+	}
+
+	marketData, err := json.Marshal(map[string]interface{}{
 		"symbol":     alert.Symbol,
 		"price":      quote.Price,
 		"volume":     quote.Volume,
 		"change_pct": quote.ChangePct,
 		"timestamp":  time.Now().Unix(),
 	})
+	if err != nil {
+		log.Printf("Warning: failed to marshal market_data for alert %s: %v", alert.ID, err)
+		marketData = []byte(`{}`)
+	}
 
-	// 1. Create alert log
+	// 1. Create alert log with notification_sent=false initially.
+	//    It will be set to true only after successful delivery.
 	alertLog := &models.AlertLog{
 		AlertRuleID:      alert.ID,
 		UserID:           alert.UserID,
@@ -115,7 +141,7 @@ func (e *Evaluator) trigger(alert *models.AlertRule, quote *models.SymbolQuote) 
 		AlertType:        alert.AlertType,
 		ConditionMet:     conditionMet,
 		MarketData:       marketData,
-		NotificationSent: true,
+		NotificationSent: false,
 	}
 	logID, err := e.db.CreateAlertLog(alertLog)
 	if err != nil {
@@ -123,15 +149,17 @@ func (e *Evaluator) trigger(alert *models.AlertRule, quote *models.SymbolQuote) 
 	}
 	alertLog.ID = logID
 
-	// 2. Update trigger count + last_triggered_at (deactivate if frequency=once)
-	if err := e.db.UpdateAlertTrigger(alert.ID, alert.Frequency); err != nil {
-		return fmt.Errorf("update alert trigger: %w", err)
-	}
-
-	// 3. Deliver notifications (in-app + email)
-	if err := e.delivery.Deliver(alert, alertLog, quote); err != nil {
-		log.Printf("Delivery error for alert %s: %v", alert.ID, err)
-		// Don't return error — the alert was still triggered successfully
+	// 2. Deliver notifications (in-app + email)
+	deliveryErr := e.delivery.Deliver(alert, alertLog, quote)
+	if deliveryErr != nil {
+		log.Printf("Delivery error for alert %s: %v", alert.ID, deliveryErr)
+		// Don't return error — the alert was still triggered successfully.
+		// notification_sent remains false to reflect failed delivery.
+	} else {
+		// Mark notification as successfully sent
+		if err := e.db.UpdateAlertLogNotificationSent(logID, true); err != nil {
+			log.Printf("Warning: failed to update notification_sent for log %s: %v", logID, err)
+		}
 	}
 
 	return nil
@@ -150,8 +178,11 @@ func getThreshold(alert *models.AlertRule) float64 {
 	return 0
 }
 
-// shouldTriggerBasedOnFrequency checks whether an alert should fire based on
-// its frequency setting and when it last triggered.
+// shouldTriggerBasedOnFrequency performs a fast in-memory check of whether an
+// alert should fire based on its frequency setting and when it last triggered.
+//
+// NOTE: This is a pre-filter only. The actual atomic claim happens in
+// ClaimAlertTrigger at the DB level, which prevents race conditions.
 func shouldTriggerBasedOnFrequency(alert *models.AlertRule) bool {
 	switch alert.Frequency {
 	case "once":
@@ -164,8 +195,9 @@ func shouldTriggerBasedOnFrequency(alert *models.AlertRule) bool {
 		}
 		return time.Since(*alert.LastTriggeredAt) >= 24*time.Hour
 	case "always":
-		// Always trigger (but still respect the 5-second evaluation cycle)
-		// To avoid spamming, only trigger if >5 minutes since last trigger
+		// Trigger on every evaluation cycle, but with a 5-minute cooldown
+		// to prevent notification spam. Users selecting "always" will receive
+		// at most one notification per 5 minutes per alert rule.
 		if alert.LastTriggeredAt == nil {
 			return true
 		}

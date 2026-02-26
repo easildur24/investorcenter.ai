@@ -1,4 +1,4 @@
-.PHONY: build docker-build push deploy test clean
+.PHONY: build docker-build push deploy test clean validate-k8s
 
 ECR_REPO = 360358043271.dkr.ecr.us-east-1.amazonaws.com/investorcenter/notification-service
 AWS_PROFILE = investorcenter
@@ -20,8 +20,18 @@ push: docker-build
 	docker push $(ECR_REPO):latest
 	@echo "✅ Pushed to ECR"
 
-# Deploy to Kubernetes
-deploy: push
+# Validate K8s manifests don't contain REPLACE_ME placeholders
+validate-k8s:
+	@if grep -r "REPLACE_ME" k8s/ 2>/dev/null; then \
+		echo "❌ ERROR: Found REPLACE_ME placeholders in k8s/ manifests."; \
+		echo "   Set SQS_QUEUE_URL (from terraform output sqs_notification_alerts_url)"; \
+		echo "   Set eks.amazonaws.com/role-arn (from terraform output notification_sqs_consumer_role_arn)"; \
+		exit 1; \
+	fi
+	@echo "✅ K8s manifests validated — no REPLACE_ME placeholders found"
+
+# Deploy to Kubernetes (validates manifests first)
+deploy: push validate-k8s
 	kubectl set image deployment/notification-service \
 		notification-service=$(ECR_REPO):latest \
 		-n investorcenter

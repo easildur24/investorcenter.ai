@@ -120,6 +120,46 @@ func TestIsInQuietHours_ValidTimezones(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// sanitizeHeader
+// ---------------------------------------------------------------------------
+
+func TestSanitizeHeader_NoSpecialChars(t *testing.T) {
+	input := "user@example.com"
+	got := sanitizeHeader(input)
+	if got != input {
+		t.Errorf("expected %q unchanged, got %q", input, got)
+	}
+}
+
+func TestSanitizeHeader_StripsCR(t *testing.T) {
+	got := sanitizeHeader("test\rinjection")
+	if got != "testinjection" {
+		t.Errorf("expected CR stripped, got %q", got)
+	}
+}
+
+func TestSanitizeHeader_StripsLF(t *testing.T) {
+	got := sanitizeHeader("test\ninjection")
+	if got != "testinjection" {
+		t.Errorf("expected LF stripped, got %q", got)
+	}
+}
+
+func TestSanitizeHeader_StripsCRLF(t *testing.T) {
+	got := sanitizeHeader("test\r\nBcc: attacker@evil.com")
+	if got != "testBcc: attacker@evil.com" {
+		t.Errorf("expected CRLF stripped, got %q", got)
+	}
+}
+
+func TestSanitizeHeader_EmptyString(t *testing.T) {
+	got := sanitizeHeader("")
+	if got != "" {
+		t.Errorf("expected empty string, got %q", got)
+	}
+}
+
+// ---------------------------------------------------------------------------
 // formatAlertEmailBody
 // ---------------------------------------------------------------------------
 

@@ -23,11 +23,32 @@ func NewInAppDelivery(db *database.DB) *InAppDelivery {
 
 // Send creates an in-app notification for the alert trigger.
 func (d *InAppDelivery) Send(alert *models.AlertRule, alertLog *models.AlertLog, quote *models.SymbolQuote) error {
+	// Check daily alert rate limit
+	prefs, err := d.db.GetNotificationPreferences(alert.UserID)
+	if err != nil {
+		log.Printf("Warning: failed to get preferences for rate limit check: %v", err)
+		// Continue — don't block delivery on preference lookup failure
+	}
+	if prefs != nil && prefs.MaxAlertsPerDay > 0 {
+		count, err := d.db.GetTodayAlertCount(alert.UserID)
+		if err != nil {
+			log.Printf("Warning: failed to get today's alert count: %v", err)
+		} else if count >= prefs.MaxAlertsPerDay {
+			log.Printf("Skipping in-app notification for alert %s — user %s exceeded daily limit (%d/%d)",
+				alert.ID, alert.UserID, count, prefs.MaxAlertsPerDay)
+			return nil
+		}
+	}
+
 	title := buildTitle(alert, quote)
 	message := buildMessage(alert, quote)
 	data := buildData(alert, quote)
 
-	dataJSON, _ := json.Marshal(data)
+	dataJSON, err := json.Marshal(data)
+	if err != nil {
+		log.Printf("Warning: failed to marshal notification data for alert %s: %v", alert.ID, err)
+		dataJSON = []byte("{}")
+	}
 
 	notification := &models.InAppNotification{
 		UserID:     alert.UserID,
@@ -57,19 +78,31 @@ func buildMessage(alert *models.AlertRule, quote *models.SymbolQuote) string {
 	switch alert.AlertType {
 	case "price_above":
 		var cond models.ThresholdCondition
-		json.Unmarshal(alert.Conditions, &cond)
+		if err := json.Unmarshal(alert.Conditions, &cond); err != nil {
+			log.Printf("Warning: failed to parse price_above conditions: %v", err)
+			return fmt.Sprintf("Alert triggered for %s", alert.Symbol)
+		}
 		return fmt.Sprintf("%s crossed above $%.2f (current: $%.2f)", alert.Symbol, cond.Threshold, quote.Price)
 	case "price_below":
 		var cond models.ThresholdCondition
-		json.Unmarshal(alert.Conditions, &cond)
+		if err := json.Unmarshal(alert.Conditions, &cond); err != nil {
+			log.Printf("Warning: failed to parse price_below conditions: %v", err)
+			return fmt.Sprintf("Alert triggered for %s", alert.Symbol)
+		}
 		return fmt.Sprintf("%s dropped below $%.2f (current: $%.2f)", alert.Symbol, cond.Threshold, quote.Price)
 	case "volume_above":
 		var cond models.ThresholdCondition
-		json.Unmarshal(alert.Conditions, &cond)
+		if err := json.Unmarshal(alert.Conditions, &cond); err != nil {
+			log.Printf("Warning: failed to parse volume_above conditions: %v", err)
+			return fmt.Sprintf("Alert triggered for %s", alert.Symbol)
+		}
 		return fmt.Sprintf("%s volume exceeded %s (current: %s)", alert.Symbol, formatVolume(cond.Threshold), formatVolume(float64(quote.Volume)))
 	case "volume_below":
 		var cond models.ThresholdCondition
-		json.Unmarshal(alert.Conditions, &cond)
+		if err := json.Unmarshal(alert.Conditions, &cond); err != nil {
+			log.Printf("Warning: failed to parse volume_below conditions: %v", err)
+			return fmt.Sprintf("Alert triggered for %s", alert.Symbol)
+		}
 		return fmt.Sprintf("%s volume dropped below %s (current: %s)", alert.Symbol, formatVolume(cond.Threshold), formatVolume(float64(quote.Volume)))
 	case "price_change_pct":
 		return fmt.Sprintf("%s moved %.2f%% today", alert.Symbol, quote.ChangePct)
@@ -93,14 +126,14 @@ func buildData(alert *models.AlertRule, quote *models.SymbolQuote) map[string]in
 // alertTypeLabel returns a human-readable label for an alert type.
 func alertTypeLabel(alertType string) string {
 	labels := map[string]string{
-		"price_above":    "Price Above",
-		"price_below":    "Price Below",
+		"price_above":      "Price Above",
+		"price_below":      "Price Below",
 		"price_change_pct": "Price Change %",
-		"volume_above":   "Volume Above",
-		"volume_below":   "Volume Below",
-		"volume_spike":   "Volume Spike",
-		"news":           "News Alert",
-		"earnings":       "Earnings Report",
+		"volume_above":     "Volume Above",
+		"volume_below":     "Volume Below",
+		"volume_spike":     "Volume Spike",
+		"news":             "News Alert",
+		"earnings":         "Earnings Report",
 	}
 	if label, ok := labels[alertType]; ok {
 		return label

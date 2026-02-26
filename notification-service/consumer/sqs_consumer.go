@@ -18,13 +18,25 @@ type Handler func(msg []byte) error
 
 // Consumer long-polls an SQS queue and dispatches messages to a handler.
 type Consumer struct {
-	client   *sqs.Client
-	queueURL string
-	healthy  atomic.Bool
+	client          *sqs.Client
+	queueURL        string
+	maxMessages     int32
+	healthy         atomic.Bool
+	consecutiveFails int32 // tracks consecutive SQS receive failures
 }
 
+// maxConsecutiveFailures is the number of consecutive SQS receive errors before
+// the consumer marks itself unhealthy. This prevents transient errors from
+// causing unnecessary K8s pod restarts.
+const maxConsecutiveFailures = 3
+
 // New creates an SQS consumer for the given queue URL and AWS region.
-func New(queueURL, region string) (*Consumer, error) {
+// maxMessages controls how many messages to receive per poll (1-10).
+func New(queueURL, region string, maxMessages int32) (*Consumer, error) {
+	if maxMessages < 1 || maxMessages > 10 {
+		maxMessages = 1
+	}
+
 	cfg, err := awsconfig.LoadDefaultConfig(context.Background(),
 		awsconfig.WithRegion(region),
 	)
@@ -33,8 +45,9 @@ func New(queueURL, region string) (*Consumer, error) {
 	}
 
 	c := &Consumer{
-		client:   sqs.NewFromConfig(cfg),
-		queueURL: queueURL,
+		client:      sqs.NewFromConfig(cfg),
+		queueURL:    queueURL,
+		maxMessages: maxMessages,
 	}
 	c.healthy.Store(true)
 	return c, nil
@@ -51,7 +64,7 @@ func (c *Consumer) IsHealthy() bool {
 // after the visibility timeout (30s), up to maxReceiveCount (3) times
 // before being sent to the DLQ.
 func (c *Consumer) Start(ctx context.Context, handler Handler) {
-	log.Printf("SQS consumer started — polling %s", c.queueURL)
+	log.Printf("SQS consumer started — polling %s (max %d messages/poll)", c.queueURL, c.maxMessages)
 
 	for {
 		select {
@@ -69,7 +82,7 @@ func (c *Consumer) Start(ctx context.Context, handler Handler) {
 func (c *Consumer) poll(ctx context.Context, handler Handler) {
 	output, err := c.client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(c.queueURL),
-		MaxNumberOfMessages: 1,  // One bulk price update at a time
+		MaxNumberOfMessages: c.maxMessages,
 		WaitTimeSeconds:     20, // Long polling — blocks up to 20s
 		VisibilityTimeout:   30,
 	})
@@ -78,11 +91,23 @@ func (c *Consumer) poll(ctx context.Context, handler Handler) {
 		if ctx.Err() != nil {
 			return
 		}
-		log.Printf("SQS receive error: %v — retrying in 5s", err)
-		c.healthy.Store(false)
+		fails := atomic.AddInt32(&c.consecutiveFails, 1)
+		log.Printf("SQS receive error (consecutive: %d): %v — retrying in 5s", fails, err)
+
+		// Only mark unhealthy after multiple consecutive failures to avoid
+		// K8s readiness probes restarting the pod on transient errors.
+		if fails >= maxConsecutiveFailures {
+			c.healthy.Store(false)
+		}
+
 		time.Sleep(5 * time.Second)
-		c.healthy.Store(true)
 		return
+	}
+
+	// Reset consecutive failure counter on successful receive
+	if atomic.LoadInt32(&c.consecutiveFails) > 0 {
+		atomic.StoreInt32(&c.consecutiveFails, 0)
+		c.healthy.Store(true)
 	}
 
 	for _, msg := range output.Messages {
@@ -129,11 +154,17 @@ func extractSNSPayload(body *string) ([]byte, error) {
 		Type    string `json:"Type"`
 	}
 	if err := json.Unmarshal([]byte(*body), &envelope); err != nil {
-		// If it's not an SNS envelope, treat the body as the raw message
+		// If it's not valid JSON, treat the body as the raw message
+		log.Printf("Warning: SQS message body is not valid JSON — treating as raw payload")
 		return []byte(*body), nil
 	}
 
 	if envelope.Message == "" {
+		// Valid JSON but no Message field — unexpected format.
+		// Log a warning and fall back to raw body.
+		if envelope.Type != "" {
+			log.Printf("Warning: SNS envelope has Type=%q but empty Message field — using raw body", envelope.Type)
+		}
 		return []byte(*body), nil
 	}
 

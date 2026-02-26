@@ -24,26 +24,32 @@ type SymbolQuote struct {
 }
 
 // ---------------------------------------------------------------------------
-// Database Models (subset of backend/models, only what Lambda needs)
+// Database Models (subset of backend/models, only what the notification service needs)
 // ---------------------------------------------------------------------------
 
 // AlertRule represents a user-created alert rule from the alert_rules table.
 type AlertRule struct {
-	ID              string          `db:"id"`
-	UserID          string          `db:"user_id"`
-	WatchListID     string          `db:"watch_list_id"`
-	Symbol          string          `db:"symbol"`
-	AlertType       string          `db:"alert_type"`
-	Conditions      json.RawMessage `db:"conditions"`
-	IsActive        bool            `db:"is_active"`
-	Frequency       string          `db:"frequency"` // once, daily, always
-	NotifyEmail     bool            `db:"notify_email"`
-	NotifyInApp     bool            `db:"notify_in_app"`
-	Name            string          `db:"name"`
-	LastTriggeredAt *time.Time      `db:"last_triggered_at"`
-	TriggerCount    int             `db:"trigger_count"`
-	CreatedAt       time.Time       `db:"created_at"`
-	UpdatedAt       time.Time       `db:"updated_at"`
+	ID          string          `db:"id"`
+	UserID      string          `db:"user_id"`
+	WatchListID string          `db:"watch_list_id"`
+	Symbol      string          `db:"symbol"`
+	AlertType   string          `db:"alert_type"`
+	Conditions  json.RawMessage `db:"conditions"`
+	IsActive    bool            `db:"is_active"`
+	// Frequency controls how often an alert can re-trigger:
+	//   "once"   — triggers once, then deactivated (is_active=false)
+	//   "daily"  — at most once per 24 hours
+	//   "always" — on every evaluation cycle, with a 5-minute cooldown between
+	//              notifications to prevent spam. Users selecting "always" will
+	//              receive at most 1 notification per 5 minutes per alert rule.
+	Frequency       string  `db:"frequency"`
+	NotifyEmail     bool    `db:"notify_email"`
+	NotifyInApp     bool    `db:"notify_in_app"`
+	Name            string  `db:"name"`
+	LastTriggeredAt *time.Time `db:"last_triggered_at"`
+	TriggerCount    int        `db:"trigger_count"`
+	CreatedAt       time.Time  `db:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at"`
 }
 
 // AlertLog records a single alert trigger event.

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"strings"
 	"time"
 
 	"notification-service/config"
@@ -23,10 +24,11 @@ func NewEmailDelivery(cfg *config.Config, db *database.DB) *EmailDelivery {
 }
 
 // Send sends an alert notification email to the user.
-// Checks preferences (email enabled, verified) and quiet hours before sending.
+// Checks preferences (email enabled, verified), quiet hours, and daily rate
+// limits before sending.
 func (d *EmailDelivery) Send(alert *models.AlertRule, alertLog *models.AlertLog, quote *models.SymbolQuote) error {
 	// Skip if SMTP not configured (local dev)
-	if d.cfg.SMTPHost == "" || d.cfg.SMTPPassword == "" {
+	if d.cfg.SMTPHost == "" || d.cfg.SMTPPassword.Value() == "" {
 		log.Printf("SMTP not configured — skipping email for alert %s", alert.ID)
 		return nil
 	}
@@ -56,6 +58,18 @@ func (d *EmailDelivery) Send(alert *models.AlertRule, alertLog *models.AlertLog,
 				return nil
 			}
 		}
+
+		// Check daily email rate limit
+		if prefs.MaxEmailsPerDay > 0 {
+			count, err := d.db.GetTodayEmailCount(alert.UserID)
+			if err != nil {
+				log.Printf("Warning: failed to get today's email count: %v", err)
+			} else if count >= prefs.MaxEmailsPerDay {
+				log.Printf("Skipping email for alert %s — user %s exceeded daily email limit (%d/%d)",
+					alert.ID, alert.UserID, count, prefs.MaxEmailsPerDay)
+				return nil
+			}
+		}
 	}
 
 	// Get user email address
@@ -80,20 +94,35 @@ func (d *EmailDelivery) Send(alert *models.AlertRule, alertLog *models.AlertLog,
 // sendEmail sends an HTML email via SMTP.
 func (d *EmailDelivery) sendEmail(to, subject, htmlBody string) error {
 	from := d.cfg.SMTPFromEmail
-	auth := smtp.PlainAuth("", d.cfg.SMTPUsername, d.cfg.SMTPPassword, d.cfg.SMTPHost)
+	auth := smtp.PlainAuth("", d.cfg.SMTPUsername, d.cfg.SMTPPassword.Value(), d.cfg.SMTPHost)
+
+	// Sanitize header values to prevent CRLF header injection.
+	// Strip any CR/LF characters from values that will appear in headers.
+	safeTo := sanitizeHeader(to)
+	safeSubject := sanitizeHeader(subject)
+	safeFrom := sanitizeHeader(from)
+	safeFromName := sanitizeHeader(d.cfg.SMTPFromName)
 
 	msg := fmt.Sprintf(
 		"From: %s <%s>\r\nTo: %s\r\nSubject: %s\r\nMIME-Version: 1.0\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n%s",
-		d.cfg.SMTPFromName, from, to, subject, htmlBody,
+		safeFromName, safeFrom, safeTo, safeSubject, htmlBody,
 	)
 
 	addr := fmt.Sprintf("%s:%s", d.cfg.SMTPHost, d.cfg.SMTPPort)
-	if err := smtp.SendMail(addr, auth, from, []string{to}, []byte(msg)); err != nil {
+	if err := smtp.SendMail(addr, auth, from, []string{safeTo}, []byte(msg)); err != nil {
 		return fmt.Errorf("send email: %w", err)
 	}
 
-	log.Printf("Email sent to %s for alert subject: %s", to, subject)
+	log.Printf("Email sent to %s for alert subject: %s", safeTo, safeSubject)
 	return nil
+}
+
+// sanitizeHeader strips CR and LF characters from a string to prevent
+// email header injection attacks.
+func sanitizeHeader(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	s = strings.ReplaceAll(s, "\n", "")
+	return s
 }
 
 // isInQuietHours checks if the current time falls within the user's quiet hours.

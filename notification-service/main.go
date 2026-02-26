@@ -36,7 +36,7 @@ func main() {
 	defer db.Close()
 
 	// 3. Initialize SQS consumer
-	sqsConsumer, err := consumer.New(cfg.SQSQueueURL, cfg.AWSRegion)
+	sqsConsumer, err := consumer.New(cfg.SQSQueueURL, cfg.AWSRegion, cfg.SQSMaxMessages)
 	if err != nil {
 		log.Fatalf("Failed to create SQS consumer: %v", err)
 	}
