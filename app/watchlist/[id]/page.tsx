@@ -17,6 +17,7 @@ import { useWatchlistPageStore } from '@/lib/stores/watchlistPageStore';
 import WatchlistSearchInput from '@/components/watchlist/WatchlistSearchInput';
 import InlineEditPanel from '@/components/watchlist/InlineEditPanel';
 import AlertCard from '@/components/alerts/AlertCard';
+import EditAlertModal from '@/components/alerts/EditAlertModal';
 import BulkAlertModal from '@/components/watchlist/BulkAlertModal';
 
 export default function WatchListDetailPage() {
@@ -38,6 +39,7 @@ export default function WatchListDetailPage() {
   const [tabAlertsLoading, setTabAlertsLoading] = useState(false);
   const [tabAlertsFilter, setTabAlertsFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingAlert, setEditingAlert] = useState<AlertRuleWithDetails | null>(null);
 
   // Zustand store for cross-component communication (header search → watchlist)
   const setActiveWatchlist = useWatchlistPageStore((s) => s.setActiveWatchlist);
@@ -324,10 +326,21 @@ export default function WatchListDetailPage() {
     }
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- edit from alerts tab deferred to Phase 4
-  const handleTabAlertEdit = (_alert: AlertRuleWithDetails) => {
-    // Phase 4: open edit modal. For now, users edit via the bell popover on the Table tab.
-    toast.info('Switch to the Table tab and click the bell icon to edit alerts');
+  const handleTabAlertEdit = (alert: AlertRuleWithDetails) => {
+    setEditingAlert(alert);
+  };
+
+  const handleEditModalSave = async (alertId: string, req: UpdateAlertRequest) => {
+    // Let the API call throw so the modal shows the error inline.
+    await alertAPI.updateAlert(alertId, req);
+    setEditingAlert(null);
+    toast.success('Alert updated');
+    // Refresh in background — failures here are non-critical.
+    try {
+      await Promise.all([loadTabAlerts(), refreshAlerts()]);
+    } catch {
+      // Silently ignore — stale data will refresh on next tab switch
+    }
   };
 
   const handleBulkSuccess = (message: string) => {
@@ -622,6 +635,15 @@ export default function WatchListDetailPage() {
             tickerCount={watchList.items.length}
             onClose={() => setShowBulkModal(false)}
             onSuccess={handleBulkSuccess}
+          />
+        )}
+
+        {/* ── Edit Alert Modal ─────────────────────────────────────── */}
+        {editingAlert && (
+          <EditAlertModal
+            alert={editingAlert}
+            onSave={handleEditModalSave}
+            onClose={() => setEditingAlert(null)}
           />
         )}
       </div>
