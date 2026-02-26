@@ -1,10 +1,15 @@
 package services
 
 import (
+	"context"
+	"encoding/json"
 	"log"
+	"os"
 	"sync"
 	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/service/sns"
 	"github.com/shopspring/decimal"
 	"investorcenter-api/models"
 )
@@ -163,6 +168,55 @@ func (sc *StockCache) updateCache() {
 
 	sc.lastUpdate = time.Now()
 	log.Printf("✅ Stock cache updated with %d tickers", len(sc.cache))
+
+	// Publish price update to SNS for alert evaluation Lambda
+	go sc.publishPriceUpdate()
+}
+
+// publishPriceUpdate sends the current cache snapshot to SNS for the alert
+// evaluation Lambda. Runs in a goroutine to avoid blocking the cache updater.
+// Silently skips if SNS is not configured (local dev without AWS credentials).
+func (sc *StockCache) publishPriceUpdate() {
+	topicARN := os.Getenv("SNS_PRICE_UPDATES_ARN")
+	if topicARN == "" {
+		return // SNS not configured — skip silently (local dev)
+	}
+
+	client := GetSNSClient()
+	if client == nil {
+		return
+	}
+
+	sc.mutex.RLock()
+	msg := models.PriceUpdateMessage{
+		Timestamp: time.Now().Unix(),
+		Source:    "polygon_snapshot",
+		Symbols:   make(map[string]models.SymbolQuote, len(sc.cache)),
+	}
+	for symbol, price := range sc.cache {
+		priceFloat, _ := price.Price.Float64()
+		changePctFloat, _ := price.ChangePercent.Float64()
+		msg.Symbols[symbol] = models.SymbolQuote{
+			Price:     priceFloat,
+			Volume:    price.Volume,
+			ChangePct: changePctFloat,
+		}
+	}
+	sc.mutex.RUnlock()
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("⚠️ Failed to marshal price update for SNS: %v", err)
+		return
+	}
+
+	_, err = client.Publish(context.Background(), &sns.PublishInput{
+		TopicArn: aws.String(topicARN),
+		Message:  aws.String(string(data)),
+	})
+	if err != nil {
+		log.Printf("⚠️ Failed to publish price update to SNS: %v", err)
+	}
 }
 
 // Stop stops the cache updater

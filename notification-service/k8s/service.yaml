@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification-service
+  namespace: investorcenter
+  labels:
+    app: notification-service
+spec:
+  type: ClusterIP
+  selector:
+    app: notification-service
+  ports:
+  - port: 8003
+    targetPort: 8003
+    protocol: TCP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: notification-service-sa
+  namespace: investorcenter
+  annotations:
+    # Set after terraform apply — use output notification_sqs_consumer_role_arn
+    eks.amazonaws.com/role-arn: "REPLACE_ME"
+    eks.amazonaws.com/sts-regional-endpoints: "true"
