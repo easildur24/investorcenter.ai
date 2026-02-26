@@ -119,6 +119,95 @@ describe('alertAPI', () => {
       expect(mockPost).toHaveBeenCalledWith('/alerts/logs/log-1/dismiss', {});
     });
   });
+
+  describe('bulkCreateAlerts', () => {
+    it('calls POST /alerts/bulk with data', async () => {
+      const data = {
+        watch_list_id: 'wl-1',
+        alert_type: 'price_above',
+        conditions: { threshold: 150 },
+        frequency: 'daily' as const,
+        notify_email: true,
+        notify_in_app: true,
+      };
+      const response = { created: 5, skipped: 2 };
+      mockPost.mockResolvedValueOnce(response);
+
+      const result = await alertAPI.bulkCreateAlerts(data);
+
+      expect(mockPost).toHaveBeenCalledWith('/alerts/bulk', data);
+      expect(result).toEqual(response);
+    });
+
+    it('passes all frequency variants', async () => {
+      const frequencies = ['once', 'daily', 'always'] as const;
+
+      for (const freq of frequencies) {
+        mockPost.mockResolvedValueOnce({ created: 1, skipped: 0 });
+
+        const data = {
+          watch_list_id: 'wl-1',
+          alert_type: 'price_above',
+          conditions: { threshold: 100 },
+          frequency: freq,
+          notify_email: true,
+          notify_in_app: false,
+        };
+
+        await alertAPI.bulkCreateAlerts(data);
+
+        expect(mockPost).toHaveBeenLastCalledWith('/alerts/bulk', data);
+      }
+    });
+
+    it('passes volume_spike conditions with volume_multiplier', async () => {
+      const data = {
+        watch_list_id: 'wl-2',
+        alert_type: 'volume_spike',
+        conditions: { volume_multiplier: 2, baseline: 'avg_30d' },
+        frequency: 'once' as const,
+        notify_email: false,
+        notify_in_app: true,
+      };
+      mockPost.mockResolvedValueOnce({ created: 3, skipped: 0 });
+
+      await alertAPI.bulkCreateAlerts(data);
+
+      expect(mockPost).toHaveBeenCalledWith('/alerts/bulk', data);
+    });
+
+    it('propagates API errors', async () => {
+      const data = {
+        watch_list_id: 'wl-1',
+        alert_type: 'price_above',
+        conditions: { threshold: 100 },
+        frequency: 'daily' as const,
+        notify_email: true,
+        notify_in_app: true,
+      };
+      mockPost.mockRejectedValueOnce(new Error('Alert limit reached'));
+
+      await expect(alertAPI.bulkCreateAlerts(data)).rejects.toThrow('Alert limit reached');
+    });
+
+    it('handles all-skipped response (created: 0)', async () => {
+      const data = {
+        watch_list_id: 'wl-1',
+        alert_type: 'price_below',
+        conditions: { threshold: 50 },
+        frequency: 'always' as const,
+        notify_email: true,
+        notify_in_app: true,
+      };
+      const response = { created: 0, skipped: 10 };
+      mockPost.mockResolvedValueOnce(response);
+
+      const result = await alertAPI.bulkCreateAlerts(data);
+
+      expect(result.created).toBe(0);
+      expect(result.skipped).toBe(10);
+    });
+  });
 });
 
 describe('ALERT_TYPES constant', () => {
