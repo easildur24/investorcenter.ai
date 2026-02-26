@@ -149,36 +149,6 @@ func TestEvaluate_PriceBelow_NotTriggered(t *testing.T) {
 	}
 }
 
-func TestEvaluate_VolumeAbove_Triggered(t *testing.T) {
-	alert := &models.AlertRule{
-		AlertType:  "volume_above",
-		Conditions: mustJSON(models.ThresholdCondition{Threshold: 1000000.0}),
-	}
-	quote := &models.SymbolQuote{Volume: 1500000}
-	triggered, err := evaluate(alert, quote)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !triggered {
-		t.Error("expected volume_above to trigger when volume >= threshold")
-	}
-}
-
-func TestEvaluate_VolumeBelow_Triggered(t *testing.T) {
-	alert := &models.AlertRule{
-		AlertType:  "volume_below",
-		Conditions: mustJSON(models.ThresholdCondition{Threshold: 500000.0}),
-	}
-	quote := &models.SymbolQuote{Volume: 300000}
-	triggered, err := evaluate(alert, quote)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !triggered {
-		t.Error("expected volume_below to trigger when volume <= threshold")
-	}
-}
-
 func TestEvaluate_UnknownType(t *testing.T) {
 	alert := &models.AlertRule{
 		AlertType:  "news",

@@ -153,19 +153,6 @@ func (db *DB) UpdateAlertLogNotificationSent(logID string, sent bool) error {
 	return nil
 }
 
-// GetTodayAlertCount returns the number of alerts triggered today for a user.
-func (db *DB) GetTodayAlertCount(userID string) (int, error) {
-	var count int
-	err := db.QueryRow(`
-		SELECT COUNT(*) FROM alert_logs
-		WHERE user_id = $1 AND triggered_at >= $2
-	`, userID, todayStart()).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("get today alert count: %w", err)
-	}
-	return count, nil
-}
-
 // GetTodayEmailCount returns the number of alert emails sent today for a user.
 func (db *DB) GetTodayEmailCount(userID string) (int, error) {
 	var count int

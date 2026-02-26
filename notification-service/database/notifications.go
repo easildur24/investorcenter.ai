@@ -2,32 +2,11 @@ package database
 
 import (
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 
 	"notification-service/models"
 )
-
-// CreateInAppNotification inserts a notification into the notification_queue table.
-func (db *DB) CreateInAppNotification(n *models.InAppNotification) error {
-	data, err := json.Marshal(n.Data)
-	if err != nil {
-		log.Printf("Warning: failed to marshal notification data for user %s: %v", n.UserID, err)
-		data = []byte("{}")
-	}
-
-	_, err = db.Exec(`
-		INSERT INTO notification_queue (user_id, alert_log_id, type, title, message, data)
-		VALUES ($1, $2, $3, $4, $5, $6)
-	`, n.UserID, n.AlertLogID, n.Type, n.Title, n.Message, data)
-
-	if err != nil {
-		return fmt.Errorf("create in-app notification: %w", err)
-	}
-	return nil
-}
 
 // GetNotificationPreferences retrieves the notification preferences for a user.
 // Returns nil if no preferences row exists.

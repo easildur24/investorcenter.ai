@@ -9,28 +9,21 @@ import (
 // ---------------------------------------------------------------------------
 
 func TestNewRouter(t *testing.T) {
-	// Verify router can be constructed with nil dependencies (for unit testing)
-	// In production these would be real EmailDelivery and InAppDelivery instances.
-	router := NewRouter(nil, nil)
+	// Verify router can be constructed with nil dependencies (for unit testing).
+	// In production this would be a real EmailDelivery instance.
+	router := NewRouter(nil)
 	if router == nil {
 		t.Fatal("expected non-nil router")
 	}
 	if router.email != nil {
 		t.Error("expected nil email field")
 	}
-	if router.inApp != nil {
-		t.Error("expected nil inApp field")
-	}
 }
 
-func TestNewRouter_WithDeliveries(t *testing.T) {
+func TestNewRouter_WithEmail(t *testing.T) {
 	email := &EmailDelivery{}
-	inApp := &InAppDelivery{}
-	router := NewRouter(email, inApp)
+	router := NewRouter(email)
 	if router.email != email {
 		t.Error("email delivery not set correctly")
-	}
-	if router.inApp != inApp {
-		t.Error("inApp delivery not set correctly")
 	}
 }

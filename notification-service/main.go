@@ -2,7 +2,7 @@
 //
 // Consumes stock price updates from an SQS queue (published by the backend
 // via SNS), evaluates alert rules in near real-time, and delivers
-// notifications (in-app + email).
+// email notifications.
 //
 // Designed to run as a single-replica K8s deployment in the investorcenter
 // namespace. Exposes only a /health endpoint for liveness/readiness probes.
@@ -43,8 +43,7 @@ func main() {
 
 	// 4. Initialize delivery channels
 	emailDelivery := delivery.NewEmailDelivery(cfg, db)
-	inAppDelivery := delivery.NewInAppDelivery(db)
-	router := delivery.NewRouter(emailDelivery, inAppDelivery)
+	router := delivery.NewRouter(emailDelivery)
 
 	// 5. Initialize evaluator
 	eval := evaluator.New(db, router)

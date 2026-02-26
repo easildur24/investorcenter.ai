@@ -149,7 +149,7 @@ func (e *Evaluator) trigger(alert *models.AlertRule, quote *models.SymbolQuote) 
 	}
 	alertLog.ID = logID
 
-	// 2. Deliver notifications (in-app + email)
+	// 2. Deliver notifications (email)
 	deliveryErr := e.delivery.Deliver(alert, alertLog, quote)
 	if deliveryErr != nil {
 		log.Printf("Delivery error for alert %s: %v", alert.ID, deliveryErr)
@@ -216,11 +216,7 @@ func evaluate(alert *models.AlertRule, quote *models.SymbolQuote) (bool, error) 
 		return evaluatePriceBelow(alert, quote)
 	case "price_change_pct":
 		return evaluatePriceChangePct(alert, quote)
-	case "volume_above":
-		return evaluateVolumeAbove(alert, quote)
-	case "volume_below":
-		return evaluateVolumeBelow(alert, quote)
-	// volume_spike, news, earnings — not yet implemented
+	// volume_above, volume_below, volume_spike, news, earnings — not yet implemented
 	default:
 		return false, nil
 	}

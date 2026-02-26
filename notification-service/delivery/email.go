@@ -150,6 +150,38 @@ func isInQuietHours(prefs *models.NotificationPreferences) (bool, error) {
 	return currentTime >= start || currentTime <= end, nil
 }
 
+// alertTypeLabel returns a human-readable label for an alert type.
+func alertTypeLabel(alertType string) string {
+	labels := map[string]string{
+		"price_above":      "Price Above",
+		"price_below":      "Price Below",
+		"price_change_pct": "Price Change %",
+		"volume_above":     "Volume Above",
+		"volume_below":     "Volume Below",
+		"volume_spike":     "Volume Spike",
+		"news":             "News Alert",
+		"earnings":         "Earnings Report",
+	}
+	if label, ok := labels[alertType]; ok {
+		return label
+	}
+	return strings.ReplaceAll(alertType, "_", " ")
+}
+
+// formatVolume formats a volume number with K/M/B suffixes.
+func formatVolume(vol float64) string {
+	switch {
+	case vol >= 1_000_000_000:
+		return fmt.Sprintf("%.1fB", vol/1_000_000_000)
+	case vol >= 1_000_000:
+		return fmt.Sprintf("%.1fM", vol/1_000_000)
+	case vol >= 1_000:
+		return fmt.Sprintf("%.1fK", vol/1_000)
+	default:
+		return fmt.Sprintf("%.0f", vol)
+	}
+}
+
 // formatAlertEmailBody generates the HTML email body for an alert notification.
 func formatAlertEmailBody(alert *models.AlertRule, quote *models.SymbolQuote, userName, frontendURL string) string {
 	watchlistURL := fmt.Sprintf("%s/watchlist/%s", frontendURL, alert.WatchListID)

@@ -67,21 +67,6 @@ type AlertLog struct {
 	IsDismissed      bool            `db:"is_dismissed"`
 }
 
-// InAppNotification is an entry in the notification_queue table.
-type InAppNotification struct {
-	ID          string          `db:"id"`
-	UserID      string          `db:"user_id"`
-	AlertLogID  *string         `db:"alert_log_id"`
-	Type        string          `db:"type"` // "alert_triggered"
-	Title       string          `db:"title"`
-	Message     string          `db:"message"`
-	Data        json.RawMessage `db:"data"`
-	IsRead      bool            `db:"is_read"`
-	IsDismissed bool            `db:"is_dismissed"`
-	CreatedAt   time.Time       `db:"created_at"`
-	ExpiresAt   time.Time       `db:"expires_at"`
-}
-
 // NotificationPreferences holds user notification settings.
 type NotificationPreferences struct {
 	UserID             string `db:"user_id"`
