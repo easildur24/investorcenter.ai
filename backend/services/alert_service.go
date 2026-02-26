@@ -181,6 +181,94 @@ func (s *AlertService) CanCreateAlert(userID string) (bool, error) {
 	return count < limits.MaxAlertRules, nil
 }
 
+// BulkCreateAlerts creates one alert per ticker in the given watchlist.
+// Skips tickers that already have an active alert (inactive alerts for the same
+// symbol are intentionally allowed — users may want fresh alerts after disabling
+// old ones). Stops early if the user's subscription limit is reached.
+func (s *AlertService) BulkCreateAlerts(userID string, req *models.BulkCreateAlertRequest) (*models.BulkCreateAlertResponse, error) {
+	// Validate watchlist ownership
+	if err := s.ValidateWatchListOwnership(userID, req.WatchListID); err != nil {
+		return nil, err
+	}
+
+	// Validate conditions JSON
+	var conditionsMap map[string]interface{}
+	if err := json.Unmarshal(req.Conditions, &conditionsMap); err != nil {
+		return nil, errors.New("invalid conditions format")
+	}
+
+	// Fetch all tickers in the watchlist
+	items, err := database.GetWatchListItems(req.WatchListID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch watchlist items: %w", err)
+	}
+
+	// Pre-fetch subscription limit and current count to avoid N+1 queries.
+	// We track remaining capacity locally and decrement after each insert.
+	limits, err := database.GetUserSubscriptionLimits(userID)
+	if err != nil {
+		// No subscription found — use free tier limits
+		limits = &models.SubscriptionLimits{
+			MaxAlertRules: 10,
+		}
+	}
+	currentCount, err := database.CountAlertRulesByUserID(userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to count existing alerts: %w", err)
+	}
+	// remaining is -1 when unlimited
+	remaining := -1
+	if limits.MaxAlertRules != -1 {
+		remaining = limits.MaxAlertRules - currentCount
+	}
+
+	created := 0
+	skipped := 0
+
+	for _, item := range items {
+		// Check subscription limit before attempting insert
+		if remaining == 0 {
+			// Return partial result — caller sees how many were created before the cap
+			return &models.BulkCreateAlertResponse{Created: created, Skipped: skipped},
+				fmt.Errorf("alert limit reached after creating %d alerts", created)
+		}
+
+		// Use INSERT ... ON CONFLICT DO NOTHING to atomically skip duplicates.
+		// This replaces the separate AlertExistsForSymbol check + CreateAlertRule
+		// pair, eliminating both the N+1 existence query and the race window
+		// between check and insert.
+		name := fmt.Sprintf("%s %s", item.Symbol, models.AlertTypeLabel(req.AlertType))
+
+		alert := &models.AlertRule{
+			UserID:      userID,
+			WatchListID: req.WatchListID,
+			Symbol:      item.Symbol,
+			AlertType:   req.AlertType,
+			Conditions:  req.Conditions,
+			Name:        name,
+			Frequency:   req.Frequency,
+			NotifyEmail: req.NotifyEmail,
+			NotifyInApp: req.NotifyInApp,
+			IsActive:    true,
+		}
+
+		wasCreated, err := database.CreateAlertRuleIfNotExists(alert)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create alert for %s: %w", item.Symbol, err)
+		}
+		if wasCreated {
+			created++
+			if remaining > 0 {
+				remaining--
+			}
+		} else {
+			skipped++
+		}
+	}
+
+	return &models.BulkCreateAlertResponse{Created: created, Skipped: skipped}, nil
+}
+
 // ShouldTriggerBasedOnFrequency checks if alert should trigger based on frequency settings
 func (s *AlertService) ShouldTriggerBasedOnFrequency(alert *models.AlertRule) bool {
 	// If no last trigger, allow triggering

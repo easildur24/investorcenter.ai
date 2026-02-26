@@ -261,16 +261,21 @@ func main() {
 	cronjobHandler := handlers.NewCronjobHandler(cronjobService)
 
 	// Alert routes (protected, require authentication)
+	//
+	// IMPORTANT: Route ordering — Gin matches routes top-down. Static segments
+	// (/bulk, /logs) MUST be registered before parametric segments (/:id) to
+	// avoid Gin treating "bulk" or "logs" as an :id value.
 	alertRoutes := v1.Group("/alerts")
 	alertRoutes.Use(auth.AuthMiddleware())
 	{
-		alertRoutes.GET("", alertHandler.ListAlertRules)         // GET /api/v1/alerts
-		alertRoutes.POST("", alertHandler.CreateAlertRule)       // POST /api/v1/alerts
-		alertRoutes.GET("/:id", alertHandler.GetAlertRule)       // GET /api/v1/alerts/:id
-		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)    // PUT /api/v1/alerts/:id
-		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule) // DELETE /api/v1/alerts/:id
+		alertRoutes.GET("", alertHandler.ListAlertRules)             // GET /api/v1/alerts
+		alertRoutes.POST("", alertHandler.CreateAlertRule)           // POST /api/v1/alerts
+		alertRoutes.POST("/bulk", alertHandler.BulkCreateAlertRules) // POST /api/v1/alerts/bulk  — must be before /:id
+		alertRoutes.GET("/:id", alertHandler.GetAlertRule)           // GET /api/v1/alerts/:id
+		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)        // PUT /api/v1/alerts/:id
+		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule)     // DELETE /api/v1/alerts/:id
 
-		// Alert logs
+		// Alert logs — /logs must be before /:id above
 		alertRoutes.GET("/logs", alertHandler.ListAlertLogs)                // GET /api/v1/alerts/logs
 		alertRoutes.POST("/logs/:id/read", alertHandler.MarkAlertLogRead)   // POST /api/v1/alerts/logs/:id/read
 		alertRoutes.POST("/logs/:id/dismiss", alertHandler.DismissAlertLog) // POST /api/v1/alerts/logs/:id/dismiss

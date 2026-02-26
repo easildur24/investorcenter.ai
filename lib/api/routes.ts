@@ -128,6 +128,7 @@ export const watchlists = {
 export const alerts = {
   list: '/alerts',
   create: '/alerts',
+  bulk: '/alerts/bulk',
   byId: (id: string) => `/alerts/${id}`,
   logs: {
     list: '/alerts/logs',

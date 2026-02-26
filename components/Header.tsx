@@ -49,14 +49,6 @@ export default function Header() {
               >
                 Reddit Trends
               </Link>
-              {user && (
-                <Link
-                  href="/alerts"
-                  className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Alerts
-                </Link>
-              )}
             </div>
           </div>
 
@@ -69,15 +61,15 @@ export default function Header() {
             {/* Theme Toggle */}
             <ThemeToggle />
 
-            {/* Alerts Bell Icon - Only when logged in */}
+            {/* Alerts Bell — links to watchlists where alerts now live.
+                TODO: Phase 4 — convert to notification dropdown showing recent alert triggers. */}
             {user && (
               <Link
-                href="/alerts"
+                href="/watchlist"
                 className="relative p-2 text-ic-text-muted hover:text-ic-text-primary rounded-full hover:bg-ic-surface transition-colors"
-                title="Alerts"
+                title="My Alerts"
               >
                 <BellIcon className="h-6 w-6" />
-                {/* TODO: Add notification count badge here */}
               </Link>
             )}
 
@@ -106,13 +98,6 @@ export default function Header() {
                       onClick={() => setShowDropdown(false)}
                     >
                       My Watch Lists
-                    </Link>
-                    <Link
-                      href="/alerts"
-                      className="block px-4 py-2 text-ic-text-secondary hover:bg-ic-surface hover:text-ic-text-primary transition-colors"
-                      onClick={() => setShowDropdown(false)}
-                    >
-                      My Alerts
                     </Link>
                     <Link
                       href="/settings/profile"

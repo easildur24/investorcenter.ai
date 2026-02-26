@@ -350,6 +350,68 @@ func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*m
 	return alertMap, nil
 }
 
+// AlertExistsForSymbol checks if an active alert already exists for a given
+// (watch_list_id, symbol) pair. Only checks active alerts — inactive alerts
+// are intentionally ignored so users can create fresh alerts after disabling
+// old ones.
+func AlertExistsForSymbol(watchListID, symbol string) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM alert_rules
+			WHERE watch_list_id = $1 AND symbol = $2 AND is_active = true
+		)
+	`
+	err := DB.QueryRow(query, watchListID, symbol).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check alert existence: %w", err)
+	}
+	return exists, nil
+}
+
+// CreateAlertRuleIfNotExists inserts an alert rule only if no active alert
+// exists for the same (watch_list_id, symbol). Uses INSERT ... ON CONFLICT
+// to atomically handle duplicates in a single round-trip, eliminating the
+// race window between a separate existence check and insert.
+// Returns (true, nil) if inserted, (false, nil) if skipped due to conflict.
+func CreateAlertRuleIfNotExists(alert *models.AlertRule) (bool, error) {
+	query := `
+		INSERT INTO alert_rules (
+			user_id, watch_list_id, watch_list_item_id, symbol, alert_type,
+			conditions, is_active, frequency, notify_email, notify_in_app,
+			name, description
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		ON CONFLICT (watch_list_id, symbol) WHERE is_active = true
+		DO NOTHING
+		RETURNING id, created_at, updated_at, trigger_count
+	`
+	err := DB.QueryRow(
+		query,
+		alert.UserID,
+		alert.WatchListID,
+		alert.WatchListItemID,
+		alert.Symbol,
+		alert.AlertType,
+		alert.Conditions,
+		alert.IsActive,
+		alert.Frequency,
+		alert.NotifyEmail,
+		alert.NotifyInApp,
+		alert.Name,
+		alert.Description,
+	).Scan(&alert.ID, &alert.CreatedAt, &alert.UpdatedAt, &alert.TriggerCount)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// ON CONFLICT DO NOTHING — row already exists
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to create alert rule: %w", err)
+	}
+	return true, nil
+}
+
 // CountAlertRulesByUserID counts alert rules for a user
 func CountAlertRulesByUserID(userID string) (int, error) {
 	var count int
