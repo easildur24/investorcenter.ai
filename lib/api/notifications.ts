@@ -8,7 +8,7 @@ export interface InAppNotification {
   type: string;
   title: string;
   message: string;
-  data?: any;
+  data?: { watch_list_id?: string; [key: string]: unknown } | null;
   is_read: boolean;
   read_at?: string;
   is_dismissed: boolean;

@@ -162,36 +162,36 @@ describe('NotificationDropdown — Open & close', () => {
     seedDefaults();
     await renderDropdown();
     await openDropdown();
-    expect(screen.getByText(/Manage watchlists/)).toBeInTheDocument();
+    expect(screen.getByText(/Go to watchlists/)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByTitle('Notifications'));
     });
-    expect(screen.queryByText(/Manage watchlists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Go to watchlists/)).not.toBeInTheDocument();
   });
 
   it('closes dropdown on Escape key', async () => {
     seedDefaults();
     await renderDropdown();
     await openDropdown();
-    expect(screen.getByText(/Manage watchlists/)).toBeInTheDocument();
+    expect(screen.getByText(/Go to watchlists/)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.keyDown(document, { key: 'Escape' });
     });
-    expect(screen.queryByText(/Manage watchlists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Go to watchlists/)).not.toBeInTheDocument();
   });
 
   it('closes dropdown on outside click', async () => {
     seedDefaults();
     await renderDropdown();
     await openDropdown();
-    expect(screen.getByText(/Manage watchlists/)).toBeInTheDocument();
+    expect(screen.getByText(/Go to watchlists/)).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.mouseDown(document);
     });
-    expect(screen.queryByText(/Manage watchlists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Go to watchlists/)).not.toBeInTheDocument();
   });
 });
 
@@ -260,12 +260,12 @@ describe('NotificationDropdown — List display', () => {
     expect(screen.queryByText('Mark all read')).not.toBeInTheDocument();
   });
 
-  it('shows footer with "Manage watchlists" link', async () => {
+  it('shows footer with "Go to watchlists" link', async () => {
     seedDefaults();
     await renderDropdown();
     await openDropdown();
 
-    expect(screen.getByText(/Manage watchlists/)).toBeInTheDocument();
+    expect(screen.getByText(/Go to watchlists/)).toBeInTheDocument();
   });
 });
 
@@ -375,7 +375,7 @@ describe('NotificationDropdown — Notification click', () => {
     });
 
     // Dropdown should be closed
-    expect(screen.queryByText(/Manage watchlists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Go to watchlists/)).not.toBeInTheDocument();
   });
 });
 
@@ -480,12 +480,12 @@ describe('NotificationDropdown — Footer', () => {
     await openDropdown();
 
     await act(async () => {
-      fireEvent.click(screen.getByText(/Manage watchlists/));
+      fireEvent.click(screen.getByText(/Go to watchlists/));
     });
 
     expect(mockPush).toHaveBeenCalledWith('/watchlist');
     // Dropdown should close
-    expect(screen.queryByText(/Manage watchlists/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Go to watchlists/)).not.toBeInTheDocument();
   });
 });
 

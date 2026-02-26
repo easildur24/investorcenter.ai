@@ -295,7 +295,7 @@ export default function NotificationDropdown() {
               }}
               className="text-xs text-ic-blue hover:text-ic-blue-hover font-medium w-full text-center"
             >
-              Manage watchlists &rarr;
+              Go to watchlists &rarr;
             </button>
           </div>
         </div>
