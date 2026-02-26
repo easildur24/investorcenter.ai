@@ -181,6 +181,82 @@ func (s *AlertService) CanCreateAlert(userID string) (bool, error) {
 	return count < limits.MaxAlertRules, nil
 }
 
+// BulkCreateAlerts creates one alert per ticker in the given watchlist.
+// Skips tickers that already have an active alert. Stops early if the user's
+// subscription limit is reached.
+func (s *AlertService) BulkCreateAlerts(userID string, req *models.BulkCreateAlertRequest) (*models.BulkCreateAlertResponse, error) {
+	// Validate watchlist ownership
+	if err := s.ValidateWatchListOwnership(userID, req.WatchListID); err != nil {
+		return nil, err
+	}
+
+	// Validate conditions JSON
+	var conditionsMap map[string]interface{}
+	if err := json.Unmarshal(req.Conditions, &conditionsMap); err != nil {
+		return nil, errors.New("invalid conditions format")
+	}
+
+	// Fetch all tickers in the watchlist
+	items, err := database.GetWatchListItems(req.WatchListID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch watchlist items: %w", err)
+	}
+
+	created := 0
+	skipped := 0
+
+	for _, item := range items {
+		// Check if an active alert already exists for this symbol
+		exists, err := database.AlertExistsForSymbol(req.WatchListID, item.Symbol)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check existing alert for %s: %w", item.Symbol, err)
+		}
+		if exists {
+			skipped++
+			continue
+		}
+
+		// Check subscription limit before each insert
+		canCreate, err := s.CanCreateAlert(userID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to check alert limits: %w", err)
+		}
+		if !canCreate {
+			// Return partial result — caller sees how many were created before the cap
+			return &models.BulkCreateAlertResponse{Created: created, Skipped: skipped},
+				fmt.Errorf("alert limit reached after creating %d alerts", created)
+		}
+
+		// Auto-generate alert name
+		name := fmt.Sprintf("%s %s", item.Symbol, models.AlertTypeLabel(req.AlertType))
+
+		alert := &models.AlertRule{
+			UserID:      userID,
+			WatchListID: req.WatchListID,
+			Symbol:      item.Symbol,
+			AlertType:   req.AlertType,
+			Conditions:  req.Conditions,
+			Name:        name,
+			Frequency:   req.Frequency,
+			NotifyEmail: req.NotifyEmail,
+			NotifyInApp: req.NotifyInApp,
+			IsActive:    true,
+		}
+
+		if err := database.CreateAlertRule(alert); err != nil {
+			// Unique constraint violation — another request created it; skip
+			if errors.Is(err, database.ErrAlertAlreadyExists) {
+				skipped++
+				continue
+			}
+			return nil, fmt.Errorf("failed to create alert for %s: %w", item.Symbol, err)
+		}
+		created++
+	}
+
+	return &models.BulkCreateAlertResponse{Created: created, Skipped: skipped}, nil
+}
+
 // ShouldTriggerBasedOnFrequency checks if alert should trigger based on frequency settings
 func (s *AlertService) ShouldTriggerBasedOnFrequency(alert *models.AlertRule) bool {
 	// If no last trigger, allow triggering

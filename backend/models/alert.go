@@ -109,6 +109,22 @@ type AlertLogWithRule struct {
 	RuleName string `json:"rule_name"`
 }
 
+// BulkCreateAlertRequest is the API request for creating alerts for all tickers in a watchlist
+type BulkCreateAlertRequest struct {
+	WatchListID string          `json:"watch_list_id" binding:"required"`
+	AlertType   string          `json:"alert_type" binding:"required,oneof=price_above price_below price_change volume_above volume_spike"`
+	Conditions  json.RawMessage `json:"conditions" binding:"required"`
+	Frequency   string          `json:"frequency" binding:"required,oneof=once always daily"`
+	NotifyEmail bool            `json:"notify_email"`
+	NotifyInApp bool            `json:"notify_in_app"`
+}
+
+// BulkCreateAlertResponse reports how many alerts were created vs skipped
+type BulkCreateAlertResponse struct {
+	Created int `json:"created"`
+	Skipped int `json:"skipped"`
+}
+
 // alertTypeLabels maps alert type identifiers to human-readable labels.
 var alertTypeLabels = map[string]string{
 	"price_above":         "Price Above",

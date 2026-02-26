@@ -71,6 +71,20 @@ export interface UpdateAlertRequest {
   notify_in_app?: boolean;
 }
 
+export interface BulkCreateAlertRequest {
+  watch_list_id: string;
+  alert_type: string;
+  conditions: Record<string, unknown>;
+  frequency: 'once' | 'daily' | 'always';
+  notify_email: boolean;
+  notify_in_app: boolean;
+}
+
+export interface BulkCreateAlertResponse {
+  created: number;
+  skipped: number;
+}
+
 // Alert API
 export const alertAPI = {
   // List all alert rules
@@ -125,6 +139,11 @@ export const alertAPI = {
   // Dismiss alert log
   async dismissAlertLog(logId: string): Promise<void> {
     return apiClient.post(alerts.logs.dismiss(logId), {});
+  },
+
+  // Bulk create alerts for all tickers in a watchlist
+  async bulkCreateAlerts(data: BulkCreateAlertRequest): Promise<BulkCreateAlertResponse> {
+    return apiClient.post(alerts.bulk, data);
   },
 };
 

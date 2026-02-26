@@ -350,6 +350,23 @@ func GetAlertForWatchListItems(watchListID string, userID string) (map[string]*m
 	return alertMap, nil
 }
 
+// AlertExistsForSymbol checks if an active alert already exists for a given
+// (watch_list_id, symbol) pair. Used by bulk create to skip duplicates.
+func AlertExistsForSymbol(watchListID, symbol string) (bool, error) {
+	var exists bool
+	query := `
+		SELECT EXISTS(
+			SELECT 1 FROM alert_rules
+			WHERE watch_list_id = $1 AND symbol = $2 AND is_active = true
+		)
+	`
+	err := DB.QueryRow(query, watchListID, symbol).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("failed to check alert existence: %w", err)
+	}
+	return exists, nil
+}
+
 // CountAlertRulesByUserID counts alert rules for a user
 func CountAlertRulesByUserID(userID string) (int, error) {
 	var count int

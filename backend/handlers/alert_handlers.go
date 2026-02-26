@@ -156,6 +156,53 @@ func (h *AlertHandler) DeleteAlertRule(c *gin.Context) {
 	c.Status(http.StatusNoContent)
 }
 
+// BulkCreateAlertRules godoc
+// @Summary Create alerts for all tickers in a watchlist
+// @Tags alerts
+// @Accept json
+// @Produce json
+// @Param alert body models.BulkCreateAlertRequest true "Bulk alert details"
+// @Success 201 {object} models.BulkCreateAlertResponse
+// @Success 200 {object} models.BulkCreateAlertResponse "All skipped"
+// @Router /api/v1/alerts/bulk [post]
+func (h *AlertHandler) BulkCreateAlertRules(c *gin.Context) {
+	userID := c.GetString("user_id")
+
+	var req models.BulkCreateAlertRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	result, err := h.alertService.BulkCreateAlerts(userID, &req)
+	if err != nil {
+		// If result is non-nil, the error is a partial failure (limit reached).
+		// Return the partial counts with a 403.
+		if result != nil {
+			c.JSON(http.StatusForbidden, gin.H{
+				"error":   err.Error(),
+				"created": result.Created,
+				"skipped": result.Skipped,
+			})
+			return
+		}
+		// Ownership or other hard failure
+		if err.Error() == "watch list not found" || err.Error() == "unauthorized" {
+			c.JSON(http.StatusForbidden, gin.H{"error": "Watch list not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if result.Created == 0 {
+		c.JSON(http.StatusOK, result)
+		return
+	}
+
+	c.JSON(http.StatusCreated, result)
+}
+
 // ListAlertLogs godoc
 // @Summary Get alert trigger history
 // @Tags alerts

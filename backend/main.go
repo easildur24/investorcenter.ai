@@ -264,11 +264,12 @@ func main() {
 	alertRoutes := v1.Group("/alerts")
 	alertRoutes.Use(auth.AuthMiddleware())
 	{
-		alertRoutes.GET("", alertHandler.ListAlertRules)         // GET /api/v1/alerts
-		alertRoutes.POST("", alertHandler.CreateAlertRule)       // POST /api/v1/alerts
-		alertRoutes.GET("/:id", alertHandler.GetAlertRule)       // GET /api/v1/alerts/:id
-		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)    // PUT /api/v1/alerts/:id
-		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule) // DELETE /api/v1/alerts/:id
+		alertRoutes.GET("", alertHandler.ListAlertRules)             // GET /api/v1/alerts
+		alertRoutes.POST("", alertHandler.CreateAlertRule)           // POST /api/v1/alerts
+		alertRoutes.POST("/bulk", alertHandler.BulkCreateAlertRules) // POST /api/v1/alerts/bulk
+		alertRoutes.GET("/:id", alertHandler.GetAlertRule)           // GET /api/v1/alerts/:id
+		alertRoutes.PUT("/:id", alertHandler.UpdateAlertRule)        // PUT /api/v1/alerts/:id
+		alertRoutes.DELETE("/:id", alertHandler.DeleteAlertRule)     // DELETE /api/v1/alerts/:id
 
 		// Alert logs
 		alertRoutes.GET("/logs", alertHandler.ListAlertLogs)                // GET /api/v1/alerts/logs
