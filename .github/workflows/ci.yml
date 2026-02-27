@@ -151,8 +151,8 @@ jobs:
         cd backend
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
         echo "Backend coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 20" | bc -l) )); then
-          echo "::error::Backend coverage ${COVERAGE}% is below the 20% threshold"
+        if (( $(echo "$COVERAGE < 40" | bc -l) )); then
+          echo "::error::Backend coverage ${COVERAGE}% is below the 40% threshold"
           exit 1
         fi
 
@@ -310,8 +310,8 @@ jobs:
         print(f'{rate * 100:.1f}')
         ")
         echo "IC Score coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 50" | bc -l) )); then
-          echo "::error::IC Score coverage ${COVERAGE}% is below the 50% threshold"
+        if (( $(echo "$COVERAGE < 70" | bc -l) )); then
+          echo "::error::IC Score coverage ${COVERAGE}% is below the 70% threshold"
           exit 1
         fi
 
@@ -409,8 +409,8 @@ jobs:
           console.log(report.total.lines.pct);
         ")
         echo "Frontend coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 65" | bc -l) )); then
-          echo "::error::Frontend coverage ${COVERAGE}% is below the 65% threshold"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "::error::Frontend coverage ${COVERAGE}% is below the 80% threshold"
           exit 1
         fi
 
