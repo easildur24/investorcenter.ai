@@ -15,6 +15,7 @@ import {
 import { useTheme } from '@/lib/contexts/ThemeContext';
 import { getChartColors } from '@/lib/theme';
 import type { EarningsResult } from '@/lib/types/earnings';
+import { formatEPS, formatRevenue, formatSurprise } from '@/lib/utils/earningsFormatters';
 
 interface EarningsBarChartProps {
   data: EarningsResult[];
@@ -28,14 +29,6 @@ const QUARTERS_MAP: Record<ZoomOption, number> = {
   '5Y': 20,
   All: 999,
 };
-
-function formatRevenue(value: number): string {
-  const abs = Math.abs(value);
-  if (abs >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
-  return `$${value.toLocaleString()}`;
-}
 
 export default function EarningsBarChart({ data, type }: EarningsBarChartProps) {
   const [zoom, setZoom] = useState<ZoomOption>('2Y');
@@ -66,7 +59,7 @@ export default function EarningsBarChart({ data, type }: EarningsBarChartProps) 
   const title = isEPS ? 'EPS History' : 'Revenue History';
 
   const yTickFormatter = isEPS
-    ? (value: number) => `$${value.toFixed(2)}`
+    ? (value: number) => formatEPS(value)
     : (value: number) => formatRevenue(value);
 
   return (
@@ -117,25 +110,14 @@ export default function EarningsBarChart({ data, type }: EarningsBarChartProps) 
                 <div className="bg-ic-surface border border-ic-border rounded-lg shadow-lg p-3 text-sm">
                   <p className="font-medium text-ic-text-primary mb-1">{item.quarter}</p>
                   <p className="text-ic-text-muted">
-                    Estimate:{' '}
-                    {item.estimated !== null
-                      ? isEPS
-                        ? `$${item.estimated.toFixed(2)}`
-                        : formatRevenue(item.estimated)
-                      : 'N/A'}
+                    Estimate: {isEPS ? formatEPS(item.estimated) : formatRevenue(item.estimated)}
                   </p>
                   <p className="text-ic-text-primary">
-                    Actual:{' '}
-                    {item.actual !== null
-                      ? isEPS
-                        ? `$${item.actual.toFixed(2)}`
-                        : formatRevenue(item.actual)
-                      : '-'}
+                    Actual: {isEPS ? formatEPS(item.actual) : formatRevenue(item.actual)}
                   </p>
-                  {item.surprise !== null && (
+                  {item.surprise != null && (
                     <p className={item.beat ? 'text-green-400' : 'text-red-400'}>
-                      Surprise: {item.surprise > 0 ? '+' : ''}
-                      {item.surprise.toFixed(1)}% {item.beat ? '(Beat)' : '(Miss)'}
+                      Surprise: {formatSurprise(item.surprise)} {item.beat ? '(Beat)' : '(Miss)'}
                     </p>
                   )}
                 </div>
@@ -153,9 +135,9 @@ export default function EarningsBarChart({ data, type }: EarningsBarChartProps) 
           />
           {/* Actual bar — colored by beat/miss */}
           <Bar dataKey="actual" name="Actual" radius={[2, 2, 0, 0]}>
-            {chartData.map((entry, idx) => (
+            {chartData.map((entry) => (
               <Cell
-                key={idx}
+                key={entry.quarter}
                 fill={
                   entry.beat === true
                     ? chartColors.positive

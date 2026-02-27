@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '@/lib/api';
 import { stocks } from '@/lib/api/routes';
-import type { EarningsResponse } from '@/lib/types/earnings';
+import type { ApiEnvelope, EarningsResponse } from '@/lib/types/earnings';
 import NextEarningsCard from './earnings/NextEarningsCard';
 import EarningsSummaryStats from './earnings/EarningsSummaryStats';
 import EarningsTable from './earnings/EarningsTable';
@@ -19,12 +19,15 @@ export default function EarningsTab({ symbol }: EarningsTabProps) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchEarnings = async () => {
       try {
         setLoading(true);
         setError(null);
         const response = await fetch(`${API_BASE_URL}${stocks.earnings(symbol.toUpperCase())}`, {
           cache: 'no-store',
+          signal: controller.signal,
         });
         if (response.status === 404) {
           setError('No earnings data available for this ticker');
@@ -33,9 +36,10 @@ export default function EarningsTab({ symbol }: EarningsTabProps) {
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        const result = await response.json();
+        const result: ApiEnvelope<EarningsResponse> = await response.json();
         setData(result.data);
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('Error fetching earnings:', err);
         setError('Failed to load earnings data');
       } finally {
@@ -44,6 +48,7 @@ export default function EarningsTab({ symbol }: EarningsTabProps) {
     };
 
     fetchEarnings();
+    return () => controller.abort();
   }, [symbol]);
 
   if (loading) return <EarningsTabSkeleton />;
