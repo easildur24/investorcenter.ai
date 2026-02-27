@@ -226,4 +226,3 @@ func TestFormatAlertEmailBody(t *testing.T) {
 		t.Error("expected body to contain settings URL")
 	}
 }
-

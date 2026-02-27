@@ -112,9 +112,9 @@ func TestExtractSNSPayload_NestedJSON(t *testing.T) {
 
 	// Verify the extracted message is valid JSON and parseable
 	var priceUpdate struct {
-		Timestamp int64                          `json:"timestamp"`
-		Source    string                         `json:"source"`
-		Symbols   map[string]map[string]float64  `json:"symbols"`
+		Timestamp int64                         `json:"timestamp"`
+		Source    string                        `json:"source"`
+		Symbols   map[string]map[string]float64 `json:"symbols"`
 	}
 	if err := json.Unmarshal(payload, &priceUpdate); err != nil {
 		t.Fatalf("extracted payload is not valid JSON: %v", err)

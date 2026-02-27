@@ -55,21 +55,21 @@ func TestGetActiveAlertsForSymbols_Success(t *testing.T) {
 	}
 
 	rows := sqlmock.NewRows(columns).AddRow(
-		"alert-001",     // id
-		"user-123",      // user_id
-		"wl-456",        // watch_list_id
-		"AAPL",          // symbol
-		"price_above",   // alert_type
-		conditions,      // conditions
-		true,            // is_active
-		"daily",         // frequency
-		true,            // notify_email
-		false,           // notify_in_app
+		"alert-001",      // id
+		"user-123",       // user_id
+		"wl-456",         // watch_list_id
+		"AAPL",           // symbol
+		"price_above",    // alert_type
+		conditions,       // conditions
+		true,             // is_active
+		"daily",          // frequency
+		true,             // notify_email
+		false,            // notify_in_app
 		"AAPL above 150", // name
-		lastTriggered,   // last_triggered_at
-		3,               // trigger_count
-		now,             // created_at
-		now,             // updated_at
+		lastTriggered,    // last_triggered_at
+		3,                // trigger_count
+		now,              // created_at
+		now,              // updated_at
 	)
 
 	mock.ExpectQuery("SELECT id, user_id, watch_list_id, symbol, alert_type, conditions").

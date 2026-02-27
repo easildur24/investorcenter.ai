@@ -24,16 +24,16 @@ func TestGetNotificationPreferences_Success(t *testing.T) {
 		"max_alerts_per_day", "max_emails_per_day",
 	}
 	rows := sqlmock.NewRows(columns).AddRow(
-		"user-123",          // user_id
-		true,                // email_enabled
-		emailAddr,           // email_address
-		true,                // email_verified
-		true,                // quiet_hours_enabled
-		"22:00:00",          // quiet_hours_start
-		"08:00:00",          // quiet_hours_end
-		"America/New_York",  // quiet_hours_timezone
-		50,                  // max_alerts_per_day
-		10,                  // max_emails_per_day
+		"user-123",         // user_id
+		true,               // email_enabled
+		emailAddr,          // email_address
+		true,               // email_verified
+		true,               // quiet_hours_enabled
+		"22:00:00",         // quiet_hours_start
+		"08:00:00",         // quiet_hours_end
+		"America/New_York", // quiet_hours_timezone
+		50,                 // max_alerts_per_day
+		10,                 // max_emails_per_day
 	)
 
 	mock.ExpectQuery(regexp.QuoteMeta(

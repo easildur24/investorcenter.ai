@@ -38,9 +38,9 @@ type mockStore struct {
 	getUserEmailFn func(userID string) (*models.UserEmail, error)
 
 	// Call tracking
-	createAlertLogCalls              []*models.AlertLog
-	updateAlertLogNotificationCalls  []updateNotificationCall
-	claimAlertTriggerCalls           []claimTriggerCall
+	createAlertLogCalls             []*models.AlertLog
+	updateAlertLogNotificationCalls []updateNotificationCall
+	claimAlertTriggerCalls          []claimTriggerCall
 }
 
 type updateNotificationCall struct {

@@ -11,9 +11,9 @@ import (
 
 // PriceUpdateMessage is the SNS payload published by the backend every ~5 seconds.
 type PriceUpdateMessage struct {
-	Timestamp int64                   `json:"timestamp"`
-	Source    string                  `json:"source"`
-	Symbols  map[string]SymbolQuote  `json:"symbols"`
+	Timestamp int64                  `json:"timestamp"`
+	Source    string                 `json:"source"`
+	Symbols   map[string]SymbolQuote `json:"symbols"`
 }
 
 // SymbolQuote is a lightweight price snapshot for a single symbol.
@@ -42,10 +42,10 @@ type AlertRule struct {
 	//   "always" — on every evaluation cycle, with a 5-minute cooldown between
 	//              notifications to prevent spam. Users selecting "always" will
 	//              receive at most 1 notification per 5 minutes per alert rule.
-	Frequency       string  `db:"frequency"`
-	NotifyEmail     bool    `db:"notify_email"`
-	NotifyInApp     bool    `db:"notify_in_app"`
-	Name            string  `db:"name"`
+	Frequency       string     `db:"frequency"`
+	NotifyEmail     bool       `db:"notify_email"`
+	NotifyInApp     bool       `db:"notify_in_app"`
+	Name            string     `db:"name"`
 	LastTriggeredAt *time.Time `db:"last_triggered_at"`
 	TriggerCount    int        `db:"trigger_count"`
 	CreatedAt       time.Time  `db:"created_at"`
@@ -69,16 +69,16 @@ type AlertLog struct {
 
 // NotificationPreferences holds user notification settings.
 type NotificationPreferences struct {
-	UserID             string `db:"user_id"`
-	EmailEnabled       bool   `db:"email_enabled"`
+	UserID             string  `db:"user_id"`
+	EmailEnabled       bool    `db:"email_enabled"`
 	EmailAddress       *string `db:"email_address"`
-	EmailVerified      bool   `db:"email_verified"`
-	QuietHoursEnabled  bool   `db:"quiet_hours_enabled"`
-	QuietHoursStart    string `db:"quiet_hours_start"`    // HH:MM:SS
-	QuietHoursEnd      string `db:"quiet_hours_end"`      // HH:MM:SS
-	QuietHoursTimezone string `db:"quiet_hours_timezone"` // e.g. "America/New_York"
-	MaxAlertsPerDay    int    `db:"max_alerts_per_day"`
-	MaxEmailsPerDay    int    `db:"max_emails_per_day"`
+	EmailVerified      bool    `db:"email_verified"`
+	QuietHoursEnabled  bool    `db:"quiet_hours_enabled"`
+	QuietHoursStart    string  `db:"quiet_hours_start"`    // HH:MM:SS
+	QuietHoursEnd      string  `db:"quiet_hours_end"`      // HH:MM:SS
+	QuietHoursTimezone string  `db:"quiet_hours_timezone"` // e.g. "America/New_York"
+	MaxAlertsPerDay    int     `db:"max_alerts_per_day"`
+	MaxEmailsPerDay    int     `db:"max_emails_per_day"`
 }
 
 // UserEmail holds the minimal user data needed for email delivery.

@@ -30,7 +30,7 @@ type Consumer struct {
 	queueURL         string
 	maxMessages      int32
 	healthy          atomic.Bool
-	consecutiveFails int32 // tracks consecutive SQS receive failures
+	consecutiveFails int32               // tracks consecutive SQS receive failures
 	sleepFn          func(time.Duration) // injectable for testing
 }
 

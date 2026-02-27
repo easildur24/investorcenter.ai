@@ -180,16 +180,16 @@ func TestFormatAlertEmailBody_ContainsExpectedContent(t *testing.T) {
 
 	// Check key elements are present in the HTML
 	checks := []string{
-		"My AAPL Alert",          // Alert name
-		"John Doe",               // User name
-		"AAPL",                   // Symbol
-		"$152.30",                // Price
-		"1.25%",                  // Change percent
-		"45.0M",                  // Volume formatted
-		"wl-123",                 // Watchlist ID in URL
-		"investorcenter.ai",      // Frontend URL
-		"View Watchlist",         // CTA button text
-		"account settings",       // Footer link
+		"My AAPL Alert",     // Alert name
+		"John Doe",          // User name
+		"AAPL",              // Symbol
+		"$152.30",           // Price
+		"1.25%",             // Change percent
+		"45.0M",             // Volume formatted
+		"wl-123",            // Watchlist ID in URL
+		"investorcenter.ai", // Frontend URL
+		"View Watchlist",    // CTA button text
+		"account settings",  // Footer link
 	}
 	for _, check := range checks {
 		if !strings.Contains(body, check) {
