@@ -84,7 +84,17 @@ func TestValidateToken(t *testing.T) {
 
 	t.Run("rejects tampered token", func(t *testing.T) {
 		token := generateValidToken(t, "user-123", "test@example.com", false)
-		tampered := token[:len(token)-1] + "X"
+		// Flip a character in the middle of the signature to reliably
+		// invalidate it (changing only the last char can still produce
+		// a valid base64url decode that passes verification).
+		mid := len(token) / 2
+		flipped := token[mid]
+		if flipped == 'A' {
+			flipped = 'B'
+		} else {
+			flipped = 'A'
+		}
+		tampered := token[:mid] + string(flipped) + token[mid+1:]
 
 		result, err := ValidateToken(tampered)
 		assert.Error(t, err)
