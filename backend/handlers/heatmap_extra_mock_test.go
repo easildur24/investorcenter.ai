@@ -114,8 +114,8 @@ func TestCreateHeatmapConfig_Mock_DBError(t *testing.T) {
 	// Ownership passes
 	expectOwnershipPass(mock, "wl-1", "user-1")
 
-	// CreateHeatmapConfig insert fails
-	mock.ExpectExec("INSERT INTO heatmap_configs").
+	// CreateHeatmapConfig INSERT RETURNING fails
+	mock.ExpectQuery("INSERT INTO heatmap_configs").
 		WillReturnError(fmt.Errorf("insert failed"))
 
 	r := setupMockRouter("user-1")
@@ -148,9 +148,11 @@ func TestCreateHeatmapConfig_Mock_Success(t *testing.T) {
 	// Ownership passes
 	expectOwnershipPass(mock, "wl-1", "user-1")
 
-	// CreateHeatmapConfig insert succeeds
-	mock.ExpectExec("INSERT INTO heatmap_configs").
-		WillReturnResult(sqlmock.NewResult(1, 1))
+	// CreateHeatmapConfig INSERT RETURNING succeeds
+	now := time.Now()
+	mock.ExpectQuery("INSERT INTO heatmap_configs").
+		WillReturnRows(sqlmock.NewRows([]string{"id", "created_at", "updated_at"}).
+			AddRow("cfg-1", now, now))
 
 	r := setupMockRouter("user-1")
 	r.POST("/watchlists/:id/heatmap/configs", CreateHeatmapConfig)
@@ -193,7 +195,13 @@ func TestUpdateHeatmapConfig_Mock_ConfigNotFound(t *testing.T) {
 	r.PUT("/watchlists/:id/heatmap/configs/:configId", UpdateHeatmapConfig)
 
 	body, _ := json.Marshal(map[string]interface{}{
-		"name": "Updated Config",
+		"name":          "Updated Config",
+		"size_metric":   "market_cap",
+		"color_metric":  "price_change_pct",
+		"time_period":   "1D",
+		"color_scheme":  "red_green",
+		"label_display": "symbol",
+		"layout_type":   "treemap",
 	})
 
 	w := httptest.NewRecorder()
