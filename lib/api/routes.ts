@@ -102,6 +102,7 @@ export const screener = {
 
 // ─── Earnings Calendar ────────────────────────────────────────────────────────
 export const earningsCalendar = {
+  /** Query params: ?from=YYYY-MM-DD&to=YYYY-MM-DD (max 14-day window) */
   list: '/earnings-calendar',
 } as const;
 

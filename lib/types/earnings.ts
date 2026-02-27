@@ -1,5 +1,15 @@
 // Earnings data types matching backend response shapes
 
+/**
+ * Generic wrapper for the standard `{ data: T, meta: {...} }` envelope
+ * returned by the Go backend. Keeps callers type-safe without hand-casting
+ * `result.data` after every fetch.
+ */
+export interface ApiEnvelope<T> {
+  data: T;
+  meta: Record<string, unknown>;
+}
+
 export interface EarningsResult {
   symbol: string;
   date: string;
