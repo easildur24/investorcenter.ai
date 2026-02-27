@@ -95,6 +95,7 @@ func (s *HeatmapService) GenerateHeatmapData(
 			Symbol:           item.Symbol,
 			Name:             item.Name,
 			AssetType:        item.AssetType,
+			Sector:           item.Sector,
 			Exchange:         item.Exchange,
 			Notes:            item.Notes,
 			Tags:             item.Tags,

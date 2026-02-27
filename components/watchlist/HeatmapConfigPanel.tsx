@@ -20,7 +20,6 @@ interface HeatmapConfigPanelProps {
   onViewModeChange?: (mode: ViewMode) => void;
 }
 
-// Extracted so useModal only runs when the modal is mounted
 function SaveConfigModal({
   onClose,
   onSave,
@@ -79,6 +78,11 @@ function SaveConfigModal({
   );
 }
 
+const VIEW_MODES: ViewMode[] = ['auto', 'treemap', 'cards', 'bars'];
+
+const selectClass =
+  'px-2 py-1.5 text-xs border border-ic-border rounded-md bg-ic-surface text-ic-text-primary hover:border-ic-text-dim focus:outline-none focus:ring-1 focus:ring-ic-blue transition-colors';
+
 export default function HeatmapConfigPanel({
   settings,
   onChange,
@@ -99,237 +103,96 @@ export default function HeatmapConfigPanel({
     }
   };
 
-  const viewOptions: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
-    {
-      mode: 'auto',
-      label: 'Auto',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M13 10V3L4 14h7v7l9-11h-7z"
-          />
-        </svg>
-      ),
-    },
-    {
-      mode: 'treemap',
-      label: 'Treemap',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zm0 7a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7zM4 14a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5z"
-          />
-        </svg>
-      ),
-    },
-    {
-      mode: 'cards',
-      label: 'Cards',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-          />
-        </svg>
-      ),
-    },
-    {
-      mode: 'bars',
-      label: 'Bars',
-      icon: (
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-          />
-        </svg>
-      ),
-    },
-  ];
-
   return (
-    <div className="bg-ic-surface p-6 rounded-lg border border-ic-border mb-6">
-      {/* View Toggle + Save Row */}
-      {onViewModeChange && (
-        <div className="flex items-center justify-between mb-4 pb-4 border-b border-ic-border">
-          <div className="flex items-center gap-1 bg-ic-bg-secondary rounded-lg p-1">
-            {viewOptions.map((opt) => (
-              <button
-                key={opt.mode}
-                onClick={() => onViewModeChange(opt.mode)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === opt.mode
-                    ? 'bg-ic-blue text-white shadow-sm'
-                    : 'text-ic-text-secondary hover:text-ic-text-primary hover:bg-ic-surface-hover'
-                }`}
-                title={opt.label}
-              >
-                {opt.icon}
-                <span className="hidden sm:inline">{opt.label}</span>
-              </button>
-            ))}
-          </div>
-          {onSave && (
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover focus:outline-none focus:ring-2 focus:ring-ic-blue focus:ring-offset-2 transition-all shadow-sm hover:shadow-md text-sm"
-            >
-              Save Config
-            </button>
-          )}
-        </div>
-      )}
+    <div className="bg-ic-surface rounded-lg border border-ic-border px-4 py-2.5 mb-4">
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* View mode toggle */}
+        {onViewModeChange && (
+          <>
+            <div className="flex items-center gap-0.5 bg-ic-bg-secondary rounded-md p-0.5">
+              {VIEW_MODES.map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => onViewModeChange(mode)}
+                  className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                    viewMode === mode
+                      ? 'bg-ic-blue text-white shadow-sm'
+                      : 'text-ic-text-secondary hover:text-ic-text-primary'
+                  }`}
+                >
+                  {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                </button>
+              ))}
+            </div>
+            <div className="h-5 w-px bg-ic-border" />
+          </>
+        )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Size Metric */}
-        <div>
-          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg
-              className="w-4 h-4 text-ic-blue"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-              />
-            </svg>
-            Tile Size
-          </label>
-          <select
-            value={settings.size_metric}
-            onChange={(e) => handleChange('size_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
+        {/* Size metric */}
+        <select
+          value={settings.size_metric}
+          onChange={(e) => handleChange('size_metric', e.target.value)}
+          className={selectClass}
+        >
+          <option value="market_cap">Market Cap</option>
+          <option value="volume">Volume</option>
+          <option value="avg_volume">Avg Volume</option>
+          <option value="reddit_mentions">Reddit Mentions</option>
+          <option value="reddit_popularity">Reddit Popularity</option>
+        </select>
+
+        {/* Color metric */}
+        <select
+          value={settings.color_metric}
+          onChange={(e) => handleChange('color_metric', e.target.value)}
+          className={selectClass}
+        >
+          <option value="price_change_pct">Price Change %</option>
+          <option value="volume_change_pct">Volume Change %</option>
+          <option value="reddit_rank">Reddit Rank</option>
+          <option value="reddit_trend">Reddit Trend</option>
+        </select>
+
+        {/* Time period */}
+        <select
+          value={settings.time_period}
+          onChange={(e) => handleChange('time_period', e.target.value)}
+          className={selectClass}
+        >
+          <option value="1D">1D</option>
+          <option value="1W">1W</option>
+          <option value="1M">1M</option>
+          <option value="3M">3M</option>
+          <option value="6M">6M</option>
+          <option value="YTD">YTD</option>
+          <option value="1Y">1Y</option>
+          <option value="5Y">5Y</option>
+        </select>
+
+        {/* Color scheme */}
+        <select
+          value={settings.color_scheme}
+          onChange={(e) => handleChange('color_scheme', e.target.value)}
+          className={selectClass}
+        >
+          <option value="red_green">Red-Green</option>
+          <option value="blue_red">Blue-Red</option>
+          <option value="heatmap">Heatmap</option>
+        </select>
+
+        <div className="flex-1" />
+
+        {/* Save button */}
+        {onSave && (
+          <button
+            onClick={() => setShowSaveModal(true)}
+            className="px-3 py-1.5 text-xs font-medium bg-ic-blue text-white rounded-md hover:bg-ic-blue-hover transition-colors"
           >
-            <option value="market_cap">Market Cap</option>
-            <option value="volume">Volume</option>
-            <option value="avg_volume">Avg Volume</option>
-            <option value="reddit_mentions">Reddit Mentions</option>
-            <option value="reddit_popularity">Reddit Popularity</option>
-          </select>
-        </div>
-
-        {/* Color Metric */}
-        <div>
-          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg
-              className="w-4 h-4 text-purple-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-              />
-            </svg>
-            Tile Color
-          </label>
-          <select
-            value={settings.color_metric}
-            onChange={(e) => handleChange('color_metric', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
-          >
-            <option value="price_change_pct">Price Change %</option>
-            <option value="volume_change_pct">Volume Change %</option>
-            <option value="reddit_rank">Reddit Rank</option>
-            <option value="reddit_trend">Reddit Trend</option>
-          </select>
-        </div>
-
-        {/* Time Period */}
-        <div>
-          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg
-              className="w-4 h-4 text-ic-positive"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-            Time Period
-          </label>
-          <select
-            value={settings.time_period}
-            onChange={(e) => handleChange('time_period', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
-          >
-            <option value="1D">1 Day</option>
-            <option value="1W">1 Week</option>
-            <option value="1M">1 Month</option>
-            <option value="3M">3 Months</option>
-            <option value="6M">6 Months</option>
-            <option value="YTD">YTD</option>
-            <option value="1Y">1 Year</option>
-            <option value="5Y">5 Years</option>
-          </select>
-        </div>
-
-        {/* Color Scheme */}
-        <div>
-          <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
-            <svg
-              className="w-4 h-4 text-pink-400"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-              />
-            </svg>
-            Color Scheme
-          </label>
-          <select
-            value={settings.color_scheme}
-            onChange={(e) => handleChange('color_scheme', e.target.value)}
-            className="w-full px-3 py-2 border border-ic-border rounded-md focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent text-ic-text-primary bg-ic-surface hover:border-ic-border transition-colors"
-          >
-            <option value="red_green">Red-Green</option>
-            <option value="blue_red">Blue-Red</option>
-            <option value="heatmap">Heatmap</option>
-          </select>
-        </div>
-
-        {/* Save Button (fallback when no view toggle) */}
-        {onSave && !onViewModeChange && (
-          <div className="flex items-end">
-            <button
-              onClick={() => setShowSaveModal(true)}
-              className="w-full px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover focus:outline-none focus:ring-2 focus:ring-ic-blue focus:ring-offset-2 transition-all shadow-sm hover:shadow-md"
-            >
-              Save Config
-            </button>
-          </div>
+            Save Config
+          </button>
         )}
       </div>
 
-      {/* Save Config Modal */}
       {showSaveModal && (
         <SaveConfigModal onClose={() => setShowSaveModal(false)} onSave={handleSave} />
       )}

@@ -23,6 +23,7 @@ export interface HeatmapTile {
   symbol: string;
   name: string;
   asset_type: string;
+  sector?: string;
   size_value: number;
   size_label: string;
   color_value: number;
