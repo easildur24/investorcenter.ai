@@ -203,6 +203,7 @@ func main() {
 		screener := v1.Group("/screener")
 		{
 			screener.GET("/stocks", handlers.GetScreenerStocks)
+			screener.POST("/nlp", handlers.PostScreenerNLP)
 		}
 
 		// Logo proxy endpoint (proxies logos from Polygon.io with API key)

@@ -4,6 +4,7 @@ import { Suspense, useCallback, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useQueryStates, parseAsFloat, parseAsInteger, parseAsString } from 'nuqs';
 import { useScreener } from '@/lib/hooks/useScreener';
+import { apiClient } from '@/lib/api';
 import { cn, safeToFixed, formatLargeNumber } from '@/lib/utils';
 import type {
   ScreenerApiParams,
@@ -635,6 +636,59 @@ function ScreenerContent() {
     setUrlState(cleared as typeof urlState);
   }, [setUrlState]);
 
+  // -------------------------------------------------------------------
+  // NLP Search
+  // -------------------------------------------------------------------
+
+  const [nlpQuery, setNlpQuery] = useState('');
+  const [nlpLoading, setNlpLoading] = useState(false);
+  const [nlpExplanation, setNlpExplanation] = useState<string | null>(null);
+  const [nlpError, setNlpError] = useState<string | null>(null);
+  const nlpQueryRef = useRef(nlpQuery);
+  nlpQueryRef.current = nlpQuery;
+  const nlpErrorTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (nlpErrorTimerRef.current) clearTimeout(nlpErrorTimerRef.current);
+    };
+  }, []);
+
+  const handleNlpSubmit = useCallback(async () => {
+    const trimmed = nlpQueryRef.current.trim();
+    if (!trimmed || nlpLoading) return;
+
+    setNlpLoading(true);
+    setNlpError(null);
+    setNlpExplanation(null);
+
+    try {
+      const result = await apiClient.nlpScreenerQuery(trimmed);
+
+      // Apply returned params the same way applyPreset does
+      const cleared: Record<string, null> = {};
+      for (const key of Object.keys(urlStateConfig)) {
+        if (key !== 'limit') cleared[key] = null;
+      }
+      setUrlState({
+        ...cleared,
+        page: 1,
+        limit: ITEMS_PER_PAGE,
+        sort: 'market_cap',
+        order: 'desc',
+        ...result.params,
+      } as typeof urlState);
+
+      setNlpExplanation(result.explanation);
+    } catch {
+      setNlpError('Could not interpret query. Try rephrasing.');
+      if (nlpErrorTimerRef.current) clearTimeout(nlpErrorTimerRef.current);
+      nlpErrorTimerRef.current = setTimeout(() => setNlpError(null), 5000);
+    } finally {
+      setNlpLoading(false);
+    }
+  }, [nlpLoading, setUrlState]);
+
   // Count active filters (non-default, non-pagination)
   const activeFilterCount = Object.entries(urlState).filter(([key, val]) => {
     if (['page', 'limit', 'sort', 'order'].includes(key)) return false;
@@ -667,6 +721,105 @@ function ScreenerContent() {
       </div>
 
       <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* NLP Search */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-2xl">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg
+                  className="h-5 w-5 text-ic-text-muted"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 0 0-2.455 2.456Z"
+                  />
+                </svg>
+              </div>
+              <input
+                type="text"
+                value={nlpQuery}
+                onChange={(e) => setNlpQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleNlpSubmit();
+                }}
+                placeholder='Ask AI: e.g. "show me tech companies with more than 2T market cap"'
+                className="w-full pl-10 pr-4 py-2.5 bg-ic-surface border border-ic-border rounded-lg text-sm text-ic-text-primary placeholder-ic-text-muted focus:outline-none focus:ring-2 focus:ring-ic-blue focus:border-transparent"
+                disabled={nlpLoading}
+              />
+            </div>
+            <button
+              onClick={handleNlpSubmit}
+              disabled={!nlpQuery.trim() || nlpLoading}
+              className="px-4 py-2.5 bg-ic-blue text-white rounded-lg text-sm font-medium hover:bg-ic-blue-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {nlpLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+              ) : (
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+                  />
+                </svg>
+              )}
+              Search
+            </button>
+          </div>
+
+          {/* NLP explanation banner */}
+          {nlpExplanation && (
+            <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-ic-blue/10 border border-ic-blue/20 rounded-lg text-sm text-ic-blue">
+              <svg
+                className="h-4 w-4 flex-shrink-0"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z"
+                />
+              </svg>
+              <span className="flex-1">{nlpExplanation}</span>
+              <button
+                onClick={() => setNlpExplanation(null)}
+                className="text-ic-blue hover:text-ic-blue-hover flex-shrink-0"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+
+          {/* NLP error */}
+          {nlpError && (
+            <div className="mt-2 px-3 py-2 bg-ic-negative-bg border border-ic-negative/20 rounded-lg text-sm text-ic-negative">
+              {nlpError}
+            </div>
+          )}
+        </div>
+
         {/* Preset Screens */}
         <div className="mb-6">
           <h3 className="text-sm font-medium text-ic-text-secondary mb-3">Quick Screens</h3>
