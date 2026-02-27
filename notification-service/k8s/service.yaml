@@ -20,6 +20,5 @@ metadata:
   name: notification-service-sa
   namespace: investorcenter
   annotations:
-    # Set after terraform apply — use output notification_sqs_consumer_role_arn
-    eks.amazonaws.com/role-arn: "REPLACE_ME"
+    eks.amazonaws.com/role-arn: "arn:aws:iam::360358043271:role/investorcenter-notification-sqs-consumer"
     eks.amazonaws.com/sts-regional-endpoints: "true"

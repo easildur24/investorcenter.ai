@@ -27,7 +27,7 @@ spec:
         - name: AWS_REGION
           value: "us-east-1"
         - name: SQS_QUEUE_URL
-          value: "REPLACE_ME"  # Set after terraform apply — use output sqs_notification_alerts_url
+          value: "https://sqs.us-east-1.amazonaws.com/360358043271/investorcenter-notification-alerts"
         - name: DB_HOST
           value: "postgres-simple-service"
         - name: DB_PORT

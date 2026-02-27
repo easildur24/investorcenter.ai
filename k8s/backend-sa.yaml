@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: backend-sa
+  namespace: investorcenter
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::360358043271:role/investorcenter-backend-sns-publisher"
+    eks.amazonaws.com/sts-regional-endpoints: "true"
