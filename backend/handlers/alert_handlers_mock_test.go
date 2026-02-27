@@ -504,9 +504,118 @@ func TestCreateAlertRule_Mock_OwnershipFails(t *testing.T) {
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
+func TestCreateAlertRule_Mock_InvalidJSON(t *testing.T) {
+	_, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	handler := newTestAlertHandler()
+	r := setupMockRouter("user-1")
+	r.POST("/alerts", handler.CreateAlertRule)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/alerts", bytes.NewBufferString("bad json"))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestCreateAlertRule_Mock_LimitReached(t *testing.T) {
+	mock, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	// ValidateWatchListOwnership succeeds
+	mock.ExpectQuery("SELECT .+ FROM watch_lists WHERE id").
+		WillReturnRows(sqlmock.NewRows([]string{
+			"id", "user_id", "name", "description", "is_default", "display_order",
+			"is_public", "public_slug", "created_at", "updated_at",
+		}).AddRow("wl-1", "user-1", "Test WL", nil, false, 0, false, nil, time.Now(), time.Now()))
+
+	// CanCreateAlert: count existing alerts
+	mock.ExpectQuery("SELECT COUNT").WillReturnRows(sqlmock.NewRows([]string{"count"}).AddRow(100))
+	// Check subscription for limit
+	mock.ExpectQuery("SELECT").WillReturnError(fmt.Errorf("no subscription"))
+
+	handler := newTestAlertHandler()
+	r := setupMockRouter("user-1")
+	r.POST("/alerts", handler.CreateAlertRule)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"watch_list_id": "wl-1",
+		"symbol":        "AAPL",
+		"alert_type":    "price_above",
+		"conditions":    map[string]interface{}{"threshold": 150},
+		"name":          "Test Alert",
+		"frequency":     "once",
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/alerts", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	// Either 403 (limit reached) or 500 (canCreate error)
+	assert.True(t, w.Code == http.StatusForbidden || w.Code == http.StatusInternalServerError)
+}
+
+func TestUpdateAlertRule_Mock_InvalidJSON(t *testing.T) {
+	_, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	handler := newTestAlertHandler()
+	r := setupMockRouter("user-1")
+	r.PUT("/alerts/:id", handler.UpdateAlertRule)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/alerts/alert-1", bytes.NewBufferString("bad"))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestUpdateAlertRule_Mock_DBError(t *testing.T) {
+	mock, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	mock.ExpectExec("UPDATE alert_rules SET").
+		WillReturnError(fmt.Errorf("db error"))
+
+	handler := newTestAlertHandler()
+	r := setupMockRouter("user-1")
+	r.PUT("/alerts/:id", handler.UpdateAlertRule)
+
+	body, _ := json.Marshal(map[string]interface{}{
+		"name": "Updated",
+	})
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPut, "/alerts/alert-1", bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
 // ---------------------------------------------------------------------------
 // BulkCreateAlertRules — mock-based tests for DB path
 // ---------------------------------------------------------------------------
+
+func TestBulkCreateAlertRules_Mock_InvalidJSON(t *testing.T) {
+	_, cleanup := setupMockDB(t)
+	defer cleanup()
+
+	handler := newTestAlertHandler()
+	r := setupMockRouter("user-1")
+	r.POST("/alerts/bulk", handler.BulkCreateAlertRules)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/alerts/bulk", bytes.NewBufferString("bad"))
+	req.Header.Set("Content-Type", "application/json")
+	r.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
 
 func TestBulkCreateAlertRules_Mock_OwnershipFails(t *testing.T) {
 	mock, cleanup := setupMockDB(t)
