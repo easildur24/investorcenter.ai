@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-const (
+var (
 	FMPBaseURL = "https://financialmodelingprep.com/stable"
 )
 
