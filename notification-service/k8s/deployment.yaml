@@ -35,7 +35,7 @@ spec:
         - name: DB_NAME
           value: "investorcenter_db"
         - name: DB_SSLMODE
-          value: "require"
+          value: "disable"
         - name: DB_USER
           valueFrom:
             secretKeyRef:
