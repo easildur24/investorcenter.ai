@@ -82,13 +82,14 @@ jest.mock('../ic-score/PeerComparisonPanel', () => {
 
 jest.mock('../ic-score/CatalystTimeline', () => {
   const MockCatalystTimeline = () => <div data-testid="catalyst-timeline">CatalystTimeline</div>;
-  MockCatalystTimeline.CatalystCompact = () => (
-    <div data-testid="catalyst-compact">CatalystCompact</div>
-  );
+  function CatalystCompact() {
+    return <div data-testid="catalyst-compact">CatalystCompact</div>;
+  }
+  MockCatalystTimeline.CatalystCompact = CatalystCompact;
   return {
     __esModule: true,
     default: MockCatalystTimeline,
-    CatalystCompact: MockCatalystTimeline.CatalystCompact,
+    CatalystCompact,
   };
 });
 
