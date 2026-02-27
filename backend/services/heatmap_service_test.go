@@ -309,34 +309,29 @@ func TestCalculateSizeValue_UnknownMetric(t *testing.T) {
 func TestCalculateColorValue_PriceChangePct(t *testing.T) {
 	svc := NewHeatmapService()
 
-	changePct := 5.25
-	item := &models.WatchListItemDetail{
-		WatchListItemWithData: models.WatchListItemWithData{PriceChangePct: &changePct},
-	}
+	tile := &models.HeatmapTile{PriceChangePct: 5.25}
 
-	value, label := svc.calculateColorValue(item, "price_change_pct", "1D")
+	value, label := svc.calculateColorValue(tile, "price_change_pct")
 	assert.Equal(t, 5.25, value)
 	assert.Equal(t, "+5.25%", label)
 }
 
-func TestCalculateColorValue_PriceChangePctNil(t *testing.T) {
+func TestCalculateColorValue_PriceChangePctZero(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemDetail{}
-	value, label := svc.calculateColorValue(item, "price_change_pct", "1D")
+	tile := &models.HeatmapTile{}
+	value, label := svc.calculateColorValue(tile, "price_change_pct")
 	assert.Equal(t, float64(0), value)
-	assert.Equal(t, "N/A", label)
+	assert.Equal(t, "+0.00%", label)
 }
 
 func TestCalculateColorValue_RedditRank(t *testing.T) {
 	svc := NewHeatmapService()
 
 	rank := 5
-	item := &models.WatchListItemDetail{
-		WatchListItemWithData: models.WatchListItemWithData{RedditRank: &rank},
-	}
+	tile := &models.HeatmapTile{RedditRank: &rank}
 
-	value, label := svc.calculateColorValue(item, "reddit_rank", "1D")
+	value, label := svc.calculateColorValue(tile, "reddit_rank")
 	assert.Equal(t, float64(96), value) // 101 - 5 = 96
 	assert.Equal(t, "#5", label)
 }
@@ -357,10 +352,8 @@ func TestCalculateColorValue_RedditTrend(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.trend, func(t *testing.T) {
 			trend := tt.trend
-			item := &models.WatchListItemDetail{
-				WatchListItemWithData: models.WatchListItemWithData{RedditTrend: &trend},
-			}
-			value, label := svc.calculateColorValue(item, "reddit_trend", "1D")
+			tile := &models.HeatmapTile{RedditTrend: &trend}
+			value, label := svc.calculateColorValue(tile, "reddit_trend")
 			assert.Equal(t, tt.wantValue, value)
 			assert.Equal(t, tt.wantLabel, label)
 		})
@@ -370,8 +363,8 @@ func TestCalculateColorValue_RedditTrend(t *testing.T) {
 func TestCalculateColorValue_UnknownMetric(t *testing.T) {
 	svc := NewHeatmapService()
 
-	item := &models.WatchListItemDetail{}
-	value, label := svc.calculateColorValue(item, "unknown", "1D")
+	tile := &models.HeatmapTile{}
+	value, label := svc.calculateColorValue(tile, "unknown")
 	assert.Equal(t, float64(0), value)
 	assert.Equal(t, "N/A", label)
 }

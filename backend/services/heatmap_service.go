@@ -1,11 +1,17 @@
 package services
 
 import (
+	"context"
+	"database/sql"
 	"fmt"
+	"log"
+	"math"
+	"strings"
+	"time"
+
+	"github.com/lib/pq"
 	"investorcenter-api/database"
 	"investorcenter-api/models"
-	"math"
-	"time"
 )
 
 // HeatmapService handles business logic for heatmaps
@@ -81,6 +87,17 @@ func (s *HeatmapService) GenerateHeatmapData(
 	// Fetch real-time prices for all tickers
 	fetchRealTimePrices(items, fmt.Sprintf("heatmap %s", watchListID))
 
+	// For non-1D periods, look up historical reference prices so we can
+	// compute the price change over the selected window.
+	var historicalPrices map[string]float64
+	if strings.ToUpper(config.TimePeriod) != "1D" {
+		symbols := make([]string, 0, len(items))
+		for i := range items {
+			symbols = append(symbols, items[i].Symbol)
+		}
+		historicalPrices = s.getHistoricalClosePrices(symbols, config.TimePeriod)
+	}
+
 	// Generate tiles from items
 	tiles := make([]models.HeatmapTile, 0, len(items))
 	var minColorValue, maxColorValue float64 = math.MaxFloat64, -math.MaxFloat64
@@ -122,13 +139,23 @@ func (s *HeatmapService) GenerateHeatmapData(
 		tile.MarketCap = item.MarketCap
 		tile.PrevClose = item.PrevClose
 
+		// Override price change for non-1D periods using historical data
+		if historicalPrices != nil && item.CurrentPrice != nil {
+			if refClose, ok := historicalPrices[item.Symbol]; ok && refClose > 0 {
+				change := *item.CurrentPrice - refClose
+				changePct := (change / refClose) * 100
+				tile.PriceChange = change
+				tile.PriceChangePct = changePct
+			}
+		}
+
 		// Calculate size value based on size metric
 		sizeValue, sizeLabel := s.calculateSizeValue(item, config.SizeMetric)
 		tile.SizeValue = sizeValue
 		tile.SizeLabel = sizeLabel
 
 		// Calculate color value based on color metric
-		colorValue, colorLabel := s.calculateColorValue(item, config.ColorMetric, config.TimePeriod)
+		colorValue, colorLabel := s.calculateColorValue(&tile, config.ColorMetric)
 		tile.ColorValue = colorValue
 		tile.ColorLabel = colorLabel
 
@@ -212,18 +239,15 @@ func (s *HeatmapService) calculateSizeValue(
 	}
 }
 
-// calculateColorValue determines tile color based on metric
+// calculateColorValue determines tile color based on metric.
+// Reads from the tile (which already has period-adjusted price changes).
 func (s *HeatmapService) calculateColorValue(
-	item *models.WatchListItemDetail,
+	tile *models.HeatmapTile,
 	metric string,
-	timePeriod string,
 ) (float64, string) {
 	switch metric {
 	case "price_change_pct":
-		if item.PriceChangePct != nil {
-			return *item.PriceChangePct, fmt.Sprintf("%+.2f%%", *item.PriceChangePct)
-		}
-		return 0, "N/A"
+		return tile.PriceChangePct, fmt.Sprintf("%+.2f%%", tile.PriceChangePct)
 
 	case "volume_change_pct":
 		// Would need historical volume data
@@ -232,16 +256,16 @@ func (s *HeatmapService) calculateColorValue(
 	case "reddit_rank":
 		// Lower rank = better (1 = #1 trending)
 		// Invert for color scale: display as (101 - rank) so higher is greener
-		if item.RedditRank != nil {
-			invertedRank := 101 - *item.RedditRank
-			return float64(invertedRank), fmt.Sprintf("#%d", *item.RedditRank)
+		if tile.RedditRank != nil {
+			invertedRank := 101 - *tile.RedditRank
+			return float64(invertedRank), fmt.Sprintf("#%d", *tile.RedditRank)
 		}
 		return 0, "N/A"
 
 	case "reddit_trend":
 		// Map trend to numeric value: rising = +10, stable = 0, falling = -10
-		if item.RedditTrend != nil {
-			switch *item.RedditTrend {
+		if tile.RedditTrend != nil {
+			switch *tile.RedditTrend {
 			case "rising":
 				return 10.0, "↑ Rising"
 			case "falling":
@@ -255,6 +279,54 @@ func (s *HeatmapService) calculateColorValue(
 	default:
 		return 0, "N/A"
 	}
+}
+
+// getHistoricalClosePrices fetches the reference close price for each symbol
+// at the start of the given time period. Uses the stock_prices table.
+func (s *HeatmapService) getHistoricalClosePrices(symbols []string, period string) map[string]float64 {
+	if len(symbols) == 0 {
+		return nil
+	}
+
+	days := GetDaysFromPeriod(period)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// DISTINCT ON gives us the most recent close on or before the cutoff date.
+	query := `
+		SELECT DISTINCT ON (ticker) ticker, close
+		FROM stock_prices
+		WHERE ticker = ANY($1)
+		  AND interval = '1day'
+		  AND time <= NOW() - INTERVAL '1 day' * $2
+		  AND close IS NOT NULL
+		ORDER BY ticker, time DESC
+	`
+
+	rows, err := database.DB.QueryContext(ctx, query, pq.Array(symbols), days)
+	if err != nil {
+		log.Printf("Warning: historical price lookup failed: %v", err)
+		return nil
+	}
+	defer rows.Close()
+
+	result := make(map[string]float64, len(symbols))
+	for rows.Next() {
+		var ticker string
+		var closePrice sql.NullFloat64
+		if err := rows.Scan(&ticker, &closePrice); err != nil {
+			log.Printf("Warning: scanning historical price row: %v", err)
+			continue
+		}
+		if closePrice.Valid {
+			result[ticker] = closePrice.Float64
+		}
+	}
+	if err := rows.Err(); err != nil {
+		log.Printf("Warning: iterating historical price rows: %v", err)
+	}
+
+	return result
 }
 
 // passesFilters checks if item passes filter criteria

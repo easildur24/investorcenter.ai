@@ -499,7 +499,7 @@ export default function WatchListHeatmap({
       <ColorLegend scheme={data.color_scheme} neutralColor={neutralColor} />
       <div
         ref={tooltipRef}
-        className="absolute hidden bg-ic-surface p-4 rounded-lg border border-ic-border max-w-sm z-50 shadow-lg"
+        className="absolute hidden bg-ic-surface text-ic-text-primary p-4 rounded-lg border border-ic-border max-w-sm z-50 shadow-lg"
         style={{ pointerEvents: 'none' }}
       />
     </div>
