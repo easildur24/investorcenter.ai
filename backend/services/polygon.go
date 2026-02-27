@@ -1028,6 +1028,8 @@ func GetDaysFromPeriod(period string) int {
 		return 1
 	case "5D":
 		return 5
+	case "1W":
+		return 7
 	case "1M":
 		return 30
 	case "3M":
