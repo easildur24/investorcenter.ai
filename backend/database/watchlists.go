@@ -259,7 +259,7 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemDetail
 			wli.target_buy_price, wli.target_sell_price, wli.added_at, wli.display_order,
 
 			-- tickers (5 cols; COALESCE guards against orphaned items with no ticker row)
-			COALESCE(t.name, wli.symbol), COALESCE(t.exchange, ''), COALESCE(t.asset_type, 'stock'), COALESCE(t.sector, ''), t.logo_url,
+			COALESCE(t.name, wli.symbol), COALESCE(t.exchange, ''), COALESCE(t.asset_type, 'stock'), COALESCE(t.sector, 'Other'), t.logo_url,
 
 			-- reddit_heatmap_daily via LATERAL (4 cols)
 			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,

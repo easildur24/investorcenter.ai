@@ -81,7 +81,7 @@ function SaveConfigModal({
 const VIEW_MODES: ViewMode[] = ['auto', 'treemap', 'cards', 'bars'];
 
 const selectClass =
-  'px-2 py-1.5 text-xs border border-ic-border rounded-md bg-ic-surface text-ic-text-primary hover:border-ic-text-dim focus:outline-none focus:ring-1 focus:ring-ic-blue transition-colors';
+  'px-2 py-1.5 text-xs border border-ic-border rounded-md bg-ic-surface text-ic-text-primary hover:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-ic-blue transition-colors';
 
 export default function HeatmapConfigPanel({
   settings,
@@ -130,6 +130,7 @@ export default function HeatmapConfigPanel({
 
         {/* Size metric */}
         <select
+          aria-label="Tile size metric"
           value={settings.size_metric}
           onChange={(e) => handleChange('size_metric', e.target.value)}
           className={selectClass}
@@ -143,6 +144,7 @@ export default function HeatmapConfigPanel({
 
         {/* Color metric */}
         <select
+          aria-label="Tile color metric"
           value={settings.color_metric}
           onChange={(e) => handleChange('color_metric', e.target.value)}
           className={selectClass}
@@ -155,6 +157,7 @@ export default function HeatmapConfigPanel({
 
         {/* Time period */}
         <select
+          aria-label="Time period"
           value={settings.time_period}
           onChange={(e) => handleChange('time_period', e.target.value)}
           className={selectClass}
@@ -171,6 +174,7 @@ export default function HeatmapConfigPanel({
 
         {/* Color scheme */}
         <select
+          aria-label="Color scheme"
           value={settings.color_scheme}
           onChange={(e) => handleChange('color_scheme', e.target.value)}
           className={selectClass}

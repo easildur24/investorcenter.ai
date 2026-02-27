@@ -22,6 +22,15 @@ interface WatchListHeatmapProps {
 
 const COLOR_BREAKPOINTS = [-5, -2, -0.5, 0, 0.5, 2, 5];
 
+/** Labels displayed below the gradient legend (subset of breakpoints) */
+const LEGEND_LABELS = COLOR_BREAKPOINTS.filter((bp) => bp === 0 || Math.abs(bp) >= 2).map((bp) => ({
+  key: String(bp),
+  text: `${bp > 0 ? '+' : ''}${bp}%`,
+}));
+
+/** Minimum tile count before sector grouping kicks in */
+const SECTOR_GROUPING_THRESHOLD = 13;
+
 function getSymmetricColorScale(
   scheme: string,
   neutralColor: string
@@ -70,6 +79,20 @@ function formatVolume(vol: number): string {
   return vol.toString();
 }
 
+/** Safely create a DOM element with text content (prevents XSS in tooltips) */
+function el(
+  tag: string,
+  className: string,
+  text?: string | number,
+  children?: HTMLElement[]
+): HTMLElement {
+  const node = document.createElement(tag);
+  if (className) node.className = className;
+  if (text != null) node.textContent = String(text);
+  if (children) children.forEach((c) => node.appendChild(c));
+  return node;
+}
+
 // ─── Color Legend (Issue 4) ───────────────────────────────────
 // 16px gradient bar with labels at -5%, -2%, 0%, +2%, +5%.
 
@@ -84,14 +107,6 @@ export function ColorLegend({ scheme, neutralColor }: { scheme: string; neutralC
     return `${colorScale(bp)} ${pct.toFixed(1)}%`;
   }).join(', ');
 
-  const labels = [
-    { key: '-5', text: '-5%' },
-    { key: '-2', text: '-2%' },
-    { key: '0', text: '0%' },
-    { key: '+2', text: '+2%' },
-    { key: '+5', text: '+5%' },
-  ];
-
   return (
     <div className="mt-2">
       <div
@@ -102,7 +117,7 @@ export function ColorLegend({ scheme, neutralColor }: { scheme: string; neutralC
         }}
       />
       <div className="flex justify-between mt-1">
-        {labels.map((l) => (
+        {LEGEND_LABELS.map((l) => (
           <span key={l.key} className="text-xs text-ic-text-dim">
             {l.text}
           </span>
@@ -123,6 +138,7 @@ export default function WatchListHeatmap({
   const svgRef = useRef<SVGSVGElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const containerRectRef = useRef<DOMRect | null>(null);
   const router = useRouter();
   const { resolvedTheme } = useTheme();
 
@@ -130,8 +146,7 @@ export default function WatchListHeatmap({
   const strokeColor = isDark ? themeColors.dark.border : themeColors.light.border;
   const neutralColor = isDark ? themeColors.dark.bgSecondary : themeColors.light.bgSecondary;
 
-  // Issue 5: sector grouping for 13+ tiles
-  const useSectorGrouping = data.tiles.length >= 13;
+  const useSectorGrouping = data.tiles.length >= SECTOR_GROUPING_THRESHOLD;
   const sectorHeaderH = 22;
 
   useEffect(() => {
@@ -328,7 +343,7 @@ export default function WatchListHeatmap({
           .style('pointer-events', 'none')
           .text(truncName);
 
-        if (tileH > 100) {
+        if (tileH > 100 && d.data.current_price != null) {
           g.append('text')
             .attr('x', tileW / 2)
             .attr('y', baseY + tickerSize + changeSize + 6)
@@ -359,22 +374,14 @@ export default function WatchListHeatmap({
 
   // ─── Tooltip helpers (Issue 7: container-relative positioning) ──
 
-  const el = (
-    tag: string,
-    className: string,
-    text?: string | number,
-    children?: HTMLElement[]
-  ): HTMLElement => {
-    const node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text != null) node.textContent = String(text);
-    if (children) children.forEach((c) => node.appendChild(c));
-    return node;
-  };
-
   const showTooltip = (event: MouseEvent, tile: HeatmapTile) => {
     const tooltip = tooltipRef.current;
     if (!tooltip) return;
+
+    // Cache container rect once on tooltip show to avoid layout reads on every mousemove
+    if (containerRef.current) {
+      containerRectRef.current = containerRef.current.getBoundingClientRect();
+    }
 
     tooltip.textContent = '';
 
@@ -461,10 +468,9 @@ export default function WatchListHeatmap({
 
   const moveTooltip = (event: MouseEvent) => {
     const tooltip = tooltipRef.current;
-    const container = containerRef.current;
-    if (!tooltip || !container) return;
+    const cr = containerRectRef.current;
+    if (!tooltip || !cr) return;
 
-    const cr = container.getBoundingClientRect();
     const tw = tooltip.offsetWidth;
     const th = tooltip.offsetHeight;
 
@@ -484,6 +490,7 @@ export default function WatchListHeatmap({
   const hideTooltip = () => {
     const tooltip = tooltipRef.current;
     if (tooltip) tooltip.style.display = 'none';
+    containerRectRef.current = null;
   };
 
   return (
