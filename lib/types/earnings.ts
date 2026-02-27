@@ -19,11 +19,13 @@ export interface BeatRate {
   epsBeats: number;
   revenueBeats: number;
   totalQuarters: number;
+  totalRevenueQuarters: number;
 }
 
 export interface EarningsResponse {
   earnings: EarningsResult[];
   nextEarnings: EarningsResult | null;
+  mostRecentEarnings: EarningsResult | null;
   beatRate: BeatRate | null;
 }
 
