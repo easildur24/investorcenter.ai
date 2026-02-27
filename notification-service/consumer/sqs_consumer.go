@@ -11,18 +11,27 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	sqstypes "github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
 // Handler processes a raw message payload (the inner SNS Message body).
 type Handler func(msg []byte) error
 
+// sqsAPI is the subset of the SQS client used by Consumer.
+// Defined as an interface for testability.
+type sqsAPI interface {
+	ReceiveMessage(ctx context.Context, params *sqs.ReceiveMessageInput, optFns ...func(*sqs.Options)) (*sqs.ReceiveMessageOutput, error)
+	DeleteMessage(ctx context.Context, params *sqs.DeleteMessageInput, optFns ...func(*sqs.Options)) (*sqs.DeleteMessageOutput, error)
+}
+
 // Consumer long-polls an SQS queue and dispatches messages to a handler.
 type Consumer struct {
-	client          *sqs.Client
-	queueURL        string
-	maxMessages     int32
-	healthy         atomic.Bool
+	client           sqsAPI
+	queueURL         string
+	maxMessages      int32
+	healthy          atomic.Bool
 	consecutiveFails int32 // tracks consecutive SQS receive failures
+	sleepFn          func(time.Duration) // injectable for testing
 }
 
 // maxConsecutiveFailures is the number of consecutive SQS receive errors before
@@ -48,6 +57,7 @@ func New(queueURL, region string, maxMessages int32) (*Consumer, error) {
 		client:      sqs.NewFromConfig(cfg),
 		queueURL:    queueURL,
 		maxMessages: maxMessages,
+		sleepFn:     time.Sleep,
 	}
 	c.healthy.Store(true)
 	return c, nil
@@ -100,7 +110,7 @@ func (c *Consumer) poll(ctx context.Context, handler Handler) {
 			c.healthy.Store(false)
 		}
 
-		time.Sleep(5 * time.Second)
+		c.sleepFn(5 * time.Second)
 		return
 	}
 
@@ -170,3 +180,6 @@ func extractSNSPayload(body *string) ([]byte, error) {
 
 	return []byte(envelope.Message), nil
 }
+
+// Ensure sqstypes is used (needed for test mock return types).
+var _ sqstypes.Message

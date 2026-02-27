@@ -14,13 +14,16 @@ import (
 
 // EmailDelivery sends alert notification emails via SMTP.
 type EmailDelivery struct {
-	cfg *config.Config
-	db  *database.DB
+	cfg      *config.Config
+	db       database.Store
+	sendFunc func(to, subject, htmlBody string) error // injectable for testing
 }
 
 // NewEmailDelivery creates a new EmailDelivery.
-func NewEmailDelivery(cfg *config.Config, db *database.DB) *EmailDelivery {
-	return &EmailDelivery{cfg: cfg, db: db}
+func NewEmailDelivery(cfg *config.Config, db database.Store) *EmailDelivery {
+	d := &EmailDelivery{cfg: cfg, db: db}
+	d.sendFunc = d.sendEmail
+	return d
 }
 
 // Send sends an alert notification email to the user.
@@ -88,7 +91,7 @@ func (d *EmailDelivery) Send(alert *models.AlertRule, alertLog *models.AlertLog,
 	subject := fmt.Sprintf("Alert: %s %s", alert.Symbol, alertTypeLabel(alert.AlertType))
 	body := formatAlertEmailBody(alert, quote, user.FullName, d.cfg.FrontendURL)
 
-	return d.sendEmail(toEmail, subject, body)
+	return d.sendFunc(toEmail, subject, body)
 }
 
 // sendEmail sends an HTML email via SMTP.

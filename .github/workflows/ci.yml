@@ -349,8 +349,8 @@ jobs:
         cd notification-service
         COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | sed 's/%//')
         echo "Notification service coverage: ${COVERAGE}%"
-        if (( $(echo "$COVERAGE < 40" | bc -l) )); then
-          echo "::error::Notification service coverage ${COVERAGE}% is below the 40% threshold"
+        if (( $(echo "$COVERAGE < 80" | bc -l) )); then
+          echo "::error::Notification service coverage ${COVERAGE}% is below the 80% threshold"
           exit 1
         fi
 

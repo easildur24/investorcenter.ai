@@ -16,12 +16,15 @@ import (
 type Handler struct {
 	cfg         *config.Config
 	canaryToken string
+	sendFn      func(to, name string) error // injectable for testing
 }
 
 // NewHandler creates a canary Handler.
 // token is the shared secret that callers must provide in the Authorization header.
 func NewHandler(cfg *config.Config, token string) *Handler {
-	return &Handler{cfg: cfg, canaryToken: token}
+	h := &Handler{cfg: cfg, canaryToken: token}
+	h.sendFn = h.sendTestEmail
+	return h
 }
 
 // emailRequest is the JSON body for POST /canary/email.
@@ -102,7 +105,7 @@ func (h *Handler) HandleEmail(w http.ResponseWriter, r *http.Request) {
 
 	// Send test email
 	start := time.Now()
-	err := h.sendTestEmail(req.To, req.Name)
+	err := h.sendFn(req.To, req.Name)
 	duration := time.Since(start)
 
 	if err != nil {

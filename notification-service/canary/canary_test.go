@@ -3,6 +3,7 @@ package canary
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -164,6 +165,106 @@ func TestFormatCanaryEmailBody(t *testing.T) {
 	}
 	if !bytes.Contains([]byte(body), []byte("PASS")) {
 		t.Error("expected body to contain PASS status")
+	}
+}
+
+func TestHandleEmail_SendSuccess(t *testing.T) {
+	cfg := &config.Config{
+		SMTPHost: "smtp.test.com",
+		SMTPPort: "587",
+	}
+	// Set SMTP_PASSWORD env var so cfg.SMTPPassword.Value() is non-empty
+	t.Setenv("SMTP_PASSWORD", "test-password")
+	cfg = config.Load()
+	cfg.SMTPHost = "smtp.test.com"
+
+	h := NewHandler(cfg, "test-token")
+	// Inject a fake sender that always succeeds
+	h.sendFn = func(to, name string) error {
+		return nil
+	}
+
+	body := bytes.NewBufferString(`{"to":"user@example.com","name":"Test User"}`)
+	req := httptest.NewRequest(http.MethodPost, "/canary/email", body)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+
+	h.HandleEmail(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+
+	var resp emailResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Status != "ok" {
+		t.Errorf("expected status 'ok', got %s", resp.Status)
+	}
+	if resp.SentTo != "user@example.com" {
+		t.Errorf("expected sent_to 'user@example.com', got %s", resp.SentTo)
+	}
+	if resp.Duration == "" {
+		t.Error("expected non-empty duration")
+	}
+}
+
+func TestHandleEmail_SendFailure(t *testing.T) {
+	t.Setenv("SMTP_PASSWORD", "test-password")
+	cfg := config.Load()
+	cfg.SMTPHost = "smtp.test.com"
+
+	h := NewHandler(cfg, "test-token")
+	// Inject a fake sender that always fails
+	h.sendFn = func(to, name string) error {
+		return fmt.Errorf("connection refused")
+	}
+
+	body := bytes.NewBufferString(`{"to":"user@example.com","name":"Test User"}`)
+	req := httptest.NewRequest(http.MethodPost, "/canary/email", body)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+
+	h.HandleEmail(w, req)
+
+	if w.Code != http.StatusInternalServerError {
+		t.Errorf("expected 500, got %d", w.Code)
+	}
+
+	var resp emailResponse
+	json.NewDecoder(w.Body).Decode(&resp)
+	if resp.Status != "error" {
+		t.Errorf("expected status 'error', got %s", resp.Status)
+	}
+	if resp.Duration == "" {
+		t.Error("expected non-empty duration")
+	}
+}
+
+func TestHandleEmail_DefaultName(t *testing.T) {
+	t.Setenv("SMTP_PASSWORD", "test-password")
+	cfg := config.Load()
+	cfg.SMTPHost = "smtp.test.com"
+
+	var capturedName string
+	h := NewHandler(cfg, "test-token")
+	h.sendFn = func(to, name string) error {
+		capturedName = name
+		return nil
+	}
+
+	// Send with empty name — should default to "Canary Test"
+	body := bytes.NewBufferString(`{"to":"user@example.com"}`)
+	req := httptest.NewRequest(http.MethodPost, "/canary/email", body)
+	req.Header.Set("Authorization", "Bearer test-token")
+	w := httptest.NewRecorder()
+
+	h.HandleEmail(w, req)
+
+	if w.Code != http.StatusOK {
+		t.Errorf("expected 200, got %d", w.Code)
+	}
+	if capturedName != "Canary Test" {
+		t.Errorf("expected default name 'Canary Test', got %q", capturedName)
 	}
 }
 

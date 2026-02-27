@@ -13,12 +13,12 @@ import (
 
 // Evaluator processes price update messages and triggers matching alert rules.
 type Evaluator struct {
-	db       *database.DB
+	db       database.Store
 	delivery *delivery.Router
 }
 
 // New creates a new Evaluator.
-func New(db *database.DB, delivery *delivery.Router) *Evaluator {
+func New(db database.Store, delivery *delivery.Router) *Evaluator {
 	return &Evaluator{db: db, delivery: delivery}
 }
 
