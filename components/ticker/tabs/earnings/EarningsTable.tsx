@@ -2,36 +2,15 @@
 
 import { useState } from 'react';
 import type { EarningsResult } from '@/lib/types/earnings';
+import {
+  formatEPS,
+  formatRevenue,
+  formatSurprise,
+  surpriseColor,
+} from '@/lib/utils/earningsFormatters';
 
 interface EarningsTableProps {
   earnings: EarningsResult[];
-}
-
-function formatEPS(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '-';
-  return `$${value.toFixed(2)}`;
-}
-
-function formatRevenue(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '-';
-  const abs = Math.abs(value);
-  if (abs >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `$${(value / 1e6).toFixed(0)}M`;
-  return `$${value.toLocaleString()}`;
-}
-
-function formatSurprise(value: number | null | undefined): string {
-  if (value === null || value === undefined) return '-';
-  const sign = value > 0 ? '+' : '';
-  return `${sign}${value.toFixed(1)}%`;
-}
-
-function surpriseColor(value: number | null | undefined): string {
-  if (value === null || value === undefined) return 'text-ic-text-dim';
-  if (value > 0.5) return 'text-green-400';
-  if (value < -0.5) return 'text-red-400';
-  return 'text-ic-text-dim';
 }
 
 function beatIcon(beat: boolean | null): string {
@@ -86,7 +65,10 @@ export default function EarningsTable({ earnings }: EarningsTableProps) {
           </thead>
           <tbody>
             {visibleEarnings.map((e) => (
-              <tr key={e.date} className="border-t border-ic-border/20 hover:bg-ic-bg-tertiary/30">
+              <tr
+                key={`${e.symbol}-${e.date}`}
+                className="border-t border-ic-border/20 hover:bg-ic-bg-tertiary/30"
+              >
                 <td className="px-3 py-2.5 text-ic-text-primary font-medium whitespace-nowrap">
                   {e.fiscalQuarter}
                 </td>
@@ -104,7 +86,7 @@ export default function EarningsTable({ earnings }: EarningsTableProps) {
                   <span className={beatIconColor(e.epsBeat)}>{beatIcon(e.epsBeat)}</span>
                 </td>
                 <td className="px-3 py-2.5 text-right text-ic-text-muted">
-                  {e.revenueEstimated !== null ? formatRevenue(e.revenueEstimated) : 'N/A'}
+                  {formatRevenue(e.revenueEstimated)}
                 </td>
                 <td className="px-3 py-2.5 text-right text-ic-text-primary">
                   {formatRevenue(e.revenueActual)}
