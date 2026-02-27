@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -21,19 +21,31 @@ const earningsCacheTTL = 1 * time.Hour
 // calendarCacheTTL is the Redis cache TTL for earnings calendar data.
 const calendarCacheTTL = 4 * time.Hour
 
+// earningsCacheVersion is bumped when the response shape changes to avoid
+// serving stale cached responses with an outdated schema after deploys.
+const earningsCacheVersion = "v1"
+
+// validTickerRe matches 1-10 uppercase alphanumeric characters, dots, and hyphens.
+var validTickerRe = regexp.MustCompile(`^[A-Z0-9.\-]{1,10}$`)
+
+// isFMPReady returns true if the FMP client is configured and available.
+func isFMPReady() bool {
+	return fmpClient != nil && fmpClient.APIKey != ""
+}
+
 // GetStockEarnings handles GET /api/v1/stocks/:ticker/earnings
 // Returns earnings history with computed surprise %, beat rate, and next earnings.
 func GetStockEarnings(c *gin.Context) {
 	ticker := strings.ToUpper(c.Param("ticker"))
-	if ticker == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Ticker symbol is required"})
+	if !validTickerRe.MatchString(ticker) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid ticker symbol"})
 		return
 	}
 
-	// Check Redis cache
-	ctx := context.Background()
-	cacheKey := fmt.Sprintf("earnings:stock:%s", ticker)
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("earnings:%s:stock:%s", earningsCacheVersion, ticker)
 
+	// Check Redis cache
 	if redisClient != nil {
 		cached, err := redisClient.Get(ctx, cacheKey).Result()
 		if err == nil {
@@ -46,7 +58,7 @@ func GetStockEarnings(c *gin.Context) {
 	}
 
 	// Fetch from FMP
-	if fmpClient == nil || fmpClient.APIKey == "" {
+	if !isFMPReady() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error":   "FMP not configured",
 			"message": "Earnings data is not available at this time",
@@ -78,7 +90,9 @@ func GetStockEarnings(c *gin.Context) {
 	// Cache in Redis
 	if redisClient != nil {
 		responseJSON, err := json.Marshal(response)
-		if err == nil {
+		if err != nil {
+			log.Printf("JSON marshal error for earnings %s: %v", ticker, err)
+		} else {
 			if err := redisClient.Set(ctx, cacheKey, responseJSON, earningsCacheTTL).Err(); err != nil {
 				log.Printf("Redis SET error for %s: %v", cacheKey, err)
 			}
@@ -90,21 +104,22 @@ func GetStockEarnings(c *gin.Context) {
 
 // GetEarningsCalendar handles GET /api/v1/earnings-calendar?from=YYYY-MM-DD&to=YYYY-MM-DD
 // Returns earnings for all tickers in the given date range.
+// Default range: current Monday through the following Friday (12 days).
 func GetEarningsCalendar(c *gin.Context) {
 	from := c.Query("from")
 	to := c.Query("to")
 
-	// Default: current Monday through next Friday
+	// Default: current Monday through next week's Friday (12-day window).
+	// This gives users a two-week lookahead of upcoming earnings.
 	if from == "" || to == "" {
 		now := time.Now()
-		// Find current week's Monday
 		weekday := now.Weekday()
 		daysToMonday := int(weekday - time.Monday)
 		if daysToMonday < 0 {
 			daysToMonday += 7
 		}
 		monday := now.AddDate(0, 0, -daysToMonday)
-		// Next week's Friday = monday + 11 days
+		// Next week's Friday = Monday + 11 days (Mon=0, Tue=1, ..., Fri_next=11)
 		nextFriday := monday.AddDate(0, 0, 11)
 
 		from = monday.Format("2006-01-02")
@@ -123,18 +138,18 @@ func GetEarningsCalendar(c *gin.Context) {
 		return
 	}
 
-	// Validate max 14-day window
-	if toDate.Sub(fromDate).Hours() > 14*24 {
+	// Validate max 14-day window (inclusive: 14 days exactly is the limit)
+	if toDate.Sub(fromDate).Hours() >= 15*24 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "Date range must not exceed 14 days",
 		})
 		return
 	}
 
-	// Check Redis cache
-	ctx := context.Background()
-	cacheKey := fmt.Sprintf("earnings:calendar:%s:%s", from, to)
+	ctx := c.Request.Context()
+	cacheKey := fmt.Sprintf("earnings:%s:calendar:%s:%s", earningsCacheVersion, from, to)
 
+	// Check Redis cache
 	if redisClient != nil {
 		cached, err := redisClient.Get(ctx, cacheKey).Result()
 		if err == nil {
@@ -147,7 +162,7 @@ func GetEarningsCalendar(c *gin.Context) {
 	}
 
 	// Fetch from FMP
-	if fmpClient == nil || fmpClient.APIKey == "" {
+	if !isFMPReady() {
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error":   "FMP not configured",
 			"message": "Earnings calendar is not available at this time",
@@ -166,6 +181,7 @@ func GetEarningsCalendar(c *gin.Context) {
 	}
 
 	// Transform each record and build counts map
+	today := time.Now().Format("2006-01-02")
 	earnings := make([]services.EarningsResult, 0, len(records))
 	earningsCounts := make(map[string]int)
 
@@ -182,7 +198,7 @@ func GetEarningsCalendar(c *gin.Context) {
 			RevenueActual:          r.RevenueActual,
 			RevenueSurprisePercent: services.ComputeSurprisePercent(r.RevenueActual, r.RevenueEstimated),
 			RevenueBeat:            services.ComputeBeat(r.RevenueActual, r.RevenueEstimated),
-			IsUpcoming:             r.EPSActual == nil,
+			IsUpcoming:             r.Date > today,
 		}
 		earnings = append(earnings, result)
 		earningsCounts[r.Date]++
@@ -204,7 +220,9 @@ func GetEarningsCalendar(c *gin.Context) {
 	// Cache in Redis
 	if redisClient != nil {
 		responseJSON, err := json.Marshal(response)
-		if err == nil {
+		if err != nil {
+			log.Printf("JSON marshal error for earnings calendar %s-%s: %v", from, to, err)
+		} else {
 			if err := redisClient.Set(ctx, cacheKey, responseJSON, calendarCacheTTL).Err(); err != nil {
 				log.Printf("Redis SET error for %s: %v", cacheKey, err)
 			}
