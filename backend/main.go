@@ -145,6 +145,7 @@ func main() {
 			stocks.GET("/:ticker/metrics", handlers.GetComprehensiveFinancialMetrics) // Get comprehensive financial metrics (FMP)
 			stocks.GET("/:ticker/risk", handlers.GetRiskMetrics)                      // Get risk metrics (Beta, Alpha, Sharpe)
 			stocks.GET("/:ticker/technical", handlers.GetTechnicalIndicators)         // Get technical indicators
+			stocks.GET("/:ticker/earnings", handlers.GetStockEarnings)                // Get earnings history (FMP)
 
 			// Financial Statements endpoints (SEC EDGAR data)
 			financialsHandler := handlers.NewFinancialsHandler()
@@ -205,6 +206,9 @@ func main() {
 			screener.GET("/stocks", handlers.GetScreenerStocks)
 			screener.POST("/nlp", handlers.PostScreenerNLP)
 		}
+
+		// Earnings Calendar endpoint (public)
+		v1.GET("/earnings-calendar", handlers.GetEarningsCalendar)
 
 		// Logo proxy endpoint (proxies logos from Polygon.io with API key)
 		v1.GET("/logos/:symbol", handlers.ProxyLogo)
