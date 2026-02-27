@@ -68,6 +68,12 @@ spec:
               key: smtp-password
         - name: FRONTEND_URL
           value: "https://investorcenter.ai"
+        - name: CANARY_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: app-secrets
+              key: canary-token
+              optional: true
         resources:
           requests:
             memory: "64Mi"

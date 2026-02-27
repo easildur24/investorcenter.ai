@@ -67,6 +67,9 @@ type Config struct {
 
 	// Frontend URL (for email links)
 	FrontendURL string
+
+	// Canary token for authenticated test endpoints
+	CanaryToken string
 }
 
 // Load reads configuration from environment variables.
@@ -103,6 +106,8 @@ func Load() *Config {
 		SMTPFromName:  getEnv("SMTP_FROM_NAME", "InvestorCenter Alerts"),
 
 		FrontendURL: getEnv("FRONTEND_URL", "https://investorcenter.ai"),
+
+		CanaryToken: getEnv("CANARY_TOKEN", ""),
 	}
 }
 

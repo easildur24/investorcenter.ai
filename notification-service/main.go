@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"time"
 
+	"notification-service/canary"
 	"notification-service/config"
 	"notification-service/consumer"
 	"notification-service/database"
@@ -52,12 +53,15 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	go sqsConsumer.Start(ctx, eval.HandlePriceUpdate)
 
-	// 7. Start health server
-	healthSrv := startHealthServer(cfg.Port, db, sqsConsumer)
+	// 7. Initialize canary handler (for email integration tests)
+	canaryHandler := canary.NewHandler(cfg, cfg.CanaryToken)
+
+	// 8. Start health server
+	healthSrv := startHealthServer(cfg.Port, db, sqsConsumer, canaryHandler)
 
 	log.Printf("Notification service running on port %s", cfg.Port)
 
-	// 8. Graceful shutdown
+	// 9. Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
@@ -76,8 +80,11 @@ func main() {
 
 // startHealthServer creates an HTTP server with a /health endpoint
 // for Kubernetes liveness and readiness probes.
-func startHealthServer(port string, db *database.DB, sqsConsumer *consumer.Consumer) *http.Server {
+func startHealthServer(port string, db *database.DB, sqsConsumer *consumer.Consumer, canaryHandler *canary.Handler) *http.Server {
 	mux := http.NewServeMux()
+
+	// Canary endpoint for integration testing email delivery
+	mux.HandleFunc("/canary/email", canaryHandler.HandleEmail)
 
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		status := "ok"

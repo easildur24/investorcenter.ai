@@ -1,0 +1,58 @@
+# Canary CronJob — sends a test email every 6 hours to verify SMTP delivery.
+# Calls the notification-service canary endpoint from within the cluster.
+#
+# Setup: add canary-token to app-secrets and canary-email to notification-secrets:
+#   kubectl patch secret app-secrets -n investorcenter \
+#     --type='merge' -p='{"data":{"canary-token":"'$(echo -n "$(openssl rand -base64 32)" | base64)'"}}'
+#   kubectl create secret generic notification-secrets \
+#     --from-literal=canary-email="your-ops-email@example.com" \
+#     -n investorcenter
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: notification-canary
+  namespace: investorcenter
+  labels:
+    app: notification-canary
+spec:
+  schedule: "0 */6 * * *"  # Every 6 hours
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 60
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+          - name: canary
+            image: curlimages/curl:8.5.0
+            env:
+            - name: CANARY_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: canary-token
+            - name: CANARY_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: notification-secrets
+                  key: canary-email
+            command:
+            - /bin/sh
+            - -c
+            - |
+              STATUS=$(curl -s -o /tmp/response.json -w '%{http_code}' \
+                -X POST http://notification-service:8003/canary/email \
+                -H "Authorization: Bearer $CANARY_TOKEN" \
+                -H "Content-Type: application/json" \
+                -d "{\"to\": \"$CANARY_EMAIL\", \"name\": \"Canary\"}")
+              cat /tmp/response.json
+              echo ""
+              if [ "$STATUS" != "200" ]; then
+                echo "FAIL: canary email returned HTTP $STATUS"
+                exit 1
+              fi
+              echo "PASS: canary email sent successfully"
