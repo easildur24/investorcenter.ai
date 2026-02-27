@@ -6,7 +6,7 @@ import { heatmapAPI, HeatmapData } from '@/lib/api/heatmap';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import WatchListHeatmap from '@/components/watchlist/WatchListHeatmap';
-import HeatmapConfigPanel, { HeatmapSettings } from '@/components/watchlist/HeatmapConfigPanel';
+import HeatmapToolbar, { TimePeriod } from '@/components/watchlist/HeatmapConfigPanel';
 import {
   HeatmapHeroView,
   HeatmapCardGrid,
@@ -14,6 +14,46 @@ import {
   ViewMode,
   getEffectiveView,
 } from '@/components/watchlist/HeatmapAdaptiveViews';
+
+// ─── localStorage helpers ─────────────────────────────────────
+
+const STORAGE_KEY_PREFIX = 'heatmap_prefs_';
+
+interface HeatmapPrefs {
+  viewMode: ViewMode;
+  timePeriod: TimePeriod;
+}
+
+function loadPrefs(watchListId: string): HeatmapPrefs {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_KEY_PREFIX}${watchListId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        viewMode: parsed.viewMode || 'auto',
+        timePeriod: parsed.timePeriod || '1D',
+      };
+    }
+  } catch {
+    // Ignore parse errors
+  }
+  return { viewMode: 'auto', timePeriod: '1D' };
+}
+
+function savePrefs(watchListId: string, prefs: HeatmapPrefs) {
+  try {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}${watchListId}`, JSON.stringify(prefs));
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+// ─── Hardcoded defaults (removed from UI) ─────────────────────
+
+const SIZE_METRIC = 'market_cap';
+const COLOR_METRIC = 'price_change_pct';
+
+// ─── Page component ───────────────────────────────────────────
 
 export default function WatchListHeatmapPage() {
   const params = useParams();
@@ -24,22 +64,44 @@ export default function WatchListHeatmapPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [viewMode, setViewMode] = useState<ViewMode>('auto');
-  const [settings, setSettings] = useState<HeatmapSettings>({
-    size_metric: 'market_cap',
-    color_metric: 'price_change_pct',
-    time_period: '1D',
-    color_scheme: 'red_green',
-    label_display: 'symbol_change',
-  });
 
+  // Restore persisted prefs (SSR-safe: defaults until hydration)
+  const [viewMode, setViewMode] = useState<ViewMode>('auto');
+  const [timePeriod, setTimePeriod] = useState<TimePeriod>('1D');
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    const prefs = loadPrefs(watchListId);
+    setViewMode(prefs.viewMode);
+    setTimePeriod(prefs.timePeriod);
+    setPrefsLoaded(true);
+  }, [watchListId]);
+
+  // Auto-persist on change
+  const handleViewModeChange = useCallback(
+    (mode: ViewMode) => {
+      setViewMode(mode);
+      savePrefs(watchListId, { viewMode: mode, timePeriod });
+    },
+    [watchListId, timePeriod]
+  );
+
+  const handleTimePeriodChange = useCallback(
+    (period: TimePeriod) => {
+      setTimePeriod(period);
+      savePrefs(watchListId, { viewMode, timePeriod: period });
+    },
+    [watchListId, viewMode]
+  );
+
+  // Fetch heatmap data
   const loadHeatmap = useCallback(async () => {
     try {
       setLoading(true);
       const data = await heatmapAPI.getHeatmapData(watchListId, undefined, {
-        size_metric: settings.size_metric,
-        color_metric: settings.color_metric,
-        time_period: settings.time_period,
+        size_metric: SIZE_METRIC,
+        color_metric: COLOR_METRIC,
+        time_period: timePeriod,
       });
       setHeatmapData(data);
       setError('');
@@ -48,31 +110,17 @@ export default function WatchListHeatmapPage() {
     } finally {
       setLoading(false);
     }
-  }, [watchListId, settings.size_metric, settings.color_metric, settings.time_period]);
+  }, [watchListId, timePeriod]);
 
   useEffect(() => {
-    // Wait for auth to be ready before making API calls
-    if (authLoading || !user) return;
+    if (authLoading || !user || !prefsLoaded) return;
 
     loadHeatmap();
-    // Auto-refresh every 30 seconds
     const interval = setInterval(loadHeatmap, 30000);
     return () => clearInterval(interval);
-  }, [loadHeatmap, authLoading, user]);
+  }, [loadHeatmap, authLoading, user, prefsLoaded]);
 
-  const handleSaveConfig = async (name: string) => {
-    try {
-      await heatmapAPI.createConfig(watchListId, {
-        name,
-        ...settings,
-      });
-      alert('Heatmap configuration saved!');
-    } catch (err: any) {
-      alert(err.message || 'Failed to save configuration');
-    }
-  };
-
-  // Determine the effective view based on mode and tile count
+  // Determine effective view
   const tileCount = heatmapData?.tile_count ?? 0;
   const effectiveView = getEffectiveView(viewMode, tileCount);
 
@@ -183,9 +231,8 @@ export default function WatchListHeatmapPage() {
   return (
     <ProtectedRoute>
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        {/* Header Section */}
+        {/* Header */}
         <div className="mb-6">
-          {/* Back Button */}
           <div className="mb-4">
             <button
               onClick={() => router.push(`/watchlist/${watchListId}`)}
@@ -203,51 +250,19 @@ export default function WatchListHeatmapPage() {
             </button>
           </div>
 
-          {/* Title & Info */}
           <div className="flex items-start justify-between flex-wrap gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-ic-text-primary mb-2 flex items-center gap-3">
-                <svg
-                  className="w-10 h-10 text-purple-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-                  />
-                </svg>
+              <h1 className="text-4xl font-bold text-ic-text-primary mb-2">
                 {heatmapData?.watch_list_name || 'Watch List'}
               </h1>
               {heatmapData && (
                 <div className="flex items-center gap-4 text-sm text-ic-text-dim">
-                  <span className="inline-flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"
-                      />
-                    </svg>
+                  <span>
                     <strong className="text-ic-text-primary">{heatmapData.tile_count}</strong>{' '}
                     tickers
                   </span>
                   <span className="text-ic-text-dim">&bull;</span>
-                  <span className="inline-flex items-center gap-1">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    Updated {new Date(heatmapData.generated_at).toLocaleTimeString()}
-                  </span>
+                  <span>Updated {new Date(heatmapData.generated_at).toLocaleTimeString()}</span>
                 </div>
               )}
             </div>
@@ -278,12 +293,11 @@ export default function WatchListHeatmapPage() {
           </div>
         )}
 
-        <HeatmapConfigPanel
-          settings={settings}
-          onChange={setSettings}
-          onSave={handleSaveConfig}
+        <HeatmapToolbar
           viewMode={viewMode}
-          onViewModeChange={setViewMode}
+          onViewModeChange={handleViewModeChange}
+          timePeriod={timePeriod}
+          onTimePeriodChange={handleTimePeriodChange}
         />
 
         {renderVisualization()}
