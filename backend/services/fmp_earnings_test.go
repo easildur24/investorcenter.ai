@@ -44,10 +44,15 @@ func TestComputeSurprisePercent_BothNil(t *testing.T) {
 }
 
 func TestComputeSurprisePercent_ZeroEstimate(t *testing.T) {
-	// When estimate is zero, return absolute difference instead of percentage
+	// When estimate is zero, return nil (division undefined)
 	result := ComputeSurprisePercent(float64Ptr(0.05), float64Ptr(0))
-	require.NotNil(t, result)
-	assert.InDelta(t, 0.05, *result, 0.001)
+	assert.Nil(t, result)
+}
+
+func TestComputeSurprisePercent_BothZero(t *testing.T) {
+	// Both zero: estimate is still zero → nil
+	result := ComputeSurprisePercent(float64Ptr(0), float64Ptr(0))
+	assert.Nil(t, result)
 }
 
 func TestComputeSurprisePercent_NegativeEstimate(t *testing.T) {
@@ -184,11 +189,17 @@ func TestTransformEarnings_FullPipeline(t *testing.T) {
 	assert.Equal(t, "2099-06-15", resp.NextEarnings.Date)
 	assert.True(t, resp.NextEarnings.IsUpcoming)
 
-	// Beat rate: 1 EPS beat, 1 revenue beat out of 2 qualified quarters
+	// MostRecentEarnings should be the first past record
+	require.NotNil(t, resp.MostRecentEarnings)
+	assert.Equal(t, "2024-10-30", resp.MostRecentEarnings.Date)
+	assert.False(t, resp.MostRecentEarnings.IsUpcoming)
+
+	// Beat rate: 1 EPS beat out of 2, 1 revenue beat out of 2
 	require.NotNil(t, resp.BeatRate)
 	assert.Equal(t, 1, resp.BeatRate.EPSBeats)
 	assert.Equal(t, 1, resp.BeatRate.RevenueBeats)
 	assert.Equal(t, 2, resp.BeatRate.TotalQuarters)
+	assert.Equal(t, 2, resp.BeatRate.TotalRevenueQuarters)
 }
 
 func TestTransformEarnings_Empty(t *testing.T) {
@@ -199,11 +210,12 @@ func TestTransformEarnings_Empty(t *testing.T) {
 	assert.Nil(t, resp.BeatRate)
 }
 
-func TestTransformEarnings_NoUpcoming_FallbackToMostRecent(t *testing.T) {
+func TestTransformEarnings_NoUpcoming_MostRecentPopulated(t *testing.T) {
+	// Use far-past sentinel dates to make intent explicit
 	records := []FMPEarningsRecord{
 		{
 			Symbol:           "MSFT",
-			Date:             "2024-10-22",
+			Date:             "2000-10-22",
 			EPSActual:        float64Ptr(3.30),
 			EPSEstimated:     float64Ptr(3.10),
 			RevenueActual:    float64Ptr(65600000000),
@@ -211,7 +223,7 @@ func TestTransformEarnings_NoUpcoming_FallbackToMostRecent(t *testing.T) {
 		},
 		{
 			Symbol:           "MSFT",
-			Date:             "2024-07-23",
+			Date:             "2000-07-23",
 			EPSActual:        float64Ptr(2.95),
 			EPSEstimated:     float64Ptr(2.93),
 			RevenueActual:    float64Ptr(64700000000),
@@ -222,10 +234,13 @@ func TestTransformEarnings_NoUpcoming_FallbackToMostRecent(t *testing.T) {
 	resp := TransformEarnings(records)
 	require.NotNil(t, resp)
 
-	// NextEarnings should fallback to first past record
-	require.NotNil(t, resp.NextEarnings)
-	assert.Equal(t, "2024-10-22", resp.NextEarnings.Date)
-	assert.False(t, resp.NextEarnings.IsUpcoming)
+	// NextEarnings should be nil when no future-dated record exists
+	assert.Nil(t, resp.NextEarnings)
+
+	// MostRecentEarnings should be the first past record
+	require.NotNil(t, resp.MostRecentEarnings)
+	assert.Equal(t, "2000-10-22", resp.MostRecentEarnings.Date)
+	assert.False(t, resp.MostRecentEarnings.IsUpcoming)
 }
 
 func TestTransformEarnings_FiscalQuarterLabels(t *testing.T) {
@@ -372,4 +387,67 @@ func TestGetEarningsCalendar_NoAPIKey(t *testing.T) {
 	_, err := client.GetEarningsCalendar("2026-02-23", "2026-03-06")
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "FMP API key not configured")
+}
+
+func TestGetEarningsCalendar_ServerError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer server.Close()
+
+	restore := saveFMPBaseURL()
+	defer restore()
+	FMPBaseURL = server.URL
+
+	client := newFMPTestClient(server.URL)
+	_, err := client.GetEarningsCalendar("2026-02-23", "2026-03-06")
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "status 500")
+}
+
+func TestTransformEarnings_IsUpcoming_DateOnly(t *testing.T) {
+	// A past-dated record with nil EPSActual (small-cap, no coverage)
+	// should NOT be marked upcoming — isUpcoming is purely date-based.
+	records := []FMPEarningsRecord{
+		{
+			Symbol:       "TINY",
+			Date:         "2000-01-15",
+			EPSActual:    nil,
+			EPSEstimated: nil,
+		},
+	}
+
+	resp := TransformEarnings(records)
+	require.Len(t, resp.Earnings, 1)
+	assert.False(t, resp.Earnings[0].IsUpcoming, "past-dated record with nil EPSActual should not be upcoming")
+}
+
+func TestTransformEarnings_SeparateRevenueQuarterCount(t *testing.T) {
+	// 2 quarters with EPS data but only 1 with revenue data.
+	// TotalRevenueQuarters should be 1, not 2.
+	records := []FMPEarningsRecord{
+		{
+			Symbol:           "TINY",
+			Date:             "2000-10-15",
+			EPSActual:        float64Ptr(0.50),
+			EPSEstimated:     float64Ptr(0.40),
+			RevenueActual:    float64Ptr(10000000),
+			RevenueEstimated: float64Ptr(9000000),
+		},
+		{
+			Symbol:           "TINY",
+			Date:             "2000-07-15",
+			EPSActual:        float64Ptr(0.30),
+			EPSEstimated:     float64Ptr(0.25),
+			RevenueActual:    nil,
+			RevenueEstimated: nil,
+		},
+	}
+
+	resp := TransformEarnings(records)
+	require.NotNil(t, resp.BeatRate)
+	assert.Equal(t, 2, resp.BeatRate.TotalQuarters)
+	assert.Equal(t, 1, resp.BeatRate.TotalRevenueQuarters)
+	assert.Equal(t, 2, resp.BeatRate.EPSBeats)
+	assert.Equal(t, 1, resp.BeatRate.RevenueBeats)
 }

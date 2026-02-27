@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -43,18 +44,24 @@ type EarningsResult struct {
 	IsUpcoming             bool     `json:"isUpcoming"`
 }
 
-// BeatRate summarizes how often a stock beats estimates
+// BeatRate summarizes how often a stock beats estimates.
+// TotalQuarters counts quarters with EPS data; TotalRevenueQuarters counts
+// quarters with revenue data (may differ for small-caps without coverage).
 type BeatRate struct {
-	EPSBeats      int `json:"epsBeats"`
-	RevenueBeats  int `json:"revenueBeats"`
-	TotalQuarters int `json:"totalQuarters"`
+	EPSBeats             int `json:"epsBeats"`
+	RevenueBeats         int `json:"revenueBeats"`
+	TotalQuarters        int `json:"totalQuarters"`
+	TotalRevenueQuarters int `json:"totalRevenueQuarters"`
 }
 
-// EarningsResponse is the full response returned by the earnings endpoint
+// EarningsResponse is the full response returned by the earnings endpoint.
+// NextEarnings is non-nil only when a future-dated record exists.
+// MostRecentEarnings is always the most recent past record (if any).
 type EarningsResponse struct {
-	Earnings     []EarningsResult `json:"earnings"`
-	NextEarnings *EarningsResult  `json:"nextEarnings"`
-	BeatRate     *BeatRate        `json:"beatRate"`
+	Earnings           []EarningsResult `json:"earnings"`
+	NextEarnings       *EarningsResult  `json:"nextEarnings"`
+	MostRecentEarnings *EarningsResult  `json:"mostRecentEarnings"`
+	BeatRate           *BeatRate        `json:"beatRate"`
 }
 
 // ============================================================================
@@ -67,9 +74,12 @@ func (c *FMPClient) GetEarnings(ticker string) ([]FMPEarningsRecord, error) {
 		return nil, fmt.Errorf("FMP API key not configured")
 	}
 
-	url := fmt.Sprintf("%s/earnings?symbol=%s&apikey=%s", FMPBaseURL, ticker, c.APIKey)
+	params := url.Values{}
+	params.Set("symbol", ticker)
+	params.Set("apikey", c.APIKey)
+	reqURL := fmt.Sprintf("%s/earnings?%s", FMPBaseURL, params.Encode())
 
-	resp, err := c.Client.Get(url)
+	resp, err := c.Client.Get(reqURL)
 	if err != nil {
 		return nil, fmt.Errorf("FMP earnings request failed: %w", err)
 	}
@@ -93,10 +103,13 @@ func (c *FMPClient) GetEarningsCalendar(from, to string) ([]FMPEarningsRecord, e
 		return nil, fmt.Errorf("FMP API key not configured")
 	}
 
-	url := fmt.Sprintf("%s/earnings-calendar?from=%s&to=%s&apikey=%s",
-		FMPBaseURL, from, to, c.APIKey)
+	params := url.Values{}
+	params.Set("from", from)
+	params.Set("to", to)
+	params.Set("apikey", c.APIKey)
+	reqURL := fmt.Sprintf("%s/earnings-calendar?%s", FMPBaseURL, params.Encode())
 
-	resp, err := c.Client.Get(url)
+	resp, err := c.Client.Get(reqURL)
 	if err != nil {
 		return nil, fmt.Errorf("FMP earnings-calendar request failed: %w", err)
 	}
@@ -119,14 +132,14 @@ func (c *FMPClient) GetEarningsCalendar(from, to string) ([]FMPEarningsRecord, e
 // ============================================================================
 
 // ComputeSurprisePercent calculates (actual - estimated) / |estimated| * 100.
-// Returns nil if either input is nil. Returns absolute difference if estimated is zero.
+// Returns nil if either input is nil or if estimated is zero (division
+// undefined — callers should handle the zero-estimate case explicitly).
 func ComputeSurprisePercent(actual, estimated *float64) *float64 {
 	if actual == nil || estimated == nil {
 		return nil
 	}
 	if *estimated == 0 {
-		diff := *actual - *estimated
-		return &diff
+		return nil
 	}
 	surprise := (*actual - *estimated) / math.Abs(*estimated) * 100
 	rounded := math.Round(surprise*100) / 100 // round to 2 decimal places
@@ -183,12 +196,16 @@ func TransformEarnings(records []FMPEarningsRecord) *EarningsResponse {
 	results := make([]EarningsResult, 0, len(records))
 
 	var nextEarnings *EarningsResult
+	var mostRecentEarnings *EarningsResult
 	epsBeats := 0
 	revenueBeats := 0
 	qualifiedQuarters := 0
+	qualifiedRevenueQuarters := 0
 
 	for _, r := range records {
-		isUpcoming := r.EPSActual == nil && r.Date > today
+		// Determine upcoming purely by date; a future date means the report
+		// hasn't happened yet regardless of whether EPSActual is nil.
+		isUpcoming := r.Date > today
 
 		result := EarningsResult{
 			Symbol:                 r.Symbol,
@@ -209,45 +226,47 @@ func TransformEarnings(records []FMPEarningsRecord) *EarningsResponse {
 
 		// Track next earnings (first upcoming record)
 		if isUpcoming && nextEarnings == nil {
-			copy := result
-			nextEarnings = &copy
+			snapshot := result
+			nextEarnings = &snapshot
 		}
 
-		// Count beats for beat rate (only quarters with both actual and estimate)
+		// Track most recent past record
+		if !isUpcoming && mostRecentEarnings == nil {
+			snapshot := result
+			mostRecentEarnings = &snapshot
+		}
+
+		// Count EPS beats (only quarters with both actual and estimate, max 8)
 		if !isUpcoming && r.EPSActual != nil && r.EPSEstimated != nil && qualifiedQuarters < 8 {
 			qualifiedQuarters++
 			if *r.EPSActual > *r.EPSEstimated {
 				epsBeats++
 			}
-			if r.RevenueActual != nil && r.RevenueEstimated != nil && *r.RevenueActual > *r.RevenueEstimated {
+		}
+
+		// Count revenue beats with a separate denominator
+		if !isUpcoming && r.RevenueActual != nil && r.RevenueEstimated != nil && qualifiedRevenueQuarters < 8 {
+			qualifiedRevenueQuarters++
+			if *r.RevenueActual > *r.RevenueEstimated {
 				revenueBeats++
 			}
 		}
 	}
 
-	// If no upcoming earnings found, use most recent past as nextEarnings
-	if nextEarnings == nil && len(results) > 0 {
-		for i := range results {
-			if !results[i].IsUpcoming {
-				copy := results[i]
-				nextEarnings = &copy
-				break
-			}
-		}
-	}
-
 	var beatRate *BeatRate
-	if qualifiedQuarters > 0 {
+	if qualifiedQuarters > 0 || qualifiedRevenueQuarters > 0 {
 		beatRate = &BeatRate{
-			EPSBeats:      epsBeats,
-			RevenueBeats:  revenueBeats,
-			TotalQuarters: qualifiedQuarters,
+			EPSBeats:             epsBeats,
+			RevenueBeats:         revenueBeats,
+			TotalQuarters:        qualifiedQuarters,
+			TotalRevenueQuarters: qualifiedRevenueQuarters,
 		}
 	}
 
 	return &EarningsResponse{
-		Earnings:     results,
-		NextEarnings: nextEarnings,
-		BeatRate:     beatRate,
+		Earnings:           results,
+		NextEarnings:       nextEarnings,
+		MostRecentEarnings: mostRecentEarnings,
+		BeatRate:           beatRate,
 	}
 }
