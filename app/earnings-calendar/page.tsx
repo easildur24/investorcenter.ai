@@ -4,7 +4,13 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { API_BASE_URL } from '@/lib/api';
 import { earningsCalendar } from '@/lib/api/routes';
-import type { EarningsResult, EarningsCalendarResponse } from '@/lib/types/earnings';
+import type { ApiEnvelope, EarningsResult, EarningsCalendarResponse } from '@/lib/types/earnings';
+import {
+  formatEPS,
+  formatRevenue,
+  formatSurprise,
+  parseDateLocal,
+} from '@/lib/utils/earningsFormatters';
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -24,12 +30,33 @@ function getMonday(date: Date): Date {
   return d;
 }
 
+/** Snap to the nearest weekday: Sat→Fri, Sun→Mon, otherwise identity. */
+function nearestWeekday(date: Date): Date {
+  const day = date.getDay();
+  if (day === 0) {
+    // Sunday → Monday
+    const d = new Date(date);
+    d.setDate(d.getDate() + 1);
+    return d;
+  }
+  if (day === 6) {
+    // Saturday → Friday
+    const d = new Date(date);
+    d.setDate(d.getDate() - 1);
+    return d;
+  }
+  return date;
+}
+
 function formatDateShort(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 function formatDateISO(date: Date): string {
-  return date.toISOString().split('T')[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 function getWeekDays(monday: Date): Date[] {
@@ -41,31 +68,6 @@ function getWeekDays(monday: Date): Date[] {
 }
 
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
-
-// ============================================================================
-// Formatting
-// ============================================================================
-
-function formatEPS(value: number | null): string {
-  if (value == null) return '—';
-  return `$${value.toFixed(2)}`;
-}
-
-function formatRevenue(value: number | null): string {
-  if (value == null) return '—';
-  const abs = Math.abs(value);
-  if (abs >= 1e12) return `$${(value / 1e12).toFixed(1)}T`;
-  if (abs >= 1e9) return `$${(value / 1e9).toFixed(1)}B`;
-  if (abs >= 1e6) return `$${(value / 1e6).toFixed(1)}M`;
-  if (abs >= 1e3) return `$${(value / 1e3).toFixed(0)}K`;
-  return `$${value.toFixed(0)}`;
-}
-
-function formatSurprise(value: number | null): string {
-  if (value == null) return '—';
-  const sign = value >= 0 ? '+' : '';
-  return `${sign}${value.toFixed(2)}%`;
-}
 
 // ============================================================================
 // Sort
@@ -120,9 +122,15 @@ function sortEarnings(
 // ============================================================================
 
 export default function EarningsCalendarPage() {
-  const today = new Date();
+  // Memoize "today" so it's stable across renders within a single mount.
+  const today = useMemo(() => new Date(), []);
+  const todayISO = useMemo(() => formatDateISO(today), [today]);
+
   const [weekMonday, setWeekMonday] = useState<Date>(() => getMonday(today));
-  const [selectedDate, setSelectedDate] = useState<string>(formatDateISO(today));
+  // Default selectedDate snaps to nearest weekday (Sat→Fri, Sun→Mon).
+  const [selectedDate, setSelectedDate] = useState<string>(() =>
+    formatDateISO(nearestWeekday(today))
+  );
   const [data, setData] = useState<EarningsCalendarResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -132,25 +140,28 @@ export default function EarningsCalendarPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
 
   const weekDays = useMemo(() => getWeekDays(weekMonday), [weekMonday]);
-  const fromDate = formatDateISO(weekMonday);
-  const toDate = formatDateISO(weekDays[4]);
+  const fromDate = useMemo(() => formatDateISO(weekMonday), [weekMonday]);
+  const toDate = useMemo(() => formatDateISO(weekDays[4]), [weekDays]);
 
   // Fetch earnings for the entire week
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchCalendar = async () => {
       try {
         setLoading(true);
         setError(null);
         const response = await fetch(
           `${API_BASE_URL}${earningsCalendar.list}?from=${fromDate}&to=${toDate}`,
-          { cache: 'no-store' }
+          { cache: 'no-store', signal: controller.signal }
         );
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}`);
         }
-        const result = await response.json();
+        const result: ApiEnvelope<EarningsCalendarResponse> = await response.json();
         setData(result.data);
       } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         console.error('Error fetching earnings calendar:', err);
         setError('Failed to load earnings calendar');
       } finally {
@@ -159,6 +170,7 @@ export default function EarningsCalendarPage() {
     };
 
     fetchCalendar();
+    return () => controller.abort();
   }, [fromDate, toDate]);
 
   // Filter earnings by selected date (daily mode) and search query
@@ -196,16 +208,17 @@ export default function EarningsCalendarPage() {
     });
   }, []);
 
-  const handleSort = useCallback((field: SortField) => {
-    setSortField((prev) => {
-      if (prev === field) {
+  const handleSort = useCallback(
+    (field: SortField) => {
+      if (field === sortField) {
         setSortOrder((o) => (o === 'asc' ? 'desc' : 'asc'));
-        return prev;
+      } else {
+        setSortField(field);
+        setSortOrder('asc');
       }
-      setSortOrder('asc');
-      return field;
-    });
-  }, []);
+    },
+    [sortField]
+  );
 
   return (
     <div className="min-h-screen bg-ic-bg-primary">
@@ -233,7 +246,7 @@ export default function EarningsCalendarPage() {
                 const iso = formatDateISO(day);
                 const count = data?.earningsCounts?.[iso] ?? 0;
                 const isSelected = viewMode === 'daily' && selectedDate === iso;
-                const isToday = iso === formatDateISO(today);
+                const isToday = iso === todayISO;
 
                 return (
                   <button
@@ -404,9 +417,9 @@ export default function EarningsCalendarPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-ic-border">
-                  {filteredEarnings.map((e, idx) => (
+                  {filteredEarnings.map((e) => (
                     <tr
-                      key={`${e.symbol}-${e.date}-${idx}`}
+                      key={`${e.symbol}-${e.date}`}
                       className="hover:bg-ic-bg-secondary transition-colors"
                     >
                       <td className="px-4 py-3 text-sm">
@@ -419,7 +432,7 @@ export default function EarningsCalendarPage() {
                       </td>
                       {viewMode === 'weekly' && (
                         <td className="px-4 py-3 text-sm text-ic-text-secondary whitespace-nowrap">
-                          {new Date(e.date + 'T12:00:00').toLocaleDateString('en-US', {
+                          {parseDateLocal(e.date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
                           })}
