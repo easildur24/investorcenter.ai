@@ -31,21 +31,6 @@ func setupMockDB(t *testing.T) (sqlmock.Sqlmock, func()) {
 	return mock, cleanup
 }
 
-// getDatabaseDB returns the current database.DB for later restoration.
-func getDatabaseDB() *sqlx.DB {
-	return database.DB
-}
-
-// setDatabaseDBNil sets database.DB to nil (for testing nil-guard branches).
-func setDatabaseDBNil() {
-	database.DB = nil
-}
-
-// restoreDatabaseDB restores database.DB to a previously saved value.
-func restoreDatabaseDB(db *sqlx.DB) {
-	database.DB = db
-}
-
 // setupMockRouter creates a gin router with a mock auth middleware
 // that sets user_id in context (to simulate AuthMiddleware).
 func setupMockRouter(userID string) *gin.Engine {
