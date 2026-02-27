@@ -50,6 +50,12 @@ export default function Header() {
               >
                 Reddit Trends
               </Link>
+              <Link
+                href="/earnings-calendar"
+                className="text-ic-text-muted hover:text-ic-text-primary px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Earnings
+              </Link>
             </div>
           </div>
 
