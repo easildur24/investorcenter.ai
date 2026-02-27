@@ -74,4 +74,3 @@ func ensureJWTSecret(t *testing.T) {
 		})
 	}
 }
-

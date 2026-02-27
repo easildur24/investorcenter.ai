@@ -1,9 +1,4 @@
-import {
-  formatLargeNumber,
-  formatRelativeTime,
-  safeToFixed,
-  safeParseNumber,
-} from '../utils';
+import { formatLargeNumber, formatRelativeTime, safeToFixed, safeParseNumber } from '../utils';
 
 // ──────────────────────────────────────────────────────────────
 // formatLargeNumber

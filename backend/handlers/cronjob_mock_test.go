@@ -13,16 +13,16 @@ import (
 
 // mockCronjobService implements CronjobServicer for testing.
 type mockCronjobService struct {
-	overviewResp   *models.CronjobOverviewResponse
-	overviewErr    error
-	historyResp    *models.CronjobHistoryResponse
-	historyErr     error
-	detailsResp    *models.CronjobExecutionLog
-	detailsErr     error
-	metricsResp    *models.CronjobMetricsResponse
-	metricsErr     error
-	schedulesResp  []models.CronjobSchedule
-	schedulesErr   error
+	overviewResp  *models.CronjobOverviewResponse
+	overviewErr   error
+	historyResp   *models.CronjobHistoryResponse
+	historyErr    error
+	detailsResp   *models.CronjobExecutionLog
+	detailsErr    error
+	metricsResp   *models.CronjobMetricsResponse
+	metricsErr    error
+	schedulesResp []models.CronjobSchedule
+	schedulesErr  error
 }
 
 func (m *mockCronjobService) GetOverview() (*models.CronjobOverviewResponse, error) {

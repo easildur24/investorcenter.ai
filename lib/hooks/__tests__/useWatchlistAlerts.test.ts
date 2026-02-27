@@ -214,10 +214,7 @@ describe('useWatchlistAlerts', () => {
       expect(result.current.alertsBySymbol.size).toBe(1);
 
       // On refresh, return updated list
-      const updatedAlerts = [
-        buildAlert(),
-        buildAlert({ id: 'alert-3', symbol: 'NVDA' }),
-      ];
+      const updatedAlerts = [buildAlert(), buildAlert({ id: 'alert-3', symbol: 'NVDA' })];
       mockListAlerts.mockResolvedValueOnce(updatedAlerts);
 
       await act(async () => {
