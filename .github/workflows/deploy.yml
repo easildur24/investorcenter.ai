@@ -99,7 +99,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           repo-token: ${{ secrets.GITHUB_TOKEN }}
-          check-name: build
+          running-workflow-name: Deploy to EKS
           wait-interval: 15
           allowed-conclusions: success
 
