@@ -46,7 +46,7 @@ export const tickers = {
   keyStats: (symbol: string) => `/tickers/${symbol}/keystats`,
 } as const;
 
-// ─── Stocks (IC Score, Financials, Risk, Technical) ────────────────────────────
+// ─── Stocks (IC Score, Financials, Risk, Technical, Earnings) ───────────────────
 export const stocks = {
   icScore: (ticker: string) => `/stocks/${ticker}/ic-score`,
   icScoreHistory: (ticker: string) => `/stocks/${ticker}/ic-score/history`,
@@ -54,6 +54,7 @@ export const stocks = {
   metrics: (ticker: string) => `/stocks/${ticker}/metrics`,
   risk: (ticker: string) => `/stocks/${ticker}/risk`,
   technical: (ticker: string) => `/stocks/${ticker}/technical`,
+  earnings: (ticker: string) => `/stocks/${ticker}/earnings`,
   financialsAll: (ticker: string) => `/stocks/${ticker}/financials/all`,
   financialsIncome: (ticker: string) => `/stocks/${ticker}/financials/income`,
   financialsBalance: (ticker: string) => `/stocks/${ticker}/financials/balance`,
@@ -97,6 +98,11 @@ export const sentiment = {
 // ─── Screener ──────────────────────────────────────────────────────────────────
 export const screener = {
   stocks: '/screener/stocks',
+} as const;
+
+// ─── Earnings Calendar ────────────────────────────────────────────────────────
+export const earningsCalendar = {
+  list: '/earnings-calendar',
 } as const;
 
 // ─── Logos ─────────────────────────────────────────────────────────────────────
