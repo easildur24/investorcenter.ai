@@ -7,6 +7,13 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import WatchListHeatmap from '@/components/watchlist/WatchListHeatmap';
 import HeatmapConfigPanel, { HeatmapSettings } from '@/components/watchlist/HeatmapConfigPanel';
+import {
+  HeatmapHeroView,
+  HeatmapCardGrid,
+  HeatmapBarChart,
+  ViewMode,
+  getEffectiveView,
+} from '@/components/watchlist/HeatmapAdaptiveViews';
 
 export default function WatchListHeatmapPage() {
   const params = useParams();
@@ -17,6 +24,7 @@ export default function WatchListHeatmapPage() {
   const [heatmapData, setHeatmapData] = useState<HeatmapData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState<ViewMode>('auto');
   const [settings, setSettings] = useState<HeatmapSettings>({
     size_metric: 'market_cap',
     color_metric: 'price_change_pct',
@@ -64,6 +72,10 @@ export default function WatchListHeatmapPage() {
     }
   };
 
+  // Determine the effective view based on mode and tile count
+  const tileCount = heatmapData?.tile_count ?? 0;
+  const effectiveView = getEffectiveView(viewMode, tileCount);
+
   if (loading && !heatmapData) {
     return (
       <ProtectedRoute>
@@ -77,6 +89,96 @@ export default function WatchListHeatmapPage() {
       </ProtectedRoute>
     );
   }
+
+  const renderVisualization = () => {
+    if (!heatmapData || heatmapData.tiles.length === 0) {
+      return (
+        <div className="text-center py-16 bg-ic-bg-secondary rounded-lg border-2 border-dashed border-ic-border">
+          <svg
+            className="mx-auto h-16 w-16 text-ic-text-muted mb-4"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+            />
+          </svg>
+          <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
+            No tickers in watchlist
+          </h3>
+          <p className="text-ic-text-muted mb-4 max-w-md mx-auto">
+            Add some tickers to your watch list to visualize them in the heatmap
+          </p>
+          <button
+            onClick={() => router.push(`/watchlist/${watchListId}`)}
+            className="inline-flex items-center px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover transition-colors"
+          >
+            <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 4v16m8-8H4"
+              />
+            </svg>
+            Add Tickers
+          </button>
+        </div>
+      );
+    }
+
+    switch (effectiveView) {
+      case 'hero':
+        return <HeatmapHeroView data={heatmapData} />;
+
+      case 'cards':
+        return <HeatmapCardGrid data={heatmapData} />;
+
+      case 'bars':
+        return (
+          <div className="bg-ic-surface rounded-lg shadow-lg border border-ic-border-subtle p-4">
+            <HeatmapBarChart data={heatmapData} />
+          </div>
+        );
+
+      case 'hybrid':
+        return (
+          <div className="space-y-6">
+            <div className="bg-ic-surface rounded-lg shadow-lg border border-ic-border-subtle overflow-hidden">
+              <WatchListHeatmap
+                data={heatmapData}
+                width={
+                  typeof window !== 'undefined' ? Math.min(window.innerWidth - 200, 1400) : 1200
+                }
+                height={400}
+              />
+            </div>
+            <div className="bg-ic-surface rounded-lg shadow-lg border border-ic-border-subtle p-4">
+              <h3 className="text-sm font-semibold text-ic-text-secondary mb-3 uppercase tracking-wide">
+                Ranked by % Change
+              </h3>
+              <HeatmapBarChart data={heatmapData} maxHeight={300} />
+            </div>
+          </div>
+        );
+
+      case 'treemap':
+      default:
+        return (
+          <div className="bg-ic-surface rounded-lg shadow-lg border border-ic-border-subtle overflow-hidden">
+            <WatchListHeatmap
+              data={heatmapData}
+              width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 200, 1400) : 1200}
+              height={700}
+            />
+          </div>
+        );
+    }
+  };
 
   return (
     <ProtectedRoute>
@@ -134,7 +236,7 @@ export default function WatchListHeatmapPage() {
                     <strong className="text-ic-text-primary">{heatmapData.tile_count}</strong>{' '}
                     tickers
                   </span>
-                  <span className="text-ic-text-dim">•</span>
+                  <span className="text-ic-text-dim">&bull;</span>
                   <span className="inline-flex items-center gap-1">
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path
@@ -149,8 +251,6 @@ export default function WatchListHeatmapPage() {
                 </div>
               )}
             </div>
-
-            {/* Optional: Add export or share buttons here later */}
           </div>
         </div>
 
@@ -178,53 +278,15 @@ export default function WatchListHeatmapPage() {
           </div>
         )}
 
-        <HeatmapConfigPanel settings={settings} onChange={setSettings} onSave={handleSaveConfig} />
+        <HeatmapConfigPanel
+          settings={settings}
+          onChange={setSettings}
+          onSave={handleSaveConfig}
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+        />
 
-        {!heatmapData || heatmapData.tiles.length === 0 ? (
-          <div className="text-center py-16 bg-ic-bg-secondary rounded-lg border-2 border-dashed border-ic-border">
-            <svg
-              className="mx-auto h-16 w-16 text-ic-text-muted mb-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-              />
-            </svg>
-            <h3 className="text-lg font-semibold text-ic-text-primary mb-2">
-              No tickers in watchlist
-            </h3>
-            <p className="text-ic-text-muted mb-4 max-w-md mx-auto">
-              Add some tickers to your watch list to visualize them in the heatmap
-            </p>
-            <button
-              onClick={() => router.push(`/watchlist/${watchListId}`)}
-              className="inline-flex items-center px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover transition-colors"
-            >
-              <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 4v16m8-8H4"
-                />
-              </svg>
-              Add Tickers
-            </button>
-          </div>
-        ) : (
-          <div className="bg-ic-surface rounded-lg shadow-lg border border-ic-border-subtle overflow-hidden">
-            <WatchListHeatmap
-              data={heatmapData}
-              width={typeof window !== 'undefined' ? Math.min(window.innerWidth - 200, 1400) : 1200}
-              height={700}
-            />
-          </div>
-        )}
+        {renderVisualization()}
       </div>
     </ProtectedRoute>
   );

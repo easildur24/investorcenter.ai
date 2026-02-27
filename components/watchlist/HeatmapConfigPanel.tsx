@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useModal } from '@/lib/hooks/useModal';
+import { ViewMode } from './HeatmapAdaptiveViews';
 
 export interface HeatmapSettings {
   size_metric: string;
@@ -15,6 +16,8 @@ interface HeatmapConfigPanelProps {
   settings: HeatmapSettings;
   onChange: (settings: HeatmapSettings) => void;
   onSave?: (name: string) => void;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
 }
 
 // Extracted so useModal only runs when the modal is mounted
@@ -80,6 +83,8 @@ export default function HeatmapConfigPanel({
   settings,
   onChange,
   onSave,
+  viewMode = 'auto',
+  onViewModeChange,
 }: HeatmapConfigPanelProps) {
   const [showSaveModal, setShowSaveModal] = useState(false);
 
@@ -94,9 +99,99 @@ export default function HeatmapConfigPanel({
     }
   };
 
+  const viewOptions: { mode: ViewMode; label: string; icon: JSX.Element }[] = [
+    {
+      mode: 'auto',
+      label: 'Auto',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M13 10V3L4 14h7v7l9-11h-7z"
+          />
+        </svg>
+      ),
+    },
+    {
+      mode: 'treemap',
+      label: 'Treemap',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 5a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1V5zm10 0a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zm0 7a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1v-7zM4 14a1 1 0 011-1h4a1 1 0 011 1v5a1 1 0 01-1 1H5a1 1 0 01-1-1v-5z"
+          />
+        </svg>
+      ),
+    },
+    {
+      mode: 'cards',
+      label: 'Cards',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+          />
+        </svg>
+      ),
+    },
+    {
+      mode: 'bars',
+      label: 'Bars',
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+          />
+        </svg>
+      ),
+    },
+  ];
+
   return (
     <div className="bg-ic-surface p-6 rounded-lg border border-ic-border mb-6">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      {/* View Toggle + Save Row */}
+      {onViewModeChange && (
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-ic-border">
+          <div className="flex items-center gap-1 bg-ic-bg-secondary rounded-lg p-1">
+            {viewOptions.map((opt) => (
+              <button
+                key={opt.mode}
+                onClick={() => onViewModeChange(opt.mode)}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === opt.mode
+                    ? 'bg-ic-blue text-white shadow-sm'
+                    : 'text-ic-text-secondary hover:text-ic-text-primary hover:bg-ic-surface-hover'
+                }`}
+                title={opt.label}
+              >
+                {opt.icon}
+                <span className="hidden sm:inline">{opt.label}</span>
+              </button>
+            ))}
+          </div>
+          {onSave && (
+            <button
+              onClick={() => setShowSaveModal(true)}
+              className="px-4 py-2 bg-ic-blue text-ic-text-primary font-medium rounded-md hover:bg-ic-blue-hover focus:outline-none focus:ring-2 focus:ring-ic-blue focus:ring-offset-2 transition-all shadow-sm hover:shadow-md text-sm"
+            >
+              Save Config
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Size Metric */}
         <div>
           <label className="block text-sm font-semibold text-ic-text-primary mb-2 flex items-center gap-1">
@@ -221,8 +316,8 @@ export default function HeatmapConfigPanel({
           </select>
         </div>
 
-        {/* Save Button */}
-        {onSave && (
+        {/* Save Button (fallback when no view toggle) */}
+        {onSave && !onViewModeChange && (
           <div className="flex items-end">
             <button
               onClick={() => setShowSaveModal(true)}
