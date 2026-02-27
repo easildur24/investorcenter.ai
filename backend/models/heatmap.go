@@ -28,6 +28,7 @@ type HeatmapTile struct {
 	Symbol    string `json:"symbol"`
 	Name      string `json:"name"`
 	AssetType string `json:"asset_type"`
+	Sector    string `json:"sector"`
 
 	// Size value (what determines tile size)
 	SizeValue float64 `json:"size_value"`

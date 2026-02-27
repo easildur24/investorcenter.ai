@@ -38,6 +38,7 @@ type WatchListItemWithData struct {
 	Name      string  `json:"name"`
 	Exchange  string  `json:"exchange"`
 	AssetType string  `json:"asset_type"`
+	Sector    string  `json:"sector"`
 	LogoURL   *string `json:"logo_url"`
 	// Real-time price data
 	CurrentPrice   *float64 `json:"current_price"`

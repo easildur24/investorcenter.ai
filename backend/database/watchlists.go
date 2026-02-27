@@ -258,8 +258,8 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemDetail
 			wli.id, wli.watch_list_id, wli.symbol, wli.notes, wli.tags,
 			wli.target_buy_price, wli.target_sell_price, wli.added_at, wli.display_order,
 
-			-- tickers (4 cols; COALESCE guards against orphaned items with no ticker row)
-			COALESCE(t.name, wli.symbol), COALESCE(t.exchange, ''), COALESCE(t.asset_type, 'stock'), t.logo_url,
+			-- tickers (5 cols; COALESCE guards against orphaned items with no ticker row)
+			COALESCE(t.name, wli.symbol), COALESCE(t.exchange, ''), COALESCE(t.asset_type, 'stock'), COALESCE(t.sector, 'Other'), t.logo_url,
 
 			-- reddit_heatmap_daily via LATERAL (4 cols)
 			rhd.avg_rank, rhd.total_mentions, rhd.popularity_score, rhd.trend_direction,
@@ -334,7 +334,7 @@ func GetWatchListItemsWithData(watchListID string) ([]models.WatchListItemDetail
 }
 
 // scanWatchListItemDetail scans a single row from the GetWatchListItemsWithData query
-// into a WatchListItemDetail struct. Centralises the 47-column positional scan so
+// into a WatchListItemDetail struct. Centralises the 48-column positional scan so
 // callers only need `scanWatchListItemDetail(rows)` instead of 150+ lines of inline code.
 func scanWatchListItemDetail(rows *sql.Rows) (models.WatchListItemDetail, error) {
 	var item models.WatchListItemDetail
@@ -365,8 +365,8 @@ func scanWatchListItemDetail(rows *sql.Rows) (models.WatchListItemDetail, error)
 		pq.Array(&item.Tags),
 		&item.TargetBuyPrice, &item.TargetSellPrice, &item.AddedAt, &item.DisplayOrder,
 
-		// tickers (4 cols)
-		&item.Name, &item.Exchange, &item.AssetType, &item.LogoURL,
+		// tickers (5 cols)
+		&item.Name, &item.Exchange, &item.AssetType, &item.Sector, &item.LogoURL,
 
 		// reddit (5 cols)
 		&redditRank, &redditMentions, &redditPopularity, &redditTrend,
