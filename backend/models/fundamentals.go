@@ -108,12 +108,14 @@ type FairValueResponse struct {
 // Health Summary Response
 // ============================================================================
 
-// HealthComponent represents a single health signal
+// HealthComponent represents a single health signal.
+// Value and Max are float64 for consistent JSON serialization — int-valued signals
+// (e.g. Piotroski F-Score 7/9) are represented as 7.0/9.0 on the wire.
 type HealthComponent struct {
-	Value          interface{} `json:"value"`
-	Max            interface{} `json:"max,omitempty"`
-	Zone           string      `json:"zone,omitempty"`
-	Interpretation string      `json:"interpretation"`
+	Value          float64  `json:"value"`
+	Max            *float64 `json:"max,omitempty"`
+	Zone           string   `json:"zone,omitempty"`
+	Interpretation string   `json:"interpretation"`
 }
 
 // HealthBadge represents the composite health assessment
@@ -244,7 +246,9 @@ type StockMetricsRow struct {
 	StockPrice       *float64 `db:"stock_price"`
 }
 
-// ToMap converts StockMetricsRow to a map keyed by metric name
+// ToMap converts StockMetricsRow to a map keyed by metric name.
+// StockPrice is intentionally excluded — it's not a comparable metric for percentile
+// ranking and is returned separately via dedicated fields (e.g. FairValueResponse.CurrentPrice).
 func (sm *StockMetricsRow) ToMap() map[string]*float64 {
 	return map[string]*float64{
 		"gross_margin":       sm.GrossMargin,

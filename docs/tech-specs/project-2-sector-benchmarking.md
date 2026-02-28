@@ -162,7 +162,7 @@ function useSectorPercentiles(ticker: string): UseSectorPercentilesResult {
 
 **Caching:** Since `TickerFundamentals`, `MetricsTab`, and `KeyStatsTab` all need the same data, lift the fetch to the ticker page level and pass down via props or context. Options:
 
-**Option A (Recommended):** Create a `SectorPercentilesProvider` context that wraps the ticker page content. All child components consume via `useSectorPercentiles()` context hook. Single API call, shared data.
+**Option A (Required):** Create a `SectorPercentilesProvider` context that wraps the ticker page content. All child components consume via `useSectorPercentiles()` context hook. Single API call, shared data. This is required (not optional) because all three surfaces (`TickerFundamentals`, `MetricsTab`, `KeyStatsTab`) render concurrently on the same page — Option B would triple API calls with no benefit.
 
 ```typescript
 // In app/ticker/[symbol]/page.tsx (or a client wrapper)

@@ -64,7 +64,10 @@ func OptionalAuthMiddleware() gin.HandlerFunc {
 
 		claims, err := ValidateToken(parts[1])
 		if err != nil {
-			// Token invalid/expired — treat as unauthenticated, don't block
+			// Token present but invalid/expired — continue as unauthenticated but signal
+			// the bad token so downstream handlers can distinguish "no token" from "bad token"
+			c.Set("auth_error", err.Error())
+			c.Header("X-Auth-Warning", "token-invalid")
 			c.Next()
 			return
 		}

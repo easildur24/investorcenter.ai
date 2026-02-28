@@ -62,61 +62,30 @@ func GetStockMetricsMap(ticker string) (map[string]*float64, *models.StockMetric
 // GetEnrichedIndustryPeers returns peers from the same industry with enriched metrics.
 // Peers are filtered by market cap proximity (0.25x to 4x) and sorted by market cap closeness.
 func GetEnrichedIndustryPeers(industry string, marketCap float64, excludeTicker string, limit int) ([]models.EnrichedPeer, error) {
-	if DB == nil {
-		return nil, fmt.Errorf("database not initialized")
-	}
-
-	query := `
-		SELECT
-			p.symbol, p.name, p.industry, p.market_cap,
-			i.ic_score,
-			v.pe_ratio,
-			m.roe, m.revenue_growth_yoy, m.net_margin, m.debt_to_equity
-		FROM (
-			SELECT symbol, name, COALESCE(industry, '') as industry, market_cap::float8 as market_cap
-			FROM tickers
-			WHERE industry = $1
-				AND UPPER(symbol) != UPPER($2)
-				AND market_cap IS NOT NULL
-				AND market_cap BETWEEN $3 * 0.25 AND $3 * 4.0
-				AND asset_type = 'stock'
-			ORDER BY ABS(market_cap - $3) ASC
-			LIMIT $4
-		) p
-		LEFT JOIN LATERAL (
-			SELECT overall_score::float8 as ic_score
-			FROM ic_scores WHERE ticker = p.symbol
-			ORDER BY date DESC LIMIT 1
-		) i ON true
-		LEFT JOIN LATERAL (
-			SELECT ttm_pe_ratio::float8 as pe_ratio
-			FROM valuation_ratios WHERE ticker = p.symbol
-			ORDER BY calculation_date DESC LIMIT 1
-		) v ON true
-		LEFT JOIN LATERAL (
-			SELECT roe::float8, revenue_growth_yoy::float8, net_margin::float8, debt_to_equity::float8
-			FROM fundamental_metrics_extended WHERE ticker = p.symbol
-			ORDER BY calculation_date DESC LIMIT 1
-		) m ON true
-	`
-
-	var peers []models.EnrichedPeer
-	err := DB.Select(&peers, query, industry, excludeTicker, marketCap, limit)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get industry peers: %w", err)
-	}
-
-	return peers, nil
+	return getEnrichedPeers("industry", industry, marketCap, excludeTicker, limit)
 }
 
 // GetEnrichedSectorPeers is a fallback when industry-level peers are insufficient.
 // Uses sector-level matching with the same enrichment.
 func GetEnrichedSectorPeers(sector string, marketCap float64, excludeTicker string, limit int) ([]models.EnrichedPeer, error) {
+	return getEnrichedPeers("sector", sector, marketCap, excludeTicker, limit)
+}
+
+// getEnrichedPeers is a shared helper that fetches peers filtered by the given column
+// (industry or sector) with enriched IC Score, valuation, and fundamental metrics via LATERAL JOINs.
+func getEnrichedPeers(filterColumn, filterValue string, marketCap float64, excludeTicker string, limit int) ([]models.EnrichedPeer, error) {
 	if DB == nil {
 		return nil, fmt.Errorf("database not initialized")
 	}
 
-	query := `
+	// Allowlist filter column to prevent SQL injection (column names cannot be parameterized)
+	switch filterColumn {
+	case "industry", "sector":
+	default:
+		return nil, fmt.Errorf("invalid peer filter column: %s", filterColumn)
+	}
+
+	query := fmt.Sprintf(`
 		SELECT
 			p.symbol, p.name, p.industry, p.market_cap,
 			i.ic_score,
@@ -125,7 +94,7 @@ func GetEnrichedSectorPeers(sector string, marketCap float64, excludeTicker stri
 		FROM (
 			SELECT symbol, name, COALESCE(industry, '') as industry, market_cap::float8 as market_cap
 			FROM tickers
-			WHERE sector = $1
+			WHERE %s = $1
 				AND UPPER(symbol) != UPPER($2)
 				AND market_cap IS NOT NULL
 				AND market_cap BETWEEN $3 * 0.25 AND $3 * 4.0
@@ -148,12 +117,12 @@ func GetEnrichedSectorPeers(sector string, marketCap float64, excludeTicker stri
 			FROM fundamental_metrics_extended WHERE ticker = p.symbol
 			ORDER BY calculation_date DESC LIMIT 1
 		) m ON true
-	`
+	`, filterColumn)
 
 	var peers []models.EnrichedPeer
-	err := DB.Select(&peers, query, sector, excludeTicker, marketCap, limit)
+	err := DB.Select(&peers, query, filterValue, excludeTicker, marketCap, limit)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get sector peers: %w", err)
+		return nil, fmt.Errorf("failed to get %s peers: %w", filterColumn, err)
 	}
 
 	return peers, nil
@@ -232,9 +201,24 @@ func GetLatestICScore(ticker string) (*models.ICScore, error) {
 }
 
 // GetMetricHistory retrieves historical values for a specific metric from financial_statements.
+// IMPORTANT: fieldName is used in JSONB access (fs.data->>$3). While it's parameterized and safe
+// from SQL injection, callers MUST validate fieldName against models.MetricStatementMap before
+// calling this function to prevent arbitrary JSONB field access.
 func GetMetricHistory(ticker, statementType, fieldName, timeframe string, limit int) ([]models.MetricHistoryRow, error) {
 	if DB == nil {
 		return nil, fmt.Errorf("database not initialized")
+	}
+
+	// Defense-in-depth: validate fieldName against known metric mappings
+	validField := false
+	for _, m := range models.MetricStatementMap {
+		if m.FieldName == fieldName {
+			validField = true
+			break
+		}
+	}
+	if !validField {
+		return nil, fmt.Errorf("unknown field name: %s", fieldName)
 	}
 
 	query := `

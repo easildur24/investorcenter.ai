@@ -593,6 +593,31 @@ func (h *FundamentalsHandler) GetHealthSummary(c *gin.Context) {
 		log.Printf("Warning: Sector percentiles unavailable for %s: %v", ticker, percErr)
 	}
 
+	// Check if we have sufficient data to produce a meaningful response
+	dataQuality := "full"
+	sourcesAvailable := 0
+	if icScore != nil {
+		sourcesAvailable++
+	}
+	if fmpScore != nil {
+		sourcesAvailable++
+	}
+	if lifecycle != nil {
+		sourcesAvailable++
+	}
+	if metricsMap != nil {
+		sourcesAvailable++
+	}
+	if len(percentiles) > 0 {
+		sourcesAvailable++
+	}
+	switch {
+	case sourcesAvailable == 0:
+		dataQuality = "insufficient"
+	case sourcesAvailable <= 2:
+		dataQuality = "partial"
+	}
+
 	// Compute percentiles for each metric
 	percentileMap := make(map[string]*float64)
 	if metricsMap != nil && len(percentiles) > 0 {
@@ -639,7 +664,7 @@ func (h *FundamentalsHandler) GetHealthSummary(c *gin.Context) {
 			interp = "Weak"
 		}
 		components["piotroski_f_score"] = &models.HealthComponent{
-			Value: *fScorePtr, Max: 9, Interpretation: interp,
+			Value: float64(*fScorePtr), Max: floatPtr(9), Interpretation: interp,
 		}
 	}
 	if zScorePtr != nil {
@@ -655,10 +680,11 @@ func (h *FundamentalsHandler) GetHealthSummary(c *gin.Context) {
 		components["altman_z_score"] = &models.HealthComponent{
 			Value: *zScorePtr, Zone: zone, Interpretation: interp,
 		}
+
 	}
 	if icHealthPtr != nil {
 		components["ic_financial_health"] = &models.HealthComponent{
-			Value: *icHealthPtr, Max: 100, Interpretation: fmt.Sprintf("%.0f/100", *icHealthPtr),
+			Value: *icHealthPtr, Max: floatPtr(100), Interpretation: fmt.Sprintf("%.0f/100", *icHealthPtr),
 		}
 	}
 	if dePct, ok := percentileMap["debt_to_equity"]; ok && dePct != nil {
@@ -704,7 +730,9 @@ func (h *FundamentalsHandler) GetHealthSummary(c *gin.Context) {
 			RedFlags:  redFlags,
 		},
 		"meta": gin.H{
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"data_quality":     dataQuality,
+			"sources_available": sourcesAvailable,
+			"timestamp":        time.Now().UTC().Format(time.RFC3339),
 		},
 	})
 }
@@ -810,7 +838,7 @@ func (h *FundamentalsHandler) GetMetricHistory(c *gin.Context) {
 		if i+lookback < len(dataPoints) {
 			cur := dataPoints[i].Value
 			prev := dataPoints[i+lookback].Value
-			if cur != nil && prev != nil && *prev != 0 {
+			if cur != nil && prev != nil && math.Abs(*prev) > 1e-10 {
 				change := (*cur - *prev) / math.Abs(*prev)
 				dataPoints[i].YoYChange = &change
 			}
@@ -1236,11 +1264,11 @@ func computeTrend(dataPoints []models.MetricDataPoint, timeframe string) *models
 		}
 	}
 
-	// Simple slope: (newest - oldest) / periods
+	// Normalized slope: (newest - oldest) / periods / |oldest|
 	var slope *float64
 	first := dataPoints[len(dataPoints)-1].Value
 	last := dataPoints[0].Value
-	if first != nil && last != nil && *first != 0 {
+	if first != nil && last != nil && math.Abs(*first) > 1e-10 {
 		s := (*last - *first) / float64(len(dataPoints)-1) / math.Abs(*first)
 		slope = &s
 	}
