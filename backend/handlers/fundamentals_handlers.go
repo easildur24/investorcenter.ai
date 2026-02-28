@@ -490,7 +490,7 @@ func (h *FundamentalsHandler) GetFairValue(c *gin.Context) {
 			Ticker:            ticker,
 			CurrentPrice:      currentPrice,
 			Models:            fairValueModels,
-			AnalystConsensus:  analystConsensus,
+			FVAnalystConsensus: analystConsensus,
 			MarginOfSafety:    mos,
 			Suppressed:        suppressed,
 			SuppressionReason: suppressionReason,
