@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import TickerTabs, { TabSkeleton } from '@/components/ticker/TickerTabs';
 import TickerFundamentals from '@/components/ticker/TickerFundamentals';
+import PeerComparisonPanel from '@/components/ticker/PeerComparisonPanel';
 
 import RealTimePriceHeader from '@/components/ticker/RealTimePriceHeader';
 import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
@@ -209,6 +210,9 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               <div className="bg-ic-surface rounded-lg shadow">
                 <TickerFundamentals symbol={symbol} />
               </div>
+
+              {/* Peer Comparison */}
+              <PeerComparisonPanel ticker={symbol} />
             </div>
           </div>
         )}

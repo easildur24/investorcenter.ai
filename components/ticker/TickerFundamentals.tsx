@@ -11,6 +11,7 @@ import {
 import { useAuth } from '@/lib/auth/AuthContext';
 import { tickers, stocks } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
+import FairValueGauge from '@/components/ticker/FairValueGauge';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -616,6 +617,11 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
             />
           </div>
         </div>
+      </div>
+
+      {/* Fair Value Gauge */}
+      <div className="border-t border-ic-border mt-6 pt-2">
+        <FairValueGauge ticker={symbol} isPremium={user?.is_premium ?? false} />
       </div>
     </div>
   );
