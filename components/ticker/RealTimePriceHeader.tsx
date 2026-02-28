@@ -46,13 +46,17 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
   const [previousPrice, setPreviousPrice] = useState<string>(initialData.price.price);
   const [flashColor, setFlashColor] = useState<'green' | 'red' | null>(null);
 
-  const { priceData, error, session, regularClose, isMarketOpen, isCrypto, updateInterval } = useRealTimePrice({
-    symbol,
-    enabled: initialData.market.shouldUpdateRealtime,
-  });
+  const { priceData, error, session, regularClose, isMarketOpen, isCrypto, updateInterval } =
+    useRealTimePrice({
+      symbol,
+      enabled: initialData.market.shouldUpdateRealtime,
+    });
 
   // Use initial session from server data until first poll completes
-  const activeSession: MarketSession = session || (initialData.market.session as MarketSession) || (initialData.market.status === 'open' ? 'regular' : 'closed');
+  const activeSession: MarketSession =
+    session ||
+    (initialData.market.session as MarketSession) ||
+    (initialData.market.status === 'open' ? 'regular' : 'closed');
   const activeRegularClose = regularClose || initialData.market.regularClose || null;
   const isExtendedHours = activeSession === 'after_hours' || activeSession === 'pre_market';
 
@@ -197,9 +201,13 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
               </div>
             </div>
             {activeRegularClose.change && activeRegularClose.changePercent ? (
-              <div className={`flex items-center justify-end space-x-1 text-sm ${getPriceChangeColor(activeRegularClose.change)}`}>
+              <div
+                className={`flex items-center justify-end space-x-1 text-sm ${getPriceChangeColor(activeRegularClose.change)}`}
+              >
                 {getPriceChangeIcon(activeRegularClose.change)}
-                <span>{formatChange(activeRegularClose.change, activeRegularClose.changePercent)}</span>
+                <span>
+                  {formatChange(activeRegularClose.change, activeRegularClose.changePercent)}
+                </span>
               </div>
             ) : (
               <div className="text-sm text-ic-text-dim text-right">Previous close</div>
@@ -243,7 +251,9 @@ export default function RealTimePriceHeader({ symbol, initialData }: RealTimePri
               </div>
             </div>
 
-            <div className={`flex items-center justify-end space-x-1 text-sm ${getPriceChangeColor(currentPrice.change)}`}>
+            <div
+              className={`flex items-center justify-end space-x-1 text-sm ${getPriceChangeColor(currentPrice.change)}`}
+            >
               {getPriceChangeIcon(currentPrice.change)}
               <span>{formatChange(currentPrice.change, currentPrice.changePercent)}</span>
             </div>

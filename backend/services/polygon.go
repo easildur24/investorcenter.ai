@@ -1161,20 +1161,20 @@ type UnifiedSnapshotResponse struct {
 		Type         string `json:"type"`
 		MarketStatus string `json:"market_status"` // "open", "closed", "early_trading", "late_trading"
 		Session      struct {
-			Change                    float64 `json:"change"`
-			ChangePercent             float64 `json:"change_percent"`
-			Close                     float64 `json:"close"`
-			High                      float64 `json:"high"`
-			Low                       float64 `json:"low"`
-			Open                      float64 `json:"open"`
-			Volume                    float64 `json:"volume"`
-			PreviousClose             float64 `json:"previous_close"`
-			EarlyTradingChange        float64 `json:"early_trading_change"`
-			EarlyTradingChangePercent float64 `json:"early_trading_change_percent"`
-			RegularTradingChange      float64 `json:"regular_trading_change"`
+			Change                      float64 `json:"change"`
+			ChangePercent               float64 `json:"change_percent"`
+			Close                       float64 `json:"close"`
+			High                        float64 `json:"high"`
+			Low                         float64 `json:"low"`
+			Open                        float64 `json:"open"`
+			Volume                      float64 `json:"volume"`
+			PreviousClose               float64 `json:"previous_close"`
+			EarlyTradingChange          float64 `json:"early_trading_change"`
+			EarlyTradingChangePercent   float64 `json:"early_trading_change_percent"`
+			RegularTradingChange        float64 `json:"regular_trading_change"`
 			RegularTradingChangePercent float64 `json:"regular_trading_change_percent"`
-			LateTradingChange         float64 `json:"late_trading_change"`
-			LateTradingChangePercent  float64 `json:"late_trading_change_percent"`
+			LateTradingChange           float64 `json:"late_trading_change"`
+			LateTradingChangePercent    float64 `json:"late_trading_change_percent"`
 		} `json:"session"`
 		LastTrade struct {
 			Timestamp  int64   `json:"sip_timestamp"`
@@ -1195,19 +1195,19 @@ type UnifiedSnapshotResponse struct {
 
 // UnifiedSnapshotResult contains parsed session-aware price data
 type UnifiedSnapshotResult struct {
-	Symbol              string
-	MarketSession       string // "regular", "pre_market", "after_hours", "closed"
-	Price               decimal.Decimal
-	Change              decimal.Decimal
-	ChangePercent       decimal.Decimal
-	Volume              int64
-	Timestamp           time.Time
+	Symbol        string
+	MarketSession string // "regular", "pre_market", "after_hours", "closed"
+	Price         decimal.Decimal
+	Change        decimal.Decimal
+	ChangePercent decimal.Decimal
+	Volume        int64
+	Timestamp     time.Time
 	// Regular session close data (populated during extended hours)
-	RegularClosePrice   decimal.Decimal
-	RegularChange       decimal.Decimal
+	RegularClosePrice    decimal.Decimal
+	RegularChange        decimal.Decimal
 	RegularChangePercent decimal.Decimal
-	HasRegularClose     bool
-	PreviousClose       decimal.Decimal
+	HasRegularClose      bool
+	PreviousClose        decimal.Decimal
 }
 
 // GetUnifiedSnapshot fetches session-aware price data from Polygon v3 snapshot

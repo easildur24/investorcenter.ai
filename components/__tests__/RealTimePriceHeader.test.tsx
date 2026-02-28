@@ -104,6 +104,8 @@ describe('RealTimePriceHeader', () => {
     mockUseRealTimePrice.mockReturnValue({
       priceData: null,
       error: null,
+      session: 'regular',
+      regularClose: null,
       isMarketOpen: true,
       isCrypto: false,
       updateInterval: 15000,
@@ -118,12 +120,19 @@ describe('RealTimePriceHeader', () => {
     mockUseRealTimePrice.mockReturnValue({
       priceData: null,
       error: null,
+      session: 'closed',
+      regularClose: null,
       isMarketOpen: false,
       isCrypto: false,
       updateInterval: 15000,
     });
 
-    render(<RealTimePriceHeader symbol="AAPL" initialData={defaultInitialData} />);
+    const closedData = {
+      ...defaultInitialData,
+      market: { ...defaultInitialData.market, status: 'closed' },
+    };
+
+    render(<RealTimePriceHeader symbol="AAPL" initialData={closedData} />);
 
     expect(screen.getByText((content) => content.includes('Market Closed'))).toBeInTheDocument();
   });

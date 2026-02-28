@@ -182,7 +182,7 @@ func GetTicker(c *gin.Context) {
 					"timestamp":     priceData.Timestamp.Unix(),
 					"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
 				},
-				"market": buildInitialMarketResponse(c, isCrypto, marketStatus, shouldUpdateRealtime),
+				"market":       buildInitialMarketResponse(c, isCrypto, marketStatus, shouldUpdateRealtime),
 				"keyMetrics":   buildKeyMetrics(priceData, fundamentals, stock),
 				"fundamentals": fundamentals,
 			},

@@ -162,21 +162,23 @@ func TestIsCryptoAssetWithStock(t *testing.T) {
 
 func TestGetUpdateInterval(t *testing.T) {
 	tests := []struct {
-		name         string
-		isCrypto     bool
-		marketStatus string
-		want         int
+		name     string
+		isCrypto bool
+		session  string
+		want     int
 	}{
-		{"crypto always 5s", true, "open", 5},
+		{"crypto always 5s", true, "regular", 5},
 		{"crypto closed irrelevant", true, "closed", 5},
-		{"stock market open", false, "open", 5},
+		{"stock regular session", false, "regular", 5},
+		{"stock pre market", false, "pre_market", 15},
+		{"stock after hours", false, "after_hours", 15},
 		{"stock market closed", false, "closed", 300},
 		{"stock empty status", false, "", 300},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := getUpdateInterval(tt.isCrypto, tt.marketStatus)
+			got := getUpdateInterval(tt.isCrypto, tt.session)
 			assert.Equal(t, tt.want, got)
 		})
 	}
