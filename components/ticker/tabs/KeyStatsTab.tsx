@@ -3,6 +3,11 @@
 import { useState, useEffect } from 'react';
 import { tickers } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useSectorPercentiles } from '@/lib/hooks/useSectorPercentiles';
+import SectorPercentileBar, {
+  SectorPercentileBarSkeleton,
+} from '@/components/ui/SectorPercentileBar';
 
 interface KeyStatsTabProps {
   symbol: string;
@@ -92,6 +97,61 @@ function GroupCard({ title, children }: { title: string; children: React.ReactNo
         {title}
       </h3>
       {children}
+    </div>
+  );
+}
+
+// Free tier metrics (visible to all users for percentile bars)
+const FREE_TIER_PERCENTILE_METRICS = new Set([
+  'pe_ratio',
+  'roe',
+  'gross_margin',
+  'debt_to_equity',
+  'revenue_growth_yoy',
+  'current_ratio',
+]);
+
+// A metric row with an optional sector percentile bar below
+function PercentileMetricRow({
+  label,
+  value,
+  className = '',
+  percentileKey,
+}: {
+  label: string;
+  value: string;
+  className?: string;
+  percentileKey: string;
+}) {
+  const { user } = useAuth();
+  const isPremium = user?.is_premium ?? false;
+  const { data: percData, loading: percLoading, getMetricPercentile } = useSectorPercentiles();
+
+  const pData = getMetricPercentile(percentileKey);
+  const isFree = FREE_TIER_PERCENTILE_METRICS.has(percentileKey);
+
+  return (
+    <div>
+      <MetricRow label={label} value={value} className={className} />
+      {percLoading ? (
+        <div className="pb-1">
+          <SectorPercentileBarSkeleton size="md" />
+        </div>
+      ) : pData && percData ? (
+        <div className="pb-1">
+          <SectorPercentileBar
+            percentile={pData.percentile}
+            distribution={pData.distribution}
+            value={pData.value}
+            lowerIsBetter={pData.lower_is_better}
+            metricName={label}
+            sector={percData.sector}
+            sampleCount={pData.sample_count}
+            size="md"
+            visible={isFree || isPremium}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -207,17 +267,33 @@ export default function KeyStatsTab({ symbol }: KeyStatsTabProps) {
           <MetricRow label="Price" value={formatPrice(valuation.price)} />
           <MetricRow label="Market Cap" value={formatCurrency(valuation.market_cap)} />
           <MetricRow label="Enterprise Value" value={formatCurrency(valuation.enterprise_value)} />
-          <MetricRow label="P/E Ratio" value={formatRatio(valuation.pe_ratio)} />
+          <PercentileMetricRow
+            label="P/E Ratio"
+            value={formatRatio(valuation.pe_ratio)}
+            percentileKey="pe_ratio"
+          />
           <MetricRow label="Forward P/E" value={formatRatio(valuation.pe_ratio_forward)} />
           <MetricRow label="P/E Forward 1Y" value={formatRatio(valuation.pe_ratio_forward_1y)} />
           <MetricRow label="PEG Ratio" value={formatDec(valuation.peg_ratio)} />
-          <MetricRow label="P/S Ratio" value={formatRatio(valuation.ps_ratio)} />
+          <PercentileMetricRow
+            label="P/S Ratio"
+            value={formatRatio(valuation.ps_ratio)}
+            percentileKey="ps_ratio"
+          />
           <MetricRow label="P/S Forward" value={formatRatio(valuation.ps_ratio_forward)} />
           <MetricRow label="P/S Forward 1Y" value={formatRatio(valuation.ps_ratio_forward_1y)} />
-          <MetricRow label="P/B Ratio" value={formatRatio(valuation.price_to_book_value)} />
+          <PercentileMetricRow
+            label="P/B Ratio"
+            value={formatRatio(valuation.price_to_book_value)}
+            percentileKey="pb_ratio"
+          />
           <MetricRow label="P/FCF" value={formatRatio(valuation.price_to_free_cash_flow)} />
           <MetricRow label="EV/EBIT" value={formatRatio(valuation.ev_to_ebit)} />
-          <MetricRow label="EV/EBITDA" value={formatRatio(valuation.ev_to_ebitda)} />
+          <PercentileMetricRow
+            label="EV/EBITDA"
+            value={formatRatio(valuation.ev_to_ebitda)}
+            percentileKey="ev_ebitda"
+          />
           <MetricRow
             label="EV/EBITDA Forward"
             value={formatRatio(valuation.ev_to_ebitda_forward)}
@@ -310,17 +386,27 @@ export default function KeyStatsTab({ symbol }: KeyStatsTabProps) {
         {/* Profitability & Returns */}
         <GroupCard title="Profitability & Returns">
           <SectionHeader title="Margins" />
-          <MetricRow
+          <PercentileMetricRow
             label="Gross Profit Margin"
             value={formatPct(profitability.gross_profit_margin)}
+            percentileKey="gross_margin"
           />
-          <MetricRow
+          <PercentileMetricRow
             label="Operating Margin TTM"
             value={formatPct(profitability.operating_margin_ttm)}
+            percentileKey="operating_margin"
           />
           <SectionHeader title="Returns" />
-          <MetricRow label="Return on Equity" value={formatPct(earningsQuality.return_on_equity)} />
-          <MetricRow label="Return on Assets" value={formatPct(earningsQuality.return_on_assets)} />
+          <PercentileMetricRow
+            label="Return on Equity"
+            value={formatPct(earningsQuality.return_on_equity)}
+            percentileKey="roe"
+          />
+          <PercentileMetricRow
+            label="Return on Assets"
+            value={formatPct(earningsQuality.return_on_assets)}
+            percentileKey="roa"
+          />
           <MetricRow
             label="Return on Invested Capital"
             value={formatPct(earningsQuality.return_on_invested_capital)}
@@ -440,9 +526,17 @@ export default function KeyStatsTab({ symbol }: KeyStatsTabProps) {
 
         {/* Liquidity & Solvency */}
         <GroupCard title="Liquidity & Solvency">
-          <MetricRow label="Current Ratio" value={formatDec(liquidity.current_ratio)} />
+          <PercentileMetricRow
+            label="Current Ratio"
+            value={formatDec(liquidity.current_ratio)}
+            percentileKey="current_ratio"
+          />
           <MetricRow label="Quick Ratio" value={formatDec(liquidity.quick_ratio_quarterly)} />
-          <MetricRow label="Debt to Equity" value={formatDec(liquidity.debt_to_equity_ratio)} />
+          <PercentileMetricRow
+            label="Debt to Equity"
+            value={formatDec(liquidity.debt_to_equity_ratio)}
+            percentileKey="debt_to_equity"
+          />
           <MetricRow label="Altman Z-Score" value={formatDec(liquidity.altman_z_score_ttm)} />
           <MetricRow
             label="Free Cash Flow (Q)"

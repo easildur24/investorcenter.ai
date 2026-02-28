@@ -11,6 +11,10 @@ import {
 import { useAuth } from '@/lib/auth/AuthContext';
 import { tickers, stocks } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
+import { useSectorPercentiles } from '@/lib/hooks/useSectorPercentiles';
+import SectorPercentileBar, {
+  SectorPercentileBarSkeleton,
+} from '@/components/ui/SectorPercentileBar';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -188,6 +192,73 @@ function MetricValue({
   return <span className={`font-medium ${colorClass}`}>{displayValue}</span>;
 }
 
+// Mapping from display label to API metric key for sector percentiles
+const METRIC_KEY_MAP: Record<string, string> = {
+  'P/E Ratio': 'pe_ratio',
+  'Price/Book': 'pb_ratio',
+  'Price/Sales': 'ps_ratio',
+  ROE: 'roe',
+  ROA: 'roa',
+  'Gross Margin': 'gross_margin',
+  'Operating Margin': 'operating_margin',
+  'Net Margin': 'net_margin',
+  'Debt/Equity': 'debt_to_equity',
+  'Current Ratio': 'current_ratio',
+  'Revenue Growth': 'revenue_growth_yoy',
+  'Earnings Growth': 'eps_growth_yoy',
+};
+
+// Free tier metrics (visible to all users)
+const FREE_TIER_METRICS = new Set([
+  'pe_ratio',
+  'roe',
+  'gross_margin',
+  'debt_to_equity',
+  'revenue_growth_yoy',
+  'current_ratio',
+]);
+
+/**
+ * Renders a sector percentile bar for a metric in the sidebar.
+ * Handles loading/missing data gracefully.
+ */
+function SidebarPercentileBar({
+  metricLabel,
+  isPremium,
+}: {
+  metricLabel: string;
+  isPremium: boolean;
+}) {
+  const { data, loading, getMetricPercentile } = useSectorPercentiles();
+  const metricKey = METRIC_KEY_MAP[metricLabel];
+
+  if (!metricKey) return null;
+
+  if (loading) {
+    return <SectorPercentileBarSkeleton size="sm" />;
+  }
+
+  const percentileData = getMetricPercentile(metricKey);
+  if (!percentileData || !data) return null;
+
+  const isFree = FREE_TIER_METRICS.has(metricKey);
+  const visible = isFree || isPremium;
+
+  return (
+    <SectorPercentileBar
+      percentile={percentileData.percentile}
+      distribution={percentileData.distribution}
+      value={percentileData.value}
+      lowerIsBetter={percentileData.lower_is_better}
+      metricName={metricLabel}
+      sector={data.sector}
+      sampleCount={percentileData.sample_count}
+      size="sm"
+      visible={visible}
+    />
+  );
+}
+
 export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) {
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null);
   const [keyMetrics, setKeyMetrics] = useState<KeyMetrics | null>(null);
@@ -197,9 +268,10 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   const [icScoreDataDate, setIcScoreDataDate] = useState<string | null>(null);
   const [debugSources, setDebugSources] = useState<DebugSources | null>(null);
 
-  // Get admin status from auth context
+  // Get admin status and premium status from auth context
   const { user } = useAuth();
   const isAdmin = user?.is_admin ?? false;
+  const isPremium = user?.is_premium ?? false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -428,35 +500,44 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           Valuation
         </h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">P/E Ratio</span>
-            <MetricValue
-              value={fundamentals.pe}
-              metricType="valuation"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.pe_ratio}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">P/E Ratio</span>
+              <MetricValue
+                value={fundamentals.pe}
+                metricType="valuation"
+                formatter={(v) => safeToFixed(v, 1)}
+                dataSource={debugSources?.pe_ratio}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="P/E Ratio" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Price/Book</span>
-            <MetricValue
-              value={fundamentals.pb}
-              metricType="valuation"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.pb_ratio}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Price/Book</span>
+              <MetricValue
+                value={fundamentals.pb}
+                metricType="valuation"
+                formatter={(v) => safeToFixed(v, 1)}
+                dataSource={debugSources?.pb_ratio}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Price/Book" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Price/Sales</span>
-            <MetricValue
-              value={fundamentals.ps}
-              metricType="valuation"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.ps_ratio}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Price/Sales</span>
+              <MetricValue
+                value={fundamentals.ps}
+                metricType="valuation"
+                formatter={(v) => safeToFixed(v, 1)}
+                dataSource={debugSources?.ps_ratio}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Price/Sales" isPremium={isPremium} />
           </div>
         </div>
       </div>
@@ -467,45 +548,57 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           Profitability
         </h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">ROE</span>
-            <MetricValue
-              value={fundamentals.roe}
-              metricType="ratio"
-              formatter={formatPercent}
-              dataSource={debugSources?.roe}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">ROE</span>
+              <MetricValue
+                value={fundamentals.roe}
+                metricType="ratio"
+                formatter={formatPercent}
+                dataSource={debugSources?.roe}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="ROE" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">ROA</span>
-            <MetricValue
-              value={fundamentals.roa}
-              metricType="ratio"
-              formatter={formatPercent}
-              dataSource={debugSources?.roa}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">ROA</span>
+              <MetricValue
+                value={fundamentals.roa}
+                metricType="ratio"
+                formatter={formatPercent}
+                dataSource={debugSources?.roa}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="ROA" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Gross Margin</span>
-            <MetricValue
-              value={fundamentals.grossMargin}
-              metricType="margin"
-              formatter={formatPercent}
-              dataSource={debugSources?.gross_margin}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Gross Margin</span>
+              <MetricValue
+                value={fundamentals.grossMargin}
+                metricType="margin"
+                formatter={formatPercent}
+                dataSource={debugSources?.gross_margin}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Gross Margin" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Net Margin</span>
-            <MetricValue
-              value={fundamentals.netMargin}
-              metricType="margin"
-              formatter={formatPercent}
-              dataSource={debugSources?.net_margin}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Net Margin</span>
+              <MetricValue
+                value={fundamentals.netMargin}
+                metricType="margin"
+                formatter={formatPercent}
+                dataSource={debugSources?.net_margin}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Net Margin" isPremium={isPremium} />
           </div>
         </div>
       </div>
@@ -516,25 +609,31 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           Financial Health
         </h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Debt/Equity</span>
-            <MetricValue
-              value={fundamentals.debtToEquity}
-              metricType="debt"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.debt_to_equity}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Debt/Equity</span>
+              <MetricValue
+                value={fundamentals.debtToEquity}
+                metricType="debt"
+                formatter={(v) => safeToFixed(v, 1)}
+                dataSource={debugSources?.debt_to_equity}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Debt/Equity" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Current Ratio</span>
-            <MetricValue
-              value={fundamentals.currentRatio}
-              metricType="ratio"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.current_ratio}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Current Ratio</span>
+              <MetricValue
+                value={fundamentals.currentRatio}
+                metricType="ratio"
+                formatter={(v) => safeToFixed(v, 1)}
+                dataSource={debugSources?.current_ratio}
+                isAdmin={isAdmin}
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Current Ratio" isPremium={isPremium} />
           </div>
         </div>
       </div>
@@ -556,31 +655,37 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
               }
             />
           </div>
-          <div className="flex justify-between">
-            <span className="text-ic-text-muted">Revenue Growth</span>
-            <MetricValue
-              value={keyMetrics.revenueGrowth1Y}
-              metricType="growth"
-              formatter={formatPercent}
-              colorClass={
-                safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0
-                  ? 'text-ic-positive'
-                  : 'text-ic-negative'
-              }
-            />
+          <div>
+            <div className="flex justify-between">
+              <span className="text-ic-text-muted">Revenue Growth</span>
+              <MetricValue
+                value={keyMetrics.revenueGrowth1Y}
+                metricType="growth"
+                formatter={formatPercent}
+                colorClass={
+                  safeParseNumber(keyMetrics.revenueGrowth1Y) >= 0
+                    ? 'text-ic-positive'
+                    : 'text-ic-negative'
+                }
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Revenue Growth" isPremium={isPremium} />
           </div>
-          <div className="flex justify-between">
-            <span className="text-ic-text-muted">Earnings Growth</span>
-            <MetricValue
-              value={keyMetrics.earningsGrowth1Y}
-              metricType="growth"
-              formatter={formatPercent}
-              colorClass={
-                safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0
-                  ? 'text-ic-positive'
-                  : 'text-ic-negative'
-              }
-            />
+          <div>
+            <div className="flex justify-between">
+              <span className="text-ic-text-muted">Earnings Growth</span>
+              <MetricValue
+                value={keyMetrics.earningsGrowth1Y}
+                metricType="growth"
+                formatter={formatPercent}
+                colorClass={
+                  safeParseNumber(keyMetrics.earningsGrowth1Y) >= 0
+                    ? 'text-ic-positive'
+                    : 'text-ic-negative'
+                }
+              />
+            </div>
+            <SidebarPercentileBar metricLabel="Earnings Growth" isPremium={isPremium} />
           </div>
         </div>
       </div>

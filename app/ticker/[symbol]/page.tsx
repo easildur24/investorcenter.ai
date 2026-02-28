@@ -7,6 +7,7 @@ import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
 import ICScoreCard from '@/components/ic-score/ICScoreCard';
 import SentimentCard from '@/components/sentiment/SentimentCard';
+import SectorPercentilesWrapper from '@/components/ticker/SectorPercentilesWrapper';
 import XPostsFeed, { XPostsFeedSkeleton } from '@/components/ticker/XPostsFeed';
 import OverviewTab from '@/components/ticker/tabs/OverviewTab';
 import TechnicalTab from '@/components/ticker/tabs/TechnicalTab';
@@ -150,67 +151,73 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
           />
         ) : (
           /* Stock layout with tabbed interface */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Left Column - Tabbed Content */}
-            <div className="lg:col-span-2">
-              <Suspense fallback={<TabSkeleton />}>
-                <TickerTabs symbol={symbol} tabs={stockTabs} defaultTab="overview">
-                  {/* Overview Tab */}
-                  <OverviewTab symbol={symbol} chartData={chartData} currentPrice={currentPrice} />
+          <SectorPercentilesWrapper ticker={symbol}>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Tabbed Content */}
+              <div className="lg:col-span-2">
+                <Suspense fallback={<TabSkeleton />}>
+                  <TickerTabs symbol={symbol} tabs={stockTabs} defaultTab="overview">
+                    {/* Overview Tab */}
+                    <OverviewTab
+                      symbol={symbol}
+                      chartData={chartData}
+                      currentPrice={currentPrice}
+                    />
 
-                  {/* Sentiment Tab */}
-                  <SentimentTab symbol={symbol} />
+                    {/* Sentiment Tab */}
+                    <SentimentTab symbol={symbol} />
 
-                  {/* Technical Tab */}
-                  <TechnicalTab symbol={symbol} />
+                    {/* Technical Tab */}
+                    <TechnicalTab symbol={symbol} />
 
-                  {/* Risk Tab */}
-                  <RiskTab symbol={symbol} />
+                    {/* Risk Tab */}
+                    <RiskTab symbol={symbol} />
 
-                  {/* Financials Tab */}
-                  <FinancialsTab symbol={symbol} />
+                    {/* Financials Tab */}
+                    <FinancialsTab symbol={symbol} />
 
-                  {/* Earnings Tab */}
-                  <EarningsTab symbol={symbol} />
+                    {/* Earnings Tab */}
+                    <EarningsTab symbol={symbol} />
 
-                  {/* Metrics Tab */}
-                  <MetricsTab symbol={symbol} />
+                    {/* Metrics Tab */}
+                    <MetricsTab symbol={symbol} />
 
-                  {/* Ownership Tab */}
-                  <OwnershipTab symbol={symbol} />
+                    {/* Ownership Tab */}
+                    <OwnershipTab symbol={symbol} />
 
-                  {/* Key Stats Tab */}
-                  <KeyStatsTab symbol={symbol} />
+                    {/* Key Stats Tab */}
+                    <KeyStatsTab symbol={symbol} />
 
-                  {/* Input Tab */}
-                  <InputTab symbol={symbol} />
-                </TickerTabs>
-              </Suspense>
-            </div>
+                    {/* Input Tab */}
+                    <InputTab symbol={symbol} />
+                  </TickerTabs>
+                </Suspense>
+              </div>
 
-            {/* Right Column - X Posts, IC Score, Sentiment, Fundamentals and Analysis */}
-            <div className="space-y-8">
-              {/* X Posts Feed */}
-              <Suspense fallback={<XPostsFeedSkeleton />}>
-                <XPostsFeed ticker={symbol} />
-              </Suspense>
+              {/* Right Column - X Posts, IC Score, Sentiment, Fundamentals and Analysis */}
+              <div className="space-y-8">
+                {/* X Posts Feed */}
+                <Suspense fallback={<XPostsFeedSkeleton />}>
+                  <XPostsFeed ticker={symbol} />
+                </Suspense>
 
-              {/* IC Score Analysis */}
-              <Suspense fallback={<ICScoreSkeleton />}>
-                <ICScoreCard ticker={symbol} variant="compact" />
-              </Suspense>
+                {/* IC Score Analysis */}
+                <Suspense fallback={<ICScoreSkeleton />}>
+                  <ICScoreCard ticker={symbol} variant="compact" />
+                </Suspense>
 
-              {/* Social Sentiment Analysis */}
-              <Suspense fallback={<SentimentSkeleton />}>
-                <SentimentCard ticker={symbol} variant="compact" />
-              </Suspense>
+                {/* Social Sentiment Analysis */}
+                <Suspense fallback={<SentimentSkeleton />}>
+                  <SentimentCard ticker={symbol} variant="compact" />
+                </Suspense>
 
-              {/* Comprehensive Key Metrics */}
-              <div className="bg-ic-surface rounded-lg shadow">
-                <TickerFundamentals symbol={symbol} />
+                {/* Comprehensive Key Metrics */}
+                <div className="bg-ic-surface rounded-lg shadow">
+                  <TickerFundamentals symbol={symbol} />
+                </div>
               </div>
             </div>
-          </div>
+          </SectorPercentilesWrapper>
         )}
       </div>
     </div>

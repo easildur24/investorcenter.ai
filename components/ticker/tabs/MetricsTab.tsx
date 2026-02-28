@@ -38,6 +38,21 @@ import {
   MetricDisplayConfig,
 } from '@/types/metrics';
 import { getComprehensiveMetrics } from '@/lib/api/metrics';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useSectorPercentiles } from '@/lib/hooks/useSectorPercentiles';
+import SectorPercentileBar, {
+  SectorPercentileBarSkeleton,
+} from '@/components/ui/SectorPercentileBar';
+
+// Free tier metrics (visible to all users for percentile bars)
+const FREE_TIER_PERCENTILE_METRICS = new Set([
+  'pe_ratio',
+  'roe',
+  'gross_margin',
+  'debt_to_equity',
+  'revenue_growth_yoy',
+  'current_ratio',
+]);
 
 interface MetricsTabProps {
   symbol: string;
@@ -212,6 +227,7 @@ function ValuationSection({
               description:
                 'Uses trailing 12-month diluted EPS. Price updates real-time; EPS updates quarterly after earnings. Source: FMP',
             }}
+            percentileKey="pe_ratio"
           />
           <MetricCard
             label="Forward P/E"
@@ -245,6 +261,7 @@ function ValuationSection({
               formula: 'Share Price / Book Value Per Share',
               description: 'Compares market value to accounting value',
             }}
+            percentileKey="pb_ratio"
           />
         </div>
       </div>
@@ -264,6 +281,7 @@ function ValuationSection({
               formula: 'Market Cap / Total Revenue',
               description: 'Useful for unprofitable companies',
             }}
+            percentileKey="ps_ratio"
           />
           <MetricCard
             label="P/FCF"
@@ -284,6 +302,7 @@ function ValuationSection({
               formula: 'Enterprise Value / EBITDA',
               description: 'Capital structure-neutral valuation',
             }}
+            percentileKey="ev_ebitda"
           />
           <MetricCard
             label="EV/Sales"
@@ -426,6 +445,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
               description: 'Measures production efficiency',
             }}
             colorByValue
+            percentileKey="gross_margin"
           />
           <MetricCard
             label="Operating Margin"
@@ -437,6 +457,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
               description: 'Profit from core operations',
             }}
             colorByValue
+            percentileKey="operating_margin"
           />
           <MetricCard
             label="Net Margin"
@@ -448,6 +469,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
               description: 'Bottom line profitability',
             }}
             colorByValue
+            percentileKey="net_margin"
           />
           <MetricCard
             label="EBITDA Margin"
@@ -522,6 +544,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
                 'Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP',
             }}
             colorByValue
+            percentileKey="roe"
           />
           <MetricCard
             label="ROA"
@@ -533,6 +556,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
               description: 'How efficiently assets generate profit',
             }}
             colorByValue
+            percentileKey="roa"
           />
           <MetricCard
             label="ROIC"
@@ -586,6 +610,7 @@ function FinancialHealthSection({
               formula: 'Current Assets / Current Liabilities',
               description: '>1 indicates ability to pay short-term debts',
             }}
+            percentileKey="current_ratio"
           />
           <MetricCard
             label="Quick Ratio"
@@ -636,6 +661,7 @@ function FinancialHealthSection({
               formula: 'Total Debt / Shareholders Equity',
               description: 'Lower ratio = less financial risk',
             }}
+            percentileKey="debt_to_equity"
           />
           <MetricCard
             label="Debt/Assets"
@@ -667,6 +693,7 @@ function FinancialHealthSection({
               formula: 'EBIT / Interest Expense',
               description: 'Ability to pay interest on debt',
             }}
+            percentileKey="interest_coverage"
           />
         </div>
       </div>
@@ -855,6 +882,7 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
               description: 'Change in revenue vs prior year',
             }}
             colorByValue
+            percentileKey="revenue_growth_yoy"
           />
           <MetricCard
             label="EPS Growth"
@@ -866,6 +894,7 @@ function GrowthSection({ growth }: { growth: GrowthMetrics }) {
               description: 'Change in earnings per share vs prior year',
             }}
             colorByValue
+            percentileKey="eps_growth_yoy"
           />
           <MetricCard
             label="Net Income Growth"
@@ -1711,6 +1740,8 @@ interface MetricCardProps {
   colorByValue?: boolean;
   interpretation?: string | null;
   interpretationColorFn?: (interp: string | null) => string;
+  /** API key for sector percentile data (e.g. 'pe_ratio', 'roe') */
+  percentileKey?: string;
 }
 
 function MetricCard({
@@ -1724,7 +1755,11 @@ function MetricCard({
   colorByValue = false,
   interpretation,
   interpretationColorFn,
+  percentileKey,
 }: MetricCardProps) {
+  const { user } = useAuth();
+  const isPremium = user?.is_premium ?? false;
+  const { data: percData, loading: percLoading, getMetricPercentile } = useSectorPercentiles();
   const formatValue = () => {
     if (value === null || value === undefined) return '—';
     if (typeof value === 'string' && format === 'text') return value;
@@ -1803,6 +1838,29 @@ function MetricCard({
       ) : (
         valueContent
       )}
+      {/* Sector Percentile Bar */}
+      {percentileKey &&
+        (() => {
+          if (percLoading) return <SectorPercentileBarSkeleton size="md" />;
+          const pData = getMetricPercentile(percentileKey);
+          if (!pData || !percData) return null;
+          const isFree = FREE_TIER_PERCENTILE_METRICS.has(percentileKey);
+          return (
+            <div className="mt-2">
+              <SectorPercentileBar
+                percentile={pData.percentile}
+                distribution={pData.distribution}
+                value={pData.value}
+                lowerIsBetter={pData.lower_is_better}
+                metricName={label}
+                sector={percData.sector}
+                sampleCount={pData.sample_count}
+                size="md"
+                visible={isFree || isPremium}
+              />
+            </div>
+          );
+        })()}
     </div>
   );
 }
