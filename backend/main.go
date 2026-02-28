@@ -158,6 +158,21 @@ func main() {
 			stocks.GET("/:ticker/financials/cashflow", financialsHandler.GetCashFlowStatements) // Get cash flow statements
 			stocks.GET("/:ticker/financials/ratios", financialsHandler.GetRatios)               // Get financial ratios
 			stocks.POST("/:ticker/financials/refresh", financialsHandler.RefreshFinancials)     // Refresh financial data
+
+			// Fundamentals enhancement endpoints (Project 1) — optional auth for tier detection
+			fundamentalsHandler := handlers.NewFundamentalsHandler()
+			stocks.GET("/:ticker/sector-percentiles", auth.OptionalAuthMiddleware(), fundamentalsHandler.GetSectorPercentiles) // Sector percentile distributions
+			stocks.GET("/:ticker/health-summary", auth.OptionalAuthMiddleware(), fundamentalsHandler.GetHealthSummary)         // Health badge + strengths/concerns
+		}
+
+		// Fundamentals premium endpoints (Project 1) — auth required
+		stocksFundamentals := v1.Group("/stocks")
+		stocksFundamentals.Use(auth.AuthMiddleware())
+		{
+			fh := handlers.NewFundamentalsHandler()
+			stocksFundamentals.GET("/:ticker/peers", fh.GetStockPeers)                          // Industry peer comparison
+			stocksFundamentals.GET("/:ticker/fair-value", fh.GetFairValue)                      // Fair value estimates (DCF, Graham, EPV)
+			stocksFundamentals.GET("/:ticker/metric-history/:metric", fh.GetMetricHistory)      // Historical metric time series
 		}
 
 		// IC Score Backtest endpoints

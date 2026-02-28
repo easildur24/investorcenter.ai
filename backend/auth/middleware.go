@@ -45,6 +45,37 @@ func AuthMiddleware() gin.HandlerFunc {
 	}
 }
 
+// OptionalAuthMiddleware extracts user info from JWT if present but does not reject
+// unauthenticated requests. Handlers check c.GetString("user_id") to determine tier.
+// Empty string = unauthenticated/free tier.
+func OptionalAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
+			c.Next()
+			return
+		}
+
+		parts := strings.SplitN(authHeader, " ", 2)
+		if len(parts) != 2 || parts[0] != "Bearer" {
+			c.Next()
+			return
+		}
+
+		claims, err := ValidateToken(parts[1])
+		if err != nil {
+			// Token invalid/expired — treat as unauthenticated, don't block
+			c.Next()
+			return
+		}
+
+		c.Set("user_id", claims.UserID)
+		c.Set("user_email", claims.Email)
+		c.Set("is_admin", claims.IsAdmin)
+		c.Next()
+	}
+}
+
 // GetUserIDFromContext retrieves user ID from Gin context (set by AuthMiddleware)
 func GetUserIDFromContext(c *gin.Context) (string, bool) {
 	userID, exists := c.Get("user_id")
