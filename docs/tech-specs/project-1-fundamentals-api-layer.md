@@ -44,7 +44,19 @@ This project exposes existing backend-computed data — sector percentiles, peer
 
 ## 3. New API Endpoints
 
-All endpoints are **public** (no auth required) and registered under the existing `stocks` group in `main.go`:
+### Authentication Tiers
+
+Endpoints are split across two authentication levels to balance discoverability (SEO, free-tier value) with premium gating:
+
+| Endpoint | Auth Level | Rationale |
+|---|---|---|
+| `sector-percentiles` | **Optional auth** (`OptionalAuthMiddleware`) | Free tier gets 6 core metrics; premium gets all. Auth needed to determine tier. Unauthenticated users get the free set. |
+| `health-summary` | **Optional auth** | Free tier gets badge + lifecycle + 2 strengths/concerns + high-severity flags. Premium gets full details. Publicly visible for SEO. |
+| `peers` | **Auth required** (`AuthMiddleware`) | Premium-only feature. Requires user context for subscription check. |
+| `fair-value` | **Auth required** | Premium-only feature. Contains investment-grade analysis that drives conversion. |
+| `metric-history` | **Auth required** | Premium-only feature. Powers sparklines and history charts. |
+
+**Why not all public?** Three reasons: (1) Premium endpoints are the core conversion drivers — gating them behind auth lets us enforce subscription limits server-side rather than relying on client-side checks that can be bypassed. (2) The `peers` and `fair-value` endpoints make external API calls (FMP) per request — auth prevents anonymous abuse that would burn through our API quota. (3) User context enables server-side feature flag evaluation, analytics attribution, and A/B testing.
 
 ```go
 stocks := v1.Group("/stocks")
@@ -129,26 +141,67 @@ for _, sp := range percentiles {
 
 ### 3.2 `GET /api/v1/stocks/:ticker/peers`
 
-**Purpose:** Return top 5 peers with comparison metrics for side-by-side display.
+**Purpose:** Return top 5 industry peers with comparison metrics for side-by-side display.
 
 **Handler:** `handlers.GetStockPeers`
 
 **Query Params:**
 - `limit` (optional, default 5, max 10)
 
+#### Peer Selection Algorithm — Industry-Standard Approach
+
+> **Review note:** The previous approach used our proprietary 5-factor IC Score similarity algorithm (`stock_peers` table). Per feedback, we should follow the industry standard used by Yahoo Finance, Bloomberg, Finviz, and Morningstar.
+
+**Industry-standard peer selection works in 3 tiers:**
+
+1. **Primary: Sub-industry classification (GICS / SIC codes)**
+   - Match stocks within the same GICS sub-industry (e.g., "Semiconductors" not just "Technology")
+   - This is how Bloomberg and FactSet define peer groups
+   - Data source: FMP's `stock_peers` endpoint or our `tickers.sub_industry` column
+
+2. **Secondary: Market cap proximity filter**
+   - Filter to companies between 0.25x and 4x the target stock's market cap
+   - Prevents comparing Apple ($2.8T) with a $500M small-cap in the same sub-industry
+   - This is how Morningstar and S&P Capital IQ narrow peer groups
+
+3. **Tertiary: Sort by market cap proximity**
+   - Among remaining candidates, rank by closeness in market cap to the target
+   - Return the top N (default 5)
+
 **Implementation:**
 
 ```go
-// 1. Get peers with IC Scores (existing function)
-peers, err := database.GetStockPeersWithScores(ticker, limit)
+// 1. Get the stock's sub-industry and market cap
+stock, err := database.GetStockBySymbol(ticker)
+subIndustry := stock.SubIndustry  // e.g., "Consumer Electronics"
+marketCap := stock.MarketCap
 
-// 2. For each peer, fetch key comparison metrics
+// 2. Query stocks in the same sub-industry within market cap range
+peers, err := database.GetIndustryPeers(subIndustry, marketCap, limit)
+// SQL: SELECT * FROM tickers
+//      WHERE sub_industry = $1
+//        AND symbol != $2
+//        AND market_cap BETWEEN $3 * 0.25 AND $3 * 4.0
+//      ORDER BY ABS(market_cap - $3) ASC
+//      LIMIT $4
+
+// 3. Fallback: if sub-industry yields < 3 peers, widen to industry level
+if len(peers) < 3 {
+    peers, err = database.GetIndustryPeers(stock.Industry, marketCap, limit)
+}
+
+// 4. For each peer, fetch key comparison metrics
 //    (P/E, ROE, Revenue Growth, Net Margin, D/E, Market Cap)
-//    from fmpClient or comprehensive metrics cache
 
-// 3. Get stock's own metrics for comparison
-// 4. Return enriched response
+// 5. Optionally include IC Score if available (as supplementary data, not selection criteria)
+
+// 6. Get stock's own metrics for comparison
+// 7. Return enriched response
 ```
+
+**Why not use IC Score similarity for peer selection?** IC Score is our proprietary quality ranking — two stocks can have similar IC Scores but be in completely different industries (e.g., a high-scoring REIT and a high-scoring tech company). Users expect peers to be **business competitors**, not quality-score neighbors. IC Scores can still be displayed alongside peers as supplementary data.
+
+**FMP Peer Data as Alternative Source:** FMP provides a `GET /v4/stock_peers?symbol=AAPL` endpoint that returns industry peers. We can use this as a data source if our sub-industry classification coverage is incomplete, and cache the results in a `stock_industry_peers` table.
 
 **Response Schema:**
 
@@ -156,12 +209,13 @@ peers, err := database.GetStockPeersWithScores(ticker, limit)
 {
   "ticker": "AAPL",
   "ic_score": 78.5,
+  "sub_industry": "Consumer Electronics",
   "peers": [
     {
       "ticker": "MSFT",
       "company_name": "Microsoft Corporation",
       "ic_score": 82.1,
-      "similarity_score": 0.87,
+      "sub_industry": "Systems Software",
       "metrics": {
         "pe_ratio": 33.2,
         "roe": 38.5,
@@ -183,17 +237,20 @@ peers, err := database.GetStockPeersWithScores(ticker, limit)
   "avg_peer_score": 75.3,
   "vs_peers_delta": 3.2,
   "meta": {
-    "similarity_algorithm": "5-factor (market_cap, revenue_growth, net_margin, pe_ratio, beta)",
+    "peer_selection": "sub-industry (GICS) + market cap proximity",
+    "peer_source": "internal_classification",
     "timestamp": "2026-02-28T12:00:00Z"
   }
 }
 ```
 
-**Existing DB Functions Used:**
-- `database.GetStockPeersWithScores(ticker, limit)` (already exists in `database/ic_score_phase3.go`)
-- `database.GetPeerComparisonSummary(ticker)` (already exists)
+**New DB Functions Required:**
+- `database.GetIndustryPeers(subIndustry, marketCap, limit)` — query `tickers` by sub-industry + market cap range
+- May need a new `stock_industry_peers` cache table if using FMP's peer endpoint
 
-**New Code:** ~120 LOC handler enrichment (fetching comparison metrics per peer)
+**Migration:** The existing `stock_peers` table (IC Score similarity) remains for IC Score pipeline use. The new peer endpoint uses industry classification instead.
+
+**New Code:** ~150 LOC handler + ~60 LOC DB queries
 
 ---
 
@@ -202,6 +259,37 @@ peers, err := database.GetStockPeersWithScores(ticker, limit)
 **Purpose:** Return computed fair value estimates (DCF, Graham Number, EPV) with margin of safety calculation.
 
 **Handler:** `handlers.GetFairValue`
+
+#### Valuation Model Algorithms
+
+Each model uses a different approach to estimate intrinsic value. These are well-established academic/industry methods — not proprietary formulas — used by analysts at Goldman Sachs, Morningstar, and similar firms.
+
+**1. Discounted Cash Flow (DCF) — "What are the future cash flows worth today?"**
+- **Formula:** Fair Value = Σ(FCFₜ / (1 + WACC)ᵗ) + Terminal Value / (1 + WACC)ⁿ
+- **Inputs:** Free Cash Flow TTM, WACC (weighted average cost of capital), terminal growth rate (typically 2-3%), projection period (10 years)
+- **Source:** Our IC Score pipeline computes this in `fair_value_calculator.py` and stores in `fundamental_metrics_extended.dcf_fair_value`
+- **Accuracy:** Most sensitive to WACC and terminal growth assumptions. ±1% change in WACC can swing fair value 20-30%. Best for mature, cash-flow-positive companies. **Not reliable for pre-profit or hypergrowth companies** (suppressed in those cases).
+- **Confidence:** High for stable FCF companies (utilities, consumer staples), Medium for cyclicals, Low/suppressed for pre-profit
+
+**2. Graham Number — "What would Benjamin Graham pay?"**
+- **Formula:** √(22.5 × EPS_TTM × Book_Value_Per_Share)
+- **Inputs:** Trailing 12-month EPS, Book Value Per Share (from balance sheet)
+- **Source:** FMP API `ratios-ttm` endpoint provides this directly as `grahamNumberTTM`
+- **Accuracy:** Conservative by design — Graham intended this as a ceiling price for defensive investors. Tends to undervalue growth companies significantly (ignores future growth entirely). Works well for value/income stocks.
+- **Confidence:** High (simple, few inputs), but systematically conservative
+
+**3. Earnings Power Value (EPV) — "What is the company worth at current earnings, no growth?"**
+- **Formula:** EPV = Adjusted_Earnings / WACC
+- **Inputs:** Normalized operating earnings (adjusted for one-time items), WACC
+- **Source:** IC Score pipeline computes this in `fair_value_calculator.py`, stored in `fundamental_metrics_extended.epv_fair_value`
+- **Accuracy:** Assumes zero growth, which makes it a conservative baseline. The gap between EPV and DCF represents the market's implied growth premium. Useful for identifying how much of the price is "paying for growth."
+- **Confidence:** Medium (depends on earnings normalization quality)
+
+**Important caveats surfaced to the user:**
+- Fair value models are **estimates, not price targets**. They provide directional signal, not precision.
+- Models disagree with each other by design — they capture different aspects of value.
+- The `margin_of_safety.zone` field is directional: undervalued/fairly_valued/overvalued within ±15% bands.
+- Models are **suppressed** (not shown) for companies where inputs are unreliable: pre-revenue, negative earnings, negative book value.
 
 **Implementation:**
 
@@ -220,6 +308,7 @@ price, err := polygonClient.GetQuote(ticker)
 estimates, err := fmpClient.GetAnalystEstimates(ticker)
 
 // 5. Calculate margin of safety for each model
+// 6. Determine suppression: suppress if EPS < 0, BVPS < 0, or FCF < 0 for 4+ Qs
 ```
 
 **Response Schema:**
@@ -281,6 +370,28 @@ estimates, err := fmpClient.GetAnalystEstimates(ticker)
 **Purpose:** Return a synthesized fundamental health assessment combining multiple quality signals.
 
 **Handler:** `handlers.GetHealthSummary`
+
+#### What Does the Health Summary Indicate?
+
+The health summary answers a single question: **"Is this company financially stable and well-managed?"**
+
+It is **not** a buy/sell signal or a price prediction. Instead, it assesses the underlying financial quality of the business across four dimensions:
+
+| Dimension | Signal | What It Tells the User |
+|---|---|---|
+| **Piotroski F-Score** (0-9) | Accounting-based quality | Are profitability, leverage, and operating efficiency improving or deteriorating? A score of 7+ means fundamentals are strengthening. |
+| **Altman Z-Score** | Bankruptcy risk | How likely is this company to face financial distress in the next 2 years? >2.99 = safe, <1.81 = distress zone. |
+| **IC Financial Health Score** (0-100) | Composite balance sheet quality | How strong is the balance sheet relative to sector peers? Considers current ratio, D/E, interest coverage, cash flow. |
+| **Debt Percentile** | Leverage vs. sector | How leveraged is this company compared to its sector? High leverage isn't always bad (REITs, utilities) — context matters. |
+
+**The badge (Strong/Healthy/Fair/Weak/Distressed)** is a composite of these four signals designed to be immediately actionable:
+- **Strong/Healthy:** User can focus on valuation and growth — financial quality is not a concern
+- **Fair:** Some areas need attention — user should look at specific concerns
+- **Weak/Distressed:** Financial quality is a risk — user should investigate red flags before investing
+
+**Strengths and concerns** are auto-generated from sector percentile rankings. A "strength" is any metric where the stock ranks in the top quartile (≥75th percentile) of its sector. A "concern" is bottom quartile (≤25th percentile).
+
+**Red flags** are rule-based alerts for specific dangerous patterns (unsustainable dividends, cash burn, earnings quality issues) that percentile bars alone wouldn't surface.
 
 **Implementation:**
 
@@ -372,7 +483,25 @@ redFlags := detectRedFlags(metrics, percentiles, lifecycle)
 }
 ```
 
-**Health Badge Algorithm:**
+**Health Badge Algorithm — Mathematical vs. Agent Approach:**
+
+> **Design decision:** Should the health badge and narrative be computed mathematically (deterministic formula) or generated by an LLM agent that interprets the raw data?
+
+| Criteria | Mathematical (Deterministic) | LLM Agent |
+|---|---|---|
+| **Consistency** | Same inputs always → same output. Users see stable badge across refreshes. | May vary between calls. "Strong" could become "Healthy" on retry. |
+| **Latency** | <5ms computation | 500-2000ms per LLM call |
+| **Cost** | Zero marginal cost | ~$0.002-0.01 per call (at scale: significant) |
+| **Auditability** | Formula is transparent, testable, debuggable | Black box — hard to explain why badge changed |
+| **Nuance** | Rigid — can't weigh context like "REITs typically have high D/E" | Can incorporate qualitative reasoning and sector-specific context |
+| **Narrative quality** | Template-based: "Net margin ranks in top 10% of Technology sector" | Natural language: "Apple's profitability stands out even among tech giants, with margins that suggest strong pricing power" |
+
+**Recommendation: Hybrid approach — mathematical badge + agent-generated narrative (Phase 2)**
+
+- **Phase 1 (this project):** Use the deterministic formula below for the badge, score, strengths, concerns, and red flags. This gives us a fast, testable, consistent foundation.
+- **Phase 2 (future):** Add an optional `narrative` field generated by an LLM agent that produces a 2-3 sentence natural language summary (e.g., "Apple is in strong financial health with industry-leading margins, though its leverage is worth monitoring..."). This would be cached (regenerated daily, not per-request) to control cost and latency. The badge remains mathematical — the agent only produces the prose.
+
+**Phase 1 Deterministic Algorithm:**
 
 ```go
 func computeHealthBadge(fScore int, zScore float64, icHealth float64, dePercentile float64) string {
@@ -402,6 +531,21 @@ func computeHealthBadge(fScore int, zScore float64, icHealth float64, dePercenti
     default: return "Distressed"
     }
 }
+```
+
+**Phase 2 Agent Narrative (future — not in this project's scope):**
+
+```go
+// Cached daily per ticker, not computed per-request
+type HealthNarrative struct {
+    Ticker     string    `json:"ticker"`
+    Summary    string    `json:"summary"`     // 2-3 sentence LLM-generated prose
+    GeneratedAt time.Time `json:"generated_at"`
+}
+
+// Response would include:
+// "narrative": "Apple is in strong financial health with industry-leading margins..."
+// Only regenerated when underlying data changes (daily IC Score pipeline run)
 ```
 
 **Red Flag Rules (implemented server-side):**
@@ -517,22 +661,31 @@ var metricStatementMap = map[string]struct {
 
 ## 4. Route Registration
 
-Add to `backend/main.go` inside the existing `stocks` group:
+Add to `backend/main.go`. Split across two groups based on auth requirements:
 
 ```go
 stocks := v1.Group("/stocks")
 {
     // ... existing routes ...
 
-    // Fundamentals enhancement endpoints (Project 1)
+    // Fundamentals: public endpoints (optional auth for tier detection)
     fundamentalsHandler := handlers.NewFundamentalsHandler()
-    stocks.GET("/:ticker/sector-percentiles", fundamentalsHandler.GetSectorPercentiles)
-    stocks.GET("/:ticker/peers", fundamentalsHandler.GetStockPeers)
-    stocks.GET("/:ticker/fair-value", fundamentalsHandler.GetFairValue)
-    stocks.GET("/:ticker/health-summary", fundamentalsHandler.GetHealthSummary)
-    stocks.GET("/:ticker/metric-history/:metric", fundamentalsHandler.GetMetricHistory)
+    stocks.GET("/:ticker/sector-percentiles", auth.OptionalAuthMiddleware(), fundamentalsHandler.GetSectorPercentiles)
+    stocks.GET("/:ticker/health-summary", auth.OptionalAuthMiddleware(), fundamentalsHandler.GetHealthSummary)
+}
+
+// Fundamentals: premium endpoints (auth required)
+fundamentalsPremium := v1.Group("/stocks")
+fundamentalsPremium.Use(auth.AuthMiddleware())
+{
+    fundamentalsHandler := handlers.NewFundamentalsHandler()
+    fundamentalsPremium.GET("/:ticker/peers", fundamentalsHandler.GetStockPeers)
+    fundamentalsPremium.GET("/:ticker/fair-value", fundamentalsHandler.GetFairValue)
+    fundamentalsPremium.GET("/:ticker/metric-history/:metric", fundamentalsHandler.GetMetricHistory)
 }
 ```
+
+**Note:** `OptionalAuthMiddleware` extracts user info from the JWT if present but does not reject unauthenticated requests. The handler checks `c.GetString("user_id")` to determine tier. If empty → free tier defaults.
 
 ## 5. Frontend Route Registration
 
