@@ -357,11 +357,11 @@ func (h *FundamentalsHandler) GetFairValue(c *gin.Context) {
 
 	// Fetch fair value metrics from DB and FMP data in parallel
 	var (
-		dbFairValue      *models.FairValueMetrics
-		fmpRatios        *FMPRatiosTTMWrapper
-		priceTarget      *PriceTargetWrapper
-		dbErr, fmpErr    error
-		ptErr            error
+		dbFairValue   *models.FairValueMetrics
+		fmpRatios     *FMPRatiosTTMWrapper
+		priceTarget   *PriceTargetWrapper
+		dbErr, fmpErr error
+		ptErr         error
 	)
 
 	var wg sync.WaitGroup
@@ -487,13 +487,13 @@ func (h *FundamentalsHandler) GetFairValue(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": models.FairValueResponse{
-			Ticker:            ticker,
-			CurrentPrice:      currentPrice,
-			Models:            fairValueModels,
+			Ticker:             ticker,
+			CurrentPrice:       currentPrice,
+			Models:             fairValueModels,
 			FVAnalystConsensus: analystConsensus,
-			MarginOfSafety:    mos,
-			Suppressed:        suppressed,
-			SuppressionReason: suppressionReason,
+			MarginOfSafety:     mos,
+			Suppressed:         suppressed,
+			SuppressionReason:  suppressionReason,
 		},
 		"meta": gin.H{
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
@@ -730,9 +730,9 @@ func (h *FundamentalsHandler) GetHealthSummary(c *gin.Context) {
 			RedFlags:  redFlags,
 		},
 		"meta": gin.H{
-			"data_quality":     dataQuality,
+			"data_quality":      dataQuality,
 			"sources_available": sourcesAvailable,
-			"timestamp":        time.Now().UTC().Format(time.RFC3339),
+			"timestamp":         time.Now().UTC().Format(time.RFC3339),
 		},
 	})
 }

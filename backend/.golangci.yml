@@ -1,17 +1,28 @@
+version: "2"
+
 run:
   timeout: 5m
   tests: false
 
 linters:
+  default: none
   enable:
     - errcheck
-    - gosimple
     - govet
     - ineffassign
     - staticcheck
     - unused
-  disable:
-    - gosec     # Enable later once existing issues are triaged
+  settings:
+    errcheck:
+      exclude-functions:
+        - "(*database/sql.Rows).Close"
+        - "(*database/sql.Stmt).Close"
+        - "(*github.com/jmoiron/sqlx.DB).Close"
+    staticcheck:
+      checks:
+        - "all"
+        - "-QF*"
+        - "-ST*"
 
 issues:
   max-issues-per-linter: 0

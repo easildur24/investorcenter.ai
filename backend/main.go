@@ -170,9 +170,9 @@ func main() {
 		stocksFundamentals.Use(auth.AuthMiddleware())
 		{
 			fh := handlers.NewFundamentalsHandler()
-			stocksFundamentals.GET("/:ticker/peers", fh.GetStockPeers)                          // Industry peer comparison
-			stocksFundamentals.GET("/:ticker/fair-value", fh.GetFairValue)                      // Fair value estimates (DCF, Graham, EPV)
-			stocksFundamentals.GET("/:ticker/metric-history/:metric", fh.GetMetricHistory)      // Historical metric time series
+			stocksFundamentals.GET("/:ticker/peers", fh.GetStockPeers)                     // Industry peer comparison
+			stocksFundamentals.GET("/:ticker/fair-value", fh.GetFairValue)                 // Fair value estimates (DCF, Graham, EPV)
+			stocksFundamentals.GET("/:ticker/metric-history/:metric", fh.GetMetricHistory) // Historical metric time series
 		}
 
 		// IC Score Backtest endpoints

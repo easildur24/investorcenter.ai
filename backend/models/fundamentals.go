@@ -19,9 +19,9 @@ type PercentileDistribution struct {
 type MetricPercentileData struct {
 	Value         *float64                `json:"value"`
 	Percentile    *float64                `json:"percentile"`
-	LowerIsBetter bool                   `json:"lower_is_better"`
+	LowerIsBetter bool                    `json:"lower_is_better"`
 	Distribution  *PercentileDistribution `json:"distribution"`
-	SampleCount   *int                   `json:"sample_count"`
+	SampleCount   *int                    `json:"sample_count"`
 }
 
 // SectorPercentilesResponse is the full response for GET /stocks/:ticker/sector-percentiles
@@ -95,13 +95,13 @@ type MarginOfSafety struct {
 
 // FairValueResponse is the full response for GET /stocks/:ticker/fair-value
 type FairValueResponse struct {
-	Ticker            string                     `json:"ticker"`
-	CurrentPrice      *float64                   `json:"current_price"`
-	Models            map[string]*FairValueModel `json:"models"`
-	FVAnalystConsensus  *FVAnalystConsensus           `json:"analyst_consensus,omitempty"`
-	MarginOfSafety    *MarginOfSafety            `json:"margin_of_safety"`
-	Suppressed        bool                       `json:"suppressed"`
-	SuppressionReason *string                    `json:"suppression_reason,omitempty"`
+	Ticker             string                     `json:"ticker"`
+	CurrentPrice       *float64                   `json:"current_price"`
+	Models             map[string]*FairValueModel `json:"models"`
+	FVAnalystConsensus *FVAnalystConsensus        `json:"analyst_consensus,omitempty"`
+	MarginOfSafety     *MarginOfSafety            `json:"margin_of_safety"`
+	Suppressed         bool                       `json:"suppressed"`
+	SuppressionReason  *string                    `json:"suppression_reason,omitempty"`
 }
 
 // ============================================================================
