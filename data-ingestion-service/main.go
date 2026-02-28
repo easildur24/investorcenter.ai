@@ -12,6 +12,7 @@ import (
 	"data-ingestion-service/auth"
 	"data-ingestion-service/database"
 	"data-ingestion-service/handlers"
+	"data-ingestion-service/handlers/x"
 	"data-ingestion-service/handlers/ycharts"
 	"data-ingestion-service/storage"
 	"github.com/gin-contrib/cors"
@@ -86,6 +87,9 @@ func main() {
 		ingestRoutes.POST("/ycharts/analyst_estimates/:ticker", ycharts.PostAnalystEstimates)
 		ingestRoutes.POST("/ycharts/valuation/:ticker", ycharts.PostValuation)
 		ingestRoutes.POST("/ycharts/performance/:ticker", ycharts.PostPerformance)
+
+		// X (Twitter) endpoints
+		ingestRoutes.POST("/x/ticker_posts/:ticker", x.PostTickerPosts)
 	}
 
 	// Admin routes — list and view ingestion records

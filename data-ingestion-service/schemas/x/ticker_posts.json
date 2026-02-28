@@ -1,0 +1,112 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://investorcenter.ai/schemas/x/ticker_posts.json",
+  "title": "X (Twitter) Ticker Posts",
+  "description": "Recent posts from X/Twitter mentioning a stock ticker. URL: https://x.com/search?q=%24{TICKER}",
+  "type": "object",
+  "required": ["ticker", "as_of_date", "source_url", "posts"],
+  "additionalProperties": false,
+  "properties": {
+    "ticker": {
+      "type": "string",
+      "description": "Stock ticker symbol (e.g. AAPL)"
+    },
+    "as_of_date": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "description": "Date when posts were captured (YYYY-MM-DD)"
+    },
+    "source_url": {
+      "type": "string",
+      "format": "uri",
+      "maxLength": 2000,
+      "description": "X search URL that was scraped"
+    },
+    "search_query": {
+      "type": ["string", "null"],
+      "description": "Search query used (e.g. $AAPL)"
+    },
+    "post_count": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "description": "Total number of posts captured"
+    },
+    "posts": {
+      "type": "array",
+      "description": "Array of captured posts",
+      "items": {
+        "type": "object",
+        "required": ["content"],
+        "properties": {
+          "author_handle": {
+            "type": ["string", "null"],
+            "description": "Author's @handle (e.g. @elonmusk)"
+          },
+          "author_name": {
+            "type": ["string", "null"],
+            "description": "Author's display name"
+          },
+          "author_verified": {
+            "type": ["boolean", "null"],
+            "description": "Whether the author has a verified badge"
+          },
+          "author_followers": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Author's follower count (if visible)"
+          },
+          "content": {
+            "type": "string",
+            "description": "Full text content of the post"
+          },
+          "timestamp": {
+            "type": ["string", "null"],
+            "description": "Post timestamp (ISO 8601 or relative like '2h')"
+          },
+          "likes": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of likes"
+          },
+          "reposts": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of reposts/retweets"
+          },
+          "replies": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of replies"
+          },
+          "views": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of views"
+          },
+          "bookmarks": {
+            "type": ["integer", "null"],
+            "minimum": 0,
+            "description": "Number of bookmarks"
+          },
+          "post_url": {
+            "type": ["string", "null"],
+            "format": "uri",
+            "description": "Direct URL to the post"
+          },
+          "has_media": {
+            "type": ["boolean", "null"],
+            "description": "Whether the post contains images/video"
+          },
+          "is_repost": {
+            "type": ["boolean", "null"],
+            "description": "Whether this is a repost of another post"
+          },
+          "is_reply": {
+            "type": ["boolean", "null"],
+            "description": "Whether this is a reply to another post"
+          }
+        }
+      }
+    }
+  }
+}
