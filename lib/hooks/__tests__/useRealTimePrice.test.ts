@@ -73,6 +73,7 @@ describe('useRealTimePrice', () => {
           lastUpdated: '2026-02-13T16:00:00Z',
         },
         market: {
+          session: 'regular',
           isOpen: true,
           updateInterval: 15000,
         },

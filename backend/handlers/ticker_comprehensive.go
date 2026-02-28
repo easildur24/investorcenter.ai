@@ -82,16 +82,32 @@ func GetTicker(c *gin.Context) {
 		marketStatus = "open" // Crypto markets are always open
 		shouldUpdateRealtime = true
 	} else {
-		// For stocks, get price from Polygon
-		priceData, priceErr = polygonClient.GetQuote(symbol)
-
-		isOpen := polygonClient.IsMarketOpen()
-		if isOpen {
-			marketStatus = "open"
-			shouldUpdateRealtime = true
+		// For stocks, try unified snapshot first for session-aware data
+		snapshot, snapErr := polygonClient.GetUnifiedSnapshot(symbol)
+		if snapErr == nil {
+			// Use unified snapshot data
+			priceData = &models.StockPrice{
+				Symbol:        symbol,
+				Price:         snapshot.Price,
+				Change:        snapshot.Change,
+				ChangePercent: snapshot.ChangePercent,
+				Volume:        snapshot.Volume,
+				Timestamp:     snapshot.Timestamp,
+			}
+			marketStatus = snapshot.MarketSession
+			shouldUpdateRealtime = snapshot.MarketSession != "closed"
 		} else {
-			marketStatus = "closed"
-			shouldUpdateRealtime = false
+			// Fallback to v2 snapshot
+			log.Printf("Unified snapshot failed for %s: %v, using GetQuote", symbol, snapErr)
+			priceData, priceErr = polygonClient.GetQuote(symbol)
+			isOpen := polygonClient.IsMarketOpen()
+			if isOpen {
+				marketStatus = "regular"
+				shouldUpdateRealtime = true
+			} else {
+				marketStatus = "closed"
+				shouldUpdateRealtime = false
+			}
 		}
 
 		if priceErr != nil {
@@ -102,6 +118,9 @@ func GetTicker(c *gin.Context) {
 			})
 			return
 		}
+
+		// Store snapshot for response building
+		c.Set("unifiedSnapshot", snapshot)
 	}
 
 	// Get fundamentals from Polygon (nil if unavailable)
@@ -163,11 +182,7 @@ func GetTicker(c *gin.Context) {
 					"timestamp":     priceData.Timestamp.Unix(),
 					"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
 				},
-				"market": gin.H{
-					"status":               marketStatus,
-					"shouldUpdateRealtime": shouldUpdateRealtime,
-					"updateInterval":       getUpdateInterval(isCrypto, marketStatus),
-				},
+				"market": buildInitialMarketResponse(c, isCrypto, marketStatus, shouldUpdateRealtime),
 				"keyMetrics":   buildKeyMetrics(priceData, fundamentals, stock),
 				"fundamentals": fundamentals,
 			},
@@ -351,16 +366,48 @@ func isCryptoAssetWithStock(stock *models.Stock) bool {
 	return isCryptoAsset(stock.AssetType, stock.Symbol)
 }
 
-func getUpdateInterval(isCrypto bool, marketStatus string) int {
+func getUpdateInterval(isCrypto bool, session string) int {
 	if isCrypto {
 		return 5 // 5 seconds for crypto
 	}
 
-	if marketStatus == "open" {
+	switch session {
+	case "regular":
 		return 5 // 5 seconds during market hours
+	case "pre_market", "after_hours":
+		return 15 // 15 seconds during extended hours
+	default:
+		return 300 // 5 minutes when market is closed
+	}
+}
+
+// buildInitialMarketResponse creates the market section for the initial GetTicker response
+func buildInitialMarketResponse(c *gin.Context, isCrypto bool, marketStatus string, shouldUpdateRealtime bool) gin.H {
+	result := gin.H{
+		"status":               marketStatus,
+		"session":              marketStatus,
+		"shouldUpdateRealtime": shouldUpdateRealtime,
+		"updateInterval":       getUpdateInterval(isCrypto, marketStatus),
 	}
 
-	return 300 // 5 minutes when market is closed
+	// Include regularClose data from unified snapshot during extended hours
+	if !isCrypto {
+		if val, exists := c.Get("unifiedSnapshot"); exists && val != nil {
+			snapshot := val.(*services.UnifiedSnapshotResult)
+			if snapshot != nil && snapshot.HasRegularClose {
+				regularClose := gin.H{
+					"price": snapshot.RegularClosePrice.StringFixed(2),
+				}
+				if snapshot.MarketSession == "after_hours" {
+					regularClose["change"] = snapshot.RegularChange.StringFixed(2)
+					regularClose["changePercent"] = snapshot.RegularChangePercent.StringFixed(2)
+				}
+				result["regularClose"] = regularClose
+			}
+		}
+	}
+
+	return result
 }
 
 func getDataSource(isCrypto bool) string {
@@ -431,39 +478,82 @@ func GetTickerRealTimePrice(c *gin.Context) {
 
 	// Not crypto, use Polygon for stocks/ETFs
 	polygonClient := services.NewPolygonClient()
-	priceData, err := polygonClient.GetQuote(symbol)
 
+	// Try unified snapshot first (provides session-aware data)
+	snapshot, err := polygonClient.GetUnifiedSnapshot(symbol)
 	if err != nil {
-		log.Printf("Polygon API error for %s: %v", symbol, err)
-		// Return a more graceful error response
-		c.JSON(http.StatusNotFound, gin.H{
-			"error":   "Price not available",
-			"symbol":  symbol,
-			"message": "This ticker is not currently tracked",
+		log.Printf("Unified snapshot failed for %s: %v, falling back to GetQuote", symbol, err)
+		// Fallback to v2 snapshot
+		priceData, fallbackErr := polygonClient.GetQuote(symbol)
+		if fallbackErr != nil {
+			log.Printf("Polygon API error for %s: %v", symbol, fallbackErr)
+			c.JSON(http.StatusNotFound, gin.H{
+				"error":   "Price not available",
+				"symbol":  symbol,
+				"message": "This ticker is not currently tracked",
+			})
+			return
+		}
+		isOpen := polygonClient.IsMarketOpen()
+		session := "closed"
+		if isOpen {
+			session = "regular"
+		}
+		c.JSON(http.StatusOK, gin.H{
+			"data": gin.H{
+				"symbol":        symbol,
+				"price":         priceData.Price.String(),
+				"change":        priceData.Change.String(),
+				"changePercent": priceData.ChangePercent.String(),
+				"volume":        priceData.Volume,
+				"timestamp":     priceData.Timestamp.Unix(),
+				"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
+			},
+			"market": gin.H{
+				"session":        session,
+				"isOpen":         isOpen,
+				"updateInterval": getUpdateInterval(false, session),
+			},
+			"meta": gin.H{
+				"timestamp": time.Now().UTC(),
+			},
 		})
 		return
 	}
 
-	log.Printf("Success! Got price for %s: %s", symbol, priceData.Price.String())
+	log.Printf("Unified snapshot for %s: session=%s price=%s", symbol, snapshot.MarketSession, snapshot.Price.String())
 
-	// Check if market is currently open
-	isOpen := polygonClient.IsMarketOpen()
+	// Build market response
+	marketData := gin.H{
+		"session":        snapshot.MarketSession,
+		"isOpen":         snapshot.MarketSession == "regular",
+		"updateInterval": getUpdateInterval(false, snapshot.MarketSession),
+	}
 
-	// Return price data directly in ApiClient format
+	// Include regular close data during extended hours
+	if snapshot.HasRegularClose {
+		regularClose := gin.H{
+			"price": snapshot.RegularClosePrice.StringFixed(2),
+		}
+		// Include change data for after-hours (we have regular session change)
+		if snapshot.MarketSession == "after_hours" {
+			regularClose["change"] = snapshot.RegularChange.StringFixed(2)
+			regularClose["changePercent"] = snapshot.RegularChangePercent.StringFixed(2)
+		}
+		marketData["regularClose"] = regularClose
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"data": gin.H{
 			"symbol":        symbol,
-			"price":         priceData.Price.String(),
-			"change":        priceData.Change.String(),
-			"changePercent": priceData.ChangePercent.String(),
-			"volume":        priceData.Volume,
-			"timestamp":     priceData.Timestamp.Unix(),
-			"lastUpdated":   priceData.Timestamp.Format(time.RFC3339),
+			"price":         snapshot.Price.StringFixed(2),
+			"change":        snapshot.Change.StringFixed(2),
+			"changePercent": snapshot.ChangePercent.StringFixed(2),
+			"volume":        snapshot.Volume,
+			"timestamp":     snapshot.Timestamp.Unix(),
+			"lastUpdated":   snapshot.Timestamp.Format(time.RFC3339),
 		},
-		"market": gin.H{
-			"isOpen":         isOpen,
-			"updateInterval": getUpdateInterval(false, map[bool]string{true: "open", false: "closed"}[isOpen]),
-		},
+		"market": marketData,
 		"meta": gin.H{
 			"timestamp": time.Now().UTC(),
 		},

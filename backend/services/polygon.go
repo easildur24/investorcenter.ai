@@ -1151,6 +1151,185 @@ type StockSnapshotResponse struct {
 	} `json:"ticker"`
 }
 
+// UnifiedSnapshotResponse represents the Polygon v3 unified snapshot API response
+type UnifiedSnapshotResponse struct {
+	RequestID string `json:"request_id"`
+	Status    string `json:"status"`
+	Results   []struct {
+		Ticker       string `json:"ticker"`
+		Name         string `json:"name"`
+		Type         string `json:"type"`
+		MarketStatus string `json:"market_status"` // "open", "closed", "early_trading", "late_trading"
+		Session      struct {
+			Change                    float64 `json:"change"`
+			ChangePercent             float64 `json:"change_percent"`
+			Close                     float64 `json:"close"`
+			High                      float64 `json:"high"`
+			Low                       float64 `json:"low"`
+			Open                      float64 `json:"open"`
+			Volume                    float64 `json:"volume"`
+			PreviousClose             float64 `json:"previous_close"`
+			EarlyTradingChange        float64 `json:"early_trading_change"`
+			EarlyTradingChangePercent float64 `json:"early_trading_change_percent"`
+			RegularTradingChange      float64 `json:"regular_trading_change"`
+			RegularTradingChangePercent float64 `json:"regular_trading_change_percent"`
+			LateTradingChange         float64 `json:"late_trading_change"`
+			LateTradingChangePercent  float64 `json:"late_trading_change_percent"`
+		} `json:"session"`
+		LastTrade struct {
+			Timestamp  int64   `json:"sip_timestamp"`
+			Price      float64 `json:"price"`
+			Size       float64 `json:"size"`
+			Exchange   int     `json:"exchange"`
+			Conditions []int   `json:"conditions"`
+		} `json:"last_trade"`
+		LastQuote struct {
+			Timestamp int64   `json:"sip_timestamp"`
+			Bid       float64 `json:"bid"`
+			Ask       float64 `json:"ask"`
+			BidSize   float64 `json:"bid_size"`
+			AskSize   float64 `json:"ask_size"`
+		} `json:"last_quote"`
+	} `json:"results"`
+}
+
+// UnifiedSnapshotResult contains parsed session-aware price data
+type UnifiedSnapshotResult struct {
+	Symbol              string
+	MarketSession       string // "regular", "pre_market", "after_hours", "closed"
+	Price               decimal.Decimal
+	Change              decimal.Decimal
+	ChangePercent       decimal.Decimal
+	Volume              int64
+	Timestamp           time.Time
+	// Regular session close data (populated during extended hours)
+	RegularClosePrice   decimal.Decimal
+	RegularChange       decimal.Decimal
+	RegularChangePercent decimal.Decimal
+	HasRegularClose     bool
+	PreviousClose       decimal.Decimal
+}
+
+// GetUnifiedSnapshot fetches session-aware price data from Polygon v3 snapshot
+func (p *PolygonClient) GetUnifiedSnapshot(symbol string) (*UnifiedSnapshotResult, error) {
+	url := fmt.Sprintf("%s/v3/snapshot?ticker.any_of=%s&apikey=%s",
+		PolygonBaseURL, strings.ToUpper(symbol), p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch unified snapshot: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unified snapshot API returned status %d", resp.StatusCode)
+	}
+
+	var snapshotResp UnifiedSnapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode unified snapshot: %w", err)
+	}
+
+	if len(snapshotResp.Results) == 0 {
+		return nil, fmt.Errorf("no snapshot data for symbol %s", symbol)
+	}
+
+	ticker := snapshotResp.Results[0]
+	session := ticker.Session
+
+	// Map Polygon market_status to our session names
+	marketSession := mapMarketStatus(ticker.MarketStatus)
+
+	// Use last trade price as current price
+	currentPrice := ticker.LastTrade.Price
+	if currentPrice == 0 {
+		currentPrice = session.Close
+	}
+	if currentPrice == 0 {
+		currentPrice = session.PreviousClose
+	}
+
+	// Parse timestamp
+	var timestamp time.Time
+	if ticker.LastTrade.Timestamp > 0 {
+		timestamp = time.Unix(0, ticker.LastTrade.Timestamp) // SIP timestamp is nanoseconds
+	} else {
+		timestamp = time.Now()
+	}
+
+	result := &UnifiedSnapshotResult{
+		Symbol:        strings.ToUpper(symbol),
+		MarketSession: marketSession,
+		Volume:        int64(session.Volume),
+		Timestamp:     timestamp,
+		PreviousClose: decimal.NewFromFloat(session.PreviousClose),
+	}
+
+	switch marketSession {
+	case "after_hours":
+		// Regular close = previous_close + regular_trading_change
+		regularClose := session.PreviousClose + session.RegularTradingChange
+		result.RegularClosePrice = decimal.NewFromFloat(regularClose)
+		result.RegularChange = decimal.NewFromFloat(session.RegularTradingChange)
+		result.RegularChangePercent = decimal.NewFromFloat(session.RegularTradingChangePercent)
+		result.HasRegularClose = true
+		// Extended price and change from regular close
+		result.Price = decimal.NewFromFloat(currentPrice)
+		result.Change = decimal.NewFromFloat(session.LateTradingChange)
+		result.ChangePercent = decimal.NewFromFloat(session.LateTradingChangePercent)
+
+	case "pre_market":
+		// Previous close is the reference
+		result.RegularClosePrice = decimal.NewFromFloat(session.PreviousClose)
+		result.HasRegularClose = true
+		// Extended price and change from previous close
+		result.Price = decimal.NewFromFloat(currentPrice)
+		result.Change = decimal.NewFromFloat(session.EarlyTradingChange)
+		result.ChangePercent = decimal.NewFromFloat(session.EarlyTradingChangePercent)
+
+	case "closed":
+		// When market is closed, check if after-hours trading happened
+		// (late_trading_change != 0 means AH session had trades)
+		if session.LateTradingChange != 0 {
+			// Show as after_hours with the AH data
+			result.MarketSession = "after_hours"
+			regularClose := session.PreviousClose + session.RegularTradingChange
+			result.RegularClosePrice = decimal.NewFromFloat(regularClose)
+			result.RegularChange = decimal.NewFromFloat(session.RegularTradingChange)
+			result.RegularChangePercent = decimal.NewFromFloat(session.RegularTradingChangePercent)
+			result.HasRegularClose = true
+			result.Price = decimal.NewFromFloat(currentPrice)
+			result.Change = decimal.NewFromFloat(session.LateTradingChange)
+			result.ChangePercent = decimal.NewFromFloat(session.LateTradingChangePercent)
+		} else {
+			result.Price = decimal.NewFromFloat(currentPrice)
+			result.Change = decimal.NewFromFloat(session.Change)
+			result.ChangePercent = decimal.NewFromFloat(session.ChangePercent)
+		}
+
+	default: // "regular"
+		result.Price = decimal.NewFromFloat(currentPrice)
+		result.Change = decimal.NewFromFloat(session.Change)
+		result.ChangePercent = decimal.NewFromFloat(session.ChangePercent)
+	}
+
+	return result, nil
+}
+
+// mapMarketStatus converts Polygon's market_status to our session names
+func mapMarketStatus(status string) string {
+	switch status {
+	case "open":
+		return "regular"
+	case "early_trading":
+		return "pre_market"
+	case "late_trading":
+		return "after_hours"
+	default:
+		return "closed"
+	}
+}
+
 // GetCryptoRealTimePrice fetches real-time crypto price using snapshot API
 // BulkStockSnapshotResponse represents the bulk stocks snapshot API response
 type BulkStockSnapshotResponse struct {

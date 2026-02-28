@@ -17,34 +17,19 @@ interface PriceData {
   lastUpdated: string;
 }
 
-// Check if US stock market is currently open (9:30 AM - 4:00 PM EST, Mon-Fri)
-function isMarketCurrentlyOpen(): boolean {
-  const now = new Date();
+export type MarketSession = 'regular' | 'pre_market' | 'after_hours' | 'closed';
 
-  // Convert to Eastern Time
-  const estTime = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
-
-  // Check if it's a weekday (0 = Sunday, 6 = Saturday)
-  const day = estTime.getDay();
-  if (day === 0 || day === 6) {
-    return false;
-  }
-
-  // Market hours: 9:30 AM - 4:00 PM EST
-  const hours = estTime.getHours();
-  const minutes = estTime.getMinutes();
-  const timeInMinutes = hours * 60 + minutes;
-
-  const marketOpenMinutes = 9 * 60 + 30; // 9:30 AM
-  const marketCloseMinutes = 16 * 60; // 4:00 PM
-
-  return timeInMinutes >= marketOpenMinutes && timeInMinutes < marketCloseMinutes;
+interface RegularCloseData {
+  price: string;
+  change?: string;
+  changePercent?: string;
 }
 
 export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePriceProps) {
   const [priceData, setPriceData] = useState<PriceData | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isMarketOpen, setIsMarketOpen] = useState(isMarketCurrentlyOpen);
+  const [session, setSession] = useState<MarketSession>('closed');
+  const [regularClose, setRegularClose] = useState<RegularCloseData | null>(null);
   const [isCrypto, setIsCrypto] = useState(false);
   const [updateInterval, setUpdateInterval] = useState(5000);
   const intervalRef = useRef<NodeJS.Timeout>();
@@ -54,7 +39,6 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
 
     const fetchPrice = async () => {
       try {
-        // Single endpoint handles both stocks (Polygon) and crypto (Redis)
         const response = await fetch(`${API_BASE_URL}${tickers.price(symbol)}`);
 
         if (!response.ok) {
@@ -65,7 +49,25 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
         const isCryptoAsset = result.data.assetType === 'crypto';
 
         setIsCrypto(isCryptoAsset);
-        setIsMarketOpen(isCryptoAsset ? true : (result.market?.isOpen ?? false));
+
+        // Parse session from backend
+        const backendSession = result.market?.session as MarketSession | undefined;
+        if (isCryptoAsset) {
+          setSession('regular');
+        } else if (backendSession) {
+          setSession(backendSession);
+        } else {
+          // Fallback for old response format
+          setSession(result.market?.isOpen ? 'regular' : 'closed');
+        }
+
+        // Parse regular close data (present during extended hours)
+        if (result.market?.regularClose) {
+          setRegularClose(result.market.regularClose);
+        } else {
+          setRegularClose(null);
+        }
+
         // API returns updateInterval in seconds — convert to ms with a 1s safety floor
         const rawInterval = isCryptoAsset ? 5 : (result.market?.updateInterval ?? 15);
         setUpdateInterval(Math.max(rawInterval * 1000, 1000));
@@ -100,7 +102,9 @@ export function useRealTimePrice({ symbol, enabled = true }: UseRealTimePricePro
   return {
     priceData,
     error,
-    isMarketOpen,
+    session,
+    regularClose,
+    isMarketOpen: session === 'regular',
     isCrypto,
     updateInterval,
   };

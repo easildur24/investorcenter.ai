@@ -51,6 +51,8 @@ beforeEach(() => {
   mockUseRealTimePrice.mockReturnValue({
     priceData: null,
     error: null,
+    session: 'regular',
+    regularClose: null,
     isMarketOpen: true,
     isCrypto: false,
     updateInterval: 15000,
