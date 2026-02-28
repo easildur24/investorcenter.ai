@@ -11,6 +11,10 @@ import {
 import { useAuth } from '@/lib/auth/AuthContext';
 import { tickers, stocks } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
+import TrendSparkline from '@/components/ui/TrendSparkline';
+import MetricHistoryChart from '@/components/ticker/MetricHistoryChart';
+import { useSparklineData } from '@/lib/hooks/useSparklineData';
+import { SPARKLINE_METRICS } from '@/lib/types/fundamentals';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -188,6 +192,18 @@ function MetricValue({
   return <span className={`font-medium ${colorClass}`}>{displayValue}</span>;
 }
 
+// Sparkline metric key to sidebar metric key mapping
+const SIDEBAR_SPARKLINE_METRICS = SPARKLINE_METRICS.filter((m) => m.surfaces.includes('sidebar'));
+
+// Map from metric display name to sparkline metric key
+const SIDEBAR_METRIC_MAP: Record<string, string> = {
+  ROE: 'roe',
+  'Gross Margin': 'gross_margin',
+  'Net Margin': 'net_margin',
+  'Debt/Equity': 'debt_to_equity',
+  EPS: 'eps',
+};
+
 export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) {
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null);
   const [keyMetrics, setKeyMetrics] = useState<KeyMetrics | null>(null);
@@ -196,10 +212,15 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   const [dataFetchedAt, setDataFetchedAt] = useState<Date | null>(null);
   const [icScoreDataDate, setIcScoreDataDate] = useState<string | null>(null);
   const [debugSources, setDebugSources] = useState<DebugSources | null>(null);
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
 
   // Get admin status from auth context
   const { user } = useAuth();
   const isAdmin = user?.is_admin ?? false;
+  const isPremium = user?.is_premium ?? false;
+
+  // Fetch sparkline data for sidebar metrics
+  const { data: sparklineData, loading: sparklineLoading } = useSparklineData(symbol);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -411,6 +432,53 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
     );
   }
 
+  /** Render an inline sparkline for the given metric key (sidebar variant: 60x16). */
+  const renderSparkline = (metricKey: string) => {
+    const entry = sparklineData[metricKey];
+    const config = SPARKLINE_METRICS.find((m) => m.key === metricKey);
+    if (!entry || !config) {
+      // Fixed-size placeholder to prevent CLS
+      return <div style={{ width: 60, height: 16 }} />;
+    }
+
+    return (
+      <TrendSparkline
+        values={entry.values}
+        trend={entry.trend}
+        higherIsBetter={config.higherIsBetter}
+        width={60}
+        height={16}
+        hoverData={entry.hoverData}
+        metricLabel={config.label}
+        unit={config.unit}
+        consecutiveGrowthQuarters={entry.consecutiveGrowthQuarters}
+        visible={isPremium}
+        onClick={
+          isPremium
+            ? () => setExpandedMetric(expandedMetric === metricKey ? null : metricKey)
+            : undefined
+        }
+      />
+    );
+  };
+
+  /** Render the expanded MetricHistoryChart for a metric if it is currently expanded. */
+  const renderExpandedChart = (metricKey: string) => {
+    if (expandedMetric !== metricKey) return null;
+    const config = SPARKLINE_METRICS.find((m) => m.key === metricKey);
+    if (!config) return null;
+
+    return (
+      <MetricHistoryChart
+        ticker={symbol}
+        metric={metricKey}
+        metricLabel={config.label}
+        unit={config.unit}
+        onClose={() => setExpandedMetric(null)}
+      />
+    );
+  };
+
   return (
     <div className="p-6">
       <div className="flex items-center justify-between mb-6">
@@ -467,15 +535,21 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           Profitability
         </h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">ROE</span>
-            <MetricValue
-              value={fundamentals.roe}
-              metricType="ratio"
-              formatter={formatPercent}
-              dataSource={debugSources?.roe}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">ROE</span>
+              <div className="flex items-center gap-2">
+                {renderSparkline('roe')}
+                <MetricValue
+                  value={fundamentals.roe}
+                  metricType="ratio"
+                  formatter={formatPercent}
+                  dataSource={debugSources?.roe}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </div>
+            {renderExpandedChart('roe')}
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">ROA</span>
@@ -487,25 +561,37 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
               isAdmin={isAdmin}
             />
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Gross Margin</span>
-            <MetricValue
-              value={fundamentals.grossMargin}
-              metricType="margin"
-              formatter={formatPercent}
-              dataSource={debugSources?.gross_margin}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Gross Margin</span>
+              <div className="flex items-center gap-2">
+                {renderSparkline('gross_margin')}
+                <MetricValue
+                  value={fundamentals.grossMargin}
+                  metricType="margin"
+                  formatter={formatPercent}
+                  dataSource={debugSources?.gross_margin}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </div>
+            {renderExpandedChart('gross_margin')}
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Net Margin</span>
-            <MetricValue
-              value={fundamentals.netMargin}
-              metricType="margin"
-              formatter={formatPercent}
-              dataSource={debugSources?.net_margin}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Net Margin</span>
+              <div className="flex items-center gap-2">
+                {renderSparkline('net_margin')}
+                <MetricValue
+                  value={fundamentals.netMargin}
+                  metricType="margin"
+                  formatter={formatPercent}
+                  dataSource={debugSources?.net_margin}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </div>
+            {renderExpandedChart('net_margin')}
           </div>
         </div>
       </div>
@@ -516,15 +602,21 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
           Financial Health
         </h4>
         <div className="space-y-3">
-          <div className="flex justify-between items-center">
-            <span className="text-ic-text-muted">Debt/Equity</span>
-            <MetricValue
-              value={fundamentals.debtToEquity}
-              metricType="debt"
-              formatter={(v) => safeToFixed(v, 1)}
-              dataSource={debugSources?.debt_to_equity}
-              isAdmin={isAdmin}
-            />
+          <div>
+            <div className="flex justify-between items-center">
+              <span className="text-ic-text-muted">Debt/Equity</span>
+              <div className="flex items-center gap-2">
+                {renderSparkline('debt_to_equity')}
+                <MetricValue
+                  value={fundamentals.debtToEquity}
+                  metricType="debt"
+                  formatter={(v) => safeToFixed(v, 1)}
+                  dataSource={debugSources?.debt_to_equity}
+                  isAdmin={isAdmin}
+                />
+              </div>
+            </div>
+            {renderExpandedChart('debt_to_equity')}
           </div>
           <div className="flex justify-between items-center">
             <span className="text-ic-text-muted">Current Ratio</span>

@@ -38,6 +38,11 @@ import {
   MetricDisplayConfig,
 } from '@/types/metrics';
 import { getComprehensiveMetrics } from '@/lib/api/metrics';
+import { useAuth } from '@/lib/auth/AuthContext';
+import TrendSparkline from '@/components/ui/TrendSparkline';
+import MetricHistoryChart from '@/components/ticker/MetricHistoryChart';
+import { useSparklineData } from '@/lib/hooks/useSparklineData';
+import { SPARKLINE_METRICS, type SparklineDataMap } from '@/lib/types/fundamentals';
 
 interface MetricsTabProps {
   symbol: string;
@@ -69,6 +74,13 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
   const [activeCategory, setActiveCategory] = useState<MetricCategory>('valuation');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [expandedMetric, setExpandedMetric] = useState<string | null>(null);
+
+  const { user } = useAuth();
+  const isPremium = user?.is_premium ?? false;
+
+  // Fetch sparkline data for metrics tab
+  const { data: sparklineData } = useSparklineData(symbol);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -147,10 +159,25 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
           />
         )}
         {activeCategory === 'profitability' && (
-          <ProfitabilitySection profitability={data.data.profitability} />
+          <ProfitabilitySection
+            profitability={data.data.profitability}
+            sparklineData={sparklineData}
+            isPremium={isPremium}
+            expandedMetric={expandedMetric}
+            onToggleExpand={(key) => setExpandedMetric(expandedMetric === key ? null : key)}
+            ticker={symbol}
+          />
         )}
         {activeCategory === 'financial_health' && (
-          <FinancialHealthSection liquidity={data.data.liquidity} leverage={data.data.leverage} />
+          <FinancialHealthSection
+            liquidity={data.data.liquidity}
+            leverage={data.data.leverage}
+            sparklineData={sparklineData}
+            isPremium={isPremium}
+            expandedMetric={expandedMetric}
+            onToggleExpand={(key) => setExpandedMetric(expandedMetric === key ? null : key)}
+            ticker={symbol}
+          />
         )}
         {activeCategory === 'efficiency' && <EfficiencySection efficiency={data.data.efficiency} />}
         {activeCategory === 'growth' && <GrowthSection growth={data.data.growth} />}
@@ -407,7 +434,66 @@ function ValuationSection({
   );
 }
 
-function ProfitabilitySection({ profitability }: { profitability: ProfitabilityMetrics }) {
+/** Sparkline props passed to section components. */
+interface SectionSparklineProps {
+  sparklineData: SparklineDataMap;
+  isPremium: boolean;
+  expandedMetric: string | null;
+  onToggleExpand: (key: string) => void;
+  ticker: string;
+}
+
+/** Render a sparkline + expanded chart for a metric key in a MetricCard context. */
+function MetricSparklineRow({
+  metricKey,
+  sparklineData,
+  isPremium,
+  expandedMetric,
+  onToggleExpand,
+  ticker,
+}: SectionSparklineProps & { metricKey: string }) {
+  const entry = sparklineData[metricKey];
+  const config = SPARKLINE_METRICS.find((m) => m.key === metricKey);
+  if (!entry || !config) return null;
+
+  return (
+    <div className="mt-2">
+      <div className="flex items-center gap-1">
+        <TrendSparkline
+          values={entry.values}
+          trend={entry.trend}
+          higherIsBetter={config.higherIsBetter}
+          width={80}
+          height={20}
+          hoverData={entry.hoverData}
+          metricLabel={config.label}
+          unit={config.unit}
+          consecutiveGrowthQuarters={entry.consecutiveGrowthQuarters}
+          visible={isPremium}
+          onClick={isPremium ? () => onToggleExpand(metricKey) : undefined}
+        />
+      </div>
+      {expandedMetric === metricKey && (
+        <MetricHistoryChart
+          ticker={ticker}
+          metric={metricKey}
+          metricLabel={config.label}
+          unit={config.unit}
+          onClose={() => onToggleExpand(metricKey)}
+        />
+      )}
+    </div>
+  );
+}
+
+function ProfitabilitySection({
+  profitability,
+  sparklineData,
+  isPremium,
+  expandedMetric,
+  onToggleExpand,
+  ticker,
+}: { profitability: ProfitabilityMetrics } & SectionSparklineProps) {
   return (
     <div className="space-y-6">
       {/* Margins */}
@@ -416,39 +502,69 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
           Profit Margins
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard
-            label="Gross Margin"
-            value={profitability.gross_margin}
-            format="percent"
-            tooltip="Gross Profit / Revenue"
-            calculationTooltip={{
-              formula: '(Revenue - COGS) / Revenue × 100',
-              description: 'Measures production efficiency',
-            }}
-            colorByValue
-          />
-          <MetricCard
-            label="Operating Margin"
-            value={profitability.operating_margin}
-            format="percent"
-            tooltip="Operating Income / Revenue"
-            calculationTooltip={{
-              formula: 'Operating Income / Revenue × 100',
-              description: 'Profit from core operations',
-            }}
-            colorByValue
-          />
-          <MetricCard
-            label="Net Margin"
-            value={profitability.net_margin}
-            format="percent"
-            tooltip="Net Income / Revenue"
-            calculationTooltip={{
-              formula: 'Net Income / Revenue × 100',
-              description: 'Bottom line profitability',
-            }}
-            colorByValue
-          />
+          <div>
+            <MetricCard
+              label="Gross Margin"
+              value={profitability.gross_margin}
+              format="percent"
+              tooltip="Gross Profit / Revenue"
+              calculationTooltip={{
+                formula: '(Revenue - COGS) / Revenue × 100',
+                description: 'Measures production efficiency',
+              }}
+              colorByValue
+            />
+            <MetricSparklineRow
+              metricKey="gross_margin"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
+          <div>
+            <MetricCard
+              label="Operating Margin"
+              value={profitability.operating_margin}
+              format="percent"
+              tooltip="Operating Income / Revenue"
+              calculationTooltip={{
+                formula: 'Operating Income / Revenue × 100',
+                description: 'Profit from core operations',
+              }}
+              colorByValue
+            />
+            <MetricSparklineRow
+              metricKey="operating_margin"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
+          <div>
+            <MetricCard
+              label="Net Margin"
+              value={profitability.net_margin}
+              format="percent"
+              tooltip="Net Income / Revenue"
+              calculationTooltip={{
+                formula: 'Net Income / Revenue × 100',
+                description: 'Bottom line profitability',
+              }}
+              colorByValue
+            />
+            <MetricSparklineRow
+              metricKey="net_margin"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
           <MetricCard
             label="EBITDA Margin"
             value={profitability.ebitda_margin}
@@ -511,29 +627,49 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
           Return Metrics
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard
-            label="ROE"
-            value={profitability.roe}
-            format="percent"
-            tooltip="Return on Equity - Net Income / Shareholders Equity"
-            calculationTooltip={{
-              formula: 'Net Income (TTM) / Avg Shareholders Equity × 100',
-              description:
-                'Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP',
-            }}
-            colorByValue
-          />
-          <MetricCard
-            label="ROA"
-            value={profitability.roa}
-            format="percent"
-            tooltip="Return on Assets - Net Income / Total Assets"
-            calculationTooltip={{
-              formula: 'Net Income / Total Assets × 100',
-              description: 'How efficiently assets generate profit',
-            }}
-            colorByValue
-          />
+          <div>
+            <MetricCard
+              label="ROE"
+              value={profitability.roe}
+              format="percent"
+              tooltip="Return on Equity - Net Income / Shareholders Equity"
+              calculationTooltip={{
+                formula: 'Net Income (TTM) / Avg Shareholders Equity × 100',
+                description:
+                  'Return generated for shareholders. Very high ROE (>100%) may indicate significant stock buybacks reducing equity base. Source: FMP',
+              }}
+              colorByValue
+            />
+            <MetricSparklineRow
+              metricKey="roe"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
+          <div>
+            <MetricCard
+              label="ROA"
+              value={profitability.roa}
+              format="percent"
+              tooltip="Return on Assets - Net Income / Total Assets"
+              calculationTooltip={{
+                formula: 'Net Income / Total Assets × 100',
+                description: 'How efficiently assets generate profit',
+              }}
+              colorByValue
+            />
+            <MetricSparklineRow
+              metricKey="roa"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
           <MetricCard
             label="ROIC"
             value={profitability.roic}
@@ -565,10 +701,15 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
 function FinancialHealthSection({
   liquidity,
   leverage,
+  sparklineData,
+  isPremium,
+  expandedMetric,
+  onToggleExpand,
+  ticker,
 }: {
   liquidity: LiquidityMetrics;
   leverage: LeverageMetrics;
-}) {
+} & SectionSparklineProps) {
   return (
     <div className="space-y-6">
       {/* Liquidity Ratios */}
@@ -577,16 +718,26 @@ function FinancialHealthSection({
           Liquidity Ratios
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard
-            label="Current Ratio"
-            value={liquidity.current_ratio}
-            format="ratio"
-            tooltip="Current Assets / Current Liabilities - >1 is healthy"
-            calculationTooltip={{
-              formula: 'Current Assets / Current Liabilities',
-              description: '>1 indicates ability to pay short-term debts',
-            }}
-          />
+          <div>
+            <MetricCard
+              label="Current Ratio"
+              value={liquidity.current_ratio}
+              format="ratio"
+              tooltip="Current Assets / Current Liabilities - >1 is healthy"
+              calculationTooltip={{
+                formula: 'Current Assets / Current Liabilities',
+                description: '>1 indicates ability to pay short-term debts',
+              }}
+            />
+            <MetricSparklineRow
+              metricKey="current_ratio"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
           <MetricCard
             label="Quick Ratio"
             value={liquidity.quick_ratio}
@@ -627,16 +778,26 @@ function FinancialHealthSection({
           Leverage Ratios
         </h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <MetricCard
-            label="Debt/Equity"
-            value={leverage.debt_to_equity}
-            format="ratio"
-            tooltip="Total Debt / Shareholders Equity - lower is less risky"
-            calculationTooltip={{
-              formula: 'Total Debt / Shareholders Equity',
-              description: 'Lower ratio = less financial risk',
-            }}
-          />
+          <div>
+            <MetricCard
+              label="Debt/Equity"
+              value={leverage.debt_to_equity}
+              format="ratio"
+              tooltip="Total Debt / Shareholders Equity - lower is less risky"
+              calculationTooltip={{
+                formula: 'Total Debt / Shareholders Equity',
+                description: 'Lower ratio = less financial risk',
+              }}
+            />
+            <MetricSparklineRow
+              metricKey="debt_to_equity"
+              sparklineData={sparklineData}
+              isPremium={isPremium}
+              expandedMetric={expandedMetric}
+              onToggleExpand={onToggleExpand}
+              ticker={ticker}
+            />
+          </div>
           <MetricCard
             label="Debt/Assets"
             value={leverage.debt_to_assets}
