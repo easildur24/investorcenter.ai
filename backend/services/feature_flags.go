@@ -40,6 +40,21 @@ const (
 	FlagBacktestDashboard         = "ic_score_backtest_dashboard"
 )
 
+// Fundamentals feature flags
+// Premium-only features start disabled; free-tier features (.core, .basic, .high) start enabled.
+const (
+	FlagFundamentalsPercentileBarsAll  = "fundamentals.percentile_bars.all"
+	FlagFundamentalsPercentileBarsCore = "fundamentals.percentile_bars.core"
+	FlagFundamentalsHealthCardFull     = "fundamentals.health_card.full"
+	FlagFundamentalsHealthCardBasic    = "fundamentals.health_card.basic"
+	FlagFundamentalsRedFlagsAll        = "fundamentals.red_flags.all"
+	FlagFundamentalsRedFlagsHigh       = "fundamentals.red_flags.high"
+	FlagFundamentalsPeerComparison     = "fundamentals.peer_comparison"
+	FlagFundamentalsSparklines         = "fundamentals.sparklines"
+	FlagFundamentalsFairValue          = "fundamentals.fair_value"
+	FlagFundamentalsMetricHistory      = "fundamentals.metric_history"
+)
+
 // NewFeatureFlagService creates a new feature flag service
 func NewFeatureFlagService() *FeatureFlagService {
 	service := &FeatureFlagService{
@@ -148,6 +163,88 @@ func (s *FeatureFlagService) initializeDefaultFlags() {
 			Enabled:     false,
 			Percentage:  0,
 			Description: "Enable backtest results dashboard",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		// Fundamentals feature flags — premium features (disabled by default)
+		{
+			Name:        FlagFundamentalsPercentileBarsAll,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Show all 14+ sector percentile bars (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsHealthCardFull,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Show unlimited strengths/concerns in health card (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsRedFlagsAll,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Show medium and low severity red flags (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsPeerComparison,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Enable expanded peer comparison panel (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsSparklines,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Enable metric sparkline charts (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsFairValue,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Enable fair value gauge display (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsMetricHistory,
+			Enabled:     false,
+			Percentage:  0,
+			Description: "Enable metric history charts (premium)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		// Fundamentals feature flags — free-tier features (enabled by default)
+		{
+			Name:        FlagFundamentalsPercentileBarsCore,
+			Enabled:     true,
+			Percentage:  100,
+			Description: "Show 6 core sector percentile bars (free tier)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsHealthCardBasic,
+			Enabled:     true,
+			Percentage:  100,
+			Description: "Show basic health card with badge and lifecycle (free tier)",
+			CreatedAt:   now,
+			UpdatedAt:   now,
+		},
+		{
+			Name:        FlagFundamentalsRedFlagsHigh,
+			Enabled:     true,
+			Percentage:  100,
+			Description: "Show high severity red flags only (free tier)",
 			CreatedAt:   now,
 			UpdatedAt:   now,
 		},
