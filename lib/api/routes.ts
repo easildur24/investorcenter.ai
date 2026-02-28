@@ -44,6 +44,7 @@ export const tickers = {
   volumeAggregates: (symbol: string) => `/tickers/${symbol}/volume/aggregates`,
   news: (symbol: string) => `/tickers/${symbol}/news`,
   keyStats: (symbol: string) => `/tickers/${symbol}/keystats`,
+  xPosts: (symbol: string) => `/tickers/${symbol}/x-posts`,
 } as const;
 
 // ─── Stocks (IC Score, Financials, Risk, Technical, Earnings) ───────────────────

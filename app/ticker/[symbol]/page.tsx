@@ -7,6 +7,7 @@ import CryptoTickerHeader from '@/components/ticker/CryptoTickerHeader';
 import CryptoMainContent from '@/components/ticker/CryptoMainContent';
 import ICScoreCard from '@/components/ic-score/ICScoreCard';
 import SentimentCard from '@/components/sentiment/SentimentCard';
+import XPostsFeed, { XPostsFeedSkeleton } from '@/components/ticker/XPostsFeed';
 import OverviewTab from '@/components/ticker/tabs/OverviewTab';
 import TechnicalTab from '@/components/ticker/tabs/TechnicalTab';
 import RiskTab from '@/components/ticker/tabs/RiskTab';
@@ -187,9 +188,14 @@ export default async function TickerPage({ params, searchParams }: PageProps) {
               </Suspense>
             </div>
 
-            {/* Right Column - IC Score, Sentiment, Fundamentals and Analysis */}
+            {/* Right Column - X Posts, IC Score, Sentiment, Fundamentals and Analysis */}
             <div className="space-y-8">
-              {/* IC Score Analysis - at top for visibility */}
+              {/* X Posts Feed */}
+              <Suspense fallback={<XPostsFeedSkeleton />}>
+                <XPostsFeed ticker={symbol} />
+              </Suspense>
+
+              {/* IC Score Analysis */}
               <Suspense fallback={<ICScoreSkeleton />}>
                 <ICScoreCard ticker={symbol} variant="compact" />
               </Suspense>
