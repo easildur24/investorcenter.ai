@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { CalculationTooltip } from '@/components/ui/Tooltip';
 import {
@@ -38,6 +38,8 @@ import {
   MetricDisplayConfig,
 } from '@/types/metrics';
 import { getComprehensiveMetrics } from '@/lib/api/metrics';
+import type { RedFlag } from '@/lib/types/fundamentals';
+import { useHealthSummary } from '@/lib/hooks/useHealthSummary';
 
 interface MetricsTabProps {
   symbol: string;
@@ -64,11 +66,44 @@ const categoryTabs: { id: MetricCategory; label: string }[] = [
   { id: 'analyst', label: 'Analyst Ratings' },
 ];
 
+/** Small inline dot shown next to a metric that has a related red flag. */
+function MetricRedFlagIndicator({
+  metricKey,
+  redFlags,
+}: {
+  metricKey: string;
+  redFlags: RedFlag[];
+}) {
+  const match = redFlags.find((f) =>
+    f.related_metrics.some((m) => m.toLowerCase() === metricKey.toLowerCase())
+  );
+  if (!match) return null;
+
+  const dotColor =
+    match.severity === 'high'
+      ? 'bg-red-400'
+      : match.severity === 'medium'
+        ? 'bg-orange-400'
+        : 'bg-yellow-400';
+
+  return (
+    <span
+      className={cn('inline-block w-2 h-2 rounded-full ml-1 flex-shrink-0', dotColor)}
+      title={match.title}
+      aria-label={`Red flag: ${match.title}`}
+    />
+  );
+}
+
 export default function MetricsTab({ symbol }: MetricsTabProps) {
   const [data, setData] = useState<ComprehensiveMetricsResponse | null>(null);
   const [activeCategory, setActiveCategory] = useState<MetricCategory>('valuation');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Health summary for inline red-flag indicators
+  const { data: healthData } = useHealthSummary(symbol);
+  const redFlags: RedFlag[] = healthData?.red_flags ?? [];
 
   useEffect(() => {
     const fetchData = async () => {
@@ -144,13 +179,18 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
           <ValuationSection
             valuation={data.data.valuation}
             forwardEstimates={data.data.forward_estimates}
+            redFlags={redFlags}
           />
         )}
         {activeCategory === 'profitability' && (
-          <ProfitabilitySection profitability={data.data.profitability} />
+          <ProfitabilitySection profitability={data.data.profitability} redFlags={redFlags} />
         )}
         {activeCategory === 'financial_health' && (
-          <FinancialHealthSection liquidity={data.data.liquidity} leverage={data.data.leverage} />
+          <FinancialHealthSection
+            liquidity={data.data.liquidity}
+            leverage={data.data.leverage}
+            redFlags={redFlags}
+          />
         )}
         {activeCategory === 'efficiency' && <EfficiencySection efficiency={data.data.efficiency} />}
         {activeCategory === 'growth' && <GrowthSection growth={data.data.growth} />}
@@ -190,9 +230,11 @@ export default function MetricsTab({ symbol }: MetricsTabProps) {
 function ValuationSection({
   valuation,
   forwardEstimates,
+  redFlags = [],
 }: {
   valuation: ValuationMetrics;
   forwardEstimates: ForwardEstimates;
+  redFlags?: RedFlag[];
 }) {
   return (
     <div className="space-y-6">
@@ -212,6 +254,7 @@ function ValuationSection({
               description:
                 'Uses trailing 12-month diluted EPS. Price updates real-time; EPS updates quarterly after earnings. Source: FMP',
             }}
+            flagIndicator={<MetricRedFlagIndicator metricKey="pe_ratio" redFlags={redFlags} />}
           />
           <MetricCard
             label="Forward P/E"
@@ -235,6 +278,7 @@ function ValuationSection({
             }}
             interpretation={valuation.peg_interpretation}
             interpretationColorFn={getPEGColor}
+            flagIndicator={<MetricRedFlagIndicator metricKey="peg_ratio" redFlags={redFlags} />}
           />
           <MetricCard
             label="P/B Ratio"
@@ -407,7 +451,13 @@ function ValuationSection({
   );
 }
 
-function ProfitabilitySection({ profitability }: { profitability: ProfitabilityMetrics }) {
+function ProfitabilitySection({
+  profitability,
+  redFlags = [],
+}: {
+  profitability: ProfitabilityMetrics;
+  redFlags?: RedFlag[];
+}) {
   return (
     <div className="space-y-6">
       {/* Margins */}
@@ -448,6 +498,7 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
               description: 'Bottom line profitability',
             }}
             colorByValue
+            flagIndicator={<MetricRedFlagIndicator metricKey="net_margin" redFlags={redFlags} />}
           />
           <MetricCard
             label="EBITDA Margin"
@@ -565,9 +616,11 @@ function ProfitabilitySection({ profitability }: { profitability: ProfitabilityM
 function FinancialHealthSection({
   liquidity,
   leverage,
+  redFlags = [],
 }: {
   liquidity: LiquidityMetrics;
   leverage: LeverageMetrics;
+  redFlags?: RedFlag[];
 }) {
   return (
     <div className="space-y-6">
@@ -586,6 +639,7 @@ function FinancialHealthSection({
               formula: 'Current Assets / Current Liabilities',
               description: '>1 indicates ability to pay short-term debts',
             }}
+            flagIndicator={<MetricRedFlagIndicator metricKey="current_ratio" redFlags={redFlags} />}
           />
           <MetricCard
             label="Quick Ratio"
@@ -636,6 +690,9 @@ function FinancialHealthSection({
               formula: 'Total Debt / Shareholders Equity',
               description: 'Lower ratio = less financial risk',
             }}
+            flagIndicator={
+              <MetricRedFlagIndicator metricKey="debt_to_equity" redFlags={redFlags} />
+            }
           />
           <MetricCard
             label="Debt/Assets"
@@ -1711,6 +1768,8 @@ interface MetricCardProps {
   colorByValue?: boolean;
   interpretation?: string | null;
   interpretationColorFn?: (interp: string | null) => string;
+  /** Optional React node rendered inline next to the label (e.g. red flag dot). */
+  flagIndicator?: React.ReactNode;
 }
 
 function MetricCard({
@@ -1724,6 +1783,7 @@ function MetricCard({
   colorByValue = false,
   interpretation,
   interpretationColorFn,
+  flagIndicator,
 }: MetricCardProps) {
   const formatValue = () => {
     if (value === null || value === undefined) return '—';
@@ -1779,7 +1839,10 @@ function MetricCard({
       title={!calculationTooltip ? displayTooltip : undefined}
     >
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm text-ic-text-muted">{label}</span>
+        <span className="text-sm text-ic-text-muted inline-flex items-center">
+          {label}
+          {flagIndicator}
+        </span>
         {interpretation && interpretationColorFn && (
           <span
             className={cn(

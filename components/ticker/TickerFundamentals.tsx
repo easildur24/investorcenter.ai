@@ -11,6 +11,8 @@ import {
 import { useAuth } from '@/lib/auth/AuthContext';
 import { tickers, stocks } from '@/lib/api/routes';
 import { API_BASE_URL } from '@/lib/api';
+import { useHealthSummary } from '@/lib/hooks/useHealthSummary';
+import FundamentalHealthCard from '@/components/ticker/FundamentalHealthCard';
 
 interface TickerFundamentalsProps {
   symbol: string;
@@ -200,6 +202,9 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
   // Get admin status from auth context
   const { user } = useAuth();
   const isAdmin = user?.is_admin ?? false;
+
+  // Health summary data for the FundamentalHealthCard
+  const { data: healthData, loading: healthLoading } = useHealthSummary(symbol);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -413,6 +418,15 @@ export default function TickerFundamentals({ symbol }: TickerFundamentalsProps) 
 
   return (
     <div className="p-6">
+      {/* Fundamental Health Card — shown above all metrics */}
+      <div className="mb-6">
+        <FundamentalHealthCard
+          ticker={symbol}
+          data={healthData ?? undefined}
+          loading={healthLoading}
+        />
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-ic-text-primary">Key Metrics</h3>
         {dataFetchedAt && (
