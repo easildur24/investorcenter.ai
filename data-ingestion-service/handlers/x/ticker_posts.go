@@ -1,15 +1,18 @@
 package x
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
 	"data-ingestion-service/auth"
+	"data-ingestion-service/cache"
 	"data-ingestion-service/database"
 	"data-ingestion-service/storage"
 
@@ -19,9 +22,18 @@ import (
 
 var asOfDateRegex = regexp.MustCompile(`^\d{4}-\d{2}-\d{2}$`)
 
+const (
+	// Max posts to keep in Redis per ticker
+	maxRedisPostsPerTicker = 5
+	// TTL for Redis key — posts older than 24h aren't useful
+	redisPostsTTL = 24 * time.Hour
+)
+
 // PostTickerPosts handles POST /ingest/x/ticker_posts/:ticker
 // Ingests a point-in-time snapshot of X posts about a ticker.
+// Writes to both S3 (archival) and Redis (real-time, last 5 posts).
 // S3 key: x/ticker_posts/{TICKER}/{YYYY-MM-DD}/{timestamp}.json
+// Redis key: x:posts:{TICKER}
 func PostTickerPosts(c *gin.Context) {
 	userID, ok := auth.GetUserIDFromContext(c)
 	if !ok {
@@ -112,12 +124,15 @@ func PostTickerPosts(c *gin.Context) {
 		return
 	}
 
-	// Upload to S3
+	// Upload to S3 (archival)
 	if err := storage.Upload(s3Key, payloadBytes, "application/json"); err != nil {
 		log.Printf("Failed to upload to S3: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload data to storage"})
 		return
 	}
+
+	// Write last 5 posts to Redis (real-time, best-effort)
+	redisWritten := writePostsToRedis(ticker, requestData, now)
 
 	// Parse as_of_date for ingestion log
 	collectedAt, err := time.Parse("2006-01-02", asOfDate)
@@ -144,14 +159,15 @@ func PostTickerPosts(c *gin.Context) {
 			"data": gin.H{
 				"ticker":  ticker,
 				"s3_key":  s3Key,
+				"redis":   redisWritten,
 				"warning": "Data uploaded to S3 but index record failed - contact admin",
 			},
 		})
 		return
 	}
 
-	log.Printf("X Ticker Posts ingestion success: id=%d ticker=%s key=%s size=%d",
-		id, ticker, s3Key, len(payloadBytes))
+	log.Printf("X Ticker Posts ingestion success: id=%d ticker=%s key=%s size=%d redis=%v",
+		id, ticker, s3Key, len(payloadBytes), redisWritten)
 
 	c.JSON(http.StatusCreated, gin.H{
 		"success": true,
@@ -159,6 +175,90 @@ func PostTickerPosts(c *gin.Context) {
 			"id":     id,
 			"ticker": ticker,
 			"s3_key": s3Key,
+			"redis":  redisWritten,
 		},
 	})
+}
+
+// writePostsToRedis stores the top 5 posts (by engagement) in Redis.
+// Key: x:posts:{TICKER}, Value: JSON array, TTL: 24h.
+// Returns true if write succeeded.
+func writePostsToRedis(ticker string, requestData map[string]interface{}, now time.Time) bool {
+	rdb := cache.Client()
+	if rdb == nil {
+		log.Printf("Redis client not available, skipping Redis write for %s", ticker)
+		return false
+	}
+
+	posts, ok := requestData["posts"].([]interface{})
+	if !ok || len(posts) == 0 {
+		return false
+	}
+
+	// Sort posts by engagement (likes + reposts + replies) descending, take top 5
+	type scoredPost struct {
+		post  interface{}
+		score float64
+	}
+	scored := make([]scoredPost, 0, len(posts))
+	for _, p := range posts {
+		pm, ok := p.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		score := toFloat(pm["likes"]) + toFloat(pm["reposts"]) + toFloat(pm["replies"])
+		scored = append(scored, scoredPost{post: pm, score: score})
+	}
+	sort.Slice(scored, func(i, j int) bool {
+		return scored[i].score > scored[j].score
+	})
+
+	limit := maxRedisPostsPerTicker
+	if len(scored) < limit {
+		limit = len(scored)
+	}
+	topPosts := make([]interface{}, limit)
+	for i := 0; i < limit; i++ {
+		topPosts[i] = scored[i].post
+	}
+
+	// Build the Redis value
+	redisValue := map[string]interface{}{
+		"ticker":     ticker,
+		"updated_at": now.Format(time.RFC3339),
+		"posts":      topPosts,
+	}
+
+	data, err := json.Marshal(redisValue)
+	if err != nil {
+		log.Printf("Failed to marshal Redis value for %s: %v", ticker, err)
+		return false
+	}
+
+	ctx := context.Background()
+	redisKey := fmt.Sprintf("x:posts:%s", ticker)
+	if err := rdb.Set(ctx, redisKey, data, redisPostsTTL).Err(); err != nil {
+		log.Printf("Failed to write to Redis key %s: %v", redisKey, err)
+		return false
+	}
+
+	log.Printf("Redis: wrote %d posts to %s", limit, redisKey)
+	return true
+}
+
+// toFloat extracts a numeric value from an interface{} (JSON numbers are float64).
+func toFloat(v interface{}) float64 {
+	if v == nil {
+		return 0
+	}
+	switch n := v.(type) {
+	case float64:
+		return n
+	case int:
+		return float64(n)
+	case int64:
+		return float64(n)
+	default:
+		return 0
+	}
 }

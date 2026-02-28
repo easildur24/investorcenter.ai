@@ -49,6 +49,8 @@ spec:
             secretKeyRef:
               name: app-secrets
               key: jwt-secret
+        - name: REDIS_ADDR
+          value: "redis-service:6379"
         - name: S3_BUCKET
           value: "investorcenter-raw-data"
         - name: AWS_REGION

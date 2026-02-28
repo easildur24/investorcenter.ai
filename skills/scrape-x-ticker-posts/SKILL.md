@@ -1,6 +1,6 @@
 # X (Twitter) Ticker Posts Scraping Skill
 
-**Goal:** Search X for recent posts about a stock ticker using the cashtag (e.g. $AAPL), extract post data, and upload to data ingestion API.
+**Goal:** Search X for recent posts about a stock ticker using the cashtag (e.g. $AAPL), extract post data, and upload to data ingestion API. The API stores the top 5 posts in Redis for real-time display on the site, plus archives all posts to S3.
 
 ## Execution Pattern
 
@@ -150,6 +150,8 @@ response = requests.post(
 print(response.status_code, response.json())
 ```
 
+The API response includes `"redis": true` if the top 5 posts were successfully cached in Redis for real-time display.
+
 ### Step 8: Close Browser
 
 ```javascript
@@ -159,17 +161,30 @@ browser({
 })
 ```
 
-## S3 Storage Path
+## Storage
 
-```
-x/ticker_posts/{TICKER}/{YYYY-MM-DD}/{timestamp}.json
-```
+### Redis (real-time, last 5 posts)
+- Key: `x:posts:{TICKER}`
+- Value: JSON with `ticker`, `updated_at`, and `posts` array (top 5 by engagement)
+- TTL: 24 hours
+- Read endpoint: `GET /api/v1/tickers/{TICKER}/x-posts`
 
-## API Endpoint
+### S3 (archival, all posts)
+- Path: `x/ticker_posts/{TICKER}/{YYYY-MM-DD}/{timestamp}.json`
 
+## API Endpoints
+
+### Ingest (write)
 ```
 POST /api/v1/ingest/x/ticker_posts/{TICKER}
 ```
+Requires auth. Writes to both S3 and Redis.
+
+### Read (frontend)
+```
+GET /api/v1/tickers/{TICKER}/x-posts
+```
+No auth required. Returns last 5 posts from Redis. Returns empty array if no posts cached.
 
 ## Tips
 
@@ -178,6 +193,7 @@ POST /api/v1/ingest/x/ticker_posts/{TICKER}
 - **No pagination needed:** Just scroll 2-3 times to get 20-30 top posts. We don't need exhaustive scraping.
 - **Skip ads:** X shows promoted posts. Skip any post marked as "Ad" or "Promoted".
 - **Engagement nulls:** If engagement counts aren't visible (e.g. views hidden), use null, not 0.
+- **Redis stores top 5:** The API selects the top 5 posts by total engagement (likes + reposts + replies). Scrape 20-30 posts for good selection.
 
 ## Summary
 
@@ -188,4 +204,4 @@ POST /api/v1/ingest/x/ticker_posts/{TICKER}
 5. Stop browser
 6. Report result
 
-**This is a single-page scrape** — scroll a few times for more posts, no complex pagination needed. Aim for 20-30 posts per run.
+**This is a single-page scrape** — scroll a few times for more posts, no complex pagination needed. Aim for 20-30 posts per run. The top 5 will be cached in Redis for the frontend.

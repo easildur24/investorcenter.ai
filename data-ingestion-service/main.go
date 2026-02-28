@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"data-ingestion-service/auth"
+	"data-ingestion-service/cache"
 	"data-ingestion-service/database"
 	"data-ingestion-service/handlers"
 	"data-ingestion-service/handlers/x"
@@ -37,6 +38,10 @@ func main() {
 	if err := storage.Initialize(); err != nil {
 		log.Fatalf("Failed to initialize S3 storage: %v", err)
 	}
+
+	// Initialize Redis (non-fatal — ingestion works without it)
+	cache.Initialize()
+	defer cache.Close()
 
 	r := gin.Default()
 

@@ -134,6 +134,9 @@ func main() {
 			tickers.GET("/:symbol/keystats", handlers.GetKeyStats)       // Get key stats data
 			tickers.POST("/:symbol/keystats", handlers.PostKeyStats)     // Upload key stats data
 			tickers.DELETE("/:symbol/keystats", handlers.DeleteKeyStats) // Delete key stats data
+
+			// X (Twitter) posts — latest posts from Redis
+			tickers.GET("/:symbol/x-posts", handlers.GetXPosts) // GET /api/v1/tickers/AAPL/x-posts
 		}
 
 		// IC Score endpoints
