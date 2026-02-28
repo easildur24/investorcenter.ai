@@ -42,14 +42,11 @@ export interface XPostsResponse {
  */
 export async function getXPosts(symbol: string): Promise<XPostsResponse | null> {
   try {
-    const response = await fetch(
-      `${API_BASE_URL}${tickers.xPosts(symbol.toUpperCase())}`,
-      {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-      }
-    );
+    const response = await fetch(`${API_BASE_URL}${tickers.xPosts(symbol.toUpperCase())}`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+    });
 
     if (!response.ok) {
       console.error(`Failed to fetch X posts for ${symbol}: ${response.status}`);

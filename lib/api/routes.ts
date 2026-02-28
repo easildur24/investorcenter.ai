@@ -62,6 +62,13 @@ export const stocks = {
   financialsCashflow: (ticker: string) => `/stocks/${ticker}/financials/cashflow`,
   financialsRatios: (ticker: string) => `/stocks/${ticker}/financials/ratios`,
   financialsRefresh: (ticker: string) => `/stocks/${ticker}/financials/refresh`,
+
+  // Fundamentals enhancement endpoints (Project 1)
+  sectorPercentiles: (ticker: string) => `/stocks/${ticker}/sector-percentiles`,
+  peers: (ticker: string) => `/stocks/${ticker}/peers`,
+  fairValue: (ticker: string) => `/stocks/${ticker}/fair-value`,
+  healthSummary: (ticker: string) => `/stocks/${ticker}/health-summary`,
+  metricHistory: (ticker: string, metric: string) => `/stocks/${ticker}/metric-history/${metric}`,
 } as const;
 
 // ─── Backtest ──────────────────────────────────────────────────────────────────
