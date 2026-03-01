@@ -1504,6 +1504,93 @@ func (p *PolygonClient) GetBulkCryptoSnapshots() (*BulkCryptoSnapshotResponse, e
 	return &snapshotResp, nil
 }
 
+// IndexSnapshotResponse represents the Polygon v3 index snapshot API response
+type IndexSnapshotResponse struct {
+	RequestID string `json:"request_id"`
+	Status    string `json:"status"`
+	Results   []struct {
+		Ticker  string  `json:"ticker"`
+		Name    string  `json:"name"`
+		Type    string  `json:"type"`
+		Value   float64 `json:"value"`
+		Session struct {
+			Change        float64 `json:"change"`
+			ChangePercent float64 `json:"change_percent"`
+			Close         float64 `json:"close"`
+			High          float64 `json:"high"`
+			Low           float64 `json:"low"`
+			Open          float64 `json:"open"`
+			PreviousClose float64 `json:"previous_close"`
+		} `json:"session"`
+		MarketStatus string `json:"market_status"`
+	} `json:"results"`
+}
+
+// IndexSnapshotResult contains parsed index snapshot data
+type IndexSnapshotResult struct {
+	Symbol        string
+	Name          string
+	Value         float64
+	Change        float64
+	ChangePercent float64
+	MarketStatus  string
+	Timestamp     time.Time
+}
+
+// GetIndexSnapshots fetches real-time index values from Polygon v3 snapshot API
+// Uses ticker.any_of to fetch multiple indices in a single call
+func (p *PolygonClient) GetIndexSnapshots(symbols []string) ([]IndexSnapshotResult, error) {
+	if len(symbols) == 0 {
+		return nil, fmt.Errorf("no symbols provided")
+	}
+
+	tickerParam := strings.Join(symbols, ",")
+	url := fmt.Sprintf("%s/v3/snapshot?ticker.any_of=%s&apikey=%s",
+		PolygonBaseURL, tickerParam, p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch index snapshots: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("index snapshot API returned status %d", resp.StatusCode)
+	}
+
+	var snapshotResp IndexSnapshotResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotResp); err != nil {
+		return nil, fmt.Errorf("failed to decode index snapshot response: %w", err)
+	}
+
+	if snapshotResp.Status != "OK" && snapshotResp.Status != "DELAYED" {
+		return nil, fmt.Errorf("index snapshot API error: %s", snapshotResp.Status)
+	}
+
+	var results []IndexSnapshotResult
+	for _, r := range snapshotResp.Results {
+		value := r.Value
+		if value == 0 {
+			value = r.Session.Close
+		}
+		if value == 0 {
+			value = r.Session.PreviousClose
+		}
+
+		results = append(results, IndexSnapshotResult{
+			Symbol:        r.Ticker,
+			Name:          r.Name,
+			Value:         value,
+			Change:        r.Session.Change,
+			ChangePercent: r.Session.ChangePercent,
+			MarketStatus:  r.MarketStatus,
+			Timestamp:     time.Now(),
+		})
+	}
+
+	return results, nil
+}
+
 func (p *PolygonClient) GetStockRealTimePrice(symbol string) (*models.StockPrice, error) {
 	// Use the real-time stock snapshot endpoint
 	snapshotURL := fmt.Sprintf("%s/v2/snapshot/locale/us/markets/stocks/tickers/%s?apikey=%s",

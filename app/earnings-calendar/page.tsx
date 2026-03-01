@@ -30,19 +30,19 @@ function getMonday(date: Date): Date {
   return d;
 }
 
-/** Snap to the nearest weekday: Sat→Fri, Sun→Mon, otherwise identity. */
+/** Snap to the nearest upcoming weekday: Sat→next Mon, Sun→next Mon, otherwise identity. */
 function nearestWeekday(date: Date): Date {
   const day = date.getDay();
   if (day === 0) {
-    // Sunday → Monday
+    // Sunday → next Monday
     const d = new Date(date);
     d.setDate(d.getDate() + 1);
     return d;
   }
   if (day === 6) {
-    // Saturday → Friday
+    // Saturday → next Monday
     const d = new Date(date);
-    d.setDate(d.getDate() - 1);
+    d.setDate(d.getDate() + 2);
     return d;
   }
   return date;
@@ -122,8 +122,8 @@ function sortEarnings(
 // ============================================================================
 
 export default function EarningsCalendarPage() {
-  // Memoize "today" so it's stable across renders within a single mount.
-  const today = useMemo(() => new Date(), []);
+  // Use a fresh date on mount (not memoized to avoid stale dates across day boundaries).
+  const [today] = useState(() => new Date());
   const todayISO = useMemo(() => formatDateISO(today), [today]);
 
   const [weekMonday, setWeekMonday] = useState<Date>(() => getMonday(today));

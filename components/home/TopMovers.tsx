@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { apiClient } from '@/lib/api';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon, FireIcon } from '@heroicons/react/24/outline';
 import { safeToFixed, formatRelativeTime } from '@/lib/utils';
+import { useWidgetTracking } from '@/lib/hooks/useWidgetTracking';
 
 interface MoverStock {
   symbol: string;
@@ -24,6 +25,7 @@ interface MoversData {
 type TabType = 'gainers' | 'losers' | 'active';
 
 export default function TopMovers() {
+  const { ref: widgetRef, trackInteraction } = useWidgetTracking('top_movers');
   const [movers, setMovers] = useState<MoversData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -140,6 +142,7 @@ export default function TopMovers() {
 
   return (
     <div
+      ref={widgetRef}
       className="bg-ic-surface rounded-lg border border-ic-border p-6"
       style={{ boxShadow: 'var(--ic-shadow-card)' }}
     >
@@ -157,7 +160,10 @@ export default function TopMovers() {
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={() => {
+              setActiveTab(tab.id);
+              trackInteraction('tab_click', { tab: tab.id });
+            }}
             className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-lg transition-colors ${
               activeTab === tab.id
                 ? 'text-ic-blue bg-ic-surface-hover border-b-2 border-ic-blue -mb-px'
@@ -181,8 +187,15 @@ export default function TopMovers() {
               href={`/ticker/${stock.symbol}`}
               className="flex justify-between items-center py-2.5 px-2 -mx-2 rounded-lg hover:bg-ic-surface-hover transition-colors"
             >
-              <div className="flex items-center gap-3">
-                <span className="font-semibold text-ic-text-primary w-14">{stock.symbol}</span>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="flex flex-col">
+                  <span className="font-semibold text-ic-text-primary">{stock.symbol}</span>
+                  {stock.name && (
+                    <span className="text-xs text-ic-text-muted truncate max-w-[120px]">
+                      {stock.name}
+                    </span>
+                  )}
+                </div>
                 <span className="text-sm text-ic-text-muted">${safeToFixed(stock.price, 2)}</span>
               </div>
 

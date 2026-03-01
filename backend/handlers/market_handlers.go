@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"investorcenter-api/database"
 	"investorcenter-api/services"
 )
 
@@ -66,48 +67,89 @@ type IndexInfo struct {
 	Change        float64 `json:"change"`
 	ChangePercent float64 `json:"changePercent"`
 	LastUpdated   string  `json:"lastUpdated"`
+	DisplayFormat string  `json:"displayFormat"` // "points" for indices, "usd" for ETF proxies
+	DataType      string  `json:"dataType"`      // "index" or "etf_proxy"
 }
 
 // GetMarketIndices fetches current market indices from Polygon.io
+// Attempts to use real index values (I:SPX, I:DJI, etc.), falls back to ETF proxies
 func GetMarketIndices(c *gin.Context) {
 	polygonClient := services.NewPolygonClient()
 
-	// Define major market indices using ETF proxies
-	// Note: Using ETFs as proxies since indices require premium Polygon.io plan
-	// ETFs track indices very closely and provide real-time data
+	// Try real index snapshots first
 	indexSymbols := []struct {
-		Symbol string
-		Name   string
+		Symbol   string
+		Name     string
+		ETFProxy string // Fallback ETF symbol
 	}{
-		{"SPY", "S&P 500"},   // SPDR S&P 500 ETF Trust (tracks S&P 500)
-		{"DIA", "Dow Jones"}, // SPDR Dow Jones Industrial Average ETF (tracks DJIA)
-		{"QQQ", "NASDAQ"},    // Invesco QQQ Trust (tracks NASDAQ-100)
+		{"I:SPX", "S&P 500", "SPY"},
+		{"I:DJI", "Dow Jones", "DIA"},
+		{"I:COMP", "NASDAQ", "QQQ"},
+		{"I:RUT", "Russell 2000", "IWM"},
+		{"I:VIX", "VIX", "VIXY"},
+	}
+
+	// Collect all index tickers for a batch call
+	indexTickers := make([]string, len(indexSymbols))
+	for i, idx := range indexSymbols {
+		indexTickers[i] = idx.Symbol
+	}
+
+	indexResults, indexErr := polygonClient.GetIndexSnapshots(indexTickers)
+	if indexErr != nil {
+		log.Printf("Warning: Failed to fetch index snapshots, falling back to ETF proxies: %v", indexErr)
+	}
+
+	// Build a map for quick lookup of index results
+	indexMap := make(map[string]services.IndexSnapshotResult)
+	if indexResults != nil {
+		for _, r := range indexResults {
+			indexMap[r.Symbol] = r
+		}
 	}
 
 	indices := []IndexInfo{}
 	var fetchErrors []string
 
 	for _, idx := range indexSymbols {
-		priceData, err := polygonClient.GetStockRealTimePrice(idx.Symbol)
-		if err != nil {
-			errMsg := "Failed to fetch " + idx.Name + " (" + idx.Symbol + "): " + err.Error()
-			log.Printf("Warning: %s", errMsg)
-			fetchErrors = append(fetchErrors, errMsg)
-			// Skip this index if we can't fetch it
+		// Try index data first
+		if result, ok := indexMap[idx.Symbol]; ok {
+			indices = append(indices, IndexInfo{
+				Symbol:        idx.Symbol,
+				Name:          idx.Name,
+				Price:         result.Value,
+				Change:        result.Change,
+				ChangePercent: result.ChangePercent,
+				LastUpdated:   result.Timestamp.Format(time.RFC3339),
+				DisplayFormat: "points",
+				DataType:      "index",
+			})
+			log.Printf("Successfully fetched %s (index): %.2f (%.2f%%)", idx.Name, result.Value, result.ChangePercent)
 			continue
 		}
 
-		index := IndexInfo{
-			Symbol:        idx.Symbol,
-			Name:          idx.Name,
-			Price:         priceData.Price.InexactFloat64(),
-			Change:        priceData.Change.InexactFloat64(),
-			ChangePercent: priceData.ChangePercent.InexactFloat64(),
-			LastUpdated:   priceData.Timestamp.Format(time.RFC3339),
-		}
+		// Fallback to ETF proxy
+		if idx.ETFProxy != "" {
+			priceData, err := polygonClient.GetStockRealTimePrice(idx.ETFProxy)
+			if err != nil {
+				errMsg := "Failed to fetch " + idx.Name + " (" + idx.ETFProxy + "): " + err.Error()
+				log.Printf("Warning: %s", errMsg)
+				fetchErrors = append(fetchErrors, errMsg)
+				continue
+			}
 
-		indices = append(indices, index)
-		log.Printf("Successfully fetched %s: $%.2f (%.2f%%)", idx.Name, index.Price, index.ChangePercent)
+			indices = append(indices, IndexInfo{
+				Symbol:        idx.ETFProxy,
+				Name:          idx.Name,
+				Price:         priceData.Price.InexactFloat64(),
+				Change:        priceData.Change.InexactFloat64(),
+				ChangePercent: priceData.ChangePercent.InexactFloat64(),
+				LastUpdated:   priceData.Timestamp.Format(time.RFC3339),
+				DisplayFormat: "usd",
+				DataType:      "etf_proxy",
+			})
+			log.Printf("Successfully fetched %s (ETF proxy %s): $%.2f (%.2f%%)", idx.Name, idx.ETFProxy, priceData.Price.InexactFloat64(), priceData.ChangePercent.InexactFloat64())
+		}
 	}
 
 	// If we couldn't fetch any indices, return an error with details
@@ -234,6 +276,44 @@ func GetMarketMovers(c *gin.Context) {
 	mostActive := make([]MoverStock, 0, limit)
 	for i := 0; i < len(stocks) && len(mostActive) < limit; i++ {
 		mostActive = append(mostActive, stocks[i])
+	}
+
+	// Look up company names from the database for all mover stocks
+	allMovers := make([]MoverStock, 0, len(gainers)+len(losers)+len(mostActive))
+	allMovers = append(allMovers, gainers...)
+	allMovers = append(allMovers, losers...)
+	allMovers = append(allMovers, mostActive...)
+
+	symbolSet := make(map[string]bool)
+	var symbols []string
+	for _, m := range allMovers {
+		if !symbolSet[m.Symbol] {
+			symbolSet[m.Symbol] = true
+			symbols = append(symbols, m.Symbol)
+		}
+	}
+
+	if len(symbols) > 0 {
+		names, err := database.GetCompanyNames(symbols)
+		if err != nil {
+			log.Printf("Warning: Failed to look up company names: %v", err)
+		} else {
+			for i := range gainers {
+				if name, ok := names[gainers[i].Symbol]; ok {
+					gainers[i].Name = name
+				}
+			}
+			for i := range losers {
+				if name, ok := names[losers[i].Symbol]; ok {
+					losers[i].Name = name
+				}
+			}
+			for i := range mostActive {
+				if name, ok := names[mostActive[i].Symbol]; ok {
+					mostActive[i].Name = name
+				}
+			}
+		}
 	}
 
 	moversData := &MoversData{

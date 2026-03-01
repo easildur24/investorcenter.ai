@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { apiClient } from '@/lib/api';
 import { ArrowTrendingUpIcon, ArrowTrendingDownIcon } from '@heroicons/react/24/outline';
 import { safeToFixed, safeParseNumber } from '@/lib/utils';
+import { useWidgetTracking } from '@/lib/hooks/useWidgetTracking';
 
 interface MarketIndex {
   symbol: string;
@@ -12,9 +13,12 @@ interface MarketIndex {
   change: number | string;
   changePercent: number | string;
   lastUpdated: string;
+  displayFormat?: 'points' | 'usd';
+  dataType?: 'index' | 'etf_proxy';
 }
 
 export default function MarketOverview() {
+  const { ref: widgetRef } = useWidgetTracking('market_overview');
   const [indices, setIndices] = useState<MarketIndex[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +54,7 @@ export default function MarketOverview() {
       >
         <h2 className="text-lg font-semibold text-ic-text-primary mb-4">Market Overview</h2>
         <div className="animate-pulse space-y-4">
-          {[1, 2, 3].map((i) => (
+          {[1, 2, 3, 4, 5].map((i) => (
             <div key={i} className="flex justify-between items-center">
               <div className="h-4 bg-ic-bg-tertiary rounded w-1/3"></div>
               <div className="h-4 bg-ic-bg-tertiary rounded w-1/4"></div>
@@ -80,6 +84,7 @@ export default function MarketOverview() {
 
   return (
     <div
+      ref={widgetRef}
       className="bg-ic-surface rounded-lg border border-ic-border p-6"
       style={{ boxShadow: 'var(--ic-shadow-card)' }}
     >
@@ -103,11 +108,15 @@ export default function MarketOverview() {
 
             <div className="text-right">
               <div className="font-semibold text-ic-text-primary">
-                $
-                {safeParseNumber(index.price).toLocaleString('en-US', {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 2,
-                })}
+                {index.displayFormat === 'points' || index.dataType === 'index'
+                  ? safeParseNumber(index.price).toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })
+                  : `$${safeParseNumber(index.price).toLocaleString('en-US', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 2,
+                    })}`}
               </div>
 
               <div
