@@ -144,6 +144,24 @@ class ApiClient {
     return result;
   }
 
+  // News methods
+  async getTickerNews(symbol: string, limit: number = 10) {
+    return this.request<
+      Array<{
+        id: number;
+        symbol: string;
+        title: string;
+        summary: string;
+        author: string;
+        source: string;
+        url: string;
+        sentiment: string;
+        publishedAt: string;
+        createdAt: string;
+      }>
+    >(`${tickersRoutes.news(symbol)}?limit=${limit}`);
+  }
+
   // Screener methods
   async getScreenerStocks(params?: ScreenerApiParams) {
     const queryParams = new URLSearchParams();
