@@ -1288,19 +1288,52 @@ func (p *PolygonClient) GetUnifiedSnapshot(symbol string) (*UnifiedSnapshotResul
 		result.ChangePercent = decimal.NewFromFloat(session.EarlyTradingChangePercent)
 
 	case "closed":
-		// When market is closed, check if after-hours trading happened
-		// (late_trading_change != 0 means AH session had trades)
-		if session.LateTradingChange != 0 {
-			// Show as after_hours with the AH data
+		// When market is closed, check if after-hours trading happened.
+		// Detection: either late_trading_change != 0 (weekday AH),
+		// or last trade price differs from session close (weekend — Polygon
+		// flattens the session fields but last_trade still reflects AH price).
+		hasAHFromChange := session.LateTradingChange != 0
+		hasAHFromPrice := session.Close > 0 && currentPrice != session.Close
+		if hasAHFromChange || hasAHFromPrice {
 			result.MarketSession = "after_hours"
-			regularClose := session.PreviousClose + session.RegularTradingChange
+			// Regular close: if RegularTradingChange is available, compute it;
+			// otherwise fall back to session.Close (the regular close price).
+			var regularClose float64
+			if session.RegularTradingChange != 0 {
+				regularClose = session.PreviousClose + session.RegularTradingChange
+			} else {
+				regularClose = session.Close
+			}
 			result.RegularClosePrice = decimal.NewFromFloat(regularClose)
-			result.RegularChange = decimal.NewFromFloat(session.RegularTradingChange)
-			result.RegularChangePercent = decimal.NewFromFloat(session.RegularTradingChangePercent)
+			// Regular session change (close vs previous close)
+			regChange := regularClose - session.PreviousClose
+			var regChangePct float64
+			if session.PreviousClose != 0 {
+				regChangePct = (regChange / session.PreviousClose) * 100
+			}
+			if session.RegularTradingChange != 0 {
+				result.RegularChange = decimal.NewFromFloat(session.RegularTradingChange)
+				result.RegularChangePercent = decimal.NewFromFloat(session.RegularTradingChangePercent)
+			} else {
+				result.RegularChange = decimal.NewFromFloat(regChange)
+				result.RegularChangePercent = decimal.NewFromFloat(regChangePct)
+			}
 			result.HasRegularClose = true
 			result.Price = decimal.NewFromFloat(currentPrice)
-			result.Change = decimal.NewFromFloat(session.LateTradingChange)
-			result.ChangePercent = decimal.NewFromFloat(session.LateTradingChangePercent)
+			// AH change: if LateTradingChange available use it,
+			// else compute from last trade vs regular close
+			if session.LateTradingChange != 0 {
+				result.Change = decimal.NewFromFloat(session.LateTradingChange)
+				result.ChangePercent = decimal.NewFromFloat(session.LateTradingChangePercent)
+			} else {
+				ahChange := currentPrice - regularClose
+				var ahChangePct float64
+				if regularClose != 0 {
+					ahChangePct = (ahChange / regularClose) * 100
+				}
+				result.Change = decimal.NewFromFloat(ahChange)
+				result.ChangePercent = decimal.NewFromFloat(ahChangePct)
+			}
 		} else {
 			result.Price = decimal.NewFromFloat(currentPrice)
 			result.Change = decimal.NewFromFloat(session.Change)
