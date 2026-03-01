@@ -9,6 +9,9 @@ import TopMovers from '@/components/home/TopMovers';
 import HeroSection from '@/components/home/HeroSection';
 import NewsFeed from '@/components/home/NewsFeed';
 import UpcomingEarnings from '@/components/home/UpcomingEarnings';
+import SectorHeatmap from '@/components/home/SectorHeatmap';
+import WatchlistPreview from '@/components/home/WatchlistPreview';
+import MarketSummary from '@/components/home/MarketSummary';
 import WidgetErrorBoundary from '@/components/ui/WidgetErrorBoundary';
 import Footer from '@/components/Footer';
 
@@ -19,6 +22,15 @@ export default function Home() {
       <WidgetErrorBoundary widgetName="Hero">
         <HeroSection />
       </WidgetErrorBoundary>
+
+      {/* AI Market Summary */}
+      <div className="py-6 bg-ic-bg-secondary">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <WidgetErrorBoundary widgetName="Market Summary">
+            <MarketSummary />
+          </WidgetErrorBoundary>
+        </div>
+      </div>
 
       {/* Market Overview + Top Movers */}
       <div className="py-12 bg-ic-bg-secondary">
@@ -57,8 +69,22 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Features Section */}
+      {/* Sector Heatmap + Watchlist Preview */}
       <div className="py-12 bg-ic-bg-secondary">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-5xl mx-auto">
+            <WidgetErrorBoundary widgetName="Sector Performance">
+              <SectorHeatmap />
+            </WidgetErrorBoundary>
+            <WidgetErrorBoundary widgetName="Watchlist Preview">
+              <WatchlistPreview />
+            </WidgetErrorBoundary>
+          </div>
+        </div>
+      </div>
+
+      {/* Features Section */}
+      <div className="py-12 bg-ic-bg-primary">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="lg:text-center">
             <h2 className="text-base text-ic-blue font-semibold tracking-wide uppercase">
