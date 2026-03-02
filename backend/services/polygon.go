@@ -1584,7 +1584,9 @@ func (p *PolygonClient) GetIndexSnapshots(symbols []string) ([]IndexSnapshotResu
 			Change:        r.Session.Change,
 			ChangePercent: r.Session.ChangePercent,
 			MarketStatus:  r.MarketStatus,
-			Timestamp:     time.Now(),
+			// Timestamp is time of retrieval — the Polygon v3 index snapshot API
+			// does not provide individual timestamps per index.
+			Timestamp: time.Now(),
 		})
 	}
 

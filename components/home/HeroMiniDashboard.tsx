@@ -70,6 +70,7 @@ export default function HeroMiniDashboard() {
     fetchIndices();
 
     // Poll every 30 seconds
+    // TODO: Migrate from 30s polling to WebSocket for real-time price updates during market hours
     const interval = setInterval(fetchIndices, 30_000);
 
     return () => {

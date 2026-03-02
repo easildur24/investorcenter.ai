@@ -7,7 +7,7 @@ import { formatRelativeTime } from '@/lib/utils';
 import { NewspaperIcon } from '@heroicons/react/24/outline';
 
 interface NewsArticle {
-  id: number;
+  id: number | string;
   title: string;
   summary: string;
   source: string;
@@ -50,7 +50,7 @@ export default function NewsFeed() {
             publishedAt: string;
             sentiment?: string;
           }) => ({
-            id: article.id || Math.random(),
+            id: article.id || article.url,
             title: article.title,
             summary: article.summary || '',
             source: article.source,
