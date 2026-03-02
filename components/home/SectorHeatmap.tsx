@@ -19,8 +19,6 @@ interface SectorData {
   stockCount: number;
 }
 
-type Period = '1D' | '1W' | '1M';
-
 // ============================================================================
 // Helpers
 // ============================================================================
@@ -151,8 +149,6 @@ export default function SectorHeatmap() {
   const [sectors, setSectors] = useState<SectorData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activePeriod, setActivePeriod] = useState<Period>('1D');
-
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -170,8 +166,6 @@ export default function SectorHeatmap() {
   useEffect(() => {
     loadData();
   }, [loadData]);
-
-  const periods: Period[] = ['1D', '1W', '1M'];
 
   // ── Loading State ──────────────────────────────────────────────────────────
   if (loading) {
@@ -231,25 +225,8 @@ export default function SectorHeatmap() {
           <h2 className="text-lg font-semibold text-ic-text-primary">Sector Performance</h2>
         </div>
 
-        {/* Period Toggle */}
-        <div className="flex items-center gap-1 bg-ic-bg-secondary rounded-lg p-0.5">
-          {periods.map((period) => (
-            <button
-              key={period}
-              onClick={() => {
-                setActivePeriod(period);
-                trackInteraction('period_toggle', { period });
-              }}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                activePeriod === period
-                  ? 'bg-ic-surface text-ic-text-primary shadow-sm'
-                  : 'text-ic-text-muted hover:text-ic-text-primary'
-              }`}
-            >
-              {period}
-            </button>
-          ))}
-        </div>
+        {/* TODO: Add period toggle (1D/1W/1M) when dedicated sector performance API is available */}
+        <span className="text-xs text-ic-text-dim">Revenue Growth</span>
       </div>
 
       {/* Sector Grid */}

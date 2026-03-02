@@ -59,6 +59,7 @@ Return ONLY the summary text, no JSON wrapping or markdown.`
 type SummaryGenerator struct {
 	gemini      *GeminiClient
 	redisClient *redis.Client
+	polygon     *PolygonClient
 }
 
 // NewSummaryGenerator creates a SummaryGenerator. gemini may be nil if
@@ -75,9 +76,17 @@ func NewSummaryGenerator() *SummaryGenerator {
 		DB:       0,
 	})
 
+	// Check Redis connectivity at startup (non-blocking — template fallback works without Redis)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Printf("Warning: Redis unavailable at startup (%s): %v — summaries will not be cached", redisAddr, err)
+	}
+
 	return &SummaryGenerator{
 		gemini:      NewGeminiClient(),
 		redisClient: rdb,
+		polygon:     NewPolygonClient(),
 	}
 }
 
@@ -126,7 +135,7 @@ func (sg *SummaryGenerator) GenerateMarketSummary(ctx context.Context) (*MarketS
 
 // gatherMarketData fetches index snapshots and market movers from Polygon.io.
 func (sg *SummaryGenerator) gatherMarketData() (*summaryPromptData, error) {
-	polygonClient := NewPolygonClient()
+	polygonClient := sg.polygon
 
 	data := &summaryPromptData{
 		Date: time.Now().Format("Monday, January 2, 2006"),
@@ -197,15 +206,20 @@ func (sg *SummaryGenerator) gatherMarketData() (*summaryPromptData, error) {
 
 		var validStocks []stockMove
 		for _, t := range snapshots.Tickers {
-			if t.Day.Close <= 0 || math.IsNaN(t.TodaysChangePerc) || math.IsInf(t.TodaysChangePerc, 0) {
+			// Use Day.Close if available (after market close), else LastTrade.Price (during trading)
+			price := t.Day.Close
+			if price == 0 {
+				price = t.LastTrade.Price
+			}
+			if price <= 0 || math.IsNaN(t.TodaysChangePerc) || math.IsInf(t.TodaysChangePerc, 0) {
 				continue
 			}
-			if math.Abs(t.TodaysChangePerc) > 100 || t.Day.Volume < 100000 || t.Day.Close < 1.0 {
+			if math.Abs(t.TodaysChangePerc) > 100 || t.Day.Volume < 100000 || price < 1.0 {
 				continue
 			}
 			validStocks = append(validStocks, stockMove{
 				Ticker:        t.Ticker,
-				Price:         t.Day.Close,
+				Price:         price,
 				ChangePercent: t.TodaysChangePerc,
 			})
 		}
@@ -392,6 +406,8 @@ func (sg *SummaryGenerator) generateTemplate(data *summaryPromptData) *MarketSum
 }
 
 // cacheSummary stores the summary in Redis with the configured TTL.
+// Errors are logged but not propagated — caching failures must not block
+// the HTTP response. The summary will simply be regenerated on the next request.
 func (sg *SummaryGenerator) cacheSummary(ctx context.Context, result *MarketSummaryResult) {
 	data, err := json.Marshal(result)
 	if err != nil {

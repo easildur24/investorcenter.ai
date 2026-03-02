@@ -33,6 +33,7 @@ export default function MarketStatusBanner() {
 
   useEffect(() => {
     // Update market status and countdown every 60 seconds
+    // 60s refresh is sufficient — countdown displays hours/minutes format, not seconds
     const interval = setInterval(() => {
       const newStatus = getMarketStatus();
       setStatus(newStatus);

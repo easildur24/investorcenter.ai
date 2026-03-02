@@ -297,7 +297,6 @@ export default function UpcomingEarnings() {
             {/* Earnings rows */}
             <div className="space-y-0.5">
               {group.items.map((item) => {
-                const badge = getTimeBadge(item.fiscalQuarter);
                 const showFallbackLogo = failedLogos.has(item.symbol);
                 // Generate a consistent color from the symbol
                 const fallbackColor = symbolToColor(item.symbol);
@@ -340,13 +339,7 @@ export default function UpcomingEarnings() {
                         <span className="font-semibold text-sm text-ic-text-primary">
                           {item.symbol}
                         </span>
-                        {badge && (
-                          <span
-                            className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.className}`}
-                          >
-                            {badge.label}
-                          </span>
-                        )}
+                        {/* TODO: Add BMO/AMC badge when earnings data includes time-of-day */}
                       </div>
                       {item.fiscalQuarter && (
                         <span className="text-xs text-ic-text-muted truncate block">
