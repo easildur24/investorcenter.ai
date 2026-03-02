@@ -1,14 +1,11 @@
 package handlers
 
 import (
-	"encoding/json"
 	"log"
 	"math"
 	"net/http"
-	"net/url"
 	"sort"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -348,18 +345,8 @@ func GetMarketMovers(c *gin.Context) {
 	})
 }
 
-// NewsArticleResponse represents a news article in the API response
-type NewsArticleResponse struct {
-	ID          string `json:"id"`
-	Title       string `json:"title"`
-	Summary     string `json:"summary"`
-	Source      string `json:"source"`
-	URL         string `json:"url"`
-	PublishedAt string `json:"publishedAt"`
-	ImageURL    string `json:"imageUrl,omitempty"`
-}
-
-// GetMarketNews returns general market news (not ticker-specific) from Polygon.io
+// GetMarketNews returns general market news (not ticker-specific) from Polygon.io.
+// Delegates to the PolygonClient service layer for API access and response parsing.
 func GetMarketNews(c *gin.Context) {
 	limitStr := c.DefaultQuery("limit", "10")
 	limit, err := strconv.Atoi(limitStr)
@@ -369,26 +356,9 @@ func GetMarketNews(c *gin.Context) {
 
 	polygonClient := services.NewPolygonClient()
 
-	// Call Polygon news API WITHOUT a ticker parameter to get general market news
-	apiURL := "https://api.polygon.io/v2/reference/news?limit=" +
-		strconv.Itoa(limit) +
-		"&order=desc&sort=published_utc&apikey=" + polygonClient.APIKey
-
-	resp, err := polygonClient.Client.Get(apiURL)
+	articles, err := polygonClient.GetGeneralNews(limit)
 	if err != nil {
-		log.Printf("Error fetching market news from Polygon: %v", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"error": "Failed to fetch market news",
-			"meta": gin.H{
-				"timestamp": time.Now().UTC(),
-			},
-		})
-		return
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		log.Printf("Polygon news API returned status %d", resp.StatusCode)
+		log.Printf("Error fetching market news: %v", err)
 		c.JSON(http.StatusServiceUnavailable, gin.H{
 			"error": "Failed to fetch market news",
 			"meta": gin.H{
@@ -398,51 +368,7 @@ func GetMarketNews(c *gin.Context) {
 		return
 	}
 
-	var polygonResp struct {
-		Results []struct {
-			ID          string `json:"id"`
-			Title       string `json:"title"`
-			Description string `json:"description"`
-			ArticleURL  string `json:"article_url"`
-			PublishedAt string `json:"published_utc"`
-			ImageURL    string `json:"image_url"`
-			Author      string `json:"author"`
-			Publisher   struct {
-				Name string `json:"name"`
-			} `json:"publisher"`
-		} `json:"results"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&polygonResp); err != nil {
-		log.Printf("Failed to decode Polygon news response: %v", err)
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to parse market news",
-			"meta": gin.H{
-				"timestamp": time.Now().UTC(),
-			},
-		})
-		return
-	}
-
-	articles := make([]NewsArticleResponse, 0, len(polygonResp.Results))
-	for _, r := range polygonResp.Results {
-		source := r.Publisher.Name
-		if source == "" {
-			source = extractDomainName(r.ArticleURL)
-		}
-
-		articles = append(articles, NewsArticleResponse{
-			ID:          r.ID,
-			Title:       r.Title,
-			Summary:     r.Description,
-			Source:      source,
-			URL:         r.ArticleURL,
-			PublishedAt: r.PublishedAt,
-			ImageURL:    r.ImageURL,
-		})
-	}
-
-	log.Printf("Fetched %d general market news articles from Polygon", len(articles))
+	log.Printf("Fetched %d general market news articles from Polygon (limit=%d)", len(articles), limit)
 
 	c.JSON(http.StatusOK, gin.H{
 		"data": articles,
@@ -452,28 +378,4 @@ func GetMarketNews(c *gin.Context) {
 			"source":    "polygon.io",
 		},
 	})
-}
-
-// extractDomainName extracts a readable source name from a URL.
-// e.g., "https://www.reuters.com/article/..." → "Reuters"
-func extractDomainName(rawURL string) string {
-	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
-		return "News"
-	}
-
-	host := strings.ToLower(parsed.Host)
-	host = strings.TrimPrefix(host, "www.")
-
-	// Extract the domain name (before the TLD)
-	parts := strings.Split(host, ".")
-	if len(parts) >= 2 {
-		name := parts[0]
-		// Capitalize first letter
-		if len(name) > 0 {
-			return strings.ToUpper(name[:1]) + name[1:]
-		}
-	}
-
-	return "News"
 }
