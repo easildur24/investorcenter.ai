@@ -110,8 +110,8 @@ func GetMarketIndices(c *gin.Context) {
 	var fetchErrors []string
 
 	for _, idx := range indexSymbols {
-		// Try index data first
-		if result, ok := indexMap[idx.Symbol]; ok {
+		// Try index data first — skip if value is 0 (weekends/holidays return all zeros)
+		if result, ok := indexMap[idx.Symbol]; ok && result.Value != 0 {
 			indices = append(indices, IndexInfo{
 				Symbol:        idx.Symbol,
 				Name:          idx.Name,
@@ -126,7 +126,10 @@ func GetMarketIndices(c *gin.Context) {
 			continue
 		}
 
-		// Fallback to ETF proxy
+		// Fallback to ETF proxy (also used when index returns zero on weekends/holidays)
+		if _, exists := indexMap[idx.Symbol]; exists {
+			log.Printf("Index %s returned zero value, falling back to ETF proxy %s", idx.Symbol, idx.ETFProxy)
+		}
 		if idx.ETFProxy != "" {
 			priceData, err := polygonClient.GetStockRealTimePrice(idx.ETFProxy)
 			if err != nil {
