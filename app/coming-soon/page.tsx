@@ -1,9 +1,7 @@
-'use client';
-
 import Link from 'next/link';
-import { CurrencyDollarIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { SparklesIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
 
-export default function CryptoPage() {
+export default function ComingSoonPage() {
   return (
     <div className="min-h-screen bg-ic-bg-primary flex items-center justify-center px-4">
       <div className="max-w-lg w-full text-center">
@@ -12,16 +10,14 @@ export default function CryptoPage() {
           style={{ boxShadow: 'var(--ic-shadow-card)' }}
         >
           <div className="mx-auto w-16 h-16 rounded-full bg-ic-blue/10 flex items-center justify-center mb-6">
-            <CurrencyDollarIcon className="h-8 w-8 text-ic-blue" />
+            <SparklesIcon className="h-8 w-8 text-ic-blue" />
           </div>
 
-          <h1 className="text-2xl sm:text-3xl font-bold text-ic-text-primary mb-3">
-            Crypto — Coming Soon
-          </h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-ic-text-primary mb-3">Coming Soon</h1>
 
           <p className="text-ic-text-muted text-base sm:text-lg mb-8 leading-relaxed">
-            We&apos;re building a comprehensive cryptocurrency dashboard with real-time prices,
-            market cap rankings, and portfolio tracking. Stay tuned!
+            This page is currently under development. We&apos;re working hard to bring you new
+            features and improvements. Check back soon!
           </p>
 
           <Link
