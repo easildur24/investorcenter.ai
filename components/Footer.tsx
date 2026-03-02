@@ -24,7 +24,7 @@ export default function Footer() {
                 <ul className="mt-4 space-y-4">
                   <li>
                     <Link
-                      href="/screener"
+                      href="/coming-soon"
                       className="text-base text-ic-text-muted hover:text-ic-text-primary transition-colors"
                     >
                       Charts

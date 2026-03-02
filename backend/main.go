@@ -114,6 +114,7 @@ func main() {
 			markets.GET("/indices", handlers.GetMarketIndices)
 			markets.GET("/movers", handlers.GetMarketMovers)
 			markets.GET("/search", searchSecurities)
+			markets.GET("/summary", handlers.GetMarketSummary)
 		}
 
 		// Ticker page endpoints

@@ -102,10 +102,8 @@ func GetMarketIndices(c *gin.Context) {
 
 	// Build a map for quick lookup of index results
 	indexMap := make(map[string]services.IndexSnapshotResult)
-	if indexResults != nil {
-		for _, r := range indexResults {
-			indexMap[r.Symbol] = r
-		}
+	for _, r := range indexResults {
+		indexMap[r.Symbol] = r
 	}
 
 	indices := []IndexInfo{}
@@ -217,8 +215,14 @@ func GetMarketMovers(c *gin.Context) {
 	// Convert to MoverStock slice
 	var stocks []MoverStock
 	for _, ticker := range snapshots.Tickers {
+		// Use Day.Close if available (after market close), else LastTrade.Price (during trading)
+		price := ticker.Day.Close
+		if price == 0 {
+			price = ticker.LastTrade.Price
+		}
+
 		// Filter out invalid or suspicious data
-		if ticker.Day.Close <= 0 || math.IsNaN(ticker.TodaysChangePerc) || math.IsInf(ticker.TodaysChangePerc, 0) {
+		if price <= 0 || math.IsNaN(ticker.TodaysChangePerc) || math.IsInf(ticker.TodaysChangePerc, 0) {
 			continue
 		}
 
@@ -233,13 +237,13 @@ func GetMarketMovers(c *gin.Context) {
 		}
 
 		// Filter out penny stocks (price under $1)
-		if ticker.Day.Close < 1.0 {
+		if price < 1.0 {
 			continue
 		}
 
 		stocks = append(stocks, MoverStock{
 			Symbol:        ticker.Ticker,
-			Price:         ticker.Day.Close,
+			Price:         price,
 			Change:        ticker.TodaysChange,
 			ChangePercent: ticker.TodaysChangePerc,
 			Volume:        ticker.Day.Volume,

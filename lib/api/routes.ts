@@ -33,6 +33,7 @@ export const markets = {
   indices: '/markets/indices',
   movers: '/markets/movers',
   search: '/markets/search',
+  summary: '/markets/summary',
 } as const;
 
 // ─── Tickers ───────────────────────────────────────────────────────────────────

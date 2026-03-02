@@ -59,6 +59,12 @@ class Analytics {
       typeof window !== 'undefined' && process.env.NODE_ENV === 'development'
         ? consoleProvider
         : noopProvider;
+
+    // Expose analytics instance on window for runtime provider injection
+    // Usage: window.__analytics.setProvider(myGA4Adapter)
+    if (typeof window !== 'undefined') {
+      (window as unknown as Record<string, unknown>).__analytics = this;
+    }
   }
 
   /** Replace the analytics provider (e.g., with Mixpanel adapter) */

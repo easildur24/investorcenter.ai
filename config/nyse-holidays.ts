@@ -30,4 +30,5 @@ export const NYSE_HOLIDAYS: string[] = [
   '2027-09-06', // Labor Day
   '2027-11-25', // Thanksgiving Day
   '2027-12-24', // Christmas Day (observed)
+  // TODO: Add 2028 holidays by Q4 2027
 ];
