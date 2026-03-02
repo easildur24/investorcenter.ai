@@ -24,6 +24,7 @@ const (
 
 // MarketSummaryResult is the response returned by GenerateMarketSummary.
 type MarketSummaryResult struct {
+	Title     string `json:"title"`
 	Summary   string `json:"summary"`
 	Timestamp string `json:"timestamp"`
 	Method    string `json:"method"` // "llm" or "template"
@@ -46,14 +47,16 @@ type summaryPromptData struct {
 	Sentiment string            `json:"overallSentiment"`
 }
 
-const marketSummarySystemPrompt = `You are a concise financial market reporter. Generate a 2-4 sentence market summary from the structured data provided. Rules:
-- Maximum 200 words
-- No financial advice or predictions
-- No speculation about future moves
-- Focus on what happened today: index movements, notable movers, and overall market tone
-- Use plain language accessible to retail investors
-- Reference specific numbers (percentages, index levels) when relevant
-Return ONLY the summary text, no JSON wrapping or markdown.`
+const marketSummarySystemPrompt = `You are a financial market reporter for a professional analytics platform. Given structured market data, produce a headline and summary.
+
+Return EXACTLY this JSON (no markdown, no code fences):
+{"title": "Your headline here", "summary": "Your summary paragraph here."}
+
+Rules:
+- title: newspaper-style headline, no period, max 10 words (e.g., "Tech rally drives S&P 500 to record close")
+- summary: 2-3 sentences with specific index levels, percentage moves, and notable movers
+- No financial advice, predictions, or speculation
+- Plain language accessible to retail investors`
 
 // SummaryGenerator creates market summaries using LLM with template fallback.
 type SummaryGenerator struct {
@@ -337,12 +340,48 @@ func (sg *SummaryGenerator) generateWithLLM(data *summaryPromptData) (*MarketSum
 		return nil, fmt.Errorf("Gemini returned no content")
 	}
 
-	summary := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
-	if summary == "" {
+	rawText := strings.TrimSpace(geminiResp.Candidates[0].Content.Parts[0].Text)
+	if rawText == "" {
 		return nil, fmt.Errorf("Gemini returned empty summary")
 	}
 
+	// Strip markdown code fences if present (```json ... ```)
+	cleaned := rawText
+	if strings.HasPrefix(cleaned, "```") {
+		if idx := strings.Index(cleaned[3:], "\n"); idx >= 0 {
+			cleaned = cleaned[3+idx+1:]
+		}
+		cleaned = strings.TrimSuffix(strings.TrimSpace(cleaned), "```")
+		cleaned = strings.TrimSpace(cleaned)
+	}
+
+	// Parse JSON response with title + summary
+	var parsed struct {
+		Title   string `json:"title"`
+		Summary string `json:"summary"`
+	}
+	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
+		// Fallback: use raw text as summary if JSON parsing fails
+		log.Printf("Warning: LLM did not return valid JSON, using raw text: %v", err)
+		return &MarketSummaryResult{
+			Title:     "Today's Market Summary",
+			Summary:   rawText,
+			Timestamp: time.Now().UTC().Format(time.RFC3339),
+			Method:    "llm",
+		}, nil
+	}
+
+	title := parsed.Title
+	if title == "" {
+		title = "Today's Market Summary"
+	}
+	summary := parsed.Summary
+	if summary == "" {
+		summary = rawText
+	}
+
 	return &MarketSummaryResult{
+		Title:     title,
 		Summary:   summary,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Method:    "llm",
@@ -394,11 +433,25 @@ func (sg *SummaryGenerator) generateTemplate(data *summaryPromptData) *MarketSum
 	}
 
 	summary := strings.Join(parts, " ")
+
+	// Generate a headline from sentiment + data
+	title := "Today's Market Summary"
 	if summary == "" {
-		summary = "Market data is currently unavailable. Please check back later."
+		title = "Markets closed for the weekend"
+		summary = "U.S. stock markets are closed. Regular trading resumes on the next business day."
+	} else {
+		switch data.Sentiment {
+		case "bullish":
+			title = "Markets rally as major indices close higher"
+		case "bearish":
+			title = "Markets decline as selling pressure mounts"
+		case "mixed":
+			title = "Mixed session as indices close with varied results"
+		}
 	}
 
 	return &MarketSummaryResult{
+		Title:     title,
 		Summary:   summary,
 		Timestamp: time.Now().UTC().Format(time.RFC3339),
 		Method:    "template",

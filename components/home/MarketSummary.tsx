@@ -4,9 +4,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { apiClient } from '@/lib/api';
 import { useWidgetTracking } from '@/lib/hooks/useWidgetTracking';
 import { formatRelativeTime } from '@/lib/utils';
-import { SparklesIcon } from '@heroicons/react/24/outline';
-
 interface MarketSummaryData {
+  title: string;
   summary: string;
   timestamp: string;
   method: 'llm' | 'template';
@@ -108,15 +107,9 @@ export default function MarketSummary() {
         <div className="flex-1 min-w-0">
           {/* Header */}
           <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold text-ic-text-primary">Market Summary</h2>
-              {data.method === 'llm' && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-500">
-                  <SparklesIcon className="h-3 w-3" />
-                  AI-generated
-                </span>
-              )}
-            </div>
+            <h2 className="text-lg font-semibold text-ic-text-primary">
+              {data.title || 'Market Summary'}
+            </h2>
             <span className="text-xs text-ic-text-muted shrink-0">
               {formatRelativeTime(new Date(data.timestamp))}
             </span>

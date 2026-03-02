@@ -35,6 +35,8 @@ func TestGenerateTemplate_WithFullData(t *testing.T) {
 	assert.Equal(t, "template", result.Method)
 	assert.NotEmpty(t, result.Summary)
 	assert.NotEmpty(t, result.Timestamp)
+	assert.NotEmpty(t, result.Title)
+	assert.Equal(t, "Mixed session as indices close with varied results", result.Title)
 
 	assert.Contains(t, result.Summary, "S&P 500")
 	assert.Contains(t, result.Summary, "Dow Jones")
@@ -52,7 +54,8 @@ func TestGenerateTemplate_EmptyData(t *testing.T) {
 	result := sg.generateTemplate(data)
 
 	assert.Equal(t, "template", result.Method)
-	assert.Equal(t, "Market data is currently unavailable. Please check back later.", result.Summary)
+	assert.Equal(t, "Markets closed for the weekend", result.Title)
+	assert.Contains(t, result.Summary, "markets are closed")
 }
 
 func TestGenerateTemplate_IndicesOnly(t *testing.T) {
@@ -72,6 +75,7 @@ func TestGenerateTemplate_IndicesOnly(t *testing.T) {
 	result := sg.generateTemplate(data)
 
 	assert.Equal(t, "template", result.Method)
+	assert.Equal(t, "Markets rally as major indices close higher", result.Title)
 	assert.Contains(t, result.Summary, "S&P 500")
 	assert.Contains(t, result.Summary, "Nasdaq")
 	assert.NotContains(t, result.Summary, "Top gainers")
@@ -104,6 +108,7 @@ func TestCacheSummary_RoundTrip(t *testing.T) {
 	ctx := context.Background()
 
 	original := &MarketSummaryResult{
+		Title:     "Markets rally on strong earnings",
 		Summary:   "Markets rallied today with the S&P 500 up 1.5%.",
 		Timestamp: "2026-03-01T16:00:00Z",
 		Method:    "template",
@@ -115,6 +120,7 @@ func TestCacheSummary_RoundTrip(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, cached)
 
+	assert.Equal(t, original.Title, cached.Title)
 	assert.Equal(t, original.Summary, cached.Summary)
 	assert.Equal(t, original.Timestamp, cached.Timestamp)
 	assert.Equal(t, original.Method, cached.Method)
