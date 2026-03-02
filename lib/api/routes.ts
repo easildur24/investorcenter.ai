@@ -32,6 +32,7 @@ export const user = {
 export const markets = {
   indices: '/markets/indices',
   movers: '/markets/movers',
+  news: '/markets/news',
   search: '/markets/search',
   summary: '/markets/summary',
 } as const;

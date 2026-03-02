@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -807,6 +808,105 @@ func (p *PolygonClient) GetNews(symbol string, limit int) ([]models.NewsArticle,
 	}
 
 	return articles, nil
+}
+
+// GeneralNewsArticle represents a news article without ticker-specific fields
+type GeneralNewsArticle struct {
+	ID          string `json:"id"`
+	Title       string `json:"title"`
+	Summary     string `json:"summary"`
+	Source      string `json:"source"`
+	URL         string `json:"url"`
+	PublishedAt string `json:"publishedAt"`
+	ImageURL    string `json:"imageUrl,omitempty"`
+}
+
+// GetGeneralNews fetches general market news (no ticker filter) from Polygon.
+// Returns broad market-moving news rather than ticker-specific articles.
+func (p *PolygonClient) GetGeneralNews(limit int) ([]GeneralNewsArticle, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+
+	url := fmt.Sprintf("%s/v2/reference/news?limit=%d&order=desc&sort=published_utc&apikey=%s",
+		PolygonBaseURL, limit, p.APIKey)
+
+	resp, err := p.Client.Get(url)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch general news: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("general news API returned status %d", resp.StatusCode)
+	}
+
+	var newsResp NewsResponse
+	if err := json.NewDecoder(resp.Body).Decode(&newsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode general news response: %w", err)
+	}
+
+	if newsResp.Status != "OK" {
+		return nil, fmt.Errorf("general news API error: %s", newsResp.Status)
+	}
+
+	articles := make([]GeneralNewsArticle, 0, len(newsResp.Results))
+	for _, r := range newsResp.Results {
+		source := r.Publisher.Name
+		if source == "" {
+			source = ExtractDomainName(r.ArticleURL)
+		}
+
+		articles = append(articles, GeneralNewsArticle{
+			ID:          r.ID,
+			Title:       r.Title,
+			Summary:     r.Description,
+			Source:      source,
+			URL:         r.ArticleURL,
+			PublishedAt: r.PublishedUTC,
+			ImageURL:    r.ImageURL,
+		})
+	}
+
+	return articles, nil
+}
+
+// ExtractDomainName extracts a readable source name from a URL.
+// e.g., "https://www.reuters.com/article/..." → "Reuters"
+// Handles subdomains like "markets.businessinsider.com" → "Businessinsider"
+func ExtractDomainName(rawURL string) string {
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return "News"
+	}
+
+	host := strings.ToLower(parsed.Host)
+	host = strings.TrimPrefix(host, "www.")
+
+	// Strip common subdomain prefixes that aren't the brand name
+	commonSubdomains := []string{
+		"markets.", "finance.", "news.", "business.", "money.",
+		"investing.", "economy.", "global.", "us.", "uk.",
+		"blog.", "media.", "content.", "feeds.", "rss.",
+	}
+	for _, sub := range commonSubdomains {
+		if strings.HasPrefix(host, sub) {
+			host = strings.TrimPrefix(host, sub)
+			break // Only strip one level
+		}
+	}
+
+	// Extract the domain name (before the TLD)
+	parts := strings.Split(host, ".")
+	if len(parts) >= 2 {
+		name := parts[0]
+		// Capitalize first letter
+		if len(name) > 0 {
+			return strings.ToUpper(name[:1]) + name[1:]
+		}
+	}
+
+	return "News"
 }
 
 // PolygonTickersResponse represents the tickers list response

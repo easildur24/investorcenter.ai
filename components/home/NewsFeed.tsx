@@ -21,8 +21,8 @@ interface NewsArticle {
 /**
  * NewsFeed — displays recent market news headlines.
  *
- * Uses the existing Polygon.io news API via the ticker news endpoint.
- * Shows general market news by fetching for major indices/ETFs.
+ * Fetches general market news from Polygon.io (no ticker filter)
+ * to show macro-level, market-moving events rather than ticker-specific articles.
  */
 export default function NewsFeed() {
   const { ref: widgetRef, trackInteraction } = useWidgetTracking('news_feed');
@@ -36,29 +36,19 @@ export default function NewsFeed() {
     const fetchNews = async () => {
       try {
         setLoading(true);
-        // Fetch general market news using SPY as a proxy for market-wide news
-        const response = await apiClient.getTickerNews('SPY', 7);
+        // Fetch general market news (no ticker filter — returns macro/market-wide news)
+        const response = await apiClient.getMarketNews(10);
         if (!isMounted) return;
 
-        const newsArticles: NewsArticle[] = (response.data || []).map(
-          (article: {
-            id?: number;
-            title: string;
-            summary?: string;
-            source: string;
-            url: string;
-            publishedAt: string;
-            sentiment?: string;
-          }) => ({
-            id: article.id || article.url,
-            title: article.title,
-            summary: article.summary || '',
-            source: article.source,
-            url: article.url,
-            publishedAt: article.publishedAt,
-            sentiment: article.sentiment,
-          })
-        );
+        const newsArticles: NewsArticle[] = (response.data || []).map((article) => ({
+          id: article.id || article.url,
+          title: article.title,
+          summary: article.summary || '',
+          source: article.source,
+          url: article.url,
+          publishedAt: article.publishedAt,
+          imageUrl: article.imageUrl,
+        }));
 
         setArticles(newsArticles);
         setError(null);

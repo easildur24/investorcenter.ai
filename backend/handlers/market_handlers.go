@@ -344,3 +344,38 @@ func GetMarketMovers(c *gin.Context) {
 		},
 	})
 }
+
+// GetMarketNews returns general market news (not ticker-specific) from Polygon.io.
+// Delegates to the PolygonClient service layer for API access and response parsing.
+func GetMarketNews(c *gin.Context) {
+	limitStr := c.DefaultQuery("limit", "10")
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit < 1 || limit > 50 {
+		limit = 10
+	}
+
+	polygonClient := services.NewPolygonClient()
+
+	articles, err := polygonClient.GetGeneralNews(limit)
+	if err != nil {
+		log.Printf("Error fetching market news: %v", err)
+		c.JSON(http.StatusServiceUnavailable, gin.H{
+			"error": "Failed to fetch market news",
+			"meta": gin.H{
+				"timestamp": time.Now().UTC(),
+			},
+		})
+		return
+	}
+
+	log.Printf("Fetched %d general market news articles from Polygon (limit=%d)", len(articles), limit)
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": articles,
+		"meta": gin.H{
+			"count":     len(articles),
+			"timestamp": time.Now().UTC(),
+			"source":    "polygon.io",
+		},
+	})
+}
