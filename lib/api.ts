@@ -162,6 +162,20 @@ class ApiClient {
     >(`${tickersRoutes.news(symbol)}?limit=${limit}`);
   }
 
+  async getMarketNews(limit: number = 10) {
+    return this.request<
+      Array<{
+        id: string;
+        title: string;
+        summary: string;
+        source: string;
+        url: string;
+        publishedAt: string;
+        imageUrl?: string;
+      }>
+    >(`${marketsRoutes.news}?limit=${limit}`);
+  }
+
   // Screener methods
   async getScreenerStocks(params?: ScreenerApiParams) {
     const queryParams = new URLSearchParams();
